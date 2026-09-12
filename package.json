@@ -1,6 +1,6 @@
 {
   "name": "onmyoji-lineup-atlas",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "阴阳师阵容图鉴：本地阵容库、式神资源与平安志账号核对",
   "private": true,
   "main": "desktop/main.cjs",

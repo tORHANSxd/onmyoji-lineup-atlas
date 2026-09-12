@@ -5,7 +5,7 @@
   "sourceChecks": [
     {
       "path": "app/app.js",
-      "sha256": "7523ba30be506482bbdf250c90a6711bb54532237a54359a1ec927a869111df2",
+      "sha256": "8c982f985039160a83ce0173866adf45d976c8891d5f85e32c97e0f5a70d6fc4",
       "matchesSource": true
     },
     {
@@ -15,7 +15,7 @@
     },
     {
       "path": "app/index.html",
-      "sha256": "abdf5129f324d8dab6f8157aad26fc01a3043eab56ad5a53fea4b2c509fcb539",
+      "sha256": "d5a82515cc30650c44db4d14c3d3a374202149a7b8d3f1517821a0269653af96",
       "matchesSource": true
     },
     {
@@ -35,12 +35,12 @@
     },
     {
       "path": "app/ta-login.js",
-      "sha256": "04f9209d69707fe79e4a5eab712f860afe3743e2c6b3e22ee1124e6123712242",
+      "sha256": "c5b81bcb5cd851ade68a66bd2c4cc7491cfab922228252eb49704debc9c57779",
       "matchesSource": true
     },
     {
       "path": "app/ta-login.css",
-      "sha256": "21a6ee9f07e6ec3c31f3eb6834f925bc7e5df92a70aedebc316450ce88dfcc83",
+      "sha256": "b92f930faf48dc9dce82c7782f1fd5b5b358044fef3e3adb3ec97a8cf79f40e4",
       "matchesSource": true
     },
     {
@@ -60,7 +60,7 @@
     },
     {
       "path": "desktop/main.cjs",
-      "sha256": "f8d9d23651c007fa81403199f8e80783136197b63129322d98ae7efcb0baa5c3",
+      "sha256": "6cdd8789c0dc287bde81b907e5174e5b22e7212c83c944b83a1865f694a0c2ba",
       "matchesSource": true
     },
     {

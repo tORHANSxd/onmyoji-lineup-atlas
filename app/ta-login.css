@@ -1,6 +1,18 @@
-.ta-login{margin:20px 0;padding:16px;border:1px solid var(--border,#d1bc93);border-radius:12px;background:rgba(208,177,118,.07)}
+.ta-login{padding:28px;border:1px solid var(--border,#d1bc93);border-radius:12px;background:#fbf5e9}
 .ta-login summary{font-weight:700;cursor:pointer;line-height:1.7}
 .ta-login .form-grid{margin-top:12px}.ta-login .ta-check{display:flex;align-items:center;gap:8px;margin:10px 0}.ta-login .ta-check input{width:auto}
 .ta-login select{width:100%;min-width:0}.ta-login .ta-status{font-weight:600;line-height:1.6;margin:12px 0 6px}.ta-login .ta-error{color:#a63827;white-space:pre-wrap;overflow-wrap:anywhere}
 .ta-qr-image{display:block;max-width:240px;width:100%;height:auto;background:#fff;padding:10px;margin:16px auto;border-radius:8px;image-rendering:pixelated}
 .ta-qr-image[hidden]{display:none}.ta-login .actions{flex-wrap:wrap}.ta-selected{overflow-wrap:anywhere;line-height:1.5}
+#app-shell[hidden],#login-screen[hidden]{display:none!important}
+.login-screen{min-height:100vh;padding:44px 34px;display:grid;place-items:center}
+.login-layout{width:min(1080px,100%);display:grid;grid-template-columns:1fr 440px;gap:70px;align-items:center}
+.login-intro .eyebrow{margin:26px 0 18px}.login-intro h1{font-size:44px;line-height:1.35;letter-spacing:3px;color:#573d2b;margin:0 0 24px}
+.login-seal{display:grid;place-items:center;width:54px;height:54px;background:var(--red,#9c3d31);border:3px double #f7e1b9;border-radius:5px;color:#fff3dc;font:30px 'STKaiti','KaiTi',serif;transform:rotate(-4deg)}
+.login-lead{font-size:17px;line-height:1.9;color:#6a5945;max-width:450px}.login-privacy{border-top:1px solid #cdb68d;margin-top:28px;padding-top:22px}.login-privacy h2{font-size:21px;margin:0 0 12px}.login-privacy p{font-size:13px;line-height:1.9;margin:9px 0;color:#766550}
+.login-alt{padding:14px 17px;background:#e9dcc3;border-left:3px solid #ad7848;font-size:14px;line-height:1.85;margin:22px 0 15px;color:#614b32}
+.login-card{box-shadow:0 14px 50px #63481c10}.login-card-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.login-card-heading h2{font-size:25px;margin:0}.login-card-heading button{font-size:12px;padding:8px 12px}.login-card>.caption{line-height:1.8;min-height:38px}
+.ta-qr-frame{min-height:250px;display:grid;place-items:center;border:1px solid #dccbae;border-radius:8px;background:#fffdf8;margin:18px 0 10px}.ta-qr-placeholder{padding:28px;color:#9a8567;text-align:center;font-size:14px;line-height:1.8}.ta-qr-placeholder[hidden]{display:none}.ta-qr-image{margin:0;max-width:250px;border-radius:0}
+.ta-status{font-size:14px;min-height:24px}.ta-error{font-size:13px;line-height:1.7}.login-card .actions{margin-top:14px;gap:10px}.login-card .actions>button{flex:1;font-size:13px}.login-card details{border-top:1px solid #ddccb0;margin-top:22px;padding-top:16px}.login-card details summary{font-size:14px;color:#806442}.login-card label{font-size:13px}.login-card .form-grid{gap:10px}.login-card select,.login-card input{font-size:12px}
+@media(max-width:1000px){.login-screen{padding:28px 24px}.login-layout{gap:32px;grid-template-columns:1fr 410px}.login-intro h1{font-size:35px}}
+@media(max-width:760px){.login-layout{grid-template-columns:1fr;max-width:460px;gap:24px}.login-screen{padding:24px 18px}.login-intro h1{font-size:30px}.login-intro h1 br{display:none}.login-intro .eyebrow{margin:18px 0 12px}.login-privacy{margin-top:18px;padding-top:16px}.login-card{padding:22px}.login-lead{font-size:15px}}

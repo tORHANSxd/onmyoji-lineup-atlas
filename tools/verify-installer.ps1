@@ -76,13 +76,11 @@ try {
     if (-not (Test-Path -LiteralPath $taskHelper)) { throw 'Installed login module missing' }
     $taskResult.installedHelperMatches = (Get-FileHash -LiteralPath $taskHelper).Hash -eq (Get-FileHash -LiteralPath (Join-Path $taskRoot 'release\ta-runtime\atlas-ta-helper\atlas-ta-helper.exe')).Hash
     if (-not $taskResult.installedHelperMatches) { throw 'Installed login module hash mismatch' }
-    $env:ATLAS_SMOKE_LOGIN = '1'
     $env:ATLAS_SMOKE_USER_DATA = $taskProfileDir
-    $env:ATLAS_SMOKE_FIXTURE = Join-Path $taskRoot 'verification\fixtures\ta-example.txt'
     $env:ATLAS_SMOKE_OUTPUT = Join-Path $taskRoot "verification\electron-v$($taskVersion.Replace('.',''))-installed-smoke.json"
     Invoke-TaskProcess $taskApp @('--smoke')
     $taskSmoke = Get-Content -LiteralPath $env:ATLAS_SMOKE_OUTPUT -Raw -Encoding utf8 | ConvertFrom-Json
-    if ($taskSmoke.error -or $taskSmoke.accounts -ne 1 -or $taskSmoke.lineups -ne 156 -or -not $taskSmoke.detail.oneRow -or -not $taskSmoke.libraryCopySucceeded -or @($taskSmoke.clipboardVerification | Where-Object { -not $_.matchesWrittenCode }).Count) { throw 'Installed app smoke failed' }
+    if ($taskSmoke.error -or -not $taskSmoke.gateVisible -or -not $taskSmoke.appHidden -or -not $taskSmoke.appInert -or $taskSmoke.dataLoaded -or $taskSmoke.blockedOperations.Count -ne 9 -or -not $taskSmoke.loginModule.qrReady) { throw 'Installed startup login gate smoke failed' }
     if (-not $taskSmoke.loginModule -or $taskSmoke.loginModule.servers -lt 100 -or -not $taskSmoke.loginModuleLoggedOut) { throw 'Installed login smoke failed' }
     $taskResult.installedLoginModule = $taskSmoke.loginModule
     $taskResult.installedAppSmoke = 'passed'

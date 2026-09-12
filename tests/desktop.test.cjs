@@ -7,7 +7,7 @@ const path=require('node:path');
 const os=require('node:os');
 const vm=require('node:vm');
 const {pathToFileURL}=require('node:url');
-async function harness(fetcher=async()=>new Response('{}')){
+async function harness(fetcher=async()=>new Response('{}'),{signedIn=true}={}){
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'atlas-ipc-test-')),handlers={};let external=[],ready,ta;const copied=[];const loaded=new Promise(resolve=>ready=resolve);
  class Window{constructor(){this.webContents={setWindowOpenHandler(fn){this.open=fn;},on(){},send(){}};}isDestroyed(){return false;}loadURL(){ready();}}
  const protocols={};const electron={app:{getPath:()=>tmp,setPath(){},whenReady:()=>Promise.resolve(),on(){}},BrowserWindow:Window,ipcMain:{handle:(name,fn)=>handlers[name]=fn},dialog:{showSaveDialog:async()=>({canceled:false,filePath:path.join(tmp,'backup.json')})},shell:{openExternal:u=>external.push(u)},session:{defaultSession:{setPermissionRequestHandler(){}}},protocol:{registerSchemesAsPrivileged(){},handle:(name,handler)=>protocols[name]=handler},net:{fetch:u=>u},nativeImage:{},clipboard:{writeText:async code=>copied.push(code)}};
@@ -15,7 +15,8 @@ async function harness(fetcher=async()=>new Response('{}')){
  vm.runInNewContext(fs.readFileSync('desktop/main.cjs','utf8'),{require:n=>n==='electron'?electron:n==='./ta-session.cjs'?{TASession:class extends require('../desktop/ta-session.cjs').TASession{constructor(options){super(options);ta=this;}}}:require(n.startsWith('.')?path.join(dirname,n):n),__dirname:dirname,process:{argv:[],env:{}},fetch:fetcher,AbortSignal,Buffer,console,setTimeout:()=>0,setInterval:()=>({unref(){}}),URL,Response},{filename:'desktop/main.cjs'});
  await loaded;
  const event={senderFrame:{url:pathToFileURL(path.resolve('app/index.html')).href}};
- return {handlers,event,tmp,protocols,copied,ta,clipboard:electron.clipboard,cleanup:()=>{assert.ok(tmp.startsWith(path.join(os.tmpdir(),'atlas-ipc-test-')));fs.rmSync(tmp,{recursive:true,force:true});}};
+ const signIn=()=>{ta.state={...ta.state,authenticated:true};ta.emit();};if(signedIn)signIn();
+ return {handlers,event,tmp,protocols,copied,ta,signIn,dialog:electron.dialog,clipboard:electron.clipboard,cleanup:()=>{assert.ok(tmp.startsWith(path.join(os.tmpdir(),'atlas-ipc-test-')));fs.rmSync(tmp,{recursive:true,force:true});}};
 }
 test('Windows实际原子写入支持覆盖与并发保存顺序',async()=>{const h=await harness();try{assert.equal(await h.handlers['load-state'](h.event),null);await h.handlers['save-state'](h.event,{schemaVersion:1,notes:'初次中文保存'});await Promise.all([h.handlers['save-state'](h.event,{revision:2}),h.handlers['save-state'](h.event,{revision:3})]);const loaded=await h.handlers['load-state'](h.event);assert.equal(loaded.revision,3);assert.equal(fs.existsSync(path.join(h.tmp,'library-v1.json.tmp')),false);await h.handlers['export-json'](h.event,{name:'backup.json',data:loaded});assert.equal(JSON.parse(fs.readFileSync(path.join(h.tmp,'backup.json'))).revision,3);}finally{h.cleanup();}});
 test('IPC拒绝外部页面读取和写入本地状态',async()=>{const h=await harness();try{await assert.rejects(h.handlers['load-state']({senderFrame:{url:'https://example.com'}}),/不受信任/);await assert.rejects(h.handlers['save-state']({senderFrame:{url:'file:///other.html'}},{}),/不受信任/);}finally{h.cleanup();}});
@@ -29,4 +30,29 @@ test('外部来源、空值与超大内容不能写入剪贴板',async()=>{const
 test('复制成功必须等待Electron异步写入，失败不可提前报告成功',async()=>{const h=await harness();try{let complete,settled=false;h.clipboard.writeText=()=>new Promise(resolve=>complete=resolve);const copy=h.handlers['copy-code'](h.event,'|TA|async-key').then(r=>{settled=true;return r;});await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false);complete();assert.equal((await copy).copied,true);h.clipboard.writeText=async()=>{throw new Error('Clipboard unavailable');};await assert.rejects(h.handlers['copy-code'](h.event,'|TA|async-key'),/Clipboard unavailable/);}finally{h.cleanup();}});
 test('外部页面不能读取登录状态、扫码、查询或退出会话',async()=>{const h=await harness();try{let called=0;h.ta.request=async()=>called++;const e={senderFrame:{url:'https://example.com'}};for(const name of ['ta-status','ta-action','ta-query','ta-logout'])await assert.rejects(h.handlers[name](e,'query',{}),/不受信任/);assert.equal(called,0);}finally{h.cleanup();}});
 test('文字码查询经过原解码器并保持原码，错配和错误响应不能成功',async()=>{const h=await harness();try{const code='|TA|'+'a'.repeat(32),response={code,err:0,share_key:code.slice(4),lineup_data:require('./fixtures/ta-vectors.json')[9].payload};h.ta.request=async(action,params)=>{assert.equal(action,'query');assert.equal(params.code,code);return response;};const r=await h.handlers['ta-query'](h.event,code);assert.equal(r.ok,true);assert.equal(r.origin,'official-query');assert.equal(r.code,code);assert.equal(r.kinds.length,6);for(const bad of [{...response,share_key:'b'.repeat(32)},{...response,err:17},{...response,code:'|TA|'+'b'.repeat(32)}]){h.ta.request=async()=>bad;await assert.rejects(h.handlers['ta-query'](h.event,code),/不一致/);}}finally{h.cleanup();}});
-test('登录IPC仅开放约定操作，退出后状态不可持久化为已登录',async()=>{const h=await harness();try{await assert.rejects(h.handlers['ta-action'](h.event,'shell',{}),/不支持/);const s=await h.handlers['ta-logout'](h.event);assert.equal(s.authenticated,false);assert.equal(s.qr_image,'');assert.equal(await h.handlers['load-state'](h.event),null);}finally{h.cleanup();}});
+test('登录IPC仅开放约定操作，退出后状态不可持久化为已登录',async()=>{const h=await harness();try{await assert.rejects(h.handlers['ta-action'](h.event,'shell',{}),/不支持/);const s=await h.handlers['ta-logout'](h.event);assert.equal(s.authenticated,false);assert.equal(s.qr_image,'');await assert.rejects(h.handlers['load-state'](h.event),/请先扫码登录/);assert.equal(fs.existsSync(path.join(h.tmp,'library-v1.json')),false);}finally{h.cleanup();}});
+test('启动未登录时所有业务IPC与缓存图片均受限，登录界面接口保持可用',async()=>{
+ const h=await harness(undefined,{signedIn:false});try{
+  let dialogs=0,queries=0;h.dialog.showSaveDialog=async()=>{dialogs++;return {canceled:true};};h.dialog.showOpenDialog=async()=>{dialogs++;return {canceled:true};};h.ta.request=async()=>queries++;
+  const calls={'load-data':[],'load-state':[],'save-state':[{accounts:[]}],'copy-code':['|TA|x'],'import-files':[],'export-json':[{name:'x',data:{}}],decode:['#TA#x'],'official-status':[],'official-refresh':[{}],'official-cancel':[],'official-auto':[false],'ta-query':['|TA|'+'a'.repeat(32)]};
+  for(const [name,args] of Object.entries(calls))await assert.rejects(h.handlers[name](h.event,...args),/请先扫码登录/,name);
+  assert.equal(dialogs,0);assert.equal(queries,0);assert.equal(h.copied.length,0);
+  assert.equal(h.protocols['atlas-asset']({url:'atlas-asset://cache/'+'a'.repeat(64)+'.png'}).status,403);
+  assert.equal((await h.handlers['ta-status'](h.event)).authenticated,false);await h.handlers['ta-action'](h.event,'init',{});assert.equal(queries,1);
+ }finally{h.cleanup();}
+});
+test('认证成功才读取本地数据，退出或认证失效后重新锁定且不能从账号库恢复登录',async()=>{
+ const h=await harness(undefined,{signedIn:false});try{
+  fs.writeFileSync(path.join(h.tmp,'library-v1.json'),JSON.stringify({authenticated:true,accounts:[{id:'synthetic-other-account'}]}));
+  await assert.rejects(h.handlers['load-state'](h.event),/请先扫码登录/);h.signIn();assert.equal((await h.handlers['load-state'](h.event)).accounts[0].id,'synthetic-other-account');
+  h.ta.state.authenticated=false;h.ta.emit();await assert.rejects(h.handlers['load-data'](h.event),/请先扫码登录/);h.signIn();assert.ok((await h.handlers['load-data'](h.event)).lineups.length);
+  await h.handlers['ta-logout'](h.event);await assert.rejects(h.handlers.decode(h.event,'#TA#x'),/请先扫码登录/);
+ }finally{h.cleanup();}
+});
+test('退出时待保存和文件对话框不会继续写入，新会话不能接收旧会话结果',async()=>{
+ const h=await harness();try{
+  const pendingSave=h.handlers['save-state'](h.event,{revision:1});await h.handlers['ta-logout'](h.event);await assert.rejects(pendingSave,/请先扫码登录/);assert.equal(fs.existsSync(path.join(h.tmp,'library-v1.json')),false);
+  h.signIn();let finish;h.dialog.showSaveDialog=()=>new Promise(resolve=>finish=resolve);const pendingExport=h.handlers['export-json'](h.event,{name:'export.json',data:{private:'synthetic'}});
+  await h.handlers['ta-logout'](h.event);h.signIn();finish({canceled:false,filePath:path.join(h.tmp,'should-not-exist.json')});await assert.rejects(pendingExport,/请先扫码登录/);assert.equal(fs.existsSync(path.join(h.tmp,'should-not-exist.json')),false);
+ }finally{h.cleanup();}
+});
