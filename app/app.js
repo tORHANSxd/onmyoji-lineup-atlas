@@ -39,7 +39,7 @@ function filteredLineups(){const query=$('search').value.trim().toLowerCase().sp
  if(!selectedMembers.every(id=>l.members?.some(m=>m.shikigamiId===id)))return false;
  const text=JSON.stringify(l).toLowerCase();return query.every(q=>text.includes(q));
 });}
-function renderLibrary(){const ls=filteredLineups();if($('lineup-sort').value==='closest')ls.sort((a,b)=>C.compareMatches(matchResults[a.id],matchResults[b.id]));page=Math.max(1,Math.min(page,Math.ceil(ls.length/24)||1));const shown=ls.slice((page-1)*24,page*24);
+function renderLibrary(){const ls=filteredLineups();if($('lineup-sort').value==='closest')ls.sort((a,b)=>C.compareMatches(matchResults[a.id],matchResults[b.id]));if($('lineup-sort').value==='recent')ls.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));page=Math.max(1,Math.min(page,Math.ceil(ls.length/24)||1));const shown=ls.slice((page-1)*24,page*24);
  $('results-count').textContent=`找到 ${ls.length} 个阵容${selectedMembers.length?' · 不含成员未知的记录':''}`;
  $('lineup-grid').innerHTML=shown.length?shown.map(l=>`<article class="lineup-card"><div class="card-head"><div><h3>${esc(l.title)}</h3><p class="card-subtitle">${esc(l.category)} / ${esc(l.dungeon)}${l.date?' · '+esc(l.date.slice(0,10)):''}</p></div>${badge(l)}</div>${heroTeam(l)}${matchResults[l.id]?.distance!=null?`<p class="card-distance">已知差距 ${matchResults[l.id].distance}${matchResults[l.id].checks?.length?' · 仍有 '+matchResults[l.id].checks.length+' 项待核对':''}</p>`:''}<div class="card-footer"><code class="code" title="${esc(l.code||'来源未提供阵容码')}">${esc(l.code||'来源未提供阵容码')}</code>${l.code?`<button class="copy-code" data-copy="${esc(l.id)}">复制</button>`:''}<button class="secondary" data-detail="${esc(l.id)}">详情</button><button class="ghost" data-reparse="${esc(l.id)}">${C.hasParsedContent(l)?"重新解析":"解析"}</button></div></article>`).join(''):'<div class="empty">没有符合条件的阵容。<br>试试减少关键词或取消部分筛选。</div>';
  $('page-indicator').textContent=`${page} / ${Math.ceil(ls.length/24)||1}`;$('previous-page').disabled=page===1;$('next-page').disabled=page*24>=ls.length;$('match-all').disabled=!account()||!!worker;
@@ -142,7 +142,60 @@ function updateCode(){
 }
 async function decodeLocalInput(input){if(window.atlas)return atlas.decode(input);const r=await fetch('/api/decode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});if(!r.ok)throw new Error('本地解析服务不可用，请使用 Windows 桌面版');return r.json();}
 async function decodeContent(input){return typeof input==='string'&&C.classifyCode(input)==='pipe-ta'?window.TALogin.query(C.normalizeCode(input)):decodeLocalInput(input);}
-let libraryParser=null,autoParseStarted=false,parseReport={phase:'idle'},matchTimer;
+let libraryParser=null,autoParseStarted=false,parsePriority=[],parseReport={phase:'idle'},matchTimer;
+let bulkBusy=false,bulkReading=false,bulkFileRevision=0,bulkPreviewLimit=50;
+function renderBulkPreview(){
+ const preview=AtlasBulkImport.parse($('bulk-input').value,DATA?lineups():[]),s=preview.stats;
+ $('bulk-summary').textContent=preview.error?'超出导入限制，本批不能添加':s.total?`共 ${s.total} 条 · 可添加 ${s.valid} · 重复 ${s.duplicate} · 格式错误 ${s.invalid}`:'粘贴后显示导入预览';
+ $('bulk-error').hidden=!preview.error;$('bulk-error').textContent=preview.error;
+ const filter=$('bulk-filter').value,rows=preview.rows.filter(row=>!filter||row.status===filter),shown=rows.slice(0,bulkPreviewLimit);
+ $('bulk-preview').hidden=!shown.length;
+ $('bulk-preview').innerHTML=shown.length?`<table><thead><tr><th>行</th><th>状态 / 说明</th><th>阵容</th><th>副本 / 用途与备注</th></tr></thead><tbody>${shown.map(row=>`<tr class="bulk-${row.status}"><td>${row.line}</td><td>${esc(row.reason)}</td><td><strong>${esc(row.title)}</strong><code class="bulk-code" title="${esc(row.code)}">${esc(row.code.length>120?row.code.slice(0,117)+'…':row.code)}</code></td><td>${esc(row.dungeon)}${row.notes?`<p class="caption">${esc(row.notes.length>160?row.notes.slice(0,157)+'…':row.notes)}</p>`:''}</td></tr>`).join('')}</tbody></table>`:'';
+ $('bulk-more').hidden=rows.length<=shown.length;$('bulk-more').textContent=`再显示 50 行（已显示 ${shown.length} / ${rows.length}）`;
+ $('bulk-apply').textContent=bulkBusy?'正在保存…':`添加 ${preview.entries.length} 条有效阵容`;
+ $('bulk-apply').disabled=bulkBusy||bulkReading||!!preview.error||!preview.entries.length||!DATA;
+ for(const id of ['bulk-input','bulk-read-file','bulk-template','bulk-auto-parse','close-bulk','bulk-view'])$(id).disabled=bulkBusy;
+ return preview;
+}
+async function readBulkFile(file){
+ if(!file||bulkBusy)return;const revision=sessionRevision,readRevision=++bulkFileRevision;
+ bulkReading=true;$('bulk-status').textContent='正在读取文件…';renderBulkPreview();
+ try{
+  if(file.size>AtlasBulkImport.MAX_BYTES)throw new Error('文件超过 5 MiB，请拆分后导入。');
+  const text=await file.text();if(!sameSession(revision)||readRevision!==bulkFileRevision)return;
+  if(text.includes('\ufffd'))throw new Error('文件含有无法读取的字符，请另存为 UTF-8 文本。');
+  $('bulk-input').value=text;bulkPreviewLimit=50;$('bulk-status').textContent='已读取 '+file.name+'，请检查预览后添加。';
+ }catch(error){if(sameSession(revision)&&readRevision===bulkFileRevision)$('bulk-status').textContent='读取失败：'+error.message;}
+ finally{if(sameSession(revision)&&readRevision===bulkFileRevision){bulkReading=false;renderBulkPreview();}}
+}
+async function applyBulkImport(){
+ if(bulkBusy||bulkReading||!DATA)return;let preview=renderBulkPreview();if(preview.error||!preview.entries.length)return;
+ const revision=sessionRevision,parser=libraryParser,resume=parseReport.phase==='running',remaining=lineups().filter(l=>!C.hasParsedContent(l)).map(l=>l.code),auto=$('bulk-auto-parse').checked;
+ bulkBusy=true;bulkFileRevision++;clearTimeout(codeTimer);clearTimeout(matchTimer);stopMatch();stopCalculator();parser?.pause();renderBulkPreview();
+ $('bulk-status').textContent=parser?.inflight.size?'正在等待当前解析保存，然后添加新阵容…':'正在保存到本机…';
+ let added=[];
+ try{
+  await Promise.allSettled([parser?.running,...(parser?.inflight.values()||[])]);
+  if(!sameSession(revision))return;
+  preview=renderBulkPreview();if(preview.error||!preview.entries.length){$('bulk-status').textContent='没有新的有效原码可添加。';return;}
+  const createdAt=new Date().toISOString();added=preview.entries.map(row=>({...row,id:'user-'+crypto.randomUUID(),category:'其他',dungeons:[row.dungeon],sourceKind:'user',decodeState:'unattempted',requirementsComplete:false,members:[],createdAt}));
+  STATE.lineups.push(...added);
+  if(!await persist(revision)){
+   if(sameSession(revision)){STATE.lineups=STATE.lineups.filter(l=>!added.includes(l));$('bulk-status').textContent='保存失败，本批未添加。输入文本已保留，可以重试或复制备份。';}added=[];return;
+  }
+  if(!sameSession(revision))return;
+  fillFilters();if(view==='library')renderLibrary();renderParseProgress();
+  $('bulk-view').hidden=false;$('bulk-status').textContent=`已添加 ${added.length} 条；跳过 ${preview.stats.duplicate} 条重复、${preview.stats.invalid} 条格式错误。`+(auto?' 解析结果会逐条保存，可关闭此窗口查看进度。':' 原码已保存，可在阵容库随时解析。');
+ }catch(error){if(sameSession(revision)){$('bulk-status').textContent='添加未完成：'+error.message;}}
+ finally{
+  if(sameSession(revision)){
+   bulkBusy=false;renderBulkPreview();
+   if(added.length&&auto){parsePriority=[...new Set([...added.map(l=>l.code),...parsePriority])];autoParseStarted=false;maybeAutoParse();}
+   else if(resume)startLibraryParse({codes:remaining});
+   scheduleMatch();
+  }
+ }
+}
 function renderParseProgress(){
  if(!DATA)return;
  const pending=lineups().filter(l=>!C.hasParsedContent(l)).length,role=!!window.TALogin?.status().selected_avatar,running=['running','pausing'].includes(parseReport.phase);
@@ -167,25 +220,25 @@ async function saveParsedLineup(item,payload,valid){
  return saved;
 }
 function createLibraryParser(revision){
- libraryParser?.cancel();autoParseStarted=false;parseReport={phase:'idle'};
+ libraryParser?.cancel();autoParseStarted=false;parsePriority=[];parseReport={phase:'idle'};
  libraryParser=new AtlasLibraryParser.LibraryParser({items:lineups,decode:decodeContent,active:()=>sameSession(revision)&&!!DATA,save:saveParsedLineup,
   saveFailure:async(item,message,valid)=>{if(!valid())return;const old=lineups().find(l=>l.id===item.id)||item;if(C.hasParsedContent(old))return;const failed={...old,lastParseError:message,lastParseAttemptAt:new Date().toISOString()};STATE.lineups=STATE.lineups.filter(l=>l.id!==failed.id);STATE.lineups.push(failed);await persist();},
   onProgress:report=>{parseReport=report;renderParseProgress();if(['complete','partial','paused'].includes(report.phase))scheduleMatch();}
  });renderParseProgress();
 }
-function startLibraryParse(){
- if(!libraryParser||!DATA)return;
+function startLibraryParse(options={}){
+ if(!libraryParser||!DATA||bulkBusy)return;
  stopMatch();stopCalculator();
  autoParseStarted=true;
- return libraryParser.run().catch(error=>{parseReport={...parseReport,phase:'paused',error:error.message};renderParseProgress();toast('批量解析已停止：'+error.message);});
+ return libraryParser.run({prioritize:parsePriority,...options}).catch(error=>{parseReport={...parseReport,phase:'paused',error:error.message};renderParseProgress();toast('批量解析已停止：'+error.message);});
 }
 function maybeAutoParse(){
- if(!libraryParser||!DATA||autoParseStarted||window.TALogin?.status().busy)return;
+ if(!libraryParser||!DATA||bulkBusy||autoParseStarted||window.TALogin?.status().busy)return;
  const needRole=lineups().some(l=>!C.hasParsedContent(l)&&C.classifyCode(l.code)==='pipe-ta');
  if(needRole&&!window.TALogin.status().selected_avatar){renderParseProgress();return;}
  startLibraryParse();
 }
-function scheduleMatch(){clearTimeout(matchTimer);if(!account()||!DATA||['running','pausing'].includes(parseReport.phase))return;const revision=sessionRevision;matchTimer=setTimeout(()=>{if(sameSession(revision)&&account())startMatch();},400);}
+function scheduleMatch(){clearTimeout(matchTimer);if(bulkBusy||!account()||!DATA||['running','pausing'].includes(parseReport.phase))return;const revision=sessionRevision;matchTimer=setTimeout(()=>{if(sameSession(revision)&&account()&&!bulkBusy&&!['running','pausing'].includes(parseReport.phase))startMatch();},400);}
 window.addEventListener('atlas-login-status',()=>{renderParseProgress();maybeAutoParse();});
 async function localDecode(force=false){
  clearTimeout(codeTimer);const code=C.normalizeCode($('code-input').value),revision=codeRevision;if(!['pipe-ta','hash-ta','lineup-data'].includes(C.classifyCode(code)))return toast('请粘贴一条完整阵容码或 lineup_data');
@@ -232,6 +285,14 @@ $('previous-page').onclick=()=>{page--;renderLibrary();};$('next-page').onclick=
 for(const id of ['gallery-kind','gallery-search','rarity-filter','include-sp','tag-filter','gallery-state'])$(id).addEventListener(id==='gallery-search'?'input':'change',()=>{galleryLimit=40;renderGallery();});
 $('more-gallery').onclick=()=>{galleryLimit+=40;renderGallery();};$('show-samples').onclick=showSamples;
 $('add-code').onclick=()=>{selectView('decode');$('code-input').focus();};$('code-input').oninput=updateCode;$('save-code').onclick=saveCode;$('remote-decode').onclick=()=>localDecode(true);$('clear-code').onclick=()=>{for(const id of ['code-input','code-title','code-dungeon','code-notes'])$(id).value='';updateCode();};
+$('lineup-sort').add(new Option('最近添加','recent'));
+$('add-bulk').onclick=()=>{renderBulkPreview();$('bulk-dialog').showModal();$('bulk-input').focus();};
+$('close-bulk').onclick=()=>{if(!bulkBusy)$('bulk-dialog').close();};$('bulk-dialog').oncancel=e=>{if(bulkBusy)e.preventDefault();};
+$('bulk-input').oninput=()=>{bulkFileRevision++;bulkReading=false;bulkPreviewLimit=50;$('bulk-status').textContent='';renderBulkPreview();};
+$('bulk-filter').onchange=()=>{bulkPreviewLimit=50;renderBulkPreview();};$('bulk-more').onclick=()=>{bulkPreviewLimit+=50;renderBulkPreview();};
+$('bulk-read-file').onclick=()=>{$('bulk-file').value='';$('bulk-file').click();};$('bulk-file').onchange=()=>readBulkFile($('bulk-file').files[0]);$('bulk-apply').onclick=applyBulkImport;
+$('bulk-template').onclick=async()=>{const revision=sessionRevision;try{if(window.atlas){const result=await atlas.copyCode(AtlasBulkImport.TEMPLATE);if(!result?.copied)throw new Error('剪贴板写入未完成');}else await navigator.clipboard.writeText(AtlasBulkImport.TEMPLATE);if(sameSession(revision))$('bulk-status').textContent='格式模板已复制。将占位文字替换为完整阵容码后粘贴到输入框。';}catch(error){if(sameSession(revision))$('bulk-status').textContent='复制失败：'+error.message;}};
+$('bulk-view').onclick=()=>{for(const id of ['search','category','dungeon','status-filter'])$(id).value='';selectedMembers=[];renderSelected();$('source-filter').value='user';$('lineup-sort').value='recent';page=1;$('bulk-dialog').close();selectView('library');};
 $('import-accounts').onclick=()=>pickFiles('accounts');$('import-lineup').onclick=()=>pickFiles('lineup');$('import-ta').onclick=()=>pickFiles('payload');$('import-qr').onclick=()=>pickFiles('qr');$('restore-backup').onclick=()=>pickFiles('backup');$('file-input').onchange=()=>['payload','qr'].includes(importMode)?importTAFiles([...$('file-input').files]):handleFiles([...$('file-input').files]);
 $('export-backup').onclick=()=>exportJSON('阴阳师阵容图鉴-本地备份.json',{...STATE,format:'onmyoji-atlas-backup',exportedAt:new Date().toISOString()});
 $('account-search').oninput=()=>{accountPage=1;renderAccounts();};
@@ -308,6 +369,7 @@ window.addEventListener('atlas-session',event=>{
  const revision=++sessionRevision;
  if(event.detail?.authenticated===true&&window.TALogin?.status().authenticated){appBoot=boot(revision).then(()=>window.dispatchEvent(new Event('atlas-ready')));return;}
  stopMatch();stopCalculator();clearTimeout(matchTimer);libraryParser?.cancel();libraryParser=null;autoParseStarted=false;parseReport={phase:'idle'};accountPage=1;clearTimeout(codeTimer);codeRevision++;currentCodeResult=currentDialog=null;matchResults={};DATA=undefined;STATE={schemaVersion:1,lineups:[],accounts:[],activeAccount:''};
+ bulkBusy=bulkReading=false;bulkFileRevision++;bulkPreviewLimit=50;parsePriority=[];$('bulk-dialog').close();$('bulk-input').value='';$('bulk-file').value='';$('bulk-status').textContent='';$('bulk-filter').value='';$('bulk-auto-parse').checked=true;$('bulk-view').hidden=true;renderBulkPreview();
  for(const id of ['lineup-grid','gallery-grid','account-heroes','account-souls','account-summary','account-recommendations','calculator-output','calculator-lineup','calculator-member','dialog-body','decode-result'])$(id).replaceChildren();
  for(const id of ['file-input','code-input','code-title','code-dungeon','code-notes','manual-json'])$(id).value='';
  clearTimeout(toastTimer);$('toast').classList.remove('show');setLoading(true);

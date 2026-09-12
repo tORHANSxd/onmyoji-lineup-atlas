@@ -1,0 +1,56 @@
+{
+  "method": "Real Electron production renderer/preload with isolated synthetic local state and TAQueryQueue; synthetic login/query service, virtual rate-limit clock. No real inventory or phone login.",
+  "preview": {
+    "valid": 2,
+    "duplicate": 2,
+    "invalid": 1,
+    "noQueryOrSaveBeforeApply": true,
+    "escapedMarkup": true,
+    "templateCopied": true,
+    "narrowWindow880": true
+  },
+  "manualImport": {
+    "saved": 2,
+    "metadataPreserved": true,
+    "existingCacheUnchanged": true,
+    "automaticParseCanBeDisabled": true,
+    "recentlyAddedNavigation": true
+  },
+  "activeBatch": {
+    "waitsForCurrentSave": true,
+    "pendingSingleDecodeTimerStopped": true,
+    "newCodeFirst": true,
+    "queryOrder": [
+      101,
+      103,
+      102
+    ],
+    "metadataKeptAfterDecode": true
+  },
+  "reloadUsesSavedContent": true,
+  "diskFailure": {
+    "noMemoryOnlyEntry": true,
+    "inputRetained": true,
+    "retrySucceeds": true
+  },
+  "thousandRowPreview": {
+    "valid": 1000,
+    "initialRendered": 50,
+    "expandable": true
+  },
+  "files": {
+    "utf8BomAndTsv": true,
+    "badEncodingKeepsDraft": true,
+    "lateReadCannotReplaceEdits": true
+  },
+  "logoutClearsDraftAndDiscardsLateFile": true,
+  "oldSessionWaitingImportCannotWriteNewSession": true,
+  "fullContent": {
+    "rawBase64AndHashDeduplicate": true,
+    "actualLocalDecoder": true,
+    "members": 6,
+    "noNetworkQuery": true
+  },
+  "rendererErrors": [],
+  "passed": true
+}

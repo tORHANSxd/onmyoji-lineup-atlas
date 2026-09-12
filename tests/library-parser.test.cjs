@@ -24,3 +24,9 @@ test('暂停保存正在完成的条目，继续时只处理剩余内容；限�
  await parser.run();assert.equal(written.length,2);
  const limited=fixture([{code:'a'},{code:'b'}],async()=>{throw new Error('429 请求过于频繁');});await limited.parser.run();assert.equal(limited.errors.length,1);assert.equal(limited.parser.report.phase,'paused');
 });
+test('导入后新码优先解析；只恢复原队列时不会带上未选自动解析的新码',async()=>{
+ const items=[{code:'old-a'},{code:'old-b'},{code:'new-a'},{code:'new-b'}],calls=[];
+ const {parser}=fixture(items,async code=>{calls.push(code);return {ok:true,members:[{}]};});
+ await parser.run({codes:['old-a']});assert.deepEqual(calls,['old-a']);
+ await parser.run({prioritize:['new-b','new-a']});assert.deepEqual(calls,['old-a','new-b','new-a','old-b']);
+});

@@ -28,9 +28,11 @@ class LibraryParser {
   job.finally(()=>{if(this.inflight.get(item.code)===job)this.inflight.delete(item.code);}).catch(()=>{});
   return job;
  }
- run(){
+ run({codes=null,prioritize=[]}={}){
   if(this.running)return this.running;
-  const items=[...new Map(this.items().filter(item=>item.code&&!parsed(item)).map(item=>[item.code,item])).values()];
+  const allowed=codes==null?null:new Set(codes),priority=new Map(prioritize.map((code,index)=>[code,index]));
+  const items=[...new Map(this.items().filter(item=>item.code&&!parsed(item)&&(!allowed||allowed.has(item.code))).map(item=>[item.code,item])).values()];
+  items.sort((a,b)=>(priority.get(a.code)??Infinity)-(priority.get(b.code)??Infinity));
   const generation=this.generation,valid=()=>this.generation===generation&&this.active();
   this.paused=false;this.report={phase:'running',total:items.length,completed:0,succeeded:0,failed:0,current:'',error:''};this.emit();
   const job=(async()=>{

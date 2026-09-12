@@ -72,7 +72,7 @@ async function main(){
  await ui('importMode="payload";window.pendingImport=importTAFiles([{name:"delayed.txt",size:1,text:()=>new Promise(resolve=>window.finishDelayed=resolve)}]);void 0');const beforeWrites=writes;
  await ui('taLogin.logout()');await until('!DATA');signedIn();await until('!!DATA && parseReport.phase==="complete"');await ui('finishDelayed('+JSON.stringify(code)+');pendingImport');assert.equal(writes,beforeWrites);reports.previousSessionImportCannotWrite=true;
  assert.deepEqual(errors,[]);reports.rendererErrors=errors;reports.passed=true;
- await fs.writeFile(path.join(root,'verification','features-ui-v050.json'),JSON.stringify(reports,null,2)+'\n');
+ await fs.writeFile(path.join(root,'verification',process.argv[2]||'features-ui-v050.json'),JSON.stringify(reports,null,2)+'\n');
  console.log(JSON.stringify({passed:true,batchQueries:3,pagination:reports.accountPagination,calculator:reports.calculator}));win.destroy();app.exit(0);
 }
 main().catch(async error=>{console.error(error);if(win)try{console.error(await ui('({phase:parseReport,error:document.getElementById("code-status").textContent,loaded:!!DATA})'));}catch{}win?.destroy();app.exit(1);});

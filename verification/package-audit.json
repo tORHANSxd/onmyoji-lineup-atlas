@@ -1,11 +1,11 @@
 {
   "archive": "release/win-unpacked/resources/app.asar",
-  "fileEntries": 1382,
+  "fileEntries": 1383,
   "forbiddenFiles": [],
   "sourceChecks": [
     {
       "path": "app/app.js",
-      "sha256": "2ec5fb5c040851d056feec2dd186671c24b508b63c87630885f31afb1dc18fa7",
+      "sha256": "76bd574f8fc24d0c0d50a55efc71e37a7b4b4bd3ffe0aab2849050faf387c4d7",
       "matchesSource": true
     },
     {
@@ -25,12 +25,17 @@
     },
     {
       "path": "app/library-parser.js",
-      "sha256": "e6121ac7e642964ac6faad6eaeacd65fa6faf844df6d1dfc7afcbc777ef25e07",
+      "sha256": "9f271c5e3dabb6f8a23bca1a9d069975bd02879524d54c202a100d53fd3fb0ab",
+      "matchesSource": true
+    },
+    {
+      "path": "app/bulk-import.js",
+      "sha256": "0ae6e89ade56757db19ffb744b65cd5dbc5585ff6868346ad497202468702071",
       "matchesSource": true
     },
     {
       "path": "app/index.html",
-      "sha256": "66fc9369567911cfbab5c66a64cdf7e8626deba56eadcb1e6b1ed78eff114752",
+      "sha256": "571c0b868d9fca46351ebc2f5324008e6689644e0abef7e94dc27b731dc19fab",
       "matchesSource": true
     },
     {
@@ -45,7 +50,7 @@
     },
     {
       "path": "app/theme.css",
-      "sha256": "5bb020ae99f75edd3071d1bb1d71ca46fc31b838c5eaeeb73005e604741ebd72",
+      "sha256": "c429cf6721ddbe5a67e8c3b0b5601cae89b1bea9200cf207e25f27a98a44f433",
       "matchesSource": true
     },
     {
