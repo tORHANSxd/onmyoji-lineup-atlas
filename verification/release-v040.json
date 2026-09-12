@@ -1,0 +1,23 @@
+{
+  "version": "0.4.0",
+  "type": "NSIS assisted installer",
+  "file": "Onmyoji-Lineup-Atlas-Setup-0.4.0-Windows-x64.exe",
+  "bytes": 258916876,
+  "sha256": "2e7658c8f2a88162479f067ba22868ae34e370f9a6b61f294ee6dc903f240738",
+  "nodeTests": 81,
+  "pythonTests": 22,
+  "language": "zh_CN",
+  "signature": "NotSigned",
+  "install": "passed",
+  "installedAppSmoke": "passed",
+  "reinstall": "passed",
+  "uninstall": "passed",
+  "userDataPreserved": true,
+  "realLoginRoles": 2,
+  "realQueries": 2,
+  "membersPerRealQuery": 6,
+  "packagedFiles": 1379,
+  "sourceHashChecks": 28,
+  "runtimeHashChecks": 149,
+  "protocolHashChecks": 7
+}

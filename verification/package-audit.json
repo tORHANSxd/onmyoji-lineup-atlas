@@ -1,21 +1,21 @@
 {
   "archive": "release/win-unpacked/resources/app.asar",
-  "fileEntries": 1376,
+  "fileEntries": 1379,
   "forbiddenFiles": [],
   "sourceChecks": [
     {
       "path": "app/app.js",
-      "sha256": "bf77a9f264570cbb9cf44620e72c576c06627c24ed33c9c4bffc915506bacd5d",
+      "sha256": "7523ba30be506482bbdf250c90a6711bb54532237a54359a1ec927a869111df2",
       "matchesSource": true
     },
     {
       "path": "app/core.js",
-      "sha256": "0da3e416373ab57e48763ec910b06b82718f685e62fa1493e8f869c7f1efc25c",
+      "sha256": "abf0dae036daba92aae8de474f97fbea18ffaf54db98978549d9ed8294398877",
       "matchesSource": true
     },
     {
       "path": "app/index.html",
-      "sha256": "bcc9f68f9dc1fb2eb7d7bdd7881c219021f36639733abc768007e3bf98ee61bc",
+      "sha256": "abdf5129f324d8dab6f8157aad26fc01a3043eab56ad5a53fea4b2c509fcb539",
       "matchesSource": true
     },
     {
@@ -31,6 +31,16 @@
     {
       "path": "app/theme.css",
       "sha256": "1b0fe40eac6aac20eae550e9973ab453363883e2177d230c9c098721ccd34bfe",
+      "matchesSource": true
+    },
+    {
+      "path": "app/ta-login.js",
+      "sha256": "04f9209d69707fe79e4a5eab712f860afe3743e2c6b3e22ee1124e6123712242",
+      "matchesSource": true
+    },
+    {
+      "path": "app/ta-login.css",
+      "sha256": "21a6ee9f07e6ec3c31f3eb6834f925bc7e5df92a70aedebc316450ce88dfcc83",
       "matchesSource": true
     },
     {
@@ -50,17 +60,22 @@
     },
     {
       "path": "desktop/main.cjs",
-      "sha256": "af8c17438f85f115f94a438153c5f915ac5af1e69320394db8fca01eb5fda4c0",
+      "sha256": "f8d9d23651c007fa81403199f8e80783136197b63129322d98ae7efcb0baa5c3",
       "matchesSource": true
     },
     {
       "path": "desktop/preload.cjs",
-      "sha256": "e08d01ca5bd65e68eb91dc327c544f57e62feddeb70875515d7cbcc975965efa",
+      "sha256": "f8448f85f567918afc8784080215d98733602a09899ec845f0d8c3ec6f05abe7",
       "matchesSource": true
     },
     {
       "path": "desktop/ta-codec.cjs",
       "sha256": "076340b2b3fb476007af112a4dce320caa6864fb03e25d7d2c7b4b173927f2bf",
+      "matchesSource": true
+    },
+    {
+      "path": "desktop/ta-session.cjs",
+      "sha256": "63ec2a05ba20f441e4c36b9986b4190e693891bcb67d0f9dd9a8b37933b4de57",
       "matchesSource": true
     },
     {
@@ -126,6 +141,783 @@
     {
       "path": "data/images/actors/michinaga/art-before.png",
       "sha256": "622d23a20ccebfe84651d1f93b8a2c2429559e8626969887010328ce358bbcf8",
+      "matchesSource": true
+    }
+  ],
+  "runtimeChecks": [
+    {
+      "path": "atlas-ta-helper.exe",
+      "sha256": "d970c948a000b2e4ee58e8379c5b08e60306788845d13e730488c99faa7867a8",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/cffi/cffi-2.0.0.dist-info__licenses__LICENSE",
+      "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/msgpack/msgpack-1.2.2.dist-info__licenses__COPYING",
+      "sha256": "4fbdff42eba4593c16f7a7ea7078883b2b734870a1e2b636284ce2dce62bf4f7",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/packaging/packaging-26.2.dist-info__licenses__LICENSE",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/packaging/packaging-26.2.dist-info__licenses__LICENSE.APACHE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/packaging/packaging-26.2.dist-info__licenses__LICENSE.BSD",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/protobuf/protobuf-6.33.6.dist-info__LICENSE",
+      "sha256": "6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/pycparser/pycparser-3.0.dist-info__licenses__LICENSE",
+      "sha256": "0c846399369ea76ddd7b5c44fe6d16497415fcf015f5cbb508c24bf98b81c5b1",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/pycryptodome/pycryptodome-3.23.0.dist-info__LICENSE.rst",
+      "sha256": "60b8958a9ef9b7ec512087b725555372175ed2b02b969f8725b8534fde48acdd",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/pyinstaller/pyinstaller-6.20.0.dist-info__licenses__COPYING.txt",
+      "sha256": "dcf75fdb959db1e3b41c0f8505069d2ece781b5ec6b3d0a4d30975cfc6580245",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/PYTHON-LICENSE.txt",
+      "sha256": "62bec384df47b0328307db41455ff6ea2559e5546b394ac69148561b21703120",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools-82.0.1.dist-info__licenses__LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__autocommand-2.2.2.dist-info__LICENSE",
+      "sha256": "ade78d04982d69972d444a8e14a94f87a2334dd3855cc80348ea8e240aa0df2d",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__backports.tarfile-1.2.0.dist-info__LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__importlib_metadata-8.7.1.dist-info__licenses__LICENSE",
+      "sha256": "458502e12d97bbf64438606a20044aa85eb05fb0a8a807bb35dbec253fd1fc04",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__jaraco.text-4.0.0.dist-info__LICENSE",
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__jaraco_context-6.1.0.dist-info__licenses__LICENSE",
+      "sha256": "9755a18519666e5f0f4cae3daad3d7012bcae48a600b31237d75e9fe134e6683",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__jaraco_functools-4.4.0.dist-info__licenses__LICENSE",
+      "sha256": "5a57cb4db85e2a2dd88c290628908add57e3451449e0a9a71fdfb38776fd759d",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__more_itertools-10.8.0.dist-info__licenses__LICENSE",
+      "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__packaging-26.0.dist-info__licenses__LICENSE",
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__packaging-26.0.dist-info__licenses__LICENSE.APACHE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__packaging-26.0.dist-info__licenses__LICENSE.BSD",
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__platformdirs-4.4.0.dist-info__licenses__LICENSE",
+      "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__tomli-2.4.0.dist-info__licenses__LICENSE",
+      "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__wheel-0.46.3.dist-info__licenses__LICENSE.txt",
+      "sha256": "30c23618679108f3e8ea1d2a658c7ca417bdfc891c98ef1a89fa4ff0c9828654",
+      "matchesSource": true
+    },
+    {
+      "path": "licenses/setuptools/setuptools___vendor__zipp-3.23.0.dist-info__licenses__LICENSE",
+      "sha256": "5a57cb4db85e2a2dd88c290628908add57e3451449e0a9a71fdfb38776fd759d",
+      "matchesSource": true
+    },
+    {
+      "path": "runtime-manifest.json",
+      "sha256": "0d0d0d776693a0eadf5bbe83ac047650639c1f14b7d1236a8f25d305af26c3c6",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-console-l1-1-0.dll",
+      "sha256": "015bd08815c7b934a8952c3a7578e9ce59f21136e8a880d42bbd414bec2c6058",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-datetime-l1-1-0.dll",
+      "sha256": "5534812cdbdae94ba45cb216e5eb9af686b853948df54365103555abbbaf9d9a",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-debug-l1-1-0.dll",
+      "sha256": "837d2b1b2cd03e03fc6ccb050698b6b5763af17c201304872342a5eae9e0a2d2",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-errorhandling-l1-1-0.dll",
+      "sha256": "de43b165f568c276c00e95acd454e3092f352a18e95874595f4f4658c06d2ec7",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-fibers-l1-1-0.dll",
+      "sha256": "3cebc45bf479ad74cfabf2c6bfd4994d7ad639ed1221025981d19cedf9ce0416",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-fibers-l1-1-1.dll",
+      "sha256": "5ef70308bcca628ce6b0e2856b15b1c7ae340c3f9bbbc4c1071d8c191a34a5c3",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-file-l1-1-0.dll",
+      "sha256": "250ac829f2617bcac1c6e5b8c4f630462e20765863ba573526a3e11bbfb94a9a",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-file-l1-2-0.dll",
+      "sha256": "ae14079a114733f60ce87b92cba42acd8083c2cd67594e53bc37dc0b97a4b465",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-file-l2-1-0.dll",
+      "sha256": "914bf26a298713119477ea0a8e7bd43171b91344ebe24fb47ad77c49686e3d87",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-handle-l1-1-0.dll",
+      "sha256": "ab5489955e371b15f77906c08ec3c7affe2c7a46a08c514ca628768b4478974b",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-heap-l1-1-0.dll",
+      "sha256": "c70f9644d8377fa39c5b71f2e9734c1400d7598904fdeb772e8502099982dcb7",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-interlocked-l1-1-0.dll",
+      "sha256": "f8129710188e407bb0e6f46d30aeba277d67b947ece5fe09e883fde2323f3ae6",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-kernel32-legacy-l1-1-1.dll",
+      "sha256": "5200b16cb2ddc61cfc07373a9a84aa85a3ab50806ca96c879c883275832944c1",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-libraryloader-l1-1-0.dll",
+      "sha256": "48786fb88b001dcd1f63acea903d3ca9cc0b3060d5a325e3f2f3cbc3bfd53166",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-localization-l1-2-0.dll",
+      "sha256": "9ec3898f7eba91faa28b51616c211a2689e3a13aeef8de6e13cb674e49d689eb",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-memory-l1-1-0.dll",
+      "sha256": "3a6cbc524c99e1cd80d5368f5601402a37ad602528b1ab628093573ef638eb3b",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-namedpipe-l1-1-0.dll",
+      "sha256": "97145ef89c44949fcf0f04ac834a8bc7d687ef49ee73ae9fc32f3c11136b7201",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-processenvironment-l1-1-0.dll",
+      "sha256": "8bc7c10b1851aea644e9c9f381cdb935e091fee6b0be3d3aedc6fffaac96adb7",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-processthreads-l1-1-0.dll",
+      "sha256": "d8030b777617c71f0f94564607699dbf7561487d779db9756aed378c5675213f",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-processthreads-l1-1-1.dll",
+      "sha256": "f5e676713340f73a03a3d41a6ec9883b431da7d16c7f07bd0a920fb80e6c0753",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-profile-l1-1-0.dll",
+      "sha256": "f023d47e44d3eea6b0743580f57e8c6ba81e79d5ebfa7da26250076c647b980e",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-rtlsupport-l1-1-0.dll",
+      "sha256": "9746d8930704153578a628c010638a5f818ffe5a927e25591b108e256dc6afca",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-string-l1-1-0.dll",
+      "sha256": "7c53ae24c982d16ffd1bf7f918d115b11b7f30e57bc7feaa18cb9781e4abb926",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-synch-l1-1-0.dll",
+      "sha256": "56d9d62ca5dba79a6581b8d574a7d8b2a64a5ecb71e47dcf06ed0285708b1859",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-synch-l1-2-0.dll",
+      "sha256": "f6482bbec5612c39ecb4822787a333f2b7570f7a5f922a4059be41ba957bb372",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-sysinfo-l1-1-0.dll",
+      "sha256": "272d02765fdd3582618236c2d309abba069642f9bc1062ede069d0c144e17007",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-sysinfo-l1-2-0.dll",
+      "sha256": "8a0900788859d0eb51c2f48f50cc6ed376a120b518100fa20e11d7702ccde260",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-timezone-l1-1-0.dll",
+      "sha256": "ff35de6c03812b332e140f17dade25c5dd4775156da9eeb1eaae3fddd27236ec",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-core-util-l1-1-0.dll",
+      "sha256": "191ef3e98641a57296f19d572d8eb62489470ff1ef6030d136af170c2f835173",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-conio-l1-1-0.dll",
+      "sha256": "54ee5ec719a051496ff60aa00dbeaa94b9a7d2cdac27fe9b7317f1a666b6a2aa",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-convert-l1-1-0.dll",
+      "sha256": "8b94662429171019fcd63c70bbf2095a075170599704a5e7dcdbe3da13f3a429",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-environment-l1-1-0.dll",
+      "sha256": "39e5929593709e8af3bc9e0a75ec1155778d6f4a247f4cdfc58928ad6db88434",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-filesystem-l1-1-0.dll",
+      "sha256": "5a8ecebac32edf4e1f3c5c6c1c8ea1a1add6cda4f9c9cb26f752fb295bea6865",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-heap-l1-1-0.dll",
+      "sha256": "c71080cbcb43bf1f8f3e391deb12a582eb0abefc80946f340675a2c616e4feb4",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-locale-l1-1-0.dll",
+      "sha256": "6c68648e524187e03c4ad9aaa4a99113c6ee9f29fb39cc0ed93f951975138e63",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-math-l1-1-0.dll",
+      "sha256": "d4fbcccbe29371cbce431e43b2eb4f7ba9a6f04a3d740a071f02457a505e9dc8",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-process-l1-1-0.dll",
+      "sha256": "47c1935942e3ac0812e4dcf18c0e265e565f0194a3349111c299712f5565f7ac",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-runtime-l1-1-0.dll",
+      "sha256": "72adc1b3677e0814d9c4ebf0964000e84bb2acf67336c8963061665e44f78029",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-stdio-l1-1-0.dll",
+      "sha256": "900afc3989673c9bb1a687ed38c192f46db9e6ba6d11a668898a539e7fc23798",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-string-l1-1-0.dll",
+      "sha256": "fcf12466cc12fd3b73611fc0763a5a1f9d44e90349513c34a0c83b0f36421793",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-time-l1-1-0.dll",
+      "sha256": "886e57c4a6adb299b38f02945369f590a67da4e79a798359fc60aaa067212d7c",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/api-ms-win-crt-utility-l1-1-0.dll",
+      "sha256": "5f8f26b216ade615b67a41f6fbbb910972fc6153315a65bb8f09912be50215b1",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/base_library.zip",
+      "sha256": "5fdae58ea9b69d4ff2f54e53e7c1156824545a7741f444c59d63a36b935118a5",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_ARC4.pyd",
+      "sha256": "f6538c0c003f317f88720b230581e950d1da11307cb9f322c7282c14bc720ca1",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_chacha20.pyd",
+      "sha256": "ef063eb3aed160477551236d25f8dade24387ad4fff812814f2099d35e74416c",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_pkcs1_decode.pyd",
+      "sha256": "320ca46655bae21c964515726183ab86069d55262671798287072d9ff6bd54bc",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_aes.pyd",
+      "sha256": "520b343e44b5633bbc4fdcecc705a7f2eb6e55d082a1f3e4723ada9d7e5ea97d",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_aesni.pyd",
+      "sha256": "3818873f50418cbecde58150e9bffff7372d2c2067fc0b96ffac9482dfddd603",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_arc2.pyd",
+      "sha256": "1faa4c424bb33c9aff778a74ffc9468d281290d510e0ef44eae3730785efc1c9",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_blowfish.pyd",
+      "sha256": "6f6f3d25dad7d864ac3dfb54177ed6978c3acd36810af90e8874100317737706",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_cast.pyd",
+      "sha256": "7bcd3c30c7f9caaf4fa1d78de079d74278ef8b5c857f4243b8ee7fdaa6a20e4d",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_cbc.pyd",
+      "sha256": "a5c300a4bda97236f9f8ffa57f9db0e5c0a0f1d8a5699389aa03dbf1aebd77fc",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_cfb.pyd",
+      "sha256": "cc2b5cec4b408492921f872aa7d6f6452fab6b1a6e561305865c6e709b784aca",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_ctr.pyd",
+      "sha256": "aeb1f2943a921684bd1edf752a6355e38de46466f56b3003f5b295fc30053732",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_des.pyd",
+      "sha256": "0f2b26d1cc382feceb879761ca3629ea2e3b84518d965fc196ae6df06bc0dbbb",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_des3.pyd",
+      "sha256": "b60ce99ebcb7946fa9b66660ce7bba919571e0f1a97fb4c7e8a385d86cfa5c58",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_ecb.pyd",
+      "sha256": "98f59f221f102db198c0d7425e8c93cdfa91ce5683d4cadd3f541e1dae0f79a2",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_eksblowfish.pyd",
+      "sha256": "29e1b1394c14c56253ab880730a1e11732c45ef40d90ec4ee1c5d3e614cc9504",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_ocb.pyd",
+      "sha256": "c8a77501cdc9304d919c16d41ba28c86c766de84ee463a0efd68c5cc3829af1d",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_raw_ofb.pyd",
+      "sha256": "1f08af90b5854c58207cfbaed6f68dbec87bd30f1ed7da065ad46073e3761073",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Cipher/_Salsa20.pyd",
+      "sha256": "9df33c5ee086899c69bd4f3d776b85a493b72e1316c3f8772ac1215d70068a28",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_BLAKE2b.pyd",
+      "sha256": "1890d90f46bfa13588dd07eeaa230e68186e3ed929e4c1fe7221c8fea89e5683",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_BLAKE2s.pyd",
+      "sha256": "d1ed1ca3c6802954cd8ca6f5e419c54a357b4a04bb802bab876b04b942a4b862",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_ghash_clmul.pyd",
+      "sha256": "63d9bbdac4e8e2c95b1a41eb7a2b42047b6a0c8d36447165e32167d3c7a57aee",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_ghash_portable.pyd",
+      "sha256": "ca4c4e24af0d7f879f9cb73df6e27f83441071dd466c366a4f4b467101e50e21",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_keccak.pyd",
+      "sha256": "393c54d090197d55d87619e99528d2e774c9157632115a07fcf35ee50681e78f",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_MD2.pyd",
+      "sha256": "804c60219443c2ea969e1b3a717eaeea09c91742d9be78d614136a4431ff590f",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_MD4.pyd",
+      "sha256": "38fff9037abdb579f9847a6718b8643c31c3c7ad91fee29a778b60c444c91a7c",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_MD5.pyd",
+      "sha256": "ee469ab6d4dbdac22eea7bc40f3e2872442c649e03778d8d6b94a112da1e31aa",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_poly1305.pyd",
+      "sha256": "2559f954dbd0082ff1e95c1f38936078866b6bc14006e3f64f0ba9fb6657d5c1",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_RIPEMD160.pyd",
+      "sha256": "ccf7c7182ecfc7a3215d7913feeee8f8c35a6db71ffa2895f9bd7de3084c26ad",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_SHA1.pyd",
+      "sha256": "8f80524247c830d9bb590d025e15ec34d7d337a16e5c4422e2da0448d06c88a6",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_SHA224.pyd",
+      "sha256": "773fac9a1a65b31d22f79a5e4f035ddc00301b741873d334ee9902db1d1bebfd",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_SHA256.pyd",
+      "sha256": "2d57abc0274265d2ab891fba840c05a34831f61ab5c21d0540fc43bd28cc5ae3",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_SHA384.pyd",
+      "sha256": "38086fc4e0c53f5153571073995610ac91c454c6aa161588b651286a585526ec",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Hash/_SHA512.pyd",
+      "sha256": "adab3a8ef9daa73b1e9ca83d66a726c8ad256eed119ab2d7d3fcee10f8f013d1",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Math/_modexp.pyd",
+      "sha256": "fc122c8e0a1c236c2a0b20009ed710602545577ba34a9fafed71eb84e56a2e76",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Protocol/_scrypt.pyd",
+      "sha256": "00c9b6915dfb9ed91e8d40c78f6b536c5ccdabd2760fcf9501d0522e97e2d600",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/PublicKey/_curve25519.pyd",
+      "sha256": "265e86937759418ae394671ece28fde8099206cc5f1946cc4f9efcef4b140e8e",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/PublicKey/_curve448.pyd",
+      "sha256": "f7a7f91ab11a78d21f948f53c41c3f4b4b778dc3b34c1b2c1d9035b663569757",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/PublicKey/_ec_ws.pyd",
+      "sha256": "93bfb0675b855ef94fe14aa5cb33a41a8b95c737f8774b015a31f32f9f3eac8e",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/PublicKey/_ed25519.pyd",
+      "sha256": "1f0d1a616875d430879bd7467296c1632c02b9266001781f7e59aa19b0e66cba",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/PublicKey/_ed448.pyd",
+      "sha256": "20fe0b35808c110762e5e4302aa8d926bf42211209e6bf8e438e914e42a58c09",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Util/_cpuid_c.pyd",
+      "sha256": "2af984819d9b1f95132520901b355eb85aa24d5efc6fc5ae9e77252ed03b7f4b",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/Crypto/Util/_strxor.pyd",
+      "sha256": "c77f18f1f7a377bc388de0104abf4868d6f0c2ef7ef2b97b34d875cfc3040aac",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/google/_upb/_message.pyd",
+      "sha256": "72970bb66676a4e34ba5fe6ffd8f853b78ea1ef7e4ad1082bb80287a78d47923",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/libcrypto-3.dll",
+      "sha256": "e03dd02fdcfb791981c9962827cfcf495f2a47a514c1526efb57f847a9df514a",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/libffi-8.dll",
+      "sha256": "eff52743773eb550fcc6ce3efc37c85724502233b6b002a35496d828bd7b280a",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/libssl-3.dll",
+      "sha256": "1e4bc0638682bfcbb36f4465d6a2e9944d917a60f05ecc8ddf9e96847e05e13f",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/login_protocol.json",
+      "sha256": "4c2aacd6f3683c9aeff8b0be1f49d8f0e6a3eda0ac020c56bda44bd2ea3c3d66",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/msgpack/_cmsgpack.cp313-win_amd64.pyd",
+      "sha256": "4aab4b7f348bb6d723afc01c150eca97a9cea4184d69f21f05c48b0d74724288",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/pyexpat.pyd",
+      "sha256": "922dd767c7a27065d2a8bd08f151bfcf22f92b25e9abdf981297960f7587d650",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/python3.dll",
+      "sha256": "9b179a9e44badc9c9d327182996040c87be183ad4c9469645280ed3e4a2d7694",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/python313.dll",
+      "sha256": "c9f98606d0d06f4e8ae75ae385021e58b57c90d4fd325c0313c8c42abe1ebf63",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/select.pyd",
+      "sha256": "01c8fef709b657b17e1db3754b05cb1070ad3e303dd531ef0f5545316df53aa2",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/server_catalog.json",
+      "sha256": "f126936b618bc854075856ff496720afebd4bcf2f6783f51c2fc3ea0243aec90",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/setuptools/_vendor/importlib_metadata-8.7.1.dist-info/INSTALLER",
+      "sha256": "e6184ce10e266134fdcfa401e8f1a95005bcd4f18d16b62b757323e2833fe9a9",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/setuptools/_vendor/importlib_metadata-8.7.1.dist-info/licenses/LICENSE",
+      "sha256": "458502e12d97bbf64438606a20044aa85eb05fb0a8a807bb35dbec253fd1fc04",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/setuptools/_vendor/importlib_metadata-8.7.1.dist-info/METADATA",
+      "sha256": "a3e38b9ee4326289d4864704f30e299ee769e2309ce9f4a75f0de1a50ad0a356",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/setuptools/_vendor/importlib_metadata-8.7.1.dist-info/RECORD",
+      "sha256": "52a6b8ee0de15cf7fd99625f43b97cd2e3942ac86f16054ea90de48e66f29355",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/setuptools/_vendor/importlib_metadata-8.7.1.dist-info/REQUESTED",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/setuptools/_vendor/importlib_metadata-8.7.1.dist-info/top_level.txt",
+      "sha256": "08eddf0fdcb29403625e4acca38a872d5fe6a972f6b02e4914a82dd725804fe0",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/setuptools/_vendor/importlib_metadata-8.7.1.dist-info/WHEEL",
+      "sha256": "ff309ddcdd65ebd02bc724dbf2bcc4a0ff53a5b61792a44548d383e4ebb19d3b",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/setuptools/_vendor/jaraco/text/Lorem ipsum.txt",
+      "sha256": "37fedcffbf73c4eb9f058f47677cb33203a436ff9390e4d38a8e01c9dad28e0b",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/ucrtbase.dll",
+      "sha256": "3239227d27667ba20d10a880751924e5719de0078f9fce232d149d383f7681f6",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/unicodedata.pyd",
+      "sha256": "cc1f066d88c26a21808ec6053c0989d702b6d46429bb4f363e4f29b67f311c89",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/VCRUNTIME140.dll",
+      "sha256": "052ad6a20d375957e82aa6a3c441ea548d89be0981516ca7eb306e063d5027f4",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/VCRUNTIME140_1.dll",
+      "sha256": "6a99bc0128e0c7d6cbbf615fcc26909565e17d4ca3451b97f8987f9c6acbc6c8",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_asyncio.pyd",
+      "sha256": "166206ce4d432931cb29d8ee7398edf84b1b751d694668e0c89fff65f4147657",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_bz2.pyd",
+      "sha256": "64d9fbb516e08a6780dca160e40d8c6723d2a659b5ca3020de7a041305b3a3d4",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_cffi_backend.cp313-win_amd64.pyd",
+      "sha256": "d5b09da2e726b4e90cf0edad5d2a0ec52f369dfd060e14d3807a32b2205031fa",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_ctypes.pyd",
+      "sha256": "b9c9e713f11e111daa55e4a62a135d7e385fa7aa0986d30b286d000e122b13aa",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_decimal.pyd",
+      "sha256": "b1f2dd16190154652f9ddb9e58a335932f56674dcdf6395bc634c577ae00429c",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_hashlib.pyd",
+      "sha256": "1e079c6b44488e273bc62d9bcb27cec519e9916b47b8c2878ebade0772e0f484",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_lzma.pyd",
+      "sha256": "999ba26fe0b0376b7898d50ddb2f5012e7a64228e31fcdca99a4d7079df669e3",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_multiprocessing.pyd",
+      "sha256": "ce2b76029e1d4a3d4248bfe786277c6118f284e713bd2ba275d1288690e5aac5",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_overlapped.pyd",
+      "sha256": "8f40faaf55ce040ff5027a23df21da549e7d22a590832e47f6ce75a54a6134e5",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_queue.pyd",
+      "sha256": "baa5a4cec6c369efc461f7109f1e6150c0afeef8ce53dbd9d673a00093cdadf8",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_socket.pyd",
+      "sha256": "7acc6c44436bf77be3c425d39f0acba03b42119513ef9db31a7039c969e056bd",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_ssl.pyd",
+      "sha256": "738c579ed151498337026ea1f5dc7688197b41b74e39f4d9de05261bb35d9206",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_uuid.pyd",
+      "sha256": "a004b7f5b07333db6c7079244c3880d57aae4bdfa56bde8bca2c530dea824cd2",
+      "matchesSource": true
+    },
+    {
+      "path": "_internal/_wmi.pyd",
+      "sha256": "6793bd216b5a329689cde8b1532858d6731707ec5063897f979a81e57077402c",
+      "matchesSource": true
+    }
+  ],
+  "protocolChecks": [
+    {
+      "name": "login_protocol.json",
+      "matchesSource": true
+    },
+    {
+      "name": "onmyoji_mpay.py",
+      "matchesSource": true
+    },
+    {
+      "name": "onmyoji_network.py",
+      "matchesSource": true
+    },
+    {
+      "name": "requirements.txt",
+      "matchesSource": true
+    },
+    {
+      "name": "server_catalog.json",
+      "matchesSource": true
+    },
+    {
+      "name": "session.py",
+      "matchesSource": true
+    },
+    {
+      "name": "worker.py",
       "matchesSource": true
     }
   ]

@@ -4,7 +4,8 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { decodeInput } = require('./ta-codec.cjs');
 const { OfficialData, validFile } = require('./official-data.cjs');
-let win, official;
+const { TASession } = require('./ta-session.cjs');
+let win, official, taSession;
 const smokeCopies=[];
 const isSmoke = process.argv.includes('--smoke');
 if (isSmoke) app.setPath('userData', process.env.ATLAS_SMOKE_USER_DATA || path.join(app.getPath('temp'), 'onmyoji-atlas-smoke'));
@@ -27,6 +28,11 @@ app.whenReady().then(async () => {
   win.webContents.on('will-navigate', (e,url) => { if (!isAppURL(url)) { e.preventDefault(); if (/^https:\/\//.test(url)) shell.openExternal(url); } });
   official=await new OfficialData({baseData:JSON.parse(await fs.readFile(path.join(__dirname,'../data/bundle.json'),'utf8')),appRoot:path.join(__dirname,'..'),cacheRoot:path.join(app.getPath('userData'),'official-cache'),inspectImage:(bytes,info)=>{const image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw new Error('图片不能完整解码');const size=image.getSize();if(size.width!==info.width||size.height!==info.height||image.toBitmap().length!==size.width*size.height*4)throw new Error('图片解码尺寸不匹配');},onProgress:status=>{if(win&&!win.isDestroyed())win.webContents.send('official-progress',status);}}).init();
   protocol.handle('atlas-asset',request=>{const u=new URL(request.url),file=u.pathname.slice(1);if(u.hostname!=='cache'||u.search||!validFile(file))return new Response('Not found',{status:404});return net.fetch(pathToFileURL(path.join(official.root,'images',file)).href);});
+  taSession=new TASession({helperPath:app.isPackaged?path.join(process.resourcesPath,'ta-runtime','atlas-ta-helper.exe'):path.join(__dirname,'../release/ta-runtime/atlas-ta-helper/atlas-ta-helper.exe'),onStatus:state=>{if(win&&!win.isDestroyed())win.webContents.send('ta-status-changed',state);}});
+  ipcMain.handle('ta-status',async e=>{trusted(e);return taSession.status();});
+  ipcMain.handle('ta-action',async(e,action,params)=>{trusted(e);if(!['init','qr','select','roles'].includes(action))throw new Error('不支持的登录操作');await taSession.request(action,params);return taSession.status();});
+  ipcMain.handle('ta-query',async(e,code)=>{trusted(e);const response=await taSession.request('query',{code});if(response?.code!==code||response?.share_key!==code.slice(4)||response?.err!==0)throw new Error('查询响应与本次文字码不一致');const result=decodeInput(response);if(result.ok)result.origin='official-query';return result;});
+  ipcMain.handle('ta-logout',async e=>{trusted(e);return taSession.stop();});
   ipcMain.handle('load-data', async e => { trusted(e); return official.getData(); });
   ipcMain.handle('copy-code', async (e,code) => { trusted(e); if(typeof code!=='string'||!code.trim()||Buffer.byteLength(code,'utf8')>32*1024*1024)throw new Error('阵容码为空或超过32 MiB'); await clipboard.writeText(code); if(isSmoke)smokeCopies.push({bytes:Buffer.byteLength(code,'utf8'),matchesWrittenCode:(await clipboard.readText())===code}); return {copied:true}; });
   ipcMain.handle('load-state', async e => { trusted(e); try { return JSON.parse(await fs.readFile(statePath(),'utf8')); } catch (error) { if(error.code==='ENOENT') return null; throw new Error('本地数据库读取失败，请保留数据文件并从备份恢复。'); } });
@@ -40,8 +46,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('official-cancel',async e=>{trusted(e);official.cancel();return official.getStatus();});
   ipcMain.handle('official-auto',async(e,value)=>{trusted(e);return official.setAutoUpdate(value);});
   win.loadURL(pageURL);
-  if(isSmoke) win.webContents.once('did-finish-load', async()=>{setTimeout(async()=>{try{let update=null;if(process.argv.includes('--refresh-official'))update=await official.refresh();const options=process.env.ATLAS_SMOKE_FIXTURE?{code:await fs.readFile(path.resolve(process.env.ATLAS_SMOKE_FIXTURE),'utf8')}:{};const result=await win.webContents.executeJavaScript('window.runSmoke ? window.runSmoke('+JSON.stringify(options)+') : ({error:"smoke entry not ready"})');result.clipboardVerification=smokeCopies;if(smokeCopies.some(c=>!c.matchesWrittenCode))result.error='剪贴板内容不匹配';if(update)result.officialUpdate=update;const out=process.env.ATLAS_SMOKE_OUTPUT;if(out)await atomicWrite(path.resolve(out),JSON.stringify(result,null,2));app.exit(result.error?1:0);}catch(e){console.error(e);app.exit(1);}},1500);});
+  if(isSmoke) win.webContents.once('did-finish-load', async()=>{setTimeout(async()=>{try{let update=null;if(process.argv.includes('--refresh-official'))update=await official.refresh();const options=process.env.ATLAS_SMOKE_FIXTURE?{code:await fs.readFile(path.resolve(process.env.ATLAS_SMOKE_FIXTURE),'utf8')}:{};options.login=process.env.ATLAS_SMOKE_LOGIN==='1';const result=await win.webContents.executeJavaScript('window.runSmoke ? window.runSmoke('+JSON.stringify(options)+') : ({error:"smoke entry not ready"})');result.clipboardVerification=smokeCopies;if(smokeCopies.some(c=>!c.matchesWrittenCode))result.error='剪贴板内容不匹配';if(update)result.officialUpdate=update;const out=process.env.ATLAS_SMOKE_OUTPUT;if(out)await atomicWrite(path.resolve(out),JSON.stringify(result,null,2));app.exit(result.error?1:0);}catch(e){console.error(e);app.exit(1);}},1500);});
   else {setTimeout(()=>{if(official.due())official.refresh().catch(()=>{});},6000);setInterval(()=>{if(official.due())official.refresh().catch(()=>{});},3600000).unref();}
 });
-app.on('before-quit',()=>official?.cancel());
+app.on('before-quit',()=>{official?.cancel();taSession?.stop();});
 app.on('window-all-closed',()=>app.quit());

@@ -1,8 +1,8 @@
-# Validate the actual Setup artifact in an isolated install directory. Refuse to
+﻿# Validate the actual Setup artifact in an isolated install directory. Refuse to
 # overwrite an existing installation or shortcuts. Never read personal accounts.
 $ErrorActionPreference = 'Stop'
 $taskRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$taskConfig = Get-Content -LiteralPath (Join-Path $taskRoot 'package.json') -Raw | ConvertFrom-Json
+$taskConfig = Get-Content -LiteralPath (Join-Path $taskRoot 'package.json') -Raw -Encoding utf8 | ConvertFrom-Json
 if ($taskConfig.build.appId -ne 'io.github.torhansxd.onmyoji-lineup-atlas' -or $taskConfig.version -notmatch '^\d+\.\d+\.\d+$') { throw 'Unexpected application identity' }
 $taskVersion = $taskConfig.version
 $taskGuid = '1187f02f-4b23-5c32-94fb-25338287150d'
@@ -39,10 +39,11 @@ $taskInstallStarted = $false
 $taskFinished = $false
 try {
     New-Item -ItemType Directory -Path $taskProfileDir -Force | Out-Null
-    $taskFixture = Get-Content -LiteralPath (Join-Path $taskRoot 'verification\fixtures\mixed-backup-v030.json') -Raw | ConvertFrom-Json
+    $taskFixture = Get-Content -LiteralPath (Join-Path $taskRoot 'verification\fixtures\mixed-backup-v030.json') -Raw -Encoding utf8 | ConvertFrom-Json
     $taskState = @{ schemaVersion = 1; accounts = $taskFixture.accounts; activeAccount = $taskFixture.accounts[0].id; lineups = @($taskFixture.lineups | Where-Object { $_.code -and $_.code.Trim() }) }
     $taskStatePath = Join-Path $taskProfileDir 'library-v1.json'
-    $taskState | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $taskStatePath -Encoding utf8
+    # Match the app's UTF-8 JSON writer on both Windows PowerShell and PowerShell 7.
+    [System.IO.File]::WriteAllText($taskStatePath, ($taskState | ConvertTo-Json -Depth 100), [System.Text.UTF8Encoding]::new($false))
     $taskStateHash = (Get-FileHash -LiteralPath $taskStatePath -Algorithm SHA256).Hash
 
     # Markers exercise the uninstaller's real default AppData targets without
@@ -71,12 +72,19 @@ try {
     $taskResult.installedAsarMatches = (Get-FileHash -LiteralPath (Join-Path $taskInstallDir 'resources\app.asar')).Hash -eq (Get-FileHash -LiteralPath (Join-Path $taskRoot 'release\win-unpacked\resources\app.asar')).Hash
     if (-not $taskResult.installedAsarMatches) { throw 'Installed application differs from the build' }
 
+    $taskHelper = Join-Path $taskInstallDir 'resources\ta-runtime\atlas-ta-helper.exe'
+    if (-not (Test-Path -LiteralPath $taskHelper)) { throw 'Installed login module missing' }
+    $taskResult.installedHelperMatches = (Get-FileHash -LiteralPath $taskHelper).Hash -eq (Get-FileHash -LiteralPath (Join-Path $taskRoot 'release\ta-runtime\atlas-ta-helper\atlas-ta-helper.exe')).Hash
+    if (-not $taskResult.installedHelperMatches) { throw 'Installed login module hash mismatch' }
+    $env:ATLAS_SMOKE_LOGIN = '1'
     $env:ATLAS_SMOKE_USER_DATA = $taskProfileDir
     $env:ATLAS_SMOKE_FIXTURE = Join-Path $taskRoot 'verification\fixtures\ta-example.txt'
     $env:ATLAS_SMOKE_OUTPUT = Join-Path $taskRoot "verification\electron-v$($taskVersion.Replace('.',''))-installed-smoke.json"
     Invoke-TaskProcess $taskApp @('--smoke')
-    $taskSmoke = Get-Content -LiteralPath $env:ATLAS_SMOKE_OUTPUT -Raw | ConvertFrom-Json
+    $taskSmoke = Get-Content -LiteralPath $env:ATLAS_SMOKE_OUTPUT -Raw -Encoding utf8 | ConvertFrom-Json
     if ($taskSmoke.error -or $taskSmoke.accounts -ne 1 -or $taskSmoke.lineups -ne 156 -or -not $taskSmoke.detail.oneRow -or -not $taskSmoke.libraryCopySucceeded -or @($taskSmoke.clipboardVerification | Where-Object { -not $_.matchesWrittenCode }).Count) { throw 'Installed app smoke failed' }
+    if (-not $taskSmoke.loginModule -or $taskSmoke.loginModule.servers -lt 100 -or -not $taskSmoke.loginModuleLoggedOut) { throw 'Installed login smoke failed' }
+    $taskResult.installedLoginModule = $taskSmoke.loginModule
     $taskResult.installedAppSmoke = 'passed'
     $taskResult.accountAndLineupFileUnchanged = (Get-FileHash -LiteralPath $taskStatePath).Hash -eq $taskStateHash
     if (-not $taskResult.accountAndLineupFileUnchanged) { throw 'Synthetic account data changed' }

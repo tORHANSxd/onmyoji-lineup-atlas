@@ -1,0 +1,6 @@
+.ta-login{margin:20px 0;padding:16px;border:1px solid var(--border,#d1bc93);border-radius:12px;background:rgba(208,177,118,.07)}
+.ta-login summary{font-weight:700;cursor:pointer;line-height:1.7}
+.ta-login .form-grid{margin-top:12px}.ta-login .ta-check{display:flex;align-items:center;gap:8px;margin:10px 0}.ta-login .ta-check input{width:auto}
+.ta-login select{width:100%;min-width:0}.ta-login .ta-status{font-weight:600;line-height:1.6;margin:12px 0 6px}.ta-login .ta-error{color:#a63827;white-space:pre-wrap;overflow-wrap:anywhere}
+.ta-qr-image{display:block;max-width:240px;width:100%;height:auto;background:#fff;padding:10px;margin:16px auto;border-radius:8px;image-rendering:pixelated}
+.ta-qr-image[hidden]{display:none}.ta-login .actions{flex-wrap:wrap}.ta-selected{overflow-wrap:anywhere;line-height:1.5}

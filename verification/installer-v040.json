@@ -1,0 +1,47 @@
+﻿{
+    "version":  "0.4.0",
+    "method":  "Actual silent install, installed app smoke, reinstall and uninstall",
+    "personalAccountFilesRead":  false,
+    "installPathContainsChineseAndSpace":  true,
+    "install":  {
+                    "exitCode":  0,
+                    "registryVersion":  "0.4.0",
+                    "uninstallerPresent":  true
+                },
+    "shortcuts":  [
+                      {
+                          "exists":  true,
+                          "targetMatches":  true
+                      },
+                      {
+                          "exists":  true,
+                          "targetMatches":  true
+                      }
+                  ],
+    "installedAsarMatches":  true,
+    "installedHelperMatches":  true,
+    "installedLoginModule":  {
+                                 "servers":  157,
+                                 "available":  154,
+                                 "authenticated":  false,
+                                 "serverOptions":  158,
+                                 "roleDisabled":  true,
+                                 "qrEnabled":  true
+                             },
+    "installedAppSmoke":  "passed",
+    "accountAndLineupFileUnchanged":  true,
+    "reinstall":  {
+                      "exitCode":  0,
+                      "dataPreserved":  true,
+                      "applicationPresent":  true
+                  },
+    "uninstall":  {
+                      "defaultAppDataMarkersPreserved":  true,
+                      "exitCode":  0,
+                      "qaProfilePreserved":  true,
+                      "shortcutsRemoved":  true,
+                      "applicationRemoved":  true,
+                      "registrationRemoved":  true
+                  },
+    "completed":  true
+}

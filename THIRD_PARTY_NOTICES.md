@@ -17,6 +17,10 @@ https://github.com/FiresChain/onmyoji-yuhun
 
 TA解析参考用户指定研究任务的协议说明与测试向量，未分发APK或字节码；这不表示取得网易官方支持。协议范围和限制见 docs/TA_PROTOCOL.md。
 
+v0.4.0 的独立登录模块改编自同一研究任务验证过的 MPay、网关与选服实现；安装包包含协议常量、Protobuf描述和公开服务器元数据，不包含APK、游戏启动入口、个人令牌或账号数据库。仅通过用户本次扫码授权查询阵容。
+
+安装包中的 `resources/ta-runtime/` 包含冻结Python运行时、MessagePack、Protocol Buffers、PyCryptodome及被打包的辅助库。原始许可证保留于其 `licenses/` 目录，具体版本和文件列表在 `runtime-manifest.json` 中；Python、库代码与PyInstaller引导程序的许可证独立于本项目MIT许可证。PyInstaller许可证含分发所生成应用的例外条款，原文随包保留。
+
 本机二维码识别使用 jsQR 1.4.0（Apache-2.0），发行文件 app/vendor/jsQR.js 未作修改，许可证保存在 app/vendor/jsQR.LICENSE.txt。MessagePack解码使用 @msgpack/msgpack 3.1.3（ISC），许可证保存在 app/vendor/msgpack.LICENSE.txt 及依赖目录。相关依赖未被本项目MIT许可证覆盖。
 
 Electron、Chromium与electron-builder的许可证归各自权利人。发行包保留运行时自带的LICENSE与LICENSES.chromium.html。

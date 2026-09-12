@@ -1,0 +1,2828 @@
+[
+  {
+    "ServerID": "10001",
+    "ServerName": "IOS正式服1",
+    "showName": "春之樱",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      2
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10012",
+    "ServerName": "IOS正式服11",
+    "showName": "莲之净",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      12,
+      31
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10013",
+    "ServerName": "IOS正式服12",
+    "showName": "桂之馥",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      1,
+      24
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10002",
+    "ServerName": "IOS正式服2",
+    "showName": "夏之蝉",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      2
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10003",
+    "ServerName": "IOS正式服3",
+    "showName": "夜之月",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      14
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10005",
+    "ServerName": "IOS正式服4",
+    "showName": "竹之幽",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      22
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10006",
+    "ServerName": "IOS正式服5",
+    "showName": "松之苍",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      1
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10007",
+    "ServerName": "IOS正式服6",
+    "showName": "兰之雅",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      1
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10008",
+    "ServerName": "IOS正式服7",
+    "showName": "雀之羽",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      11,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10009",
+    "ServerName": "IOS正式服8",
+    "showName": "云之遏",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      1
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "20016",
+    "ServerName": "PTR游戏服",
+    "showName": "式神测试",
+    "serverType": 7,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      7,
+      21
+    ],
+    "state": 0,
+    "stop_create_role": true,
+    "display_tag": null
+  },
+  {
+    "ServerID": "14001",
+    "ServerName": "PTR游戏服2",
+    "showName": "萌鼠驾到",
+    "serverType": 7,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      7,
+      21
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10014",
+    "ServerName": "全平台正式服1",
+    "showName": "相伴同行",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      4,
+      15
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10023",
+    "ServerName": "全平台正式服10",
+    "showName": "依偎相守",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      12,
+      20
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10113",
+    "ServerName": "全平台正式服100",
+    "showName": "梦山新话",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      12,
+      17
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10114",
+    "ServerName": "全平台正式服101",
+    "showName": "织梦之墟",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2026,
+      1,
+      14
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10115",
+    "ServerName": "全平台正式服102",
+    "showName": "狐梦桃乡",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2026,
+      2,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10116",
+    "ServerName": "全平台正式服103",
+    "showName": "月蚀长夜",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2026,
+      3,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10117",
+    "ServerName": "全平台正式服104",
+    "showName": "良夜之畔",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2026,
+      4,
+      1
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10118",
+    "ServerName": "全平台正式服105",
+    "showName": "智识之火",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2026,
+      4,
+      29
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10119",
+    "ServerName": "全平台正式服106",
+    "showName": "七情之思",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2026,
+      5,
+      27
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10120",
+    "ServerName": "全平台正式服107",
+    "showName": "极乐砂城",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2026,
+      6,
+      24
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10121",
+    "ServerName": "全平台正式服108",
+    "showName": "砂狐乐园",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 3,
+    "open_date": [
+      2026,
+      7,
+      22
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10122",
+    "ServerName": "全平台正式服109",
+    "showName": "天籁和音",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 2,
+    "open_date": [
+      2026,
+      8,
+      19
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10024",
+    "ServerName": "全平台正式服11",
+    "showName": "暖风春穗",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      2,
+      7
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10123",
+    "ServerName": "全平台正式服110",
+    "showName": "永远的平安京",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 1,
+    "open_date": [
+      2026,
+      9,
+      9
+    ],
+    "state": 4,
+    "stop_create_role": false,
+    "display_tag": "pic_xqjj_szn_tag.png"
+  },
+  {
+    "ServerID": "10025",
+    "ServerName": "全平台正式服12",
+    "showName": "樱之忆",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      3,
+      7
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10026",
+    "ServerName": "全平台正式服13",
+    "showName": "鬼灯的冷彻",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      4,
+      4
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10027",
+    "ServerName": "全平台正式服14",
+    "showName": "初心未改",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      5,
+      16
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10028",
+    "ServerName": "全平台正式服15",
+    "showName": "狐之宴",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      6,
+      13
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10029",
+    "ServerName": "全平台正式服16",
+    "showName": "犬夜叉",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      7,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10030",
+    "ServerName": "全平台正式服17",
+    "showName": "立秋夕烛",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      8,
+      15
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10031",
+    "ServerName": "全平台正式服18",
+    "showName": "枫之舞",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      11,
+      7
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10032",
+    "ServerName": "全平台正式服19",
+    "showName": "雪之萤",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      12,
+      26
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10015",
+    "ServerName": "全平台正式服2",
+    "showName": "旧友新朋",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      4,
+      28
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10033",
+    "ServerName": "全平台正式服20",
+    "showName": "游梦迷蝶",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      1,
+      30
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10034",
+    "ServerName": "全平台正式服21",
+    "showName": "桃映春馨",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      3,
+      6
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10035",
+    "ServerName": "全平台正式服22",
+    "showName": "竹风夏意",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      4,
+      17
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10036",
+    "ServerName": "全平台正式服23",
+    "showName": "一叶禅心",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      5,
+      22
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10037",
+    "ServerName": "全平台正式服24",
+    "showName": "夜火离歌",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      6,
+      19
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10038",
+    "ServerName": "全平台正式服25",
+    "showName": "晴空日和",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      7,
+      31
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10039",
+    "ServerName": "全平台正式服26",
+    "showName": "瀞灵廷",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      8,
+      21
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10040",
+    "ServerName": "全平台正式服27",
+    "showName": "少时之约",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      9,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10041",
+    "ServerName": "全平台正式服28",
+    "showName": "鸣麓逐浪",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      10,
+      23
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10042",
+    "ServerName": "全平台正式服29",
+    "showName": "八岐魅影",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      11,
+      27
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10016",
+    "ServerName": "全平台正式服3",
+    "showName": "深情厚谊",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      5,
+      20
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10043",
+    "ServerName": "全平台正式服30",
+    "showName": "稚羽萌心",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2019,
+      12,
+      25
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10044",
+    "ServerName": "全平台正式服31",
+    "showName": "愿予必成",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2020,
+      1,
+      20
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10045",
+    "ServerName": "全平台正式服32",
+    "showName": "渡世之风",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2020,
+      3,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10046",
+    "ServerName": "全平台正式服33",
+    "showName": "百鬼夜行",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2020,
+      4,
+      15
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10047",
+    "ServerName": "全平台正式服34",
+    "showName": "鬼王之宴",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2020,
+      5,
+      20
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10048",
+    "ServerName": "全平台正式服35",
+    "showName": "夏之风铃",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2020,
+      6,
+      24
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10049",
+    "ServerName": "全平台正式服36",
+    "showName": "雅乐之邦",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2020,
+      7,
+      29
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10050",
+    "ServerName": "全平台正式服37",
+    "showName": "四载平安",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2020,
+      9,
+      23
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10051",
+    "ServerName": "全平台正式服38",
+    "showName": "永生之海",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2020,
+      10,
+      28
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10052",
+    "ServerName": "全平台正式服39",
+    "showName": "森之王",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2020,
+      12,
+      2
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10017",
+    "ServerName": "全平台正式服4",
+    "showName": "相伴长情",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      6,
+      23
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10053",
+    "ServerName": "全平台正式服40",
+    "showName": "彼世之花",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      1,
+      6
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10054",
+    "ServerName": "全平台正式服41",
+    "showName": "鬼灭之刃",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      2,
+      7
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10055",
+    "ServerName": "全平台正式服42",
+    "showName": "春告之雪",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      3,
+      17
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10056",
+    "ServerName": "全平台正式服43",
+    "showName": "天上天下",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      4,
+      21
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10057",
+    "ServerName": "全平台正式服44",
+    "showName": "唯吾独尊",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      5,
+      26
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10058",
+    "ServerName": "全平台正式服45",
+    "showName": "旧时童梦",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      6,
+      23
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10059",
+    "ServerName": "全平台正式服46",
+    "showName": "轮回之庭",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      7,
+      21
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10060",
+    "ServerName": "全平台正式服47",
+    "showName": "绘世之卷",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      8,
+      25
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10061",
+    "ServerName": "全平台正式服48",
+    "showName": "真味如初",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      9,
+      22
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10062",
+    "ServerName": "全平台正式服49",
+    "showName": "相闻秋歌",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      10,
+      20
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10018",
+    "ServerName": "全平台正式服5",
+    "showName": "朝夕相伴",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      7,
+      28
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10063",
+    "ServerName": "全平台正式服50",
+    "showName": "白玉银阙",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      11,
+      24
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10064",
+    "ServerName": "全平台正式服51",
+    "showName": "赤夜降临",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2021,
+      12,
+      29
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10065",
+    "ServerName": "全平台正式服52",
+    "showName": "铃心踏焰",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      1,
+      26
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10066",
+    "ServerName": "全平台正式服53",
+    "showName": "念山行",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      3,
+      9
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10067",
+    "ServerName": "全平台正式服54",
+    "showName": "樱月相邀",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      4,
+      13
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10068",
+    "ServerName": "全平台正式服55",
+    "showName": "高天原",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      5,
+      18
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10069",
+    "ServerName": "全平台正式服56",
+    "showName": "夜摩天殿",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      6,
+      22
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10070",
+    "ServerName": "全平台正式服57",
+    "showName": "经霜之枫",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      7,
+      27
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10071",
+    "ServerName": "全平台正式服58",
+    "showName": "浮梦之境",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      8,
+      24
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10072",
+    "ServerName": "全平台正式服59",
+    "showName": "人间千年",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      9,
+      21
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10019",
+    "ServerName": "全平台正式服6",
+    "showName": "携手共度",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      8,
+      23
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10073",
+    "ServerName": "全平台正式服60",
+    "showName": "御香归",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      10,
+      19
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10074",
+    "ServerName": "全平台正式服61",
+    "showName": "四季生",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      11,
+      23
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10075",
+    "ServerName": "全平台正式服62",
+    "showName": "镜如明心",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2022,
+      12,
+      21
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10076",
+    "ServerName": "全平台正式服63",
+    "showName": "今时月",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      1,
+      18
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10077",
+    "ServerName": "全平台正式服64",
+    "showName": "天罗地网",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      2,
+      22
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10078",
+    "ServerName": "全平台正式服65",
+    "showName": "真言之塔",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      3,
+      29
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10079",
+    "ServerName": "全平台正式服66",
+    "showName": "万事屋",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      4,
+      26
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10080",
+    "ServerName": "全平台正式服67",
+    "showName": "祈世之舞",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      5,
+      24
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10081",
+    "ServerName": "全平台正式服68",
+    "showName": "森遥乡",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      6,
+      28
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10082",
+    "ServerName": "全平台正式服69",
+    "showName": "结世缘",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      7,
+      26
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10020",
+    "ServerName": "全平台正式服7",
+    "showName": "举手相庆",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      9,
+      27
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10083",
+    "ServerName": "全平台正式服70",
+    "showName": "乾坤行",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      8,
+      23
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10084",
+    "ServerName": "全平台正式服71",
+    "showName": "循光世",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      9,
+      20
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10085",
+    "ServerName": "全平台正式服72",
+    "showName": "破晓之樱",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      10,
+      18
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10086",
+    "ServerName": "全平台正式服73",
+    "showName": "灵狐愿",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      11,
+      15
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10087",
+    "ServerName": "全平台正式服74",
+    "showName": "庭中酌",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2023,
+      12,
+      21
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10088",
+    "ServerName": "全平台正式服75",
+    "showName": "黄金爪",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      1,
+      10
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10089",
+    "ServerName": "全平台正式服76",
+    "showName": "鲛人之歌",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      2,
+      7
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10090",
+    "ServerName": "全平台正式服77",
+    "showName": "音起时",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      3,
+      6
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10091",
+    "ServerName": "全平台正式服78",
+    "showName": "神鲤生财",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      4,
+      3
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10092",
+    "ServerName": "全平台正式服79",
+    "showName": "雾山隐",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      4,
+      24
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10021",
+    "ServerName": "全平台正式服8",
+    "showName": "欢庆鼓舞",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      10,
+      25
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10093",
+    "ServerName": "全平台正式服80",
+    "showName": "麓海为王",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      5,
+      22
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10094",
+    "ServerName": "全平台正式服81",
+    "showName": "猫川别馆",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      6,
+      19
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10095",
+    "ServerName": "全平台正式服82",
+    "showName": "神之晚宴",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      7,
+      17
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10096",
+    "ServerName": "全平台正式服83",
+    "showName": "花火之夏",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      8,
+      14
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10097",
+    "ServerName": "全平台正式服84",
+    "showName": "有龙则灵",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      9,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10098",
+    "ServerName": "全平台正式服85",
+    "showName": "踏雪行",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      10,
+      9
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10099",
+    "ServerName": "全平台正式服86",
+    "showName": "夜影之谜",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      11,
+      6
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10100",
+    "ServerName": "全平台正式服87",
+    "showName": "千山醉",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      12,
+      4
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10101",
+    "ServerName": "全平台正式服88",
+    "showName": "夏目友人帐",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2024,
+      12,
+      31
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10102",
+    "ServerName": "全平台正式服89",
+    "showName": "奏世之宴",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      1,
+      22
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10022",
+    "ServerName": "全平台正式服9",
+    "showName": "追月逐兔",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      11,
+      29
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10103",
+    "ServerName": "全平台正式服90",
+    "showName": "花札物语",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      2,
+      26
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10104",
+    "ServerName": "全平台正式服91",
+    "showName": "音巡夜",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      3,
+      26
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10105",
+    "ServerName": "全平台正式服92",
+    "showName": "日轮之城",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      4,
+      23
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10106",
+    "ServerName": "全平台正式服93",
+    "showName": "时海曜光",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      5,
+      21
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10107",
+    "ServerName": "全平台正式服94",
+    "showName": "三途烽烬",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      6,
+      18
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10108",
+    "ServerName": "全平台正式服95",
+    "showName": "守山谣",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      7,
+      16
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10109",
+    "ServerName": "全平台正式服96",
+    "showName": "魔卡绮遇",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      8,
+      13
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10110",
+    "ServerName": "全平台正式服97",
+    "showName": "百崽同行",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      9,
+      10
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10111",
+    "ServerName": "全平台正式服98",
+    "showName": "常世之国",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      10,
+      10
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10112",
+    "ServerName": "全平台正式服99",
+    "showName": "梦之间隙",
+    "serverType": 6,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2025,
+      11,
+      19
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "16002",
+    "ServerName": "全球国际区",
+    "showName": "全球国际区",
+    "serverType": 5,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      9,
+      19
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "20009",
+    "ServerName": "北美IOS审核服",
+    "showName": "审核服",
+    "serverType": 1,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2018,
+      11,
+      7
+    ],
+    "state": 4,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "16001",
+    "ServerName": "国际服",
+    "showName": "海外加速区",
+    "serverType": 5,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      3
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15048",
+    "ServerName": "安卓体验服",
+    "showName": "安卓体验服",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 1,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      6,
+      16
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15001",
+    "ServerName": "安卓正式服1",
+    "showName": "秋之枫",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      9
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15026",
+    "ServerName": "安卓正式服10",
+    "showName": "桃之华",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      12,
+      31
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15028",
+    "ServerName": "安卓正式服11",
+    "showName": "菊之逸",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      1,
+      24
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15031",
+    "ServerName": "安卓正式服12",
+    "showName": "樱之华",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      3,
+      16
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15002",
+    "ServerName": "安卓正式服2",
+    "showName": "冬之雪",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      9
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15006",
+    "ServerName": "安卓正式服3",
+    "showName": "暮之霞",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      22
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15009",
+    "ServerName": "安卓正式服4",
+    "showName": "梅之寒",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      1
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15008",
+    "ServerName": "安卓正式服5",
+    "showName": "风之清",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      1
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15014",
+    "ServerName": "安卓正式服7",
+    "showName": "雨之霁",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      4
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15023",
+    "ServerName": "安卓正式服9",
+    "showName": "雀之灵",
+    "serverType": 3,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      11,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15049",
+    "ServerName": "抢先体验服",
+    "showName": "抢先体验服",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 1,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      1,
+      19
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "10004",
+    "ServerName": "网易-双平台",
+    "showName": "网易-携手同心",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      14
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15017",
+    "ServerName": "网易-双平台10",
+    "showName": "网易-心意相通",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      29
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15020",
+    "ServerName": "网易-双平台13",
+    "showName": "网易-永生之谜",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      11,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15021",
+    "ServerName": "网易-双平台14",
+    "showName": "B站-情深谊长",
+    "serverType": 4,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      11,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15022",
+    "ServerName": "网易-双平台15",
+    "showName": "网易-缥缈之旅",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      11,
+      11
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15024",
+    "ServerName": "网易-双平台16",
+    "showName": "网易-遥远之忆",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      12,
+      17
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15025",
+    "ServerName": "网易-双平台17",
+    "showName": "网易-孤高之心",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      12,
+      31
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15027",
+    "ServerName": "网易-双平台18",
+    "showName": "网易-风雨同行",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      1,
+      24
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15029",
+    "ServerName": "网易-双平台19",
+    "showName": "网易-两情相悦",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      2,
+      14
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15003",
+    "ServerName": "网易-双平台2",
+    "showName": "网易-结伴同游",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      9
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15030",
+    "ServerName": "网易-双平台20",
+    "showName": "网易-春樱共赏",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      3,
+      16
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15032",
+    "ServerName": "网易-双平台21",
+    "showName": "网易-谜之暗影",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      3,
+      31
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15033",
+    "ServerName": "网易-双平台22",
+    "showName": "B站-情意相投",
+    "serverType": 4,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2017,
+      5,
+      13
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15004",
+    "ServerName": "网易-双平台3",
+    "showName": "B站-两心无间",
+    "serverType": 4,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      12
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15005",
+    "ServerName": "网易-双平台4",
+    "showName": "网易-相伴相随",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      15
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15007",
+    "ServerName": "网易-双平台5",
+    "showName": "网易-情比金坚",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      9,
+      24
+    ],
+    "state": 2,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15010",
+    "ServerName": "网易-双平台6",
+    "showName": "网易-形影不离",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      1
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15011",
+    "ServerName": "网易-双平台7",
+    "showName": "网易-同心一意",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      1
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15012",
+    "ServerName": "网易-双平台8",
+    "showName": "B站-亲密无间",
+    "serverType": 4,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      2
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  },
+  {
+    "ServerID": "15016",
+    "ServerName": "网易-双平台9",
+    "showName": "网易-相知相依",
+    "serverType": 2,
+    "isOpen": 1,
+    "isVisible": 1,
+    "is_gray": 0,
+    "is_new_server": 0,
+    "open_date": [
+      2016,
+      10,
+      4
+    ],
+    "state": 0,
+    "stop_create_role": false,
+    "display_tag": null
+  }
+]

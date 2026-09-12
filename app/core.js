@@ -22,7 +22,8 @@ function adaptTA(payload,data={}){
     }
     return {index,kind,shikigamiId:kind==='shikigami'?String(row.hero_id):null,onmyojiId:kind==='onmyoji'?String(row.hero_id):null,name:kind==='onmyoji'?(actor?.name||`阴阳师 / 英杰 ${row.hero_id}`):(roster?.name||`未知式神 ${row.hero_id}`),occupied:true,awakening:[0,1].includes(row.awake)?row.awake:null,skills:Array.isArray(row.skills)?row.skills.map(([skillId,level])=>({id:skillId,level})):null,level:row.level,star:row.star,config,qiling:row.qiling_info||null,aiSkill:row.ai_skill,raw:row};
   });
-  return {title:typeof d.title==='string'?d.title:'已解析的自创阵容',notes:typeof d.desc==='string'?d.desc:'',gameSceneId:d.select_stage_id,code:payload.code,members,sourceKind:'ta-local',decodeState:'decoded-local',requirementsComplete:false,warnings:['成员、技能、觉醒与配置来自本地协议解码；御魂业务枚举和战斗配置保留原始值。','文字分享码的查询需要游戏会话；本结果未进行游戏内实战验证。'],protocolVersion:d.ver??0,raw:d};
+  const queried=payload.origin==='official-query';
+  return {title:typeof d.title==='string'?d.title:'已解析的自创阵容',notes:typeof d.desc==='string'?d.desc:'',gameSceneId:d.select_stage_id,code:payload.code,members,sourceKind:queried?'ta-query':'ta-local',decodeState:queried?'decoded-server':'decoded-local',requirementsComplete:false,warnings:[queried?'内容来自本次文字码的官方查询响应，已在本机完成协议解码。':'成员、技能、觉醒与配置来自本地协议解码。','御魂业务枚举和战斗配置保留原始值；本结果未进行游戏内实战验证。'],protocolVersion:d.ver??0,raw:d};
 }
 function mergeDecodedLineup(old,incoming){
   if(!old)return incoming;

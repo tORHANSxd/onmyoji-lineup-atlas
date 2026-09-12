@@ -1,0 +1,29 @@
+test_account_destroy_after_avatar_creation_does_not_abort_query (test_ta_network.NetworkTests.test_account_destroy_after_avatar_creation_does_not_abort_query) ... ok
+test_callback_must_match_entity (test_ta_network.NetworkTests.test_callback_must_match_entity) ... ok
+test_destroy_event_keeps_entity_identity (test_ta_network.NetworkTests.test_destroy_event_keeps_entity_identity) ... ok
+test_encrypted_compressed_stream_across_packets (test_ta_network.NetworkTests.test_encrypted_compressed_stream_across_packets) ... ok
+test_fragmented_and_coalesced_frames (test_ta_network.NetworkTests.test_fragmented_and_coalesced_frames) ... ok
+[protocol] account login result code=7
+test_login_wire_ec_is_normalized (test_ta_network.NetworkTests.test_login_wire_ec_is_normalized) ... ok
+test_mpay_exchange_matches_java_aes_reference (test_ta_network.NetworkTests.test_mpay_exchange_matches_java_aes_reference) ... ok
+test_only_named_active_returned_roles (test_ta_network.NetworkTests.test_only_named_active_returned_roles) ... ok
+test_oversized_frame_rejected_before_payload (test_ta_network.NetworkTests.test_oversized_frame_rejected_before_payload) ... ok
+[protocol] account login result code=0
+test_sdk_auth_uses_exchanged_token_and_preserves_server_fields (test_ta_network.NetworkTests.test_sdk_auth_uses_exchanged_token_and_preserves_server_fields) ... ok
+test_select_role_contract_and_avatar_boundary (test_ta_network.NetworkTests.test_select_role_contract_and_avatar_boundary) ... ok
+test_server_index_registration_is_outbound_only (test_ta_network.NetworkTests.test_server_index_registration_is_outbound_only) ... ok
+test_server_merge_keeps_new_and_unavailable_definitions (test_ta_network.NetworkTests.test_server_merge_keeps_new_and_unavailable_definitions) ... ok
+test_ta_uses_avatar_and_rejects_wrong_key (test_ta_network.NetworkTests.test_ta_uses_avatar_and_rejects_wrong_key) ... ok
+test_credentials_cannot_reach_status_or_errors (test_ta_session.SessionTests.test_credentials_cannot_reach_status_or_errors) ... ok
+test_cross_server_roles_use_only_current_authenticated_identity (test_ta_session.SessionTests.test_cross_server_roles_use_only_current_authenticated_identity) ... ok
+test_invalid_input_cannot_start_a_connection (test_ta_session.SessionTests.test_invalid_input_cannot_start_a_connection) ... ok
+test_partial_roles_preserve_current_server_and_unknown_other_servers (test_ta_session.SessionTests.test_partial_roles_preserve_current_server_and_unknown_other_servers) ... ok
+test_query_reconnects_and_validates_account_role_every_time (test_ta_session.SessionTests.test_query_reconnects_and_validates_account_role_every_time) ... ok
+test_server_rejecting_login_invalidates_local_authentication (test_ta_session.SessionTests.test_server_rejecting_login_invalidates_local_authentication) ... ok
+test_unauthenticated_calls_and_arbitrary_roles_are_rejected (test_ta_session.SessionTests.test_unauthenticated_calls_and_arbitrary_roles_are_rejected) ... ok
+test_wrong_share_key_failed_response_and_wrong_role_never_yield_data (test_ta_session.SessionTests.test_wrong_share_key_failed_response_and_wrong_role_never_yield_data) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.031s
+
+OK
