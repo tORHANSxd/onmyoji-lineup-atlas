@@ -7,6 +7,7 @@ const finite=n=>typeof n==='number'&&Number.isFinite(n);
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const id=x=>/^\d+$/.test(String(x))?String(Number(x)):null;
 const normalizeCode=s=>String(s??'').replace(/^\uFEFF/,'').trim();
+const hasLineupCode=l=>typeof l?.code==='string'&&!!l.code.trim();
 function classifyCode(s){s=normalizeCode(s);if(new TextEncoder().encode(s).length>32*1024*1024)return 'too-large';if(/^\|TA\|[^\s|\x00-\x1f\x7f]{1,4096}$/.test(s))return 'pipe-ta';if(/^#TA#\S+$/.test(s)&&s.length>4)return 'hash-ta';if(s.length>=8&&s.length%4===0&&/^[A-Za-z0-9+/]+={0,2}$/.test(s))return 'lineup-data';return 'unknown';}
 function adaptTA(payload,data={}){
   if(payload?.ok!==true||payload.format!=='ta-payload'||!object(payload.data)||!Array.isArray(payload.data.hconf)||!Array.isArray(payload.kinds))throw new Error(payload?.error||'TA 解析结果结构无效');
@@ -197,5 +198,5 @@ function matchLineup(lineup,account,roster,effects,options={}){
   if(!roles.length)unknown.push('没有可核验的式神槽位');
   return {status:unknown.length?'unknown':'available',label:unknown.length?'需核对':'配置可组成',reasons:[...new Set(unknown)],members:results,assignment};
 }
-return {STAT_NAMES,STAT_TYPES,METRICS,normalizeCode,classifyCode,adaptTA,mergeDecodedLineup,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,suitMatches,checkPanel,findBuilds,memberCandidates,matchLineup};
+return {STAT_NAMES,STAT_TYPES,METRICS,normalizeCode,hasLineupCode,classifyCode,adaptTA,mergeDecodedLineup,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,suitMatches,checkPanel,findBuilds,memberCandidates,matchLineup};
 });

@@ -1,0 +1,52 @@
+{
+  "version": "0.3.0",
+  "method": "实际浏览器控件操作与可见DOM检查",
+  "privateAccountDataUsed": false,
+  "desktop": {
+    "viewport": {
+      "width": 1440,
+      "height": 940
+    },
+    "members": 6,
+    "allMembersInOneRow": true,
+    "dialogClientWidth": 1366,
+    "dialogScrollWidth": 1366,
+    "rowClientWidth": 1326,
+    "rowScrollWidth": 1326,
+    "brokenDetailImages": 0,
+    "copyButtonLabel": "已复制",
+    "copyFeedback": "原始阵容码已复制"
+  },
+  "minimumWindow": {
+    "viewport": {
+      "width": 880,
+      "height": 650
+    },
+    "allMembersInOneRow": true,
+    "dialogHasHorizontalOverflow": false,
+    "rowClientWidth": 788,
+    "rowScrollWidth": 1096,
+    "rightButtonScrollLeft": 308
+  },
+  "backupRestore": {
+    "uncodedSkipped": 2,
+    "keptCodedPersonalLineups": 1,
+    "totalWithBuiltIn": 156,
+    "reloadRetainsData": true,
+    "syntheticAccounts": 1,
+    "syntheticHeroes": 1,
+    "syntheticSouls": 6
+  },
+  "manualWithoutCode": {
+    "saved": false,
+    "message": "配置未保存：阵容必须包含非空 code（原始阵容码）"
+  },
+  "browserConsoleErrors": 0,
+  "gallery": {
+    "actorCards": 6,
+    "imageElements": 12,
+    "allLoaded": true,
+    "allImagesWithinContainers": true,
+    "pageHorizontalOverflow": false
+  }
+}

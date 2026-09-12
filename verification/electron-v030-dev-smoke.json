@@ -1,0 +1,65 @@
+{
+  "title": "阴阳师阵容图鉴",
+  "lineups": 156,
+  "roster": 275,
+  "actors": 6,
+  "visibleCards": 24,
+  "brokenImages": 0,
+  "accounts": 1,
+  "views": 5,
+  "hasData": true,
+  "detail": {
+    "members": 6,
+    "oneRow": true,
+    "copySucceeded": true,
+    "rowWidth": 1313,
+    "scrollWidth": 1313
+  },
+  "libraryCopySucceeded": true,
+  "localDecode": {
+    "version": 3,
+    "members": [
+      {
+        "name": "晴明",
+        "kind": "onmyoji"
+      },
+      {
+        "name": "天照",
+        "kind": "shikigami"
+      },
+      {
+        "name": "神启荒",
+        "kind": "shikigami"
+      },
+      {
+        "name": "渺念萤草",
+        "kind": "shikigami"
+      },
+      {
+        "name": "流光追月神",
+        "kind": "shikigami"
+      },
+      {
+        "name": "空相面灵气",
+        "kind": "shikigami"
+      }
+    ],
+    "status": "V3 本地解析成功 · 6 位成员 · 点击保存进入阵容库"
+  },
+  "actorImages": {
+    "rendered": 12,
+    "broken": 0,
+    "cached": 0
+  },
+  "updateSettingRoundTrip": true,
+  "clipboardVerification": [
+    {
+      "bytes": 792,
+      "matchesWrittenCode": true
+    },
+    {
+      "bytes": 36,
+      "matchesWrittenCode": true
+    }
+  ]
+}

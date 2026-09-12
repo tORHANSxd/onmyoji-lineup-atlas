@@ -1,21 +1,21 @@
 {
   "archive": "release/win-unpacked/resources/app.asar",
-  "fileEntries": 1375,
+  "fileEntries": 1376,
   "forbiddenFiles": [],
   "sourceChecks": [
     {
       "path": "app/app.js",
-      "sha256": "1b5bb36868cd4c269383ffb17e4021fb15e460575ac6c5753fc7c82ef4266d93",
+      "sha256": "bf77a9f264570cbb9cf44620e72c576c06627c24ed33c9c4bffc915506bacd5d",
       "matchesSource": true
     },
     {
       "path": "app/core.js",
-      "sha256": "443afb25ae3934095596ad8ad85bf3d2d658187d9a448268d9d364f83d55f376",
+      "sha256": "0da3e416373ab57e48763ec910b06b82718f685e62fa1493e8f869c7f1efc25c",
       "matchesSource": true
     },
     {
       "path": "app/index.html",
-      "sha256": "d05e0b539232f9c5a79227a2c24146991f1dfa650b12785a7ad5a9743cb38688",
+      "sha256": "a0d156dc3efd2d4a1b7009ac973eb7c34cbdd755f871174eb3e42ce35c19fc14",
       "matchesSource": true
     },
     {
@@ -26,6 +26,11 @@
     {
       "path": "app/updates.css",
       "sha256": "bbab705531b84c9f83574c071d80bbda6ec3d56d24946e404bc62060ae16a2e8",
+      "matchesSource": true
+    },
+    {
+      "path": "app/theme.css",
+      "sha256": "1b0fe40eac6aac20eae550e9973ab453363883e2177d230c9c098721ccd34bfe",
       "matchesSource": true
     },
     {
@@ -45,12 +50,12 @@
     },
     {
       "path": "desktop/main.cjs",
-      "sha256": "a1b573d6a381add02bed2a17474402d1439c749969e35bfea175a0acd65c60ce",
+      "sha256": "af8c17438f85f115f94a438153c5f915ac5af1e69320394db8fca01eb5fda4c0",
       "matchesSource": true
     },
     {
       "path": "desktop/preload.cjs",
-      "sha256": "b5e8b404b58cfc2317175b093f93e7ba29af8ce8e035e26389b0623eaecfc953",
+      "sha256": "e08d01ca5bd65e68eb91dc327c544f57e62feddeb70875515d7cbcc975965efa",
       "matchesSource": true
     },
     {
@@ -65,7 +70,7 @@
     },
     {
       "path": "data/bundle.json",
-      "sha256": "5d4c79b245207c3bde8ba8cc7a0a733ff450e5f0510bdd3a8ccbfb9471a9ae63",
+      "sha256": "f82bea3e419b3991eeff3839c571232c1b10273ad9752e58b9987e64ff0267e6",
       "matchesSource": true
     },
     {

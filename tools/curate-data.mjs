@@ -114,10 +114,10 @@ add('BV1Rv41137hX','souls-15','魂土 · 双修食灵饭笥15秒','悲鸣 / 魂�
  m('饭笥','狂骨歌伎，作者参考17000、199爆伤；爆伤升高时不能直接沿用同一面板阈值。'),m('食灵','111技能可用；全队需一个火灵。'),m('未指定狗粮1'),y('晴明')],
  '一修 > 158 > 二修 > 155 > 晴明 > 饭笥、食灵、狗粮。以上为2021年历史方案；单体面板分数不能替代回合外伤害与歌伎收益判断。',
  {alternatives:'二号阿修罗可改烬天玉藻前、弈等多段补刀；主输出足够时可心眼荒骷髅山风普攻补刀。替换者没有统一下限。狗粮换座敷会降低一修要求，但需另配火量和速度。'});
-await fs.writeFile('data/curated-lineups.json',JSON.stringify(out,null,2));
+await fs.writeFile('data/curated-lineups.json',JSON.stringify(out.filter(c=>typeof c.code==='string'&&c.code.trim()),null,2));
 const sourceUrl='https://yys.163.com/news/update/20260908/23024_1313394.html';
 await fs.writeFile('data/events.json',JSON.stringify([
  {title:'拾光永恒 · 巡于黄金之河 / 虚无精锐',start:'2026-09-09',end:'2026-09-29',battle:true,sourceUrl,notes:'国服正式服9月9日维护后至9月29日23:59，15级开放。包括探索、亘地回响派遣以及虚无精锐简单/困难循环挑战。'},
  {title:'拾光永恒 · 炼石成金',start:'2026-09-16',end:'2026-09-19',battle:true,sourceUrl,notes:'9月16日10:00至9月19日23:59。截止9月12日尚未开放；不能当作当日可打的首领。'}
 ],null,2));
-console.log(JSON.stringify({structuredReferences:out.length}));
+console.log(JSON.stringify({structuredReferences:out.filter(c=>typeof c.code==='string'&&c.code.trim()).length}));

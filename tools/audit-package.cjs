@@ -7,7 +7,7 @@ const files=asar.listPackage(archive).map(p=>p.replaceAll('\\','/'));
 const forbidden=files.filter(p=>/平安志示例数据|\.xlsx$|\/(tests|tools|user-data|private)\/|web-sources\.json$|decoded\.json$/.test(p));
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const actorImages=JSON.parse(fs.readFileSync('data/bundle.json','utf8')).actors.flatMap(a=>a.assets.variants.map(i=>i.localPath));
-const checks=['app/app.js','app/core.js','app/index.html','app/styles.css','app/updates.css','app/vendor/jsQR.js','app/vendor/jsQR.LICENSE.txt','app/vendor/msgpack.LICENSE.txt','desktop/main.cjs','desktop/preload.cjs','desktop/ta-codec.cjs','desktop/official-data.cjs','data/bundle.json','node_modules/@msgpack/msgpack/dist.cjs/decode.cjs',...actorImages].map(p=>{const bytes=asar.extractFile(archive,path.normalize(p));return {path:p,sha256:sha(bytes),matchesSource:sha(bytes)===sha(fs.readFileSync(p))};});
+const checks=['app/app.js','app/core.js','app/index.html','app/styles.css','app/updates.css','app/theme.css','app/vendor/jsQR.js','app/vendor/jsQR.LICENSE.txt','app/vendor/msgpack.LICENSE.txt','desktop/main.cjs','desktop/preload.cjs','desktop/ta-codec.cjs','desktop/official-data.cjs','data/bundle.json','node_modules/@msgpack/msgpack/dist.cjs/decode.cjs',...actorImages].map(p=>{const bytes=asar.extractFile(archive,path.normalize(p));return {path:p,sha256:sha(bytes),matchesSource:sha(bytes)===sha(fs.readFileSync(p))};});
 const report={archive,fileEntries:files.length,forbiddenFiles:forbidden,sourceChecks:checks};
 fs.writeFileSync('verification/package-audit.json',JSON.stringify(report,null,2));
 console.log(JSON.stringify(report));
