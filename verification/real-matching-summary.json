@@ -1,0 +1,16 @@
+{
+  "lineups": 175,
+  "heroes": 4114,
+  "souls": 1858,
+  "counts": {
+    "missing": 13,
+    "unknown": 162
+  },
+  "memberCounts": {
+    "found": 17,
+    "unknown": 49
+  },
+  "partialAssignmentsWithoutOverlap": 2,
+  "elapsedMs": 4382,
+  "note": "Source requirements and onmyoji data remain incomplete; no gameplay verification. No personal identifiers included."
+}

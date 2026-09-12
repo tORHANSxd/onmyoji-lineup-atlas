@@ -1,0 +1,10 @@
+{
+  "url": "https://yys.res.netease.com/pc/zt/20161108171335/data/after_awake/319.jpg",
+  "retrievedAt": "2026-09-12T03:49:29.835004+00:00",
+  "httpStatus": 200,
+  "status": "received",
+  "contentType": "image/jpeg",
+  "cors": "*",
+  "sha256": "a3fc44c0f5d6fe54d0c233068899021b2901da505accc7f2cd1210b399904c21",
+  "bytes": 7393
+}

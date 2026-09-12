@@ -1,0 +1,10 @@
+{
+  "url": "https://yys.res.netease.com/pc/zt/20161108171335/js/app/all_shishen.json",
+  "retrievedAt": "2026-09-12T03:32:01.704292+00:00",
+  "httpStatus": 200,
+  "status": "received",
+  "contentType": "application/json",
+  "cors": "*",
+  "sha256": "337275e42a0df6c441bd848677b3004e06551ba48f4dadc2d00d5e69d8a83144",
+  "bytes": 556346
+}

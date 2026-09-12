@@ -1,0 +1,10 @@
+{
+  "url": "https://api.bilibili.com/x/web-interface/view?bvid=BV1By41187DA",
+  "retrievedAt": "2026-09-12T03:40:19.242045+00:00",
+  "httpStatus": 200,
+  "status": "received",
+  "contentType": "application/json; charset=utf-8",
+  "cors": null,
+  "sha256": "93ac6e84309716fb74c9a4c1d1928bf332a14ed1914f288a27cd44b7db4ecf0e",
+  "bytes": 1938
+}

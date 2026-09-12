@@ -1,0 +1,42 @@
+{
+  "archive": "release/win-unpacked/resources/app.asar",
+  "fileEntries": 1242,
+  "forbiddenFiles": [],
+  "sourceChecks": [
+    {
+      "path": "app/app.js",
+      "sha256": "1956baf8d36aa5777c96b0be9ffaa0b07bdb0ce98d499f18344e09ebfc8d782d",
+      "matchesSource": true
+    },
+    {
+      "path": "app/core.js",
+      "sha256": "ad470c98590bd76fd0b6d2936d13850f8c8c59141bccd57e9add2a49dbbf36dc",
+      "matchesSource": true
+    },
+    {
+      "path": "app/index.html",
+      "sha256": "fc388687039338f248544467e862ea9138c9664346f3dc68ff38fa59de9f9ada",
+      "matchesSource": true
+    },
+    {
+      "path": "app/styles.css",
+      "sha256": "922324e1780947616bd9fb3769b2138f7afb2b5447e07eb618f1a44f54e9be67",
+      "matchesSource": true
+    },
+    {
+      "path": "desktop/main.cjs",
+      "sha256": "4d952b7bccdfbb02e5614ba14481dcc2780388742b24b5721497770992fafa6f",
+      "matchesSource": true
+    },
+    {
+      "path": "desktop/preload.cjs",
+      "sha256": "0bb3cc6f270fed1eba0e6addc749b9037eb812cc505608bcae430b436cc8be12",
+      "matchesSource": true
+    },
+    {
+      "path": "data/bundle.json",
+      "sha256": "752673d2918c5bc208825d42e76add941827f111a0713d77d4a79ed30b5a20b8",
+      "matchesSource": true
+    }
+  ]
+}

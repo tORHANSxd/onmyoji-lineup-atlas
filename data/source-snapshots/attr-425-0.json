@@ -1,0 +1,10 @@
+{
+  "url": "https://g37simulator.webapp.163.com/get_hero_attr?heroid=425&awake=0&level=40&star=6&callback=cb",
+  "retrievedAt": "2026-09-12T03:40:48.295081+00:00",
+  "httpStatus": 200,
+  "status": "received",
+  "contentType": "text/javascript; charset=utf-8",
+  "cors": null,
+  "sha256": "30cb6532b06b67853db17cab6e12e34aba39dfca1f0d7350be54b5eae39c7014",
+  "bytes": 1176
+}

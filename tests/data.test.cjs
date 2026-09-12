@@ -1,0 +1,11 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const C=require('../app/core.js');
+const bundle=require('../data/bundle.json');
+test('全部Excel原码与源行都保留，未把失败码伪造为成功',()=>{const excel=require('../data/excel.json');assert.equal(excel.occurrences,145);assert.equal(excel.uniqueCodes,110);for(const x of excel.entries){const l=bundle.lineups.find(l=>l.code===x.code);assert.ok(l);assert.ok(l.occurrences.some(o=>o.sheet===x.sheet&&o.row===x.row));}assert.equal(bundle.excelAudit.decoded,0);assert.equal(bundle.excelAudit.rejected,110);});
+test('官方动态静态目录一致且石长姬使用官方ID',()=>{assert.equal(bundle.roster.length,275);assert.equal(new Set(bundle.roster.map(r=>r.id)).size,275);const stone=bundle.roster.find(r=>r.name==='石长姬');assert.equal(stone.id,'608');assert.equal(stone.rarity,'SSR');assert.equal(stone.releasedAt,'2026-09-09');assert.equal(bundle.assetAudit.onlyDynamic.length+bundle.assetAudit.onlyStatic.length,0);});
+test('本地阵容ID、原码唯一，结构化名称与官方ID对齐',()=>{assert.equal(new Set(bundle.lineups.map(l=>l.id)).size,bundle.lineups.length);const codes=bundle.lineups.filter(l=>l.code).map(l=>l.code);assert.equal(new Set(codes).size,codes.length);for(const l of bundle.lineups){C.validateLineup(l);for(const m of l.members||[])if(m.shikigamiId)assert.equal(bundle.roster.find(r=>r.id===m.shikigamiId)?.name,m.name);}});
+test('活动首领9月16日开放，不混作截止日已开启',()=>{const boss=bundle.events.find(e=>e.title.includes('炼石成金'));assert.equal(boss.start,'2026-09-16');assert.ok(boss.start>bundle.cutoffDate);assert.ok(bundle.events.some(e=>e.start<=bundle.cutoffDate&&e.end>=bundle.cutoffDate));});
+test('发行数据不包含账号快照字段，包文件采用白名单',()=>{const text=fs.readFileSync('data/bundle.json','utf8');for(const secret of ['mumu-snapshot-v1','hero_equips','shortId','equipPresets'])assert.equal(text.includes(secret),false);const files=require('../package.json').build.files;assert.equal(files.includes('**/*'),false);assert.equal(files.some(p=>p.includes('平安志')),false);});
+test('三份用户提供导出可本地解析，测试报告只记录数量',{skip:!fs.existsSync('平安志示例数据')},()=>{const counts=fs.readdirSync('平安志示例数据').filter(f=>f.endsWith('.json')).map(f=>{const a=C.parseAccount(JSON.parse(fs.readFileSync('平安志示例数据/'+f,'utf8')));return [Object.keys(a.heroes).length,Object.keys(a.souls).length];}).sort((a,b)=>a[0]-b[0]);assert.deepEqual(counts,[[713,1154],[2770,2008],[4114,1858]]);});

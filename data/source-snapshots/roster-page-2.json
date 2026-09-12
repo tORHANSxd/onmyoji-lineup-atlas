@@ -1,0 +1,10 @@
+{
+  "url": "https://g37simulator.webapp.163.com/get_heroid_list?rarity=0&page=2&per_page=100&callback=cb",
+  "retrievedAt": "2026-09-12T03:31:59.716452+00:00",
+  "httpStatus": 200,
+  "status": "received",
+  "contentType": "text/javascript; charset=utf-8",
+  "cors": null,
+  "sha256": "b76cb7b83d0bf6bf9e0cb9f85d015088d22e19c1bc4afec1542936a84495f9f5",
+  "bytes": 12185
+}

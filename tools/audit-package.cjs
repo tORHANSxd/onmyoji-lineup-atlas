@@ -1,0 +1,12 @@
+const fs=require('node:fs');
+const crypto=require('node:crypto');
+const asar=require('@electron/asar');
+const archive='release/win-unpacked/resources/app.asar';
+const files=asar.listPackage(archive).map(p=>p.replaceAll('\\','/'));
+const forbidden=files.filter(p=>/平安志示例数据|\.xlsx$|\/(tests|tools|user-data|private)\/|web-sources\.json$|decoded\.json$/.test(p));
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+const checks=['app/app.js','app/core.js','app/index.html','app/styles.css','desktop/main.cjs','desktop/preload.cjs','data/bundle.json'].map(p=>({path:p,sha256:sha(asar.extractFile(archive,p)),matchesSource:sha(asar.extractFile(archive,p))===sha(fs.readFileSync(p))}));
+const report={archive,fileEntries:files.length,forbiddenFiles:forbidden,sourceChecks:checks};
+fs.writeFileSync('verification/package-audit.json',JSON.stringify(report,null,2));
+console.log(JSON.stringify(report));
+if(forbidden.length||checks.some(c=>!c.matchesSource))process.exitCode=1;

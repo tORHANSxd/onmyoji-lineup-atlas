@@ -1,0 +1,62 @@
+{
+  "collectedAt": "2026-09-12T03:32:01.972783+00:00",
+  "cutoffDate": "2026-09-12",
+  "region": "CN_MAINLAND_LIVE",
+  "rosterCompleteness": "unverified",
+  "dynamicCount": 275,
+  "staticCount": 275,
+  "unionCount": 275,
+  "onlyDynamic": [],
+  "onlyStatic": [],
+  "paginationErrors": [],
+  "pages": 3,
+  "latestSentinel": [
+    {
+      "id": "608",
+      "name": "石长姬",
+      "rarityRaw": 4,
+      "rarity": "SSR",
+      "isCollaboration": false,
+      "isGua": false,
+      "isMaterial": false,
+      "official": {
+        "material_type": 0,
+        "interactive": 0,
+        "name": "石长姬",
+        "icon": "pic_ss_shichangji",
+        "rarity": 4
+      },
+      "static": {
+        "id": "608",
+        "level": "SSR",
+        "name": "石长姬",
+        "pc_gonglve": "43819",
+        "pc_tongren": "43818",
+        "m_gonglve": "43819",
+        "m_tongren": "43818",
+        "hasVideo": null,
+        "resource": null,
+        "title": "《阴阳师》手游式神录_式神石长姬_石长姬攻略_石长姬御魂搭配攻略_觉醒材料_在哪里刷_石长姬阵容搭配_《阴阳师》手游官网",
+        "desc": "《阴阳师》手游式神录，《阴阳师》手游石长姬御魂搭配攻略，石长姬在哪里刷，石长姬技能资质属性图鉴，石长姬觉醒材料需要什么？更多关于石长姬怎样玩的攻略请关注《阴阳师》手游官网。",
+        "keys": "阴阳师,手游,式神,石长姬,御魂,觉醒,攻略,培养,阵容,技能,资质,在哪里刷,升星,阴阳师式神,阴阳师下载,阴阳师官方下载,阴阳师安卓下载,阴阳师安卓官方下载,阴阳师手游,阴阳师礼包,阴阳师手游下载,阴阳师手游安卓, 阴阳师手游iOS,阴阳师手游苹果,阴阳师助手,网易手游,阴阳师手游 ios,阴阳师,阴阳师 ios,阴阳师手游ios,阴阳师手游安卓,阴阳师安卓,阴阳师 安卓,阴阳师ios,阴阳师 礼包,阴阳师礼包,阴阳师手游 安卓,阴阳师手游 礼包,阴阳师苹果,阴阳师攻略",
+        "share_m": "《阴阳师》手游式神录——石长姬搭配使用攻略",
+        "share_m_2": "《阴阳师》手游式神录，《阴阳师》手游石长姬御魂搭配攻略，石长姬在哪里刷，石长姬技能资质属性图鉴，石长姬觉醒材料需要什么？更多关于石长姬怎样玩的攻略请关注《阴阳师》手游官网。",
+        "share": "《阴阳师》手游式神录，《阴阳师》手游石长姬御魂搭配攻略，石长姬在哪里刷，石长姬技能资质属性图鉴，石长姬觉醒材料需要什么？更多关于石长姬怎样玩的攻略请关注《阴阳师》手游官网。",
+        "skin": null
+      },
+      "awakeningAvailability": "unknown",
+      "releasedAt": null,
+      "releasedBeforeCutoffVerified": false,
+      "releaseEvidenceUrls": [],
+      "variants": []
+    }
+  ],
+  "rarities": {
+    "SR": 68,
+    "R": 38,
+    "N": 30,
+    "SSR": 87,
+    "SP": 51,
+    "UR": 1
+  }
+}

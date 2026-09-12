@@ -1,0 +1,141 @@
+{
+  "collectedAt": "2026-09-12T03:32:01.972783+00:00",
+  "cutoffDate": "2026-09-12",
+  "region": "CN_MAINLAND_LIVE",
+  "rosterCompleteness": "unverified",
+  "dynamicCount": 275,
+  "staticCount": 275,
+  "unionCount": 275,
+  "onlyDynamic": [],
+  "onlyStatic": [],
+  "paginationErrors": [],
+  "pages": 3,
+  "latestSentinel": [
+    {
+      "id": "608",
+      "name": "石长姬",
+      "rarity": "SSR"
+    }
+  ],
+  "rarities": {
+    "SR": 68,
+    "R": 38,
+    "N": 30,
+    "SSR": 87,
+    "SP": 51,
+    "UR": 1
+  },
+  "downloaded": 936,
+  "nativeCardsVerified": 0,
+  "charactersAudited": 275,
+  "notApplicable": 82,
+  "supported": 193,
+  "unknown": 0,
+  "failures": [],
+  "duplicateCharacters": [],
+  "attributeStateConflicts": [
+    {
+      "id": "245",
+      "name": "提灯小僧",
+      "rarity": "N"
+    },
+    {
+      "id": "404",
+      "name": "天邪鬼绿",
+      "rarity": "N"
+    },
+    {
+      "id": "405",
+      "name": "天邪鬼赤",
+      "rarity": "N"
+    },
+    {
+      "id": "406",
+      "name": "天邪鬼黄",
+      "rarity": "N"
+    },
+    {
+      "id": "407",
+      "name": "天邪鬼青",
+      "rarity": "N"
+    },
+    {
+      "id": "409",
+      "name": "涂壁",
+      "rarity": "N"
+    },
+    {
+      "id": "414",
+      "name": "大天狗呱",
+      "rarity": "N"
+    },
+    {
+      "id": "415",
+      "name": "酒吞呱",
+      "rarity": "N"
+    },
+    {
+      "id": "416",
+      "name": "荒川呱",
+      "rarity": "N"
+    },
+    {
+      "id": "418",
+      "name": "两面佛呱",
+      "rarity": "N"
+    },
+    {
+      "id": "419",
+      "name": "小鹿男呱",
+      "rarity": "N"
+    },
+    {
+      "id": "420",
+      "name": "茨木呱",
+      "rarity": "N"
+    },
+    {
+      "id": "421",
+      "name": "青行灯呱",
+      "rarity": "N"
+    },
+    {
+      "id": "423",
+      "name": "一目连呱",
+      "rarity": "N"
+    },
+    {
+      "id": "429",
+      "name": "玉藻前呱",
+      "rarity": "N"
+    }
+  ],
+  "excel": {
+    "source": "大肾石长姬版本PVE阵容码大全 最新.xlsx",
+    "sha256": "fd931f384a06029e0d04c977438e8e7993542df72d047310a883813e19a1a5c1",
+    "sheets": [
+      {
+        "name": "全图玩家",
+        "rows": 97,
+        "codeOccurrences": 86
+      },
+      {
+        "name": "回坑或缺图鉴玩家",
+        "rows": 45,
+        "codeOccurrences": 37
+      },
+      {
+        "name": "更新内容",
+        "rows": 23,
+        "codeOccurrences": 22
+      }
+    ],
+    "occurrences": 145,
+    "uniqueCodes": 110,
+    "decoded": 0,
+    "rejected": 110
+  },
+  "totalLineups": 175,
+  "webSourceCount": 63,
+  "structuredReferenceLineups": 26
+}

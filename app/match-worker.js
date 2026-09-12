@@ -1,0 +1,2 @@
+importScripts('core.js');
+self.onmessage=({data})=>{try{const {lineups,account,roster,effects}=data;const results={};for(let n=0;n<lineups.length;n++){results[lineups[n].id]=AtlasCore.matchLineup(lineups[n],account,roster,effects);self.postMessage({progress:n+1,total:lineups.length,id:lineups[n].id,result:results[lineups[n].id]});}self.postMessage({done:true,results});}catch(error){self.postMessage({error:error.message});}};
