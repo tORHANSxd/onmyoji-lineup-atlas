@@ -4,7 +4,9 @@ Windows x64 本地工具，支持 PVE 阵容检索、TA 阵容内容解析、形
 
 ## 下载与使用
 
-从 [v0.3.0 Release](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.3.0) 下载 `Onmyoji-Lineup-Atlas-0.3.0-Windows-x64.exe`，双击运行，无需安装 Node.js 或 Python。此版本未签名。仓库为私人仓库，下载需要登录有权限的 GitHub 账号。
+从 [v0.3.1 Release](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.3.1) 下载 `Onmyoji-Lineup-Atlas-Setup-0.3.1-Windows-x64.exe`，双击进入中文安装向导，可选择安装目录；安装完成后从桌面或开始菜单打开程序，无需安装 Node.js 或 Python。此版本未签名。仓库为私人仓库，下载需要登录有权限的 GitHub 账号。
+
+安装包默认安装到当前用户，可在Windows“已安装的应用”中卸载。账号库和官方缓存保存在独立用户数据目录，卸载默认保留；从旧便携版切换时，关闭旧版后安装即可，无需重新导入账号。
 
 1. 在「阵容库」按分类、副本、文字或多个式神筛选；多个式神表示同时包含。
 2. 「阵容码查看」支持粘贴 `#TA#` 自创二维码文本、裸 `lineup_data`，或导入二维码图片。完整内容自动在本机解析，点击保存即可进入个人阵容库。
@@ -52,11 +54,11 @@ Windows x64 本地工具，支持 PVE 阵容检索、TA 阵容内容解析、形
 
 平安志样例未提供阴阳师/英杰与当前穿戴归属，不能推断账号拥有状态。低等级/低星级不套用40级6星基础属性。大仓库使用有上限的候选搜索，未命中只标为待核对；已找到的全队方案检查式神和御魂实例不重复。配速关系、最高属性、契灵和战斗增益尚未完整建模。副本方案仍有缺口，未进行游戏内实战验证。
 
-验证结果见 [v0.3.0 验证记录](verification/RESULTS-v0.3.0.md)、[基础覆盖报告](verification/coverage.json) 和 [官方更新报告](verification/official-update-report.json)。
+验证结果见 [安装包验证记录](verification/RESULTS-v0.3.1.md)、[v0.3.0 功能验证记录](verification/RESULTS-v0.3.0.md)、[基础覆盖报告](verification/coverage.json) 和 [官方更新报告](verification/official-update-report.json)。
 
 ## 本地存储
 
-桌面版在 Electron `app.getPath('userData')` 下保存 `library-v1.json`，Windows通常位于 `%APPDATA%/阴阳师阵容图鉴/`。移动EXE不会删除该文件。官方更新独立使用 `official-cache/manifest.json`、`images/` 和 `settings.json`，不会覆盖账号或个人阵容。
+桌面版在 Electron `app.getPath('userData')` 下保存 `library-v1.json`，Windows通常位于 `%APPDATA%/阴阳师阵容图鉴/`。安装位置与该目录分离，升级和默认卸载不会删除该文件。官方更新独立使用 `official-cache/manifest.json`、`images/` 和 `settings.json`，不会覆盖账号或个人阵容。
 
 原始Excel、用户平安志示例、个人备份、测试用用户目录均不进入仓库和发行包。更新缓存目录只包含公开资料。
 
@@ -69,7 +71,7 @@ npm start
 npm run dist
 ```
 
-`release/` 输出便携版EXE。Electron启用上下文隔离、沙箱、关闭Node集成，限制导航、IPC来源及缓存图片访问路径。发行包中的 `data/bundle.json` 可直接离线使用。
+`release/` 输出 Windows x64 NSIS Setup 安装包，应用文件安装到选定目录后直接运行。Electron启用上下文隔离、沙箱、关闭Node集成，限制导航、IPC来源及缓存图片访问路径。发行包中的 `data/bundle.json` 可直接离线使用。
 
 ```powershell
 npm run build:data

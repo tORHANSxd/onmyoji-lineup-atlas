@@ -1,0 +1,15 @@
+{
+  "version": "0.3.1",
+  "type": "NSIS assisted installer",
+  "file": "Onmyoji-Lineup-Atlas-Setup-0.3.1-Windows-x64.exe",
+  "bytes": 248122145,
+  "sha256": "a99aed9f614b4c096367ad4eeaa3722b52dac6404d1b0428c089194b07081673",
+  "nodeTests": 73,
+  "language": "zh_CN",
+  "signature": "NotSigned",
+  "install": "passed",
+  "installedAppSmoke": "passed",
+  "reinstall": "passed",
+  "uninstall": "passed",
+  "userDataPreserved": true
+}
