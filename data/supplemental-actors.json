@@ -1,0 +1,94 @@
+[
+  {
+    "id": "yorimitsu",
+    "name": "源赖光",
+    "aliases": [
+      "源赖光"
+    ],
+    "gameId": null,
+    "sourceURL": "https://wiki.biligame.com/yys/%E6%BA%90%E8%B5%96%E5%85%89",
+    "sourceRegion": "COMMUNITY_BWIKI",
+    "sourceLabel": "BWiki 社区百科",
+    "autoUpdate": false,
+    "sourceEvidence": {
+      "pageSHA256": "287e813145dc0cef9c68475bca4f6cfd6ac5b8ff6a8a44cf564fb166141dd529",
+      "imageTag": "<img alt=\"源赖光.png\" src=\"https://patchwiki.biligame.com/images/yys/9/9f/mj7qhs4396huljoyzgjrpo525x3m20b.png\" decoding=\"async\" loading=\"lazy\" width=\"580\" height=\"580\" data-file-width=\"580\" data-file-height=\"580\" />",
+      "checkedAt": "2026-09-12T05:07:11.034Z",
+      "identity": "页面标题、阴阳师立绘章节与同名图片 alt 一致"
+    },
+    "assets": {
+      "awakeningAvailability": "not_applicable",
+      "nativeCardStatus": "missing_unverified",
+      "variants": [
+        {
+          "family": "art-before",
+          "requestedState": "default",
+          "verifiedState": "default",
+          "contentKind": "community_art",
+          "sourcePage": "https://wiki.biligame.com/yys/%E6%BA%90%E8%B5%96%E5%85%89",
+          "sourceRegion": "COMMUNITY_BWIKI",
+          "sourceLabel": "BWiki 社区百科",
+          "url": "https://patchwiki.biligame.com/images/yys/9/9f/mj7qhs4396huljoyzgjrpo525x3m20b.png",
+          "localPath": "data/images/actors/yorimitsu/art-before.png",
+          "status": "downloaded_valid_image",
+          "width": 580,
+          "height": 580,
+          "format": "png",
+          "sha256": "f21412f953bd1a0179ba70af299f7b40592ef74e2303687897fb8f5985cb02dd",
+          "bytes": 64461,
+          "retrievedAt": "2026-09-12T05:07:11.034Z",
+          "nativeCardVerified": false,
+          "identityVerified": true,
+          "stateVerified": true,
+          "visualReview": "pending"
+        }
+      ]
+    }
+  },
+  {
+    "id": "michinaga",
+    "name": "藤原道长",
+    "aliases": [
+      "藤原道长"
+    ],
+    "gameId": null,
+    "sourceURL": "https://wiki.biligame.com/yys/%E8%97%A4%E5%8E%9F%E9%81%93%E9%95%BF",
+    "sourceRegion": "COMMUNITY_BWIKI",
+    "sourceLabel": "BWiki 社区百科",
+    "autoUpdate": false,
+    "sourceEvidence": {
+      "pageSHA256": "17d82499c93ced19e13de4aaeff226a8f2e4e2ab8bb2f26906cb67daf3fd3263",
+      "imageTag": "<img alt=\"藤原道长.png\" src=\"https://patchwiki.biligame.com/images/yys/b/b4/aksoq9xviwo1sqccwctygeiss1gdfw3.png\" decoding=\"async\" loading=\"lazy\" width=\"891\" height=\"1009\" data-file-width=\"891\" data-file-height=\"1009\" />",
+      "checkedAt": "2026-09-12T05:07:11.600Z",
+      "identity": "页面标题、阴阳师立绘章节与同名图片 alt 一致"
+    },
+    "assets": {
+      "awakeningAvailability": "not_applicable",
+      "nativeCardStatus": "missing_unverified",
+      "variants": [
+        {
+          "family": "art-before",
+          "requestedState": "default",
+          "verifiedState": "default",
+          "contentKind": "community_art",
+          "sourcePage": "https://wiki.biligame.com/yys/%E8%97%A4%E5%8E%9F%E9%81%93%E9%95%BF",
+          "sourceRegion": "COMMUNITY_BWIKI",
+          "sourceLabel": "BWiki 社区百科",
+          "url": "https://patchwiki.biligame.com/images/yys/b/b4/aksoq9xviwo1sqccwctygeiss1gdfw3.png",
+          "localPath": "data/images/actors/michinaga/art-before.png",
+          "status": "downloaded_valid_image",
+          "width": 891,
+          "height": 1009,
+          "format": "png",
+          "sha256": "622d23a20ccebfe84651d1f93b8a2c2429559e8626969887010328ce358bbcf8",
+          "bytes": 1052355,
+          "retrievedAt": "2026-09-12T05:07:11.600Z",
+          "nativeCardVerified": false,
+          "identityVerified": true,
+          "stateVerified": true,
+          "visualReview": "pending"
+        }
+      ]
+    }
+  }
+]

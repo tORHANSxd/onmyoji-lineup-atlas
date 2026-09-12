@@ -1,0 +1,201 @@
+{
+  "checkedAt": "2026-09-12T05:00:26.925Z",
+  "completedAt": "2026-09-12T05:00:44.012Z",
+  "report": {
+    "collectedAt": "2026-09-12T05:00:30.018Z",
+    "cutoffDate": "2026-09-12",
+    "region": "CN_MAINLAND_LIVE",
+    "rosterCompleteness": "unverified",
+    "dynamicCount": 275,
+    "staticCount": 275,
+    "unionCount": 275,
+    "onlyDynamic": [],
+    "onlyStatic": [],
+    "paginationErrors": [],
+    "pages": 3,
+    "latestSentinel": [
+      {
+        "id": "608",
+        "name": "石长姬",
+        "rarity": "SSR"
+      }
+    ],
+    "rarities": {
+      "SR": 68,
+      "R": 38,
+      "N": 30,
+      "SSR": 87,
+      "SP": 51,
+      "UR": 1
+    },
+    "downloaded": 936,
+    "nativeCardsVerified": 0,
+    "charactersAudited": 275,
+    "notApplicable": 82,
+    "supported": 193,
+    "unknown": 0,
+    "failures": [],
+    "duplicateCharacters": [],
+    "attributeStateConflicts": [
+      {
+        "id": "245",
+        "name": "提灯小僧",
+        "rarity": "N"
+      },
+      {
+        "id": "404",
+        "name": "天邪鬼绿",
+        "rarity": "N"
+      },
+      {
+        "id": "405",
+        "name": "天邪鬼赤",
+        "rarity": "N"
+      },
+      {
+        "id": "406",
+        "name": "天邪鬼黄",
+        "rarity": "N"
+      },
+      {
+        "id": "407",
+        "name": "天邪鬼青",
+        "rarity": "N"
+      },
+      {
+        "id": "409",
+        "name": "涂壁",
+        "rarity": "N"
+      },
+      {
+        "id": "414",
+        "name": "大天狗呱",
+        "rarity": "N"
+      },
+      {
+        "id": "415",
+        "name": "酒吞呱",
+        "rarity": "N"
+      },
+      {
+        "id": "416",
+        "name": "荒川呱",
+        "rarity": "N"
+      },
+      {
+        "id": "418",
+        "name": "两面佛呱",
+        "rarity": "N"
+      },
+      {
+        "id": "419",
+        "name": "小鹿男呱",
+        "rarity": "N"
+      },
+      {
+        "id": "420",
+        "name": "茨木呱",
+        "rarity": "N"
+      },
+      {
+        "id": "421",
+        "name": "青行灯呱",
+        "rarity": "N"
+      },
+      {
+        "id": "423",
+        "name": "一目连呱",
+        "rarity": "N"
+      },
+      {
+        "id": "429",
+        "name": "玉藻前呱",
+        "rarity": "N"
+      }
+    ],
+    "defaultQueryCount": 275,
+    "queryMode": "all"
+  },
+  "coverage": {
+    "roster": 275,
+    "actors": 4,
+    "validImages": 944,
+    "updatedImages": 8,
+    "newCharacters": 0,
+    "errors": []
+  },
+  "actors": [
+    {
+      "name": "晴明",
+      "source": "网易繁中官网",
+      "images": [
+        {
+          "family": "art-before",
+          "width": 597,
+          "height": 725,
+          "sha256": "775b5a66652e6e93bb064ced0bafd4ba54296d5a0e93d4fe90304211ed0937b2"
+        },
+        {
+          "family": "portrait-before",
+          "width": 63,
+          "height": 65,
+          "sha256": "4c65eb9143a68e19a1d3538bcc95fbb4c92954f084b903069eff763250cef8b8"
+        }
+      ]
+    },
+    {
+      "name": "神乐",
+      "source": "网易繁中官网",
+      "images": [
+        {
+          "family": "art-before",
+          "width": 582,
+          "height": 696,
+          "sha256": "4339edb323667127d7d4fd8afdca5419b4c7dc0c9e7c095047b496a2c5119062"
+        },
+        {
+          "family": "portrait-before",
+          "width": 65,
+          "height": 65,
+          "sha256": "e3a086a05a2bcec20fc2ee8effa2ea49b9e0c02d20f5f5ef7d0a04641373ad96"
+        }
+      ]
+    },
+    {
+      "name": "源博雅",
+      "source": "网易繁中官网",
+      "images": [
+        {
+          "family": "art-before",
+          "width": 720,
+          "height": 871,
+          "sha256": "e52bbb9d1b88dbb4ef7c1bc6a0bdfd85258efba964448ee3f0ba81efd75c03fb"
+        },
+        {
+          "family": "portrait-before",
+          "width": 62,
+          "height": 65,
+          "sha256": "134418612cfe94f9f1a90e05585bfd10af42719ebe964b472bd84d09c8913092"
+        }
+      ]
+    },
+    {
+      "name": "八百比丘尼",
+      "source": "网易繁中官网",
+      "images": [
+        {
+          "family": "art-before",
+          "width": 568,
+          "height": 657,
+          "sha256": "3f3aab1b3773ed4670f3b8cb0e93e3c2713ac52b14bc38c2dc12f0c1e59a8632"
+        },
+        {
+          "family": "portrait-before",
+          "width": 65,
+          "height": 65,
+          "sha256": "f4969a25d79c8e86d458a6050ca8b4db93de85ec49999dabf9856824dff52b1f"
+        }
+      ]
+    }
+  ]
+}

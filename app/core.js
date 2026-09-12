@@ -7,7 +7,27 @@ const finite=n=>typeof n==='number'&&Number.isFinite(n);
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const id=x=>/^\d+$/.test(String(x))?String(Number(x)):null;
 const normalizeCode=s=>String(s??'').replace(/^\uFEFF/,'').trim();
-function classifyCode(s){s=normalizeCode(s);if(new TextEncoder().encode(s).length>32768)return 'too-large';if(/^\|TA\|[a-fA-F0-9]{32}$/.test(s))return 'pipe-ta';if(/^#TA#\S+$/.test(s)&&s.length>4)return 'hash-ta';return 'unknown';}
+function classifyCode(s){s=normalizeCode(s);if(new TextEncoder().encode(s).length>32*1024*1024)return 'too-large';if(/^\|TA\|[^\s|\x00-\x1f\x7f]{1,4096}$/.test(s))return 'pipe-ta';if(/^#TA#\S+$/.test(s)&&s.length>4)return 'hash-ta';if(s.length>=8&&s.length%4===0&&/^[A-Za-z0-9+/]+={0,2}$/.test(s))return 'lineup-data';return 'unknown';}
+function adaptTA(payload,data={}){
+  if(payload?.ok!==true||payload.format!=='ta-payload'||!object(payload.data)||!Array.isArray(payload.data.hconf)||!Array.isArray(payload.kinds))throw new Error(payload?.error||'TA 解析结果结构无效');
+  const d=payload.data;if(d.hconf.length!==payload.kinds.length||!d.hconf.length||d.hconf.length>30)throw new Error('TA 成员数量不合法');
+  const attrs={atk_per:'attackPercent',critical_rate:'crit',critical_pow:'critDamage',spd:'speed',debuff_acc:'effectHit',debuff_res:'effectResist',max_hp_per:'hpPercent',def_per:'defensePercent'};
+  const members=d.hconf.map((row,index)=>{
+    const kind=payload.kinds[index];if(!['onmyoji','shikigami'].includes(kind)||!id(row.hero_id))throw new Error('TA 成员类型或ID无效');
+    const actor=(data.actors||[]).find(a=>a.gameId!=null&&String(a.gameId)===String(row.hero_id)),roster=(data.roster||[]).find(r=>r.id===String(row.hero_id)),equip=row.equip_info;
+    let config=null;
+    if(equip){
+      config={sixStarOnly:Array.isArray(equip.yuhun_star)&&equip.yuhun_star.length===1&&equip.yuhun_star[0]===6,maxLevelOnly:Array.isArray(equip.yuhun_lv)&&equip.yuhun_lv[0]===15&&equip.yuhun_lv[1]===15,scope:'all',suitRequirements:(equip.suit||[]).map(([sid,count])=>({name:data.suits?.[String(sid)]||`未知御魂 ${sid}`,count,gameId:sid})),mainStats:Object.fromEntries(Object.entries(equip.main_attr||{}).map(([slot,values])=>[String(Number(slot)+1),values.map(v=>attrs[v]||v)])),ranges:[],protocolUncertainties:['已解析原始配置；御魂指标枚举、组合语义与数值单位尚未完成游戏计算逻辑核对'],protocol:{criteria:equip.criteria,twoSuit:equip.two_suit||[],limits:equip.limit||{},highest:row.highest_limit||[],notCalcFlag:row.not_calc_flag,useScore:row.use_score,yuhunLevel:equip.yuhun_lv,yuhunStars:equip.yuhun_star},raw:equip};
+    }
+    return {index,kind,shikigamiId:kind==='shikigami'?String(row.hero_id):null,onmyojiId:kind==='onmyoji'?String(row.hero_id):null,name:kind==='onmyoji'?(actor?.name||`阴阳师 / 英杰 ${row.hero_id}`):(roster?.name||`未知式神 ${row.hero_id}`),occupied:true,awakening:[0,1].includes(row.awake)?row.awake:null,skills:Array.isArray(row.skills)?row.skills.map(([skillId,level])=>({id:skillId,level})):null,level:row.level,star:row.star,config,qiling:row.qiling_info||null,aiSkill:row.ai_skill,raw:row};
+  });
+  return {title:typeof d.title==='string'?d.title:'已解析的自创阵容',notes:typeof d.desc==='string'?d.desc:'',gameSceneId:d.select_stage_id,code:payload.code,members,sourceKind:'ta-local',decodeState:'decoded-local',requirementsComplete:false,warnings:['成员、技能、觉醒与配置来自本地协议解码；御魂业务枚举和战斗配置保留原始值。','文字分享码的查询需要游戏会话；本结果未进行游戏内实战验证。'],protocolVersion:d.ver??0,raw:d};
+}
+function mergeDecodedLineup(old,incoming){
+  if(!old)return incoming;
+  if(old.code!==incoming.code)throw new Error('不能合并不同阵容码');
+  return {...old,...incoming,id:old.id,title:old.title&&old.title!=='未命名阵容'?old.title:incoming.title,notes:old.notes||incoming.notes,category:old.category,dungeon:old.dungeon,dungeons:old.dungeons};
+}
 function adaptInspection(payload,roster=[]){
   if(payload?.ok!==true)throw new Error(typeof payload?.error==='string'?payload.error:'服务没有返回成功结果');const d=payload.data;
   if(!object(d)||!Array.isArray(d.entities)||!Array.isArray(d.editableTargets)||!Number.isInteger(d.slotCount)||d.slotCount<1||d.slotCount>30||!d.entities.length)throw new Error('服务响应结构无法识别，未生成阵容');
@@ -101,6 +121,7 @@ function checkPanel(p,c){
 }
 function configUnknown(c,effects){
   const list=[];if(!c)return ['缺少御魂要求'];
+  if(Array.isArray(c.protocolUncertainties))list.push(...c.protocolUncertainties);
   if(c.yuhunConfigEnabled===false)list.push('成员没有启用御魂计算');
   if(c.scope!=null&&!['all','unequipped'].includes(c.scope))list.push('未支持的库存范围');
   if(c.scope==='unequipped'||c.excludeOccupied)list.push('导出缺少穿戴归属，不能确认未占用');
@@ -176,5 +197,5 @@ function matchLineup(lineup,account,roster,effects,options={}){
   if(!roles.length)unknown.push('没有可核验的式神槽位');
   return {status:unknown.length?'unknown':'available',label:unknown.length?'需核对':'配置可组成',reasons:[...new Set(unknown)],members:results,assignment};
 }
-return {STAT_NAMES,STAT_TYPES,METRICS,normalizeCode,classifyCode,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,suitMatches,checkPanel,findBuilds,memberCandidates,matchLineup};
+return {STAT_NAMES,STAT_TYPES,METRICS,normalizeCode,classifyCode,adaptTA,mergeDecodedLineup,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,suitMatches,checkPanel,findBuilds,memberCandidates,matchLineup};
 });

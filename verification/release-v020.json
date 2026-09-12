@@ -1,0 +1,10 @@
+{
+  "version": "0.2.0",
+  "file": "Onmyoji-Lineup-Atlas-0.2.0-Windows-x64.exe",
+  "bytes": 247970189,
+  "sha256": "3e367dc06f565807b59f25cd161ddf5b618ef4cd92ca5f7081034b0ae2b80f31",
+  "signature": "NotSigned",
+  "portableSmoke": "passed",
+  "nodeTests": 69,
+  "pythonTests": 8
+}

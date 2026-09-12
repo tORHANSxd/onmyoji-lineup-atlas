@@ -1,0 +1,96 @@
+{
+  "images": 10,
+  "errors": [],
+  "files": [
+    {
+      "name": "晴明",
+      "path": "data/images/actors/seimei/art-before.png",
+      "width": 597,
+      "height": 725,
+      "source": "网易繁中官网",
+      "sha256": "775b5a66652e6e93bb064ced0bafd4ba54296d5a0e93d4fe90304211ed0937b2",
+      "fullDecode": true
+    },
+    {
+      "name": "晴明",
+      "path": "data/images/actors/seimei/portrait-before.png",
+      "width": 63,
+      "height": 65,
+      "source": "网易繁中官网",
+      "sha256": "4c65eb9143a68e19a1d3538bcc95fbb4c92954f084b903069eff763250cef8b8",
+      "fullDecode": true
+    },
+    {
+      "name": "神乐",
+      "path": "data/images/actors/kagura/art-before.png",
+      "width": 582,
+      "height": 696,
+      "source": "网易繁中官网",
+      "sha256": "4339edb323667127d7d4fd8afdca5419b4c7dc0c9e7c095047b496a2c5119062",
+      "fullDecode": true
+    },
+    {
+      "name": "神乐",
+      "path": "data/images/actors/kagura/portrait-before.png",
+      "width": 65,
+      "height": 65,
+      "source": "网易繁中官网",
+      "sha256": "e3a086a05a2bcec20fc2ee8effa2ea49b9e0c02d20f5f5ef7d0a04641373ad96",
+      "fullDecode": true
+    },
+    {
+      "name": "源博雅",
+      "path": "data/images/actors/hiromasa/art-before.png",
+      "width": 720,
+      "height": 871,
+      "source": "网易繁中官网",
+      "sha256": "e52bbb9d1b88dbb4ef7c1bc6a0bdfd85258efba964448ee3f0ba81efd75c03fb",
+      "fullDecode": true
+    },
+    {
+      "name": "源博雅",
+      "path": "data/images/actors/hiromasa/portrait-before.png",
+      "width": 62,
+      "height": 65,
+      "source": "网易繁中官网",
+      "sha256": "134418612cfe94f9f1a90e05585bfd10af42719ebe964b472bd84d09c8913092",
+      "fullDecode": true
+    },
+    {
+      "name": "八百比丘尼",
+      "path": "data/images/actors/yaobikuni/art-before.png",
+      "width": 568,
+      "height": 657,
+      "source": "网易繁中官网",
+      "sha256": "3f3aab1b3773ed4670f3b8cb0e93e3c2713ac52b14bc38c2dc12f0c1e59a8632",
+      "fullDecode": true
+    },
+    {
+      "name": "八百比丘尼",
+      "path": "data/images/actors/yaobikuni/portrait-before.png",
+      "width": 65,
+      "height": 65,
+      "source": "网易繁中官网",
+      "sha256": "f4969a25d79c8e86d458a6050ca8b4db93de85ec49999dabf9856824dff52b1f",
+      "fullDecode": true
+    },
+    {
+      "name": "源赖光",
+      "path": "data/images/actors/yorimitsu/art-before.png",
+      "width": 580,
+      "height": 580,
+      "source": "BWiki 社区百科",
+      "sha256": "f21412f953bd1a0179ba70af299f7b40592ef74e2303687897fb8f5985cb02dd",
+      "fullDecode": true
+    },
+    {
+      "name": "藤原道长",
+      "path": "data/images/actors/michinaga/art-before.png",
+      "width": 891,
+      "height": 1009,
+      "source": "BWiki 社区百科",
+      "sha256": "622d23a20ccebfe84651d1f93b8a2c2429559e8626969887010328ce358bbcf8",
+      "fullDecode": true
+    }
+  ]
+}

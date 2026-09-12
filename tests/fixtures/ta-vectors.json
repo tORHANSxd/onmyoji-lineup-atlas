@@ -1,0 +1,8772 @@
+[
+  {
+    "name": "apk_sample_v0",
+    "payload": "eJzrZGRgmjaNi8mGYdIkFtZJ3KxTU9hEGKdxcDCyczBOO8ukw6bBOJmVlXU6IyPjhEkMk5mZmWdOOu2QdIABBE475EIYQKFIBqhQdgNMaL8DVOhqfANUCIvGuz5Qoa/WmjNnzpwFFMqHaazaAFOVADO+EK6xEya0qm0mSOOU0/ZnwODsaYcFWRCG/ZW7+lLz95Wftn/JF8YiMblk8hQGdma2qQzsbKwsUxmZ2BnYpp1lbIP5koGBaTIDI9skBgaCvnTA9KXmszQgQPVTUwzIHSh+EsD00wQMP610AJmVBvTTRbWXFVf+fjntMH8LRM7+7CZdkGdO2z/YYhkhkOQ3eQoz0D9TWRjYWNlBPmNkAsacNkrMTRSZGE2Gl64sBnuJQMR9eXMDKoQ34gowPLniJziWgJ48XLInq+7n7dMO/RievN/rf986JQoUcWzMQO+xsLHCI64b1ZMxE00IeTJrAYYnLx+QhKY7vKmzRAHDk1hiEh6GiJgsNQYBZE9ObQYLnbY/5rrw1IFmodP2D8F0Pjx1InsyD+RJFrgnwyaakeHJK6tmEuHJL/dmYmRBLJ6Ea8QSk0eiZNZwGKqfdph+DJoFTz10XydS9fC0/c3fz3O6nadhepJ5zfNlu5/v2v9sa/eL9VNZ1iYWZMcXJ+YW5KTGlxmwTltWklpcomsAoQwhlBGEMoZQJhDKlI2R/RyjqYYBx2owvyAnsTK1iJMRAPMSjGg=",
+    "expected": {
+      "ver": 0,
+      "phconf": [
+        [
+          10,
+          2,
+          60,
+          0,
+          [
+            [
+              4,
+              5
+            ],
+            [
+              11,
+              5
+            ]
+          ],
+          [
+            100,
+            6,
+            20,
+            1,
+            [
+              8,
+              8,
+              1,
+              7,
+              8,
+              1
+            ]
+          ]
+        ],
+        [
+          556,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              0,
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                220.0
+              ],
+              [
+                8000.0,
+                21886.0
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                86962.6
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3395.3
+              ],
+              [
+                0.225,
+                2101.4,
+                0.326,
+                0.7829999999999999
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                6,
+                5,
+                4
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ]
+        ],
+        [
+          390,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            0,
+            0,
+            2,
+            [
+              0,
+              1,
+              6
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21671.6
+              ],
+              0,
+              [
+                30000.0,
+                88101.8
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                281.0
+              ],
+              [
+                800.0,
+                3232.2
+              ],
+              [
+                0.268,
+                2029.0,
+                0.23199999999999998,
+                0.522
+              ]
+            ],
+            [
+              [
+                3,
+                0,
+                7,
+                6
+              ],
+              [
+                4,
+                0,
+                6,
+                5,
+                7
+              ],
+              [
+                0,
+                7,
+                6,
+                1,
+                2
+              ]
+            ]
+          ]
+        ],
+        [
+          555,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                20
+              ],
+              [
+                91
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21135.6
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85709.5
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                279.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.152,
+                1014.5,
+                0.23199999999999998,
+                0.493
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                6,
+                3
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ]
+        ],
+        [
+          395,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                92
+              ],
+              [
+                52
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                20224.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                87874.0
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                276.0
+              ],
+              [
+                800.0,
+                3258.6
+              ],
+              [
+                0.152,
+                1376.8,
+                0.174,
+                0.551
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ]
+        ],
+        [
+          366,
+          6,
+          40,
+          1,
+          [
+            4,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                86
+              ],
+              [
+                54
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                21162.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85481.6
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.159,
+                1521.7,
+                0.21,
+                0.406
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ]
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "apk_sample_v0",
+      "huids": [
+        "test-0",
+        "test-1",
+        "test-2",
+        "test-3",
+        "test-4",
+        "test-5"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "star": 2,
+          "level": 60,
+          "awake": 0,
+          "skills": [
+            [
+              1004,
+              5
+            ],
+            [
+              1011,
+              5
+            ]
+          ],
+          "qiling_info": {
+            "id": 100,
+            "star": 6,
+            "lv": 20,
+            "mark_gid": 1,
+            "marks": [
+              8,
+              8,
+              1,
+              7,
+              8,
+              1
+            ]
+          },
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5561,
+              5
+            ],
+            [
+              5562,
+              5
+            ],
+            [
+              5563,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                220.0
+              ],
+              "final_atk": [
+                8000.0,
+                21886.0
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                86962.6
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3395.3
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.225,
+                "attack": 2101.4,
+                "critRate": 0.326,
+                "critPower": 0.7829999999999999
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "debuff_res",
+                "debuff_acc"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-1"
+        },
+        {
+          "hero_id": 390,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3901,
+              5
+            ],
+            [
+              3902,
+              5
+            ],
+            [
+              3903,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              0,
+              15
+            ],
+            "yuhun_star": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "criteria": 2,
+            "two_suit": [
+              "atk_per",
+              "critical_rate",
+              "max_hp_per"
+            ],
+            "suit": [],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21671.6
+              ],
+              "final_max_hp": [
+                30000.0,
+                88101.8
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                281.0
+              ],
+              "final_def": [
+                800.0,
+                3232.2
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.268,
+                "attack": 2029.0,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.522
+              }
+            },
+            "main_attr": {
+              "1": [
+                "spd",
+                "atk_per",
+                "def_per",
+                "max_hp_per"
+              ],
+              "3": [
+                "debuff_acc",
+                "atk_per",
+                "max_hp_per",
+                "debuff_res",
+                "def_per"
+              ],
+              "5": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "critical_rate",
+                "critical_pow"
+              ]
+            }
+          },
+          "uid": "test-2"
+        },
+        {
+          "hero_id": 555,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5551,
+              5
+            ],
+            [
+              5552,
+              5
+            ],
+            [
+              5553,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300020,
+                4
+              ],
+              [
+                300091,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21135.6
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85709.5
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                279.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1014.5,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.493
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "spd"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-3"
+        },
+        {
+          "hero_id": 395,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3951,
+              5
+            ],
+            [
+              3952,
+              5
+            ],
+            [
+              3953,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300092,
+                4
+              ],
+              [
+                300052,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                20224.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                87874.0
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                276.0
+              ],
+              "final_def": [
+                800.0,
+                3258.6
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1376.8,
+                "critRate": 0.174,
+                "critPower": 0.551
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-4"
+        },
+        {
+          "hero_id": 366,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3661,
+              4
+            ],
+            [
+              3662,
+              5
+            ],
+            [
+              3663,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300086,
+                4
+              ],
+              [
+                300054,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                21162.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85481.6
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.159,
+                "attack": 1521.7,
+                "critRate": 0.21,
+                "critPower": 0.406
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-5"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "extended_fields_v0",
+    "payload": "eJzrZGRgmjaNi8mGYdIkFtZJ3KxTU9hEmKcxMnEwcrBNO8ukw6bBOIWBlWESO9N0RkbGCZMYJjMzM8+cdNoh6QADCJx2yIUwgEKRDFCh7AaY0H4HqNDV+AaoEBaNd32gQl+tNWfOnDkLKJQP01i1AaYqAWZ8IVxjJ0xoVdtMkMYpp+3PgMHZ0w4LsiAM+yt39aXm7ys/bf+SL4xFYnLJ5CkM7MxsUxnY2VhZpjIysTMAPcrYhuRRBgamyQyMbJMYGAh61AHTo5rP0oAA1VtNMSCnoHhLANNbEzC8tdIBZFYa0FsX1V5WXPn75bTD/C0QOfuzm3RB/jlt/2CLZYRAkt/kKcxAL01lYWBjZQd5jpEJGH/a6PE3UWRiNBm+urIY7CsC0fflzQ2oEN7oK8Dw54qf4LgC+vNwyZ6sup+3Tzv0Y/jzfq//feuUKFD0sTEDfcjCxgqPvm4Mf8ZMNCHkz6wFGP68fEASmgDxJtMSBQx/YolPeDAi4rPUGASQ/Tm1GSx02v6Y68JTB5qFTts/BNP58GSK7M88DH+GTTQjw59XVs0kwp9f7s3EyI5Y/AnXiCU+j0TJrOEwVD/tMP0YNDueeui+TqTq4Wn7m7+f53Q7T8P0J/Oa58t2P9+1/9nW7hfrp7JsSq0oSc1LSU2JT8tMzUkpji8zYJ22rCS1uETXAEIZQigjCGUMoUwglCkbI/s5RlMNA47VYH5BTmJlahEnIwDnRJFN",
+    "expected": {
+      "ver": 0,
+      "phconf": [
+        [
+          10,
+          2,
+          60,
+          0,
+          [
+            [
+              4,
+              5
+            ],
+            [
+              11,
+              5
+            ]
+          ],
+          [
+            100,
+            6,
+            20,
+            3,
+            [
+              1,
+              2,
+              8,
+              1,
+              8,
+              6
+            ]
+          ]
+        ],
+        [
+          556,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              0,
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                220.0
+              ],
+              [
+                8000.0,
+                21886.0
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                86962.6
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3395.3
+              ],
+              [
+                0.225,
+                2101.4,
+                0.326,
+                0.7829999999999999
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                6,
+                5,
+                4
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ]
+        ],
+        [
+          390,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            0,
+            0,
+            2,
+            [
+              0,
+              1,
+              6
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21671.6
+              ],
+              0,
+              [
+                30000.0,
+                88101.8
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                281.0
+              ],
+              [
+                800.0,
+                3232.2
+              ],
+              [
+                0.268,
+                2029.0,
+                0.23199999999999998,
+                0.522
+              ]
+            ],
+            [
+              [
+                3,
+                0,
+                7,
+                6
+              ],
+              [
+                4,
+                0,
+                6,
+                5,
+                7
+              ],
+              [
+                0,
+                7,
+                6,
+                1,
+                2
+              ]
+            ]
+          ]
+        ],
+        [
+          555,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                20
+              ],
+              [
+                91
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21135.6
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85709.5
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                279.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.152,
+                1014.5,
+                0.23199999999999998,
+                0.493
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                6,
+                3
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ]
+        ],
+        [
+          395,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                92
+              ],
+              [
+                52
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                20224.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                87874.0
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                276.0
+              ],
+              [
+                800.0,
+                3258.6
+              ],
+              [
+                0.152,
+                1376.8,
+                0.174,
+                0.551
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ]
+        ],
+        [
+          366,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                86
+              ],
+              [
+                54
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                21162.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85481.6
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.159,
+                1521.7,
+                0.21,
+                0.406
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ]
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "extended_fields_v0",
+      "huids": [
+        "test-0",
+        "test-1",
+        "test-2",
+        "test-3",
+        "test-4",
+        "test-5"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "star": 2,
+          "level": 60,
+          "awake": 0,
+          "skills": [
+            [
+              1004,
+              5
+            ],
+            [
+              1011,
+              5
+            ]
+          ],
+          "qiling_info": {
+            "id": 100,
+            "star": 6,
+            "lv": 20,
+            "mark_gid": 3,
+            "marks": [
+              17,
+              18,
+              24,
+              17,
+              24,
+              22
+            ]
+          },
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5562,
+              5
+            ],
+            [
+              5567,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                220.0
+              ],
+              "final_atk": [
+                8000.0,
+                21886.0
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                86962.6
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3395.3
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.225,
+                "attack": 2101.4,
+                "critRate": 0.326,
+                "critPower": 0.7829999999999999
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "debuff_res",
+                "debuff_acc"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-1"
+        },
+        {
+          "hero_id": 390,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3902,
+              5
+            ],
+            [
+              3907,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              0,
+              15
+            ],
+            "yuhun_star": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "criteria": 2,
+            "two_suit": [
+              "atk_per",
+              "critical_rate",
+              "max_hp_per"
+            ],
+            "suit": [],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21671.6
+              ],
+              "final_max_hp": [
+                30000.0,
+                88101.8
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                281.0
+              ],
+              "final_def": [
+                800.0,
+                3232.2
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.268,
+                "attack": 2029.0,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.522
+              }
+            },
+            "main_attr": {
+              "1": [
+                "spd",
+                "atk_per",
+                "def_per",
+                "max_hp_per"
+              ],
+              "3": [
+                "debuff_acc",
+                "atk_per",
+                "max_hp_per",
+                "debuff_res",
+                "def_per"
+              ],
+              "5": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "critical_rate",
+                "critical_pow"
+              ]
+            }
+          },
+          "uid": "test-2"
+        },
+        {
+          "hero_id": 555,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5552,
+              5
+            ],
+            [
+              5557,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300020,
+                4
+              ],
+              [
+                300091,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21135.6
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85709.5
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                279.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1014.5,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.493
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "spd"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-3"
+        },
+        {
+          "hero_id": 395,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3952,
+              5
+            ],
+            [
+              3957,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300092,
+                4
+              ],
+              [
+                300052,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                20224.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                87874.0
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                276.0
+              ],
+              "final_def": [
+                800.0,
+                3258.6
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1376.8,
+                "critRate": 0.174,
+                "critPower": 0.551
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-4"
+        },
+        {
+          "hero_id": 366,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3662,
+              5
+            ],
+            [
+              3667,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300086,
+                4
+              ],
+              [
+                300054,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                21162.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85481.6
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.159,
+                "attack": 1521.7,
+                "critRate": 0.21,
+                "critPower": 0.406
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-5"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "null_fields_v0",
+    "payload": "eJzrZGRgmjSN6wAITDvLpANmMK95vmz38137n23tfrF+Ksu6vNKcnPi0zNSclOL4MgPWSctKUotLdA0glCEbI/s5RlMNA47VYH5BTmJlahEnIwDdEyeA",
+    "expected": {
+      "ver": 0,
+      "phconf": [
+        [
+          10,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          556,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "null_fields_v0",
+      "huids": [
+        "test-0",
+        "test-1"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "uid": "test-1"
+        }
+      ]
+    },
+    "yys_ids": [
+      10
+    ]
+  },
+  {
+    "name": "apk_sample_v1",
+    "payload": "eJzrZGRkmjaNi8mGYdIkFtZJ3KxTU9hEGKdxcDCyczDOOMukw6bBOJmVlXU6IyPjhEkMk5mZmWdOOu2QdIABBE475EIYQKFIBqhQdgNMaL8DVOhqfANUCIvGuz5Qoa/WmjNnzpwFFMqHaazaAFOVADO+EK6xEya0qm0mSOOU0/ZnwODsaYcFWRCG/ZW7+lLz95Wftn/JF8YiMblk8hQGdma2qQzsbKwsUxmZ2BnYDhyYcZaxDeZPBgamyQyMbJMYGAj60wHTn5rP0oAA1VdNMSCXoPhKANNXEzB8tdIBZFYa0FcX1V5WXPn75bTD/C0QOfuzm3RB3jlt/2CLZYRAkt/kKcxAH01lYWBjZQf5jZEJ5CsmbZTYmygyMZoMT11ZDPYUgcj78uYGVAhv5BVgeHPFT3BMAb15uGRPVt3P26cd+jG8eb/X/751ShQo8tiYgR5kYWNFirxuVG/GTDQh5M2sBRjevHxAEpr68KbREgUMb2KJTXgoImKz1BgEkL05tRksdNr+mOvCUweahU7bPwTT+fA0iurNPJA3WeDeDJtoRoY3r6yaSYQ3v9ybiZEVsXgTrhFLbB6JklnDYah+2mH6MWhWPPXQfZ1I1cPT9jd/P8/pdp6GzZvMa54v2/181/5nW7tfrJ/KsjaxIDu+ODG3ICc1vsyQddqyktTiEl0DCGUIoYwglDGEMoFQpmyM7OcYTTUMOFaD+QU5iZWpRZyMALVDk/Q=",
+    "expected": {
+      "ver": 1,
+      "phconf": [
+        [
+          10,
+          2,
+          60,
+          0,
+          [
+            [
+              4,
+              5
+            ],
+            [
+              11,
+              5
+            ]
+          ],
+          [
+            100,
+            6,
+            20,
+            1,
+            [
+              8,
+              8,
+              1,
+              7,
+              8,
+              1
+            ]
+          ]
+        ],
+        [
+          556,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              0,
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                220.0
+              ],
+              [
+                8000.0,
+                21886.0
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                86962.6
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3395.3
+              ],
+              [
+                0.225,
+                2101.4,
+                0.326,
+                0.7829999999999999
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                6,
+                5,
+                4
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null
+        ],
+        [
+          390,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            0,
+            0,
+            2,
+            [
+              0,
+              1,
+              6
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21671.6
+              ],
+              0,
+              [
+                30000.0,
+                88101.8
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                281.0
+              ],
+              [
+                800.0,
+                3232.2
+              ],
+              [
+                0.268,
+                2029.0,
+                0.23199999999999998,
+                0.522
+              ]
+            ],
+            [
+              [
+                3,
+                0,
+                7,
+                6
+              ],
+              [
+                4,
+                0,
+                6,
+                5,
+                7
+              ],
+              [
+                0,
+                7,
+                6,
+                1,
+                2
+              ]
+            ]
+          ],
+          null,
+          null
+        ],
+        [
+          555,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                20
+              ],
+              [
+                91
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21135.6
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85709.5
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                279.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.152,
+                1014.5,
+                0.23199999999999998,
+                0.493
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                6,
+                3
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null
+        ],
+        [
+          395,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                92
+              ],
+              [
+                52
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                20224.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                87874.0
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                276.0
+              ],
+              [
+                800.0,
+                3258.6
+              ],
+              [
+                0.152,
+                1376.8,
+                0.174,
+                0.551
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null
+        ],
+        [
+          366,
+          6,
+          40,
+          1,
+          [
+            4,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                86
+              ],
+              [
+                54
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                21162.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85481.6
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.159,
+                1521.7,
+                0.21,
+                0.406
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "apk_sample_v1",
+      "huids": [
+        "test-0",
+        "test-1",
+        "test-2",
+        "test-3",
+        "test-4",
+        "test-5"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "star": 2,
+          "level": 60,
+          "awake": 0,
+          "skills": [
+            [
+              1004,
+              5
+            ],
+            [
+              1011,
+              5
+            ]
+          ],
+          "qiling_info": {
+            "id": 100,
+            "star": 6,
+            "lv": 20,
+            "mark_gid": 1,
+            "marks": [
+              8,
+              8,
+              1,
+              7,
+              8,
+              1
+            ]
+          },
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5561,
+              5
+            ],
+            [
+              5562,
+              5
+            ],
+            [
+              5563,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                220.0
+              ],
+              "final_atk": [
+                8000.0,
+                21886.0
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                86962.6
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3395.3
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.225,
+                "attack": 2101.4,
+                "critRate": 0.326,
+                "critPower": 0.7829999999999999
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "debuff_res",
+                "debuff_acc"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-1"
+        },
+        {
+          "hero_id": 390,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3901,
+              5
+            ],
+            [
+              3902,
+              5
+            ],
+            [
+              3903,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              0,
+              15
+            ],
+            "yuhun_star": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "criteria": 2,
+            "two_suit": [
+              "atk_per",
+              "critical_rate",
+              "max_hp_per"
+            ],
+            "suit": [],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21671.6
+              ],
+              "final_max_hp": [
+                30000.0,
+                88101.8
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                281.0
+              ],
+              "final_def": [
+                800.0,
+                3232.2
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.268,
+                "attack": 2029.0,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.522
+              }
+            },
+            "main_attr": {
+              "1": [
+                "spd",
+                "atk_per",
+                "def_per",
+                "max_hp_per"
+              ],
+              "3": [
+                "debuff_acc",
+                "atk_per",
+                "max_hp_per",
+                "debuff_res",
+                "def_per"
+              ],
+              "5": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "critical_rate",
+                "critical_pow"
+              ]
+            }
+          },
+          "uid": "test-2"
+        },
+        {
+          "hero_id": 555,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5551,
+              5
+            ],
+            [
+              5552,
+              5
+            ],
+            [
+              5553,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300020,
+                4
+              ],
+              [
+                300091,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21135.6
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85709.5
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                279.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1014.5,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.493
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "spd"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-3"
+        },
+        {
+          "hero_id": 395,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3951,
+              5
+            ],
+            [
+              3952,
+              5
+            ],
+            [
+              3953,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300092,
+                4
+              ],
+              [
+                300052,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                20224.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                87874.0
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                276.0
+              ],
+              "final_def": [
+                800.0,
+                3258.6
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1376.8,
+                "critRate": 0.174,
+                "critPower": 0.551
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-4"
+        },
+        {
+          "hero_id": 366,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3661,
+              4
+            ],
+            [
+              3662,
+              5
+            ],
+            [
+              3663,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300086,
+                4
+              ],
+              [
+                300054,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                21162.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85481.6
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.159,
+                "attack": 1521.7,
+                "critRate": 0.21,
+                "critPower": 0.406
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-5"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "extended_fields_v1",
+    "payload": "eJzrZGRkmjaNi8mGYdIkFtZJ3KxTU9hEmKcxMnEwcrDNOMukw6bBOIWBlWESO9N0RkbGCZMYJjMzM8+cdNoh6QADCJx2yIUwgEKRDFCh7AaY0H4HqNDV+AaoEBaNd32gQl+tNWfOnDkLKJQP01i1AaYqAWZ8IVxjJ0xoVdtMkMYpp+3PgMHZ0w4LsiAM+yt39aXm7ys/bf+SL4xFYnLJ5CkM7MxsUxnY2VhZpjIysTOwMU5mY2SacZaxDcm3DAxMkxkY2SYxMBD0rQOmbzWfpQEBqt+aYkDuQfGbAKbfJmD4baUDyKw0oN8uqr2suPL3y2mH+VsgcvZnN+mCPHXa/sEWywiBJL/JU5iB/prKwsDGyg7yISMT1G9M2ugxOVFkYjQZXruyGOw1AhH55c0NqBDeiCzA8OyKn+BYA3r2cMmerLqft0879GN49n6v/33rlChQRLIxA73JwsaKGpHdGJ6NmWhCyLNZCzA8e/mAJDQ94k21JQoYnsUSs/CwRMRsqTEIIHt2ajNY6LT9MdeFpw40C522fwim8+GpFsOzeRieDZtoRoZnr6yaSYRnv9ybiZFFsXgWrhFLzB6JklnDYah+2mH6MWgWPfXQfZ1I1cPT9jd/P8/pdp6Gw7PMa54v2/181/5nW7tfrJ/Ksim1oiQ1LyU1JT4tMzUnpTi+zJB12rKS1OISXQMIZQihjCCUMYQygVCmbIzs5xhNNQw4VoP5BTmJlalFnIwA6lKUag==",
+    "expected": {
+      "ver": 1,
+      "phconf": [
+        [
+          10,
+          2,
+          60,
+          0,
+          [
+            [
+              4,
+              5
+            ],
+            [
+              11,
+              5
+            ]
+          ],
+          [
+            100,
+            6,
+            20,
+            3,
+            [
+              1,
+              2,
+              8,
+              1,
+              8,
+              6
+            ]
+          ]
+        ],
+        [
+          556,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              0,
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                220.0
+              ],
+              [
+                8000.0,
+                21886.0
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                86962.6
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3395.3
+              ],
+              [
+                0.225,
+                2101.4,
+                0.326,
+                0.7829999999999999
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                6,
+                5,
+                4
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ]
+        ],
+        [
+          390,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            0,
+            0,
+            2,
+            [
+              0,
+              1,
+              6
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21671.6
+              ],
+              0,
+              [
+                30000.0,
+                88101.8
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                281.0
+              ],
+              [
+                800.0,
+                3232.2
+              ],
+              [
+                0.268,
+                2029.0,
+                0.23199999999999998,
+                0.522
+              ]
+            ],
+            [
+              [
+                3,
+                0,
+                7,
+                6
+              ],
+              [
+                4,
+                0,
+                6,
+                5,
+                7
+              ],
+              [
+                0,
+                7,
+                6,
+                1,
+                2
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ]
+        ],
+        [
+          555,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                20
+              ],
+              [
+                91
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21135.6
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85709.5
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                279.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.152,
+                1014.5,
+                0.23199999999999998,
+                0.493
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                6,
+                3
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ]
+        ],
+        [
+          395,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                92
+              ],
+              [
+                52
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                20224.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                87874.0
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                276.0
+              ],
+              [
+                800.0,
+                3258.6
+              ],
+              [
+                0.152,
+                1376.8,
+                0.174,
+                0.551
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ]
+        ],
+        [
+          366,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                86
+              ],
+              [
+                54
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                21162.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85481.6
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.159,
+                1521.7,
+                0.21,
+                0.406
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ]
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "extended_fields_v1",
+      "huids": [
+        "test-0",
+        "test-1",
+        "test-2",
+        "test-3",
+        "test-4",
+        "test-5"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "star": 2,
+          "level": 60,
+          "awake": 0,
+          "skills": [
+            [
+              1004,
+              5
+            ],
+            [
+              1011,
+              5
+            ]
+          ],
+          "qiling_info": {
+            "id": 100,
+            "star": 6,
+            "lv": 20,
+            "mark_gid": 3,
+            "marks": [
+              17,
+              18,
+              24,
+              17,
+              24,
+              22
+            ]
+          },
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5562,
+              5
+            ],
+            [
+              5567,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                220.0
+              ],
+              "final_atk": [
+                8000.0,
+                21886.0
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                86962.6
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3395.3
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.225,
+                "attack": 2101.4,
+                "critRate": 0.326,
+                "critPower": 0.7829999999999999
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "debuff_res",
+                "debuff_acc"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "uid": "test-1"
+        },
+        {
+          "hero_id": 390,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3902,
+              5
+            ],
+            [
+              3907,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              0,
+              15
+            ],
+            "yuhun_star": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "criteria": 2,
+            "two_suit": [
+              "atk_per",
+              "critical_rate",
+              "max_hp_per"
+            ],
+            "suit": [],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21671.6
+              ],
+              "final_max_hp": [
+                30000.0,
+                88101.8
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                281.0
+              ],
+              "final_def": [
+                800.0,
+                3232.2
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.268,
+                "attack": 2029.0,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.522
+              }
+            },
+            "main_attr": {
+              "1": [
+                "spd",
+                "atk_per",
+                "def_per",
+                "max_hp_per"
+              ],
+              "3": [
+                "debuff_acc",
+                "atk_per",
+                "max_hp_per",
+                "debuff_res",
+                "def_per"
+              ],
+              "5": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "critical_rate",
+                "critical_pow"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "uid": "test-2"
+        },
+        {
+          "hero_id": 555,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5552,
+              5
+            ],
+            [
+              5557,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300020,
+                4
+              ],
+              [
+                300091,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21135.6
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85709.5
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                279.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1014.5,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.493
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "spd"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "uid": "test-3"
+        },
+        {
+          "hero_id": 395,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3952,
+              5
+            ],
+            [
+              3957,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300092,
+                4
+              ],
+              [
+                300052,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                20224.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                87874.0
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                276.0
+              ],
+              "final_def": [
+                800.0,
+                3258.6
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1376.8,
+                "critRate": 0.174,
+                "critPower": 0.551
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "uid": "test-4"
+        },
+        {
+          "hero_id": 366,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3662,
+              5
+            ],
+            [
+              3667,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300086,
+                4
+              ],
+              [
+                300054,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                21162.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85481.6
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.159,
+                "attack": 1521.7,
+                "critRate": 0.21,
+                "critPower": 0.406
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "uid": "test-5"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "null_fields_v1",
+    "payload": "eJzrZGRkmjSN6wAIzDjLpHMAApjXPF+2+/mu/c+2dr9YP5VlXV5pTk58WmZqTkpxfJkh66RlJanFJboGEMqQjZH9HKOphgHHajC/ICexMrWIkxEAXaQpBA==",
+    "expected": {
+      "ver": 1,
+      "phconf": [
+        [
+          10,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          556,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "null_fields_v1",
+      "huids": [
+        "test-0",
+        "test-1"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "uid": "test-1"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "apk_sample_v2",
+    "payload": "eJzrZGRimjadi8mGYdIkFtZJ3KxTU9hEGKdxcDCyczAemHmWSYdNg3EyKyvrdEZGxgmTGCYzMzPPnHTaIekAAwicdsiFMIBCkQxQoewGmNB+B6jQ1fgGqBAWjXd9oEJfrTVnzpw5CyiUD9NYtQGmKgFmfCFcYydMaFXbTJDGKaftz4DB2dMOC7IgDPsrd/Wl5u8rP23/ki+MRWJyyeQpDOzMbFMZ2NlYWaYyMrEzsB04APQoYxvMowwMTJMZGNkmMTAQ9KgDpkc1n6UBAaq3mmJATkHxlgCmtyZgeGulA8isNKC3Lqq9rLjy98tph/lbIHL2Zzfpgvxz2v7BFssIgSS/yVOYgV6aysLAxsoO8hwjE9hbTNoo8TdRZGI0Gb66shjsKwLR9+XNDagQ3ugrwPDnip/guAL683DJnqy6n7dPO/Rj+PN+r/9965QoUPSxMQN9yMLGihx93aj+jJloQsifWQsw/Hn5gCQ0AeJNpiUKGP7EEp/wYETEZ6kxCCD7c2ozWOi0/THXhacONAudtn8IpvPhyRTNn3kgf7LA/Rk20YwMf15ZNZMIf365NxMjO2LxJ1wjlvg8EiWzhsNQ/bTD9GPQ7Hjqofs6kaqHp+1v/n6e0+08Das/mdc8X7b7+a79z7Z2v1g/lWVtYkF2fHFibkFOanyZEeu0ZSWpxSW6BhDKEEIZQShjCGUCoUzZGNnPMZpqGHCsBvMLchIrU4s4GQHizph8",
+    "expected": {
+      "ver": 2,
+      "phconf": [
+        [
+          10,
+          2,
+          60,
+          0,
+          [
+            [
+              4,
+              5
+            ],
+            [
+              11,
+              5
+            ]
+          ],
+          [
+            100,
+            6,
+            20,
+            1,
+            [
+              8,
+              8,
+              1,
+              7,
+              8,
+              1
+            ]
+          ],
+          null
+        ],
+        [
+          556,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              0,
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                220.0
+              ],
+              [
+                8000.0,
+                21886.0
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                86962.6
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3395.3
+              ],
+              [
+                0.225,
+                2101.4,
+                0.326,
+                0.7829999999999999
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                6,
+                5,
+                4
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null,
+          null
+        ],
+        [
+          390,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            0,
+            0,
+            2,
+            [
+              0,
+              1,
+              6
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21671.6
+              ],
+              0,
+              [
+                30000.0,
+                88101.8
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                281.0
+              ],
+              [
+                800.0,
+                3232.2
+              ],
+              [
+                0.268,
+                2029.0,
+                0.23199999999999998,
+                0.522
+              ]
+            ],
+            [
+              [
+                3,
+                0,
+                7,
+                6
+              ],
+              [
+                4,
+                0,
+                6,
+                5,
+                7
+              ],
+              [
+                0,
+                7,
+                6,
+                1,
+                2
+              ]
+            ]
+          ],
+          null,
+          null,
+          null
+        ],
+        [
+          555,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                20
+              ],
+              [
+                91
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21135.6
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85709.5
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                279.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.152,
+                1014.5,
+                0.23199999999999998,
+                0.493
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                6,
+                3
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null,
+          null
+        ],
+        [
+          395,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                92
+              ],
+              [
+                52
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                20224.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                87874.0
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                276.0
+              ],
+              [
+                800.0,
+                3258.6
+              ],
+              [
+                0.152,
+                1376.8,
+                0.174,
+                0.551
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null,
+          null
+        ],
+        [
+          366,
+          6,
+          40,
+          1,
+          [
+            4,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                86
+              ],
+              [
+                54
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                21162.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85481.6
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.159,
+                1521.7,
+                0.21,
+                0.406
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null,
+          null
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "apk_sample_v2",
+      "huids": [
+        "test-0",
+        "test-1",
+        "test-2",
+        "test-3",
+        "test-4",
+        "test-5"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "star": 2,
+          "level": 60,
+          "awake": 0,
+          "skills": [
+            [
+              1004,
+              5
+            ],
+            [
+              1011,
+              5
+            ]
+          ],
+          "qiling_info": {
+            "id": 100,
+            "star": 6,
+            "lv": 20,
+            "mark_gid": 1,
+            "marks": [
+              8,
+              8,
+              1,
+              7,
+              8,
+              1
+            ]
+          },
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5561,
+              5
+            ],
+            [
+              5562,
+              5
+            ],
+            [
+              5563,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                220.0
+              ],
+              "final_atk": [
+                8000.0,
+                21886.0
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                86962.6
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3395.3
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.225,
+                "attack": 2101.4,
+                "critRate": 0.326,
+                "critPower": 0.7829999999999999
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "debuff_res",
+                "debuff_acc"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-1"
+        },
+        {
+          "hero_id": 390,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3901,
+              5
+            ],
+            [
+              3902,
+              5
+            ],
+            [
+              3903,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              0,
+              15
+            ],
+            "yuhun_star": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "criteria": 2,
+            "two_suit": [
+              "atk_per",
+              "critical_rate",
+              "max_hp_per"
+            ],
+            "suit": [],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21671.6
+              ],
+              "final_max_hp": [
+                30000.0,
+                88101.8
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                281.0
+              ],
+              "final_def": [
+                800.0,
+                3232.2
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.268,
+                "attack": 2029.0,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.522
+              }
+            },
+            "main_attr": {
+              "1": [
+                "spd",
+                "atk_per",
+                "def_per",
+                "max_hp_per"
+              ],
+              "3": [
+                "debuff_acc",
+                "atk_per",
+                "max_hp_per",
+                "debuff_res",
+                "def_per"
+              ],
+              "5": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "critical_rate",
+                "critical_pow"
+              ]
+            }
+          },
+          "uid": "test-2"
+        },
+        {
+          "hero_id": 555,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5551,
+              5
+            ],
+            [
+              5552,
+              5
+            ],
+            [
+              5553,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300020,
+                4
+              ],
+              [
+                300091,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21135.6
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85709.5
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                279.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1014.5,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.493
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "spd"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-3"
+        },
+        {
+          "hero_id": 395,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3951,
+              5
+            ],
+            [
+              3952,
+              5
+            ],
+            [
+              3953,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300092,
+                4
+              ],
+              [
+                300052,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                20224.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                87874.0
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                276.0
+              ],
+              "final_def": [
+                800.0,
+                3258.6
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1376.8,
+                "critRate": 0.174,
+                "critPower": 0.551
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-4"
+        },
+        {
+          "hero_id": 366,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3661,
+              4
+            ],
+            [
+              3662,
+              5
+            ],
+            [
+              3663,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300086,
+                4
+              ],
+              [
+                300054,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                21162.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85481.6
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.159,
+                "attack": 1521.7,
+                "critRate": 0.21,
+                "critPower": 0.406
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-5"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "extended_fields_v2",
+    "payload": "eJzrZGRimjadi8mGYdIkFtZJ3KxTU9hEmKcxMnEwcrCdZf488yyTDpsG4xQGVoZJ7EzTGRkZJ0ximMzMzDxz0mmHpAMMIHDaIRfCAApFMkCFshtgQvsdoEJX4xugQlg03vWBCn211pw5c+YsoFA+TGPVBpiqBJjxhXCNnTChVW0zQRqnnLY/AwZnTzssyIIw7K/c1Zeav6/8tP1LvjAWicklk6cwsDOzTWVgZ2NlmcrIxM7AxjiZjZHprOjumWcZ25A8zMDANJmBkW0SAwNBDztgeljzWRoQoHqvKQbkJBTvCWB6bwKG91Y6gMxKA3rvotrLiit/v5x2mL8FImd/dpMuyF+n7R9ssYwQSPKbPIUZ6LWpLAxsrOwgTzIyQbzHbw+MT230+JwoMjGaDN9dWQz2HYHo/PLmBlQIb3QWYPh3xU9w3AH9e7hkT1bdz9unHfox/Hu/1/++dUoUKDrZmIE+ZWFjRYnOjcDo7Mbwb8xEE0L+zVqA4d/LByShCRNv8i1RwPAvlviFBycifkuNQQDZv1ObwUKn7Y+5Ljx1oFnotP1DMJ0PT75o/uUvBPo3D8O/YRPNyPDvlVUzifDvl3szMbIrFv/CNWKJ3yNRMms4DNVPO0w/Bs2upx66rxOpenja/ubv5zndztNw+ZfPn3nN82W7n+/a/2xr94v1U1k2pVaUpOalpKbEp2Wm5qQUx5cZsU5bVpJaXKJrAKEMIZQRhDKGUCYQypSNkf0co6mGAcdqML8gJ7EytYiTEQCWXpz3",
+    "expected": {
+      "ver": 2,
+      "phconf": [
+        [
+          10,
+          2,
+          60,
+          0,
+          [
+            [
+              4,
+              5
+            ],
+            [
+              11,
+              5
+            ]
+          ],
+          [
+            100,
+            6,
+            20,
+            3,
+            [
+              1,
+              2,
+              8,
+              1,
+              8,
+              6
+            ]
+          ],
+          1011
+        ],
+        [
+          556,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              0,
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                220.0
+              ],
+              [
+                8000.0,
+                21886.0
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                86962.6
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3395.3
+              ],
+              [
+                0.225,
+                2101.4,
+                0.326,
+                0.7829999999999999
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                6,
+                5,
+                4
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          5563
+        ],
+        [
+          390,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            0,
+            0,
+            2,
+            [
+              0,
+              1,
+              6
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21671.6
+              ],
+              0,
+              [
+                30000.0,
+                88101.8
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                281.0
+              ],
+              [
+                800.0,
+                3232.2
+              ],
+              [
+                0.268,
+                2029.0,
+                0.23199999999999998,
+                0.522
+              ]
+            ],
+            [
+              [
+                3,
+                0,
+                7,
+                6
+              ],
+              [
+                4,
+                0,
+                6,
+                5,
+                7
+              ],
+              [
+                0,
+                7,
+                6,
+                1,
+                2
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          3903
+        ],
+        [
+          555,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                20
+              ],
+              [
+                91
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21135.6
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85709.5
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                279.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.152,
+                1014.5,
+                0.23199999999999998,
+                0.493
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                6,
+                3
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          5553
+        ],
+        [
+          395,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                92
+              ],
+              [
+                52
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                20224.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                87874.0
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                276.0
+              ],
+              [
+                800.0,
+                3258.6
+              ],
+              [
+                0.152,
+                1376.8,
+                0.174,
+                0.551
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          3953
+        ],
+        [
+          366,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                86
+              ],
+              [
+                54
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                21162.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85481.6
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.159,
+                1521.7,
+                0.21,
+                0.406
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          3663
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "extended_fields_v2",
+      "huids": [
+        "test-0",
+        "test-1",
+        "test-2",
+        "test-3",
+        "test-4",
+        "test-5"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "star": 2,
+          "level": 60,
+          "awake": 0,
+          "skills": [
+            [
+              1004,
+              5
+            ],
+            [
+              1011,
+              5
+            ]
+          ],
+          "qiling_info": {
+            "id": 100,
+            "star": 6,
+            "lv": 20,
+            "mark_gid": 3,
+            "marks": [
+              17,
+              18,
+              24,
+              17,
+              24,
+              22
+            ]
+          },
+          "ai_skill": 1011,
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5562,
+              5
+            ],
+            [
+              5567,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                220.0
+              ],
+              "final_atk": [
+                8000.0,
+                21886.0
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                86962.6
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3395.3
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.225,
+                "attack": 2101.4,
+                "critRate": 0.326,
+                "critPower": 0.7829999999999999
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "debuff_res",
+                "debuff_acc"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 5563,
+          "uid": "test-1"
+        },
+        {
+          "hero_id": 390,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3902,
+              5
+            ],
+            [
+              3907,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              0,
+              15
+            ],
+            "yuhun_star": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "criteria": 2,
+            "two_suit": [
+              "atk_per",
+              "critical_rate",
+              "max_hp_per"
+            ],
+            "suit": [],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21671.6
+              ],
+              "final_max_hp": [
+                30000.0,
+                88101.8
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                281.0
+              ],
+              "final_def": [
+                800.0,
+                3232.2
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.268,
+                "attack": 2029.0,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.522
+              }
+            },
+            "main_attr": {
+              "1": [
+                "spd",
+                "atk_per",
+                "def_per",
+                "max_hp_per"
+              ],
+              "3": [
+                "debuff_acc",
+                "atk_per",
+                "max_hp_per",
+                "debuff_res",
+                "def_per"
+              ],
+              "5": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "critical_rate",
+                "critical_pow"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 3903,
+          "uid": "test-2"
+        },
+        {
+          "hero_id": 555,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5552,
+              5
+            ],
+            [
+              5557,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300020,
+                4
+              ],
+              [
+                300091,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21135.6
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85709.5
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                279.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1014.5,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.493
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "spd"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 5553,
+          "uid": "test-3"
+        },
+        {
+          "hero_id": 395,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3952,
+              5
+            ],
+            [
+              3957,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300092,
+                4
+              ],
+              [
+                300052,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                20224.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                87874.0
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                276.0
+              ],
+              "final_def": [
+                800.0,
+                3258.6
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1376.8,
+                "critRate": 0.174,
+                "critPower": 0.551
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 3953,
+          "uid": "test-4"
+        },
+        {
+          "hero_id": 366,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3662,
+              5
+            ],
+            [
+              3667,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300086,
+                4
+              ],
+              [
+                300054,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                21162.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85481.6
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.159,
+                "attack": 1521.7,
+                "critRate": 0.21,
+                "critPower": 0.406
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 3663,
+          "uid": "test-5"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "null_fields_v2",
+    "payload": "eJzrZGRimjSd6wAYzDzLpHMACpjXPF+2+/mu/c+2dr9YP5VlXV5pTk58WmZqTkpxfJkR66RlJanFJboGEMqQjZH9HKOphgHHajC/ICexMrWIkxEA4qUqiA==",
+    "expected": {
+      "ver": 2,
+      "phconf": [
+        [
+          10,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          556,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "null_fields_v2",
+      "huids": [
+        "test-0",
+        "test-1"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "uid": "test-1"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "apk_sample_v3",
+    "payload": "eJzrZGRmmjadi8mGYdIkFtZJ3KxTU9hEGKdxcDCyczAemHWWSYdNg3EyKyvrdEZGxgmTGCYzMzPPnHTaIekAAwicdsiFMIBCkQxQoewGmNB+B6jQ1fgGqBAWjXd9oEJfrTVnzpw5CyiUD9NYtQGmKgFmfCFcYydMaFXbTJDGKaftz4DB2dMOC7IgDPsrd/Wl5u8rP23/ki+MRWJyyeQpDOzMbFMZ2NlYWaYyMrEzsB0AgllnGdtgPmVgYJrMwMg2iYGBoE8dMH2q+SwNCFD91RQDcguKvwQw/TUBw18rHUBmpQH9dVHtZcWVv19OO8zfApGzP7tJF+Sh0/YPtlhGCCT5TZ7CDPTTVBYGNlZ2kO8YmSD+YtJGicGJIhOjyfDWlcVgbxGIwC9vbkCF8EZgAYZHV/wExxbQo4dL9mTV/bx92qEfw6P3e/3vW6dEgSKQjRnoRRY2VpQI7Eb1aMxEE0IezVqA4dHLByShaRBvSi1RwPAolhiFhyMiRkuNQQDZo1ObwUKn7Y+5Ljx1oFnotP1DMJ0PT6noHs0DeZQF7tGwiWZkePTKqplEePTLvZkYWRKLR+EascTokSiZNRyG6qcdph+DZslTD93XiVQ9PG1/8/fznG7nadg9yrzm+bLdz3ftf7a1+8X6qSxrEwuy44sTcwtyUuPLjFmnLStJLS7RNYBQhhDKCEIZQygTCGXKxsh+jtFUw4BjNZhfkJNYmVrEyQgAeYycQw==",
+    "expected": {
+      "ver": 3,
+      "phconf": [
+        [
+          10,
+          2,
+          60,
+          0,
+          [
+            [
+              4,
+              5
+            ],
+            [
+              11,
+              5
+            ]
+          ],
+          [
+            100,
+            6,
+            20,
+            1,
+            [
+              8,
+              8,
+              1,
+              7,
+              8,
+              1
+            ]
+          ],
+          null
+        ],
+        [
+          556,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              0,
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                220.0
+              ],
+              [
+                8000.0,
+                21886.0
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                86962.6
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3395.3
+              ],
+              [
+                0.225,
+                2101.4,
+                0.326,
+                0.7829999999999999
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                6,
+                5,
+                4
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          390,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            0,
+            0,
+            2,
+            [
+              0,
+              1,
+              6
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21671.6
+              ],
+              0,
+              [
+                30000.0,
+                88101.8
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                281.0
+              ],
+              [
+                800.0,
+                3232.2
+              ],
+              [
+                0.268,
+                2029.0,
+                0.23199999999999998,
+                0.522
+              ]
+            ],
+            [
+              [
+                3,
+                0,
+                7,
+                6
+              ],
+              [
+                4,
+                0,
+                6,
+                5,
+                7
+              ],
+              [
+                0,
+                7,
+                6,
+                1,
+                2
+              ]
+            ]
+          ],
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          555,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                20
+              ],
+              [
+                91
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21135.6
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85709.5
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                279.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.152,
+                1014.5,
+                0.23199999999999998,
+                0.493
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                6,
+                3
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          395,
+          6,
+          40,
+          1,
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                92
+              ],
+              [
+                52
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                20224.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                87874.0
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                276.0
+              ],
+              [
+                800.0,
+                3258.6
+              ],
+              [
+                0.152,
+                1376.8,
+                0.174,
+                0.551
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          366,
+          6,
+          40,
+          1,
+          [
+            4,
+            5,
+            5
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                86
+              ],
+              [
+                54
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                21162.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85481.6
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.159,
+                1521.7,
+                0.21,
+                0.406
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "apk_sample_v3",
+      "huids": [
+        "test-0",
+        "test-1",
+        "test-2",
+        "test-3",
+        "test-4",
+        "test-5"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "star": 2,
+          "level": 60,
+          "awake": 0,
+          "skills": [
+            [
+              1004,
+              5
+            ],
+            [
+              1011,
+              5
+            ]
+          ],
+          "qiling_info": {
+            "id": 100,
+            "star": 6,
+            "lv": 20,
+            "mark_gid": 1,
+            "marks": [
+              8,
+              8,
+              1,
+              7,
+              8,
+              1
+            ]
+          },
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5561,
+              5
+            ],
+            [
+              5562,
+              5
+            ],
+            [
+              5563,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                220.0
+              ],
+              "final_atk": [
+                8000.0,
+                21886.0
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                86962.6
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3395.3
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.225,
+                "attack": 2101.4,
+                "critRate": 0.326,
+                "critPower": 0.7829999999999999
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "debuff_res",
+                "debuff_acc"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-1"
+        },
+        {
+          "hero_id": 390,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3901,
+              5
+            ],
+            [
+              3902,
+              5
+            ],
+            [
+              3903,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              0,
+              15
+            ],
+            "yuhun_star": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "criteria": 2,
+            "two_suit": [
+              "atk_per",
+              "critical_rate",
+              "max_hp_per"
+            ],
+            "suit": [],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21671.6
+              ],
+              "final_max_hp": [
+                30000.0,
+                88101.8
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                281.0
+              ],
+              "final_def": [
+                800.0,
+                3232.2
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.268,
+                "attack": 2029.0,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.522
+              }
+            },
+            "main_attr": {
+              "1": [
+                "spd",
+                "atk_per",
+                "def_per",
+                "max_hp_per"
+              ],
+              "3": [
+                "debuff_acc",
+                "atk_per",
+                "max_hp_per",
+                "debuff_res",
+                "def_per"
+              ],
+              "5": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "critical_rate",
+                "critical_pow"
+              ]
+            }
+          },
+          "uid": "test-2"
+        },
+        {
+          "hero_id": 555,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5551,
+              5
+            ],
+            [
+              5552,
+              5
+            ],
+            [
+              5553,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300020,
+                4
+              ],
+              [
+                300091,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21135.6
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85709.5
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                279.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1014.5,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.493
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "spd"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-3"
+        },
+        {
+          "hero_id": 395,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3951,
+              5
+            ],
+            [
+              3952,
+              5
+            ],
+            [
+              3953,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300092,
+                4
+              ],
+              [
+                300052,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                20224.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                87874.0
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                276.0
+              ],
+              "final_def": [
+                800.0,
+                3258.6
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1376.8,
+                "critRate": 0.174,
+                "critPower": 0.551
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-4"
+        },
+        {
+          "hero_id": 366,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3661,
+              4
+            ],
+            [
+              3662,
+              5
+            ],
+            [
+              3663,
+              5
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300086,
+                4
+              ],
+              [
+                300054,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                21162.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85481.6
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.159,
+                "attack": 1521.7,
+                "critRate": 0.21,
+                "critPower": 0.406
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "uid": "test-5"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "extended_fields_v3",
+    "payload": "eJzrZGRmmjadi8mGYdIkFtZJ3KxTU9hEmKcxMnEwcrCdZf486yyTDpsG4xQGVoZJ7EzTGRkZJ0ximMzMzDxz0mmHpAMMIHDaIRfCAApFMkCFshtgQvsdoEJX4xugQlg03vWBCn211pw5c+YsoFA+TGPVBpiqBJjxhXCNnTChVW0zQRqnnLY/AwZnTzssyIIw7K/c1Zeav6/8tP1LvjAWicklk6cwsDOzTWVgZ2NlmcrIxM7AxjiZjZHprOju0w6hD8AGzjrL2IbkcwYGpskMjGyTGBgI+twB0+eaz9KAANWfTTEgt6H4UwDTnxMw/LnSAWRWGtCfF9VeVlz5++W0w/wtEDn7s5t0QR48bf9gi2WEQJLf5CnMQD9OZWFgY2UH+ZaRCeJPfnskfzJpo8fwRJGJ0WR488pisDcJRPCXNzegQngjuADD4yt+gmMT6PHDJXuy6n7ePu3Qj+Hx+73+961TokARzMYM9DILGytKBG9EjuBuDI/HTDQh5PGsBRgev3xAEppm8absEgUMj2OJcXi4ImK81BgEkD0+tRksdNr+mOvCUweahU7bPwTT+fCUjeZx/kJkj+dheDxsohkZHr+yaiYRHv9ybyZGlsbicbhGLDF+JEpmDYeh+mmH6cegWfrUQ/d1IlUPT9vf/P08p9t5Gi6P8/nDPc685vmy3c937X+2tfvF+qksm1IrSlLzUlJT4tMyU3NSiuPLjFmnLStJLS7RNYBQhhDKCEIZQygTCGXKxsh+jtFUw4BjNZhfkJNYmVrEyQgAT2eoPg==",
+    "expected": {
+      "ver": 3,
+      "phconf": [
+        [
+          10,
+          2,
+          60,
+          0,
+          [
+            [
+              4,
+              5
+            ],
+            [
+              11,
+              5
+            ]
+          ],
+          [
+            100,
+            6,
+            20,
+            3,
+            [
+              1,
+              2,
+              8,
+              1,
+              8,
+              6
+            ]
+          ],
+          1011
+        ],
+        [
+          556,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              0,
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                220.0
+              ],
+              [
+                8000.0,
+                21886.0
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                86962.6
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3395.3
+              ],
+              [
+                0.225,
+                2101.4,
+                0.326,
+                0.7829999999999999
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                6,
+                5,
+                4
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          5563,
+          87.5
+        ],
+        [
+          390,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            0,
+            0,
+            2,
+            [
+              0,
+              1,
+              6
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21671.6
+              ],
+              0,
+              [
+                30000.0,
+                88101.8
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                281.0
+              ],
+              [
+                800.0,
+                3232.2
+              ],
+              [
+                0.268,
+                2029.0,
+                0.23199999999999998,
+                0.522
+              ]
+            ],
+            [
+              [
+                3,
+                0,
+                7,
+                6
+              ],
+              [
+                4,
+                0,
+                6,
+                5,
+                7
+              ],
+              [
+                0,
+                7,
+                6,
+                1,
+                2
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          3903,
+          87.5
+        ],
+        [
+          555,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                20
+              ],
+              [
+                91
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                218.0
+              ],
+              [
+                8000.0,
+                21135.6
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85709.5
+              ],
+              [
+                250.0,
+                427.0
+              ],
+              [
+                128.0,
+                279.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.152,
+                1014.5,
+                0.23199999999999998,
+                0.493
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                6,
+                3
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          5553,
+          87.5
+        ],
+        [
+          395,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                92
+              ],
+              [
+                52
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                20224.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                87874.0
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                276.0
+              ],
+              [
+                800.0,
+                3258.6
+              ],
+              [
+                0.152,
+                1376.8,
+                0.174,
+                0.551
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          3953,
+          87.5
+        ],
+        [
+          366,
+          6,
+          40,
+          1,
+          [
+            0,
+            5,
+            0,
+            [
+              7,
+              2
+            ]
+          ],
+          [
+            1,
+            1,
+            1,
+            [],
+            [
+              [
+                86
+              ],
+              [
+                54
+              ]
+            ],
+            [
+              [
+                150.0,
+                238.0
+              ],
+              [
+                100.0,
+                213.0
+              ],
+              [
+                8000.0,
+                21162.4
+              ],
+              [
+                150.0,
+                238.0
+              ],
+              [
+                30000.0,
+                85481.6
+              ],
+              [
+                250.0,
+                417.0
+              ],
+              [
+                128.0,
+                284.0
+              ],
+              [
+                800.0,
+                3196.9
+              ],
+              [
+                0.159,
+                1521.7,
+                0.21,
+                0.406
+              ]
+            ],
+            [
+              [
+                0,
+                7,
+                3,
+                6
+              ],
+              [
+                0,
+                7,
+                4,
+                6,
+                5
+              ],
+              [
+                1,
+                2,
+                7,
+                0,
+                6
+              ]
+            ]
+          ],
+          1,
+          [
+            6,
+            1,
+            2
+          ],
+          3663,
+          87.5
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "extended_fields_v3",
+      "huids": [
+        "test-0",
+        "test-1",
+        "test-2",
+        "test-3",
+        "test-4",
+        "test-5"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "star": 2,
+          "level": 60,
+          "awake": 0,
+          "skills": [
+            [
+              1004,
+              5
+            ],
+            [
+              1011,
+              5
+            ]
+          ],
+          "qiling_info": {
+            "id": 100,
+            "star": 6,
+            "lv": 20,
+            "mark_gid": 3,
+            "marks": [
+              17,
+              18,
+              24,
+              17,
+              24,
+              22
+            ]
+          },
+          "ai_skill": 1011,
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5562,
+              5
+            ],
+            [
+              5567,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ],
+              [
+                300003,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                220.0
+              ],
+              "final_atk": [
+                8000.0,
+                21886.0
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                86962.6
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3395.3
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.225,
+                "attack": 2101.4,
+                "critRate": 0.326,
+                "critPower": 0.7829999999999999
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "debuff_res",
+                "debuff_acc"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 5563,
+          "use_score": 87.5,
+          "uid": "test-1"
+        },
+        {
+          "hero_id": 390,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3902,
+              5
+            ],
+            [
+              3907,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              0,
+              15
+            ],
+            "yuhun_star": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "criteria": 2,
+            "two_suit": [
+              "atk_per",
+              "critical_rate",
+              "max_hp_per"
+            ],
+            "suit": [],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21671.6
+              ],
+              "final_max_hp": [
+                30000.0,
+                88101.8
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                281.0
+              ],
+              "final_def": [
+                800.0,
+                3232.2
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.268,
+                "attack": 2029.0,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.522
+              }
+            },
+            "main_attr": {
+              "1": [
+                "spd",
+                "atk_per",
+                "def_per",
+                "max_hp_per"
+              ],
+              "3": [
+                "debuff_acc",
+                "atk_per",
+                "max_hp_per",
+                "debuff_res",
+                "def_per"
+              ],
+              "5": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "critical_rate",
+                "critical_pow"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 3903,
+          "use_score": 87.5,
+          "uid": "test-2"
+        },
+        {
+          "hero_id": 555,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              5552,
+              5
+            ],
+            [
+              5557,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300020,
+                4
+              ],
+              [
+                300091,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                218.0
+              ],
+              "final_atk": [
+                8000.0,
+                21135.6
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85709.5
+              ],
+              "critical_pow": [
+                250.0,
+                427.0
+              ],
+              "spd": [
+                128.0,
+                279.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1014.5,
+                "critRate": 0.23199999999999998,
+                "critPower": 0.493
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "max_hp_per",
+                "spd"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 5553,
+          "use_score": 87.5,
+          "uid": "test-3"
+        },
+        {
+          "hero_id": 395,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3952,
+              5
+            ],
+            [
+              3957,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300092,
+                4
+              ],
+              [
+                300052,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                20224.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                87874.0
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                276.0
+              ],
+              "final_def": [
+                800.0,
+                3258.6
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.152,
+                "attack": 1376.8,
+                "critRate": 0.174,
+                "critPower": 0.551
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 3953,
+          "use_score": 87.5,
+          "uid": "test-4"
+        },
+        {
+          "hero_id": 366,
+          "star": 6,
+          "level": 40,
+          "awake": 1,
+          "skills": [
+            [
+              3662,
+              5
+            ],
+            [
+              3667,
+              2
+            ]
+          ],
+          "equip_info": {
+            "yuhun_lv": [
+              15,
+              15
+            ],
+            "yuhun_star": [
+              6
+            ],
+            "criteria": 1,
+            "two_suit": [],
+            "suit": [
+              [
+                300086,
+                4
+              ],
+              [
+                300054,
+                2
+              ]
+            ],
+            "limit": {
+              "debuff_res": [
+                150.0,
+                238.0
+              ],
+              "critical_rate": [
+                100.0,
+                213.0
+              ],
+              "final_atk": [
+                8000.0,
+                21162.4
+              ],
+              "debuff_acc": [
+                150.0,
+                238.0
+              ],
+              "final_max_hp": [
+                30000.0,
+                85481.6
+              ],
+              "critical_pow": [
+                250.0,
+                417.0
+              ],
+              "spd": [
+                128.0,
+                284.0
+              ],
+              "final_def": [
+                800.0,
+                3196.9
+              ],
+              "ExtraAttr": {
+                "attackRate": 0.159,
+                "attack": 1521.7,
+                "critRate": 0.21,
+                "critPower": 0.406
+              }
+            },
+            "main_attr": {
+              "1": [
+                "atk_per",
+                "def_per",
+                "spd",
+                "max_hp_per"
+              ],
+              "3": [
+                "atk_per",
+                "def_per",
+                "debuff_acc",
+                "max_hp_per",
+                "debuff_res"
+              ],
+              "5": [
+                "critical_rate",
+                "critical_pow",
+                "def_per",
+                "atk_per",
+                "max_hp_per"
+              ]
+            }
+          },
+          "not_calc_flag": 1,
+          "highest_limit": [
+            "spd",
+            "critical_rate",
+            "final_atk"
+          ],
+          "ai_skill": 3663,
+          "use_score": 87.5,
+          "uid": "test-5"
+        }
+      ]
+    },
+    "yys_ids": null
+  },
+  {
+    "name": "null_fields_v3",
+    "payload": "eJzrZGRmmjSd6wAYzDrLpHMABpjXPF+2+/mu/c+2dr9YP5VlXV5pTk58WmZqTkpxfJkx66RlJanFJboGEMqQjZH9HKOphgHHajC/ICexMrWIkxEAJeErSw==",
+    "expected": {
+      "ver": 3,
+      "phconf": [
+        [
+          10,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          556,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "desc": "离线测试",
+      "title": "null_fields_v3",
+      "huids": [
+        "test-0",
+        "test-1"
+      ],
+      "select_stage_id": 1,
+      "data_ver": 20260912,
+      "player_id": "test-player",
+      "hostnum": 1,
+      "hconf": [
+        {
+          "hero_id": 10,
+          "uid": "test-0"
+        },
+        {
+          "hero_id": 556,
+          "uid": "test-1"
+        }
+      ]
+    },
+    "yys_ids": null
+  }
+]

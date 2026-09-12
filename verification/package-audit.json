@@ -1,21 +1,21 @@
 {
   "archive": "release/win-unpacked/resources/app.asar",
-  "fileEntries": 1242,
+  "fileEntries": 1375,
   "forbiddenFiles": [],
   "sourceChecks": [
     {
       "path": "app/app.js",
-      "sha256": "1956baf8d36aa5777c96b0be9ffaa0b07bdb0ce98d499f18344e09ebfc8d782d",
+      "sha256": "1b5bb36868cd4c269383ffb17e4021fb15e460575ac6c5753fc7c82ef4266d93",
       "matchesSource": true
     },
     {
       "path": "app/core.js",
-      "sha256": "ad470c98590bd76fd0b6d2936d13850f8c8c59141bccd57e9add2a49dbbf36dc",
+      "sha256": "443afb25ae3934095596ad8ad85bf3d2d658187d9a448268d9d364f83d55f376",
       "matchesSource": true
     },
     {
       "path": "app/index.html",
-      "sha256": "fc388687039338f248544467e862ea9138c9664346f3dc68ff38fa59de9f9ada",
+      "sha256": "d05e0b539232f9c5a79227a2c24146991f1dfa650b12785a7ad5a9743cb38688",
       "matchesSource": true
     },
     {
@@ -24,18 +24,103 @@
       "matchesSource": true
     },
     {
+      "path": "app/updates.css",
+      "sha256": "bbab705531b84c9f83574c071d80bbda6ec3d56d24946e404bc62060ae16a2e8",
+      "matchesSource": true
+    },
+    {
+      "path": "app/vendor/jsQR.js",
+      "sha256": "bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859",
+      "matchesSource": true
+    },
+    {
+      "path": "app/vendor/jsQR.LICENSE.txt",
+      "sha256": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+      "matchesSource": true
+    },
+    {
+      "path": "app/vendor/msgpack.LICENSE.txt",
+      "sha256": "d95a411bcdadac85d678a99367ff51719e53539fa5ee9994943cd760c4ae64e4",
+      "matchesSource": true
+    },
+    {
       "path": "desktop/main.cjs",
-      "sha256": "4d952b7bccdfbb02e5614ba14481dcc2780388742b24b5721497770992fafa6f",
+      "sha256": "a1b573d6a381add02bed2a17474402d1439c749969e35bfea175a0acd65c60ce",
       "matchesSource": true
     },
     {
       "path": "desktop/preload.cjs",
-      "sha256": "0bb3cc6f270fed1eba0e6addc749b9037eb812cc505608bcae430b436cc8be12",
+      "sha256": "b5e8b404b58cfc2317175b093f93e7ba29af8ce8e035e26389b0623eaecfc953",
+      "matchesSource": true
+    },
+    {
+      "path": "desktop/ta-codec.cjs",
+      "sha256": "076340b2b3fb476007af112a4dce320caa6864fb03e25d7d2c7b4b173927f2bf",
+      "matchesSource": true
+    },
+    {
+      "path": "desktop/official-data.cjs",
+      "sha256": "ba2c29c48e750b7ac4a39f2befe9f05c8ea1420bc8a9079f750090c61e1a6280",
       "matchesSource": true
     },
     {
       "path": "data/bundle.json",
-      "sha256": "752673d2918c5bc208825d42e76add941827f111a0713d77d4a79ed30b5a20b8",
+      "sha256": "5d4c79b245207c3bde8ba8cc7a0a733ff450e5f0510bdd3a8ccbfb9471a9ae63",
+      "matchesSource": true
+    },
+    {
+      "path": "node_modules/@msgpack/msgpack/dist.cjs/decode.cjs",
+      "sha256": "9cb8cd09a140eec68344ffb989d410fcc265041eeb7137e852ba75b5a15b28d8",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/seimei/art-before.png",
+      "sha256": "775b5a66652e6e93bb064ced0bafd4ba54296d5a0e93d4fe90304211ed0937b2",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/seimei/portrait-before.png",
+      "sha256": "4c65eb9143a68e19a1d3538bcc95fbb4c92954f084b903069eff763250cef8b8",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/kagura/art-before.png",
+      "sha256": "4339edb323667127d7d4fd8afdca5419b4c7dc0c9e7c095047b496a2c5119062",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/kagura/portrait-before.png",
+      "sha256": "e3a086a05a2bcec20fc2ee8effa2ea49b9e0c02d20f5f5ef7d0a04641373ad96",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/hiromasa/art-before.png",
+      "sha256": "e52bbb9d1b88dbb4ef7c1bc6a0bdfd85258efba964448ee3f0ba81efd75c03fb",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/hiromasa/portrait-before.png",
+      "sha256": "134418612cfe94f9f1a90e05585bfd10af42719ebe964b472bd84d09c8913092",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/yaobikuni/art-before.png",
+      "sha256": "3f3aab1b3773ed4670f3b8cb0e93e3c2713ac52b14bc38c2dc12f0c1e59a8632",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/yaobikuni/portrait-before.png",
+      "sha256": "f4969a25d79c8e86d458a6050ca8b4db93de85ec49999dabf9856824dff52b1f",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/yorimitsu/art-before.png",
+      "sha256": "f21412f953bd1a0179ba70af299f7b40592ef74e2303687897fb8f5985cb02dd",
+      "matchesSource": true
+    },
+    {
+      "path": "data/images/actors/michinaga/art-before.png",
+      "sha256": "622d23a20ccebfe84651d1f93b8a2c2429559e8626969887010328ce358bbcf8",
       "matchesSource": true
     }
   ]

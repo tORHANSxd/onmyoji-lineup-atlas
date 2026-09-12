@@ -1,0 +1,23 @@
+{
+  "title": "阴阳师阵容图鉴",
+  "lineups": 175,
+  "roster": 275,
+  "visibleCards": 24,
+  "brokenImages": 0,
+  "accounts": 0,
+  "views": 5,
+  "hasData": true,
+  "officialUpdate": {
+    "running": false,
+    "phase": "complete",
+    "message": "官方资料已更新，新增 0 位式神，下载 8 张图片",
+    "done": 275,
+    "total": 275,
+    "updatedImages": 8,
+    "newCharacters": 0,
+    "errors": [],
+    "autoUpdate": true,
+    "lastCheckedAt": "2026-09-12T05:00:26.925Z",
+    "lastSuccessAt": "2026-09-12T05:00:44.012Z"
+  }
+}

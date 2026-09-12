@@ -1,6 +1,6 @@
 {
   "name": "onmyoji-lineup-atlas",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "阴阳师阵容图鉴：本地阵容库、式神资源与平安志账号核对",
   "private": true,
   "main": "desktop/main.cjs",
@@ -13,14 +13,38 @@
     "pack": "electron-builder --win --x64 --dir",
     "dist": "electron-builder --win portable --x64"
   },
-  "devDependencies": {"electron": "44.3.0", "electron-builder": "26.15.3"},
+  "devDependencies": {
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  },
   "build": {
     "appId": "io.github.torhansxd.onmyoji-lineup-atlas",
     "productName": "阴阳师阵容图鉴",
-    "directories": {"output": "release"},
-    "files": ["desktop/**/*", "app/**/*", "data/images/**/*", "data/bundle.json", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "package.json"],
-    "win": {"target": "portable", "signAndEditExecutable": false, "artifactName": "Onmyoji-Lineup-Atlas-${version}-Windows-x64.${ext}"},
-    "portable": {"requestExecutionLevel": "user"},
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "app/**/*",
+      "data/images/**/*",
+      "data/bundle.json",
+      "README.md",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "signAndEditExecutable": false,
+      "artifactName": "Onmyoji-Lineup-Atlas-${version}-Windows-x64.${ext}"
+    },
+    "portable": {
+      "requestExecutionLevel": "user"
+    },
     "publish": null
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "3.1.3",
+    "jsqr": "1.4.0"
   }
 }

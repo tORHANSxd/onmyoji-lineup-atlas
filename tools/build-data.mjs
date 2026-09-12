@@ -37,6 +37,7 @@ const output={schemaVersion:1,builtAt:new Date().toISOString(),cutoffDate:'2026-
 output.lineups=[...curated.filter(c=>!c.code||!merged.has(c.code)),...merged.values()];
 output.assetAudit.attributeStateConflicts=updatedRoster.filter(r=>r.assets?.attributeConflict).map(r=>({id:r.id,name:r.name,rarity:r.rarity}));
 if(!Object.keys(decoded).length&&previous.excelAudit){output.excelAudit.decoded=previous.excelAudit.decoded;output.excelAudit.rejected=previous.excelAudit.rejected;}
+output.actors=[...await read('data/actors.json',[]),...await read('data/supplemental-actors.json',[])];output.officialNews=await read('data/official-news.json',[]);
 await fs.writeFile('data/bundle.json',JSON.stringify(output));
 await fs.mkdir('verification',{recursive:true});await fs.writeFile('verification/coverage.json',JSON.stringify({...output.assetAudit,excel:output.excelAudit,totalLineups:output.lineups.length,webSourceCount:sources.filter(x=>!x.error).length,structuredReferenceLineups:curated.length},null,2));
 console.log(JSON.stringify({lineups:output.lineups.length,roster:roster.length,assets:allAssets.length,sources:sources.length}));

@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "date": "2026-09-12",
+  "surface": "local browser preview using application UI and production decoder",
+  "checks": {
+    "textAutoDecodeMembers": 6,
+    "savedTitleAndDungeonAfterReload": true,
+    "qrFileImportMembers": 6,
+    "responseImportMembers": 6,
+    "responseRetainsShareKeyTitleDungeonNotes": true,
+    "officialIdReturnsConfigurationRequired": true,
+    "invalidBase64ReturnsError": true,
+    "actorCards": 6,
+    "communitySourceLabelsVisible": true,
+    "actorOnlyFiltersDisabled": true,
+    "detailHorizontalOverflow": false,
+    "artOverflow": false,
+    "maintenanceAnnouncements": 12,
+    "consoleErrors": 0,
+    "cleanupRestoredBaselineLineups": 175,
+    "personalAccountsImported": 0
+  },
+  "limits": [
+    "Official online updates and custom asset protocol were tested in native Electron, not in browser preview.",
+    "QR and response fixtures use synthetic player IDs and a synthetic share key, not a real game-session response for an Excel short code."
+  ]
+}
