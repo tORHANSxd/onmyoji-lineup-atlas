@@ -1,0 +1,41 @@
+﻿{
+    "version":  "0.5.0",
+    "method":  "Final NSIS payload extraction, all-file hash comparison and packaged startup smoke",
+    "install":  "not-run-existing-installation",
+    "reinstall":  "not-run-existing-installation",
+    "uninstall":  "not-run-existing-installation",
+    "personalAccountFilesRead":  false,
+    "completed":  true,
+    "payloadFiles":  224,
+    "allPayloadFilesMatch":  true,
+    "packagedStartupSmoke":  "passed",
+    "startupGate":  {
+                        "title":  "阴阳师阵容图鉴",
+                        "mode":  "startup-login-gate",
+                        "gateVisible":  true,
+                        "appHidden":  true,
+                        "appInert":  true,
+                        "dataLoaded":  false,
+                        "blockedOperations":  [
+                                                  "data",
+                                                  "state",
+                                                  "save",
+                                                  "decode",
+                                                  "copy",
+                                                  "import",
+                                                  "export",
+                                                  "update",
+                                                  "query"
+                                              ],
+                        "loginModule":  {
+                                            "servers":  157,
+                                            "authenticated":  false,
+                                            "qrReady":  true
+                                        },
+                        "privacyNoticePresent":  true,
+                        "alternativeAccountNotice":  true,
+                        "loginModuleLoggedOut":  true
+                    },
+    "syntheticDataUnchanged":  true,
+    "existingInstallationPreserved":  true
+}

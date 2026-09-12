@@ -1,0 +1,2779 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "kind": "user-supplied-apk",
+    "apkFile": "onmyoji_netease_116_2.8.84_py3_small.apk",
+    "packageVersion": "2.8.84",
+    "verifiedFiles": {
+      "assets/res/script3.idx": "ffe1f90325e6dfc203ed94d843e11aa8cf64f76dfae35f5dde0fb71991b0acce",
+      "assets/res/script30.wpk": "f777ee4ff692fc03338b8a3e31a65ada08240dda38a34348c58e331ba3d7341f",
+      "assets/res/script31.wpk": "416ba3507671c7286958c7dd18a74aa005d0a05eb49b7d71d4de61c0fc8c8d67"
+    },
+    "heroEntry": 22953,
+    "equipSuitEntry": 26529
+  },
+  "heroes": {
+    "401": {
+      "name": "寄生魂",
+      "material": false,
+      "model": "jishenghun",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "395": {
+      "name": "流光追月神",
+      "material": false,
+      "model": "sp_zhuiyueshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "405": {
+      "name": "天邪鬼赤",
+      "material": false,
+      "model": "chitianxiegui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "415": {
+      "name": "酒吞呱",
+      "material": true,
+      "model": "longche_jiutunwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "413": {
+      "name": "大吉达摩",
+      "material": true,
+      "model": "damobudaoweng_daji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "411": {
+      "name": "御行达摩",
+      "material": true,
+      "model": "damobudaoweng_hei",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "425": {
+      "name": "辉夜姬呱",
+      "material": true,
+      "model": "longche_huiyejiwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "419": {
+      "name": "小鹿男呱",
+      "material": true,
+      "model": "longche_lunanwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "429": {
+      "name": "玉藻前呱",
+      "material": true,
+      "model": "longche_yuzaoqianwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "391": {
+      "name": "寻香行",
+      "material": false,
+      "model": "xunxiangxing",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "389": {
+      "name": "须佐之男",
+      "material": false,
+      "model": "xuzuozhinan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "499": {
+      "name": "鬼武达摩",
+      "material": true,
+      "model": "damo_guiwu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "200": {
+      "name": "桃花妖",
+      "material": false,
+      "model": "taohuayao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "hpPercent": 0.1
+      }
+    },
+    "322": {
+      "name": "炼狱茨木童子",
+      "material": false,
+      "model": "sp_cimutongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "201": {
+      "name": "雪女",
+      "material": false,
+      "model": "xuenv",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "202": {
+      "name": "三尾狐",
+      "material": false,
+      "model": "sanweihu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "speed": 20.0
+      }
+    },
+    "332": {
+      "name": "久次良",
+      "material": false,
+      "model": "jiuciliang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "203": {
+      "name": "灯笼鬼",
+      "material": false,
+      "model": "denglonggui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "326": {
+      "name": "稻荷神御馔津",
+      "material": false,
+      "model": "sp_yuzhuanjin",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "205": {
+      "name": "座敷童子",
+      "material": false,
+      "model": "zuofutongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "206": {
+      "name": "鲤鱼精",
+      "material": false,
+      "model": "liyujing",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "320": {
+      "name": "一反木绵",
+      "material": false,
+      "model": "yifanmumian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "207": {
+      "name": "九命猫",
+      "material": false,
+      "model": "jiumingmao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "208": {
+      "name": "狸猫",
+      "material": false,
+      "model": "limao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "330": {
+      "name": "不知火",
+      "material": false,
+      "model": "buzhihuo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "209": {
+      "name": "河童",
+      "material": false,
+      "model": "hetong",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "210": {
+      "name": "鬼使白",
+      "material": false,
+      "model": "baiwuchang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "340": {
+      "name": "纸舞",
+      "material": false,
+      "model": "zhiwu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "211": {
+      "name": "鬼使黑",
+      "material": false,
+      "model": "heiwuchang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "attackPercent": 0.1
+      }
+    },
+    "212": {
+      "name": "童男",
+      "material": false,
+      "model": "tongnan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "334": {
+      "name": "骁浪荒川之主",
+      "material": false,
+      "model": "sp_huangchuan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "213": {
+      "name": "童女",
+      "material": false,
+      "model": "tongnv",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "214": {
+      "name": "饿鬼",
+      "material": false,
+      "model": "egui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "328": {
+      "name": "赤影妖刀姬",
+      "material": false,
+      "model": "sp_yaodaoji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "215": {
+      "name": "孟婆",
+      "material": false,
+      "model": "mengpo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "216": {
+      "name": "巫蛊师",
+      "material": false,
+      "model": "wugushi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectHit": 0.2
+      }
+    },
+    "338": {
+      "name": "泷夜叉姬",
+      "material": false,
+      "model": "longyechaji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "217": {
+      "name": "大天狗",
+      "material": false,
+      "model": "datiangou",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "attackPercent": 0.1
+      }
+    },
+    "218": {
+      "name": "鸦天狗",
+      "material": false,
+      "model": "yatiangou",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "557": {
+      "name": "伊邪那美",
+      "material": false,
+      "model": "yixienamei",
+      "baseHit": 0.2,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "348": {
+      "name": "浮世青行灯",
+      "material": false,
+      "model": "sp_qingxingdeng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "219": {
+      "name": "酒吞童子",
+      "material": false,
+      "model": "jiutuntongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "550": {
+      "name": "孔雀明王",
+      "material": false,
+      "model": "kongquemingwang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectHit": 0.3
+      }
+    },
+    "220": {
+      "name": "犬神",
+      "material": false,
+      "model": "quanshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "342": {
+      "name": "星熊童子",
+      "material": false,
+      "model": "xingxiongtongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "221": {
+      "name": "食发鬼",
+      "material": false,
+      "model": "shifagui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "222": {
+      "name": "武士之灵",
+      "material": false,
+      "model": "wushizhiling",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "336": {
+      "name": "朽木露琪亚",
+      "material": false,
+      "model": "luqiya",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "223": {
+      "name": "骨女",
+      "material": false,
+      "model": "gunv",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "224": {
+      "name": "雨女",
+      "material": false,
+      "model": "yunv",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "282": {
+      "name": "金鱼姬",
+      "material": false,
+      "model": "jinyuji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "225": {
+      "name": "跳跳弟弟",
+      "material": false,
+      "model": "tiaotiaoxiaogui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "226": {
+      "name": "跳跳妹妹",
+      "material": false,
+      "model": "tiaotiaomeimei",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "227": {
+      "name": "兵俑",
+      "material": false,
+      "model": "bingyong",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "356": {
+      "name": "千姬",
+      "material": false,
+      "model": "qianji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "228": {
+      "name": "丑时之女",
+      "material": false,
+      "model": "choushizhinv",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "230": {
+      "name": "独眼小僧",
+      "material": false,
+      "model": "duyanxiaoseng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "280": {
+      "name": "辉夜姬",
+      "material": false,
+      "model": "huiyeji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "231": {
+      "name": "鬼女红叶",
+      "material": false,
+      "model": "guinvhongye",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "232": {
+      "name": "铁鼠",
+      "material": false,
+      "model": "tieshu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "354": {
+      "name": "待宵姑获鸟",
+      "material": false,
+      "model": "sp_guhuoniao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "233": {
+      "name": "跳跳哥哥",
+      "material": false,
+      "model": "tiaotiaogege",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "234": {
+      "name": "椒图",
+      "material": false,
+      "model": "jiaotu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "236": {
+      "name": "管狐",
+      "material": false,
+      "model": "guanhu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "237": {
+      "name": "山兔",
+      "material": false,
+      "model": "shantu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "358": {
+      "name": "夜溟彼岸花",
+      "material": false,
+      "model": "sp_bianhua",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "238": {
+      "name": "萤草",
+      "material": false,
+      "model": "yingcao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "362": {
+      "name": "蝉冰雪女",
+      "material": false,
+      "model": "sp_xuenv",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "241": {
+      "name": "蝴蝶精",
+      "material": false,
+      "model": "hudiejing",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "242": {
+      "name": "傀儡师",
+      "material": false,
+      "model": "kuileishi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "372": {
+      "name": "因幡辉夜姬",
+      "material": false,
+      "model": "sp_huiyeji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "243": {
+      "name": "山童",
+      "material": false,
+      "model": "shantong",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "defensePercent": 0.2
+      }
+    },
+    "244": {
+      "name": "首无",
+      "material": false,
+      "model": "shouwu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "245": {
+      "name": "提灯小僧",
+      "material": false,
+      "model": "tidengxiaoseng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "366": {
+      "name": "空相面灵气",
+      "material": false,
+      "model": "sp_mianlingqi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "246": {
+      "name": "赤舌",
+      "material": false,
+      "model": "chishe",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "360": {
+      "name": "灶门祢豆子",
+      "material": false,
+      "model": "midouzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "247": {
+      "name": "海坊主",
+      "material": false,
+      "model": "haifangzhu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "248": {
+      "name": "荒川之主",
+      "material": false,
+      "model": "heichuanzhu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "crit": 0.1
+      }
+    },
+    "370": {
+      "name": "饭笥",
+      "material": false,
+      "model": "fansi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "249": {
+      "name": "觉",
+      "material": false,
+      "model": "jue",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "250": {
+      "name": "青蛙瓷器",
+      "material": false,
+      "model": "qingwaciqi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "251": {
+      "name": "判官",
+      "material": false,
+      "model": "panguan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "252": {
+      "name": "凤凰火",
+      "material": false,
+      "model": "fenghuanghuo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "253": {
+      "name": "吸血姬",
+      "material": false,
+      "model": "xixueji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "254": {
+      "name": "妖狐",
+      "material": false,
+      "model": "yaohu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "368": {
+      "name": "饴细工",
+      "material": false,
+      "model": "yixigong",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "255": {
+      "name": "阎魔",
+      "material": false,
+      "model": "yanmo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "speed": 10.0
+      }
+    },
+    "256": {
+      "name": "妖琴师",
+      "material": false,
+      "model": "qinmo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "257": {
+      "name": "食梦貘",
+      "material": false,
+      "model": "shimengmo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "258": {
+      "name": "两面佛",
+      "material": false,
+      "model": "liangmianfo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "259": {
+      "name": "小鹿男",
+      "material": false,
+      "model": "xiaolunan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "260": {
+      "name": "清姬",
+      "material": false,
+      "model": "qingji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "261": {
+      "name": "镰鼬",
+      "material": false,
+      "model": "lianyou",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "262": {
+      "name": "姑获鸟",
+      "material": false,
+      "model": "guhuoniao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "263": {
+      "name": "二口女",
+      "material": false,
+      "model": "erkounv",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "264": {
+      "name": "白狼",
+      "material": false,
+      "model": "bailang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "265": {
+      "name": "茨木童子",
+      "material": false,
+      "model": "cimutongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "266": {
+      "name": "青行灯",
+      "material": false,
+      "model": "qingxingdeng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "267": {
+      "name": "樱花妖",
+      "material": false,
+      "model": "yinghuayao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "268": {
+      "name": "惠比寿",
+      "material": false,
+      "model": "huibishou",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "269": {
+      "name": "妖刀姬",
+      "material": false,
+      "model": "yaodaoji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "270": {
+      "name": "络新妇",
+      "material": false,
+      "model": "luoxinfu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "attackPercent": 0.1
+      }
+    },
+    "271": {
+      "name": "般若",
+      "material": false,
+      "model": "bore",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "272": {
+      "name": "一目连",
+      "material": false,
+      "model": "yimulian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "273": {
+      "name": "青坊主",
+      "material": false,
+      "model": "qingfangzhu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "274": {
+      "name": "古笼火",
+      "material": false,
+      "model": "xindenglonggui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "275": {
+      "name": "万年竹",
+      "material": false,
+      "model": "wannianzhu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "attackPercent": 0.1
+      }
+    },
+    "276": {
+      "name": "夜叉",
+      "material": false,
+      "model": "yecha",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "277": {
+      "name": "黑童子",
+      "material": false,
+      "model": "heitongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "278": {
+      "name": "白童子",
+      "material": false,
+      "model": "baitongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "279": {
+      "name": "花鸟卷",
+      "material": false,
+      "model": "huaniaojuan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "281": {
+      "name": "烟烟罗",
+      "material": false,
+      "model": "yanyanluo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "283": {
+      "name": "荒",
+      "material": false,
+      "model": "huang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "285": {
+      "name": "鸩",
+      "material": false,
+      "model": "zhen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "286": {
+      "name": "以津真天",
+      "material": false,
+      "model": "yijinzhentian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "287": {
+      "name": "匣中少女",
+      "material": false,
+      "model": "xiazhongshaonv",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "288": {
+      "name": "彼岸花",
+      "material": false,
+      "model": "bianhua",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "592": {
+      "name": "平将门",
+      "material": false,
+      "model": "pingjiangmen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "289": {
+      "name": "兔丸",
+      "material": false,
+      "model": "tuwan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "290": {
+      "name": "小松丸",
+      "material": false,
+      "model": "xiaosongwan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "291": {
+      "name": "书翁",
+      "material": false,
+      "model": "shuweng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "292": {
+      "name": "雪童子",
+      "material": false,
+      "model": "xuetongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "596": {
+      "name": "神无月",
+      "material": false,
+      "model": "shenwuyue",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "293": {
+      "name": "百目鬼",
+      "material": false,
+      "model": "baimugui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "294": {
+      "name": "奴良陆生",
+      "material": false,
+      "model": "huatougui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.5
+      }
+    },
+    "295": {
+      "name": "追月神",
+      "material": false,
+      "model": "zhuiyueshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "296": {
+      "name": "山风",
+      "material": false,
+      "model": "shanfeng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "600": {
+      "name": "市加美",
+      "material": false,
+      "model": "shijiamei",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "297": {
+      "name": "日和坊",
+      "material": false,
+      "model": "rihefang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "298": {
+      "name": "薰",
+      "material": false,
+      "model": "xun",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "300": {
+      "name": "玉藻前",
+      "material": false,
+      "model": "yuzaoqian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "604": {
+      "name": "不相狐禅",
+      "material": false,
+      "model": "buxianghuchan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "301": {
+      "name": "数珠",
+      "material": false,
+      "model": "shuzhu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.4
+      }
+    },
+    "302": {
+      "name": "小袖之手",
+      "material": false,
+      "model": "xiaoxiuzhishou",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "303": {
+      "name": "弈",
+      "material": false,
+      "model": "qihun",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "304": {
+      "name": "御馔津",
+      "material": false,
+      "model": "yuzhuanjin",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "305": {
+      "name": "卖药郎",
+      "material": false,
+      "model": "guaihuamao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "306": {
+      "name": "虫师",
+      "material": false,
+      "model": "chongshi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "307": {
+      "name": "猫掌柜",
+      "material": false,
+      "model": "maoyou",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "308": {
+      "name": "鬼灯",
+      "material": false,
+      "model": "guideng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "309": {
+      "name": "阿香",
+      "material": false,
+      "model": "axiang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "310": {
+      "name": "蜜桃&芥子",
+      "material": false,
+      "model": "taozi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "311": {
+      "name": "面灵气",
+      "material": false,
+      "model": "mianlingqi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "312": {
+      "name": "鬼切",
+      "material": false,
+      "model": "guiqie",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "313": {
+      "name": "犬夜叉",
+      "material": false,
+      "model": "quanyecha",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "314": {
+      "name": "杀生丸",
+      "material": false,
+      "model": "shashengwan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "315": {
+      "name": "少羽大天狗",
+      "material": false,
+      "model": "sp_xiaotiangou",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "316": {
+      "name": "白藏主",
+      "material": false,
+      "model": "xiaobai",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "317": {
+      "name": "人面树",
+      "material": false,
+      "model": "renmianshu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "318": {
+      "name": "於菊虫",
+      "material": false,
+      "model": "yujuchong",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "319": {
+      "name": "桔梗",
+      "material": false,
+      "model": "jiegeng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "321": {
+      "name": "入殓师",
+      "material": false,
+      "model": "rulianshi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "323": {
+      "name": "天井下",
+      "material": false,
+      "model": "tianjinxia",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "324": {
+      "name": "化鲸",
+      "material": false,
+      "model": "huajing",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "325": {
+      "name": "八岐大蛇",
+      "material": false,
+      "model": "dasheshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "327": {
+      "name": "苍风一目连",
+      "material": false,
+      "model": "sp_yimulian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "329": {
+      "name": "海忍",
+      "material": false,
+      "model": "hairen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "331": {
+      "name": "御怨般若",
+      "material": false,
+      "model": "sp_bore",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "333": {
+      "name": "大岳丸",
+      "material": false,
+      "model": "dayuewan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "335": {
+      "name": "蟹姬",
+      "material": false,
+      "model": "xieji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "337": {
+      "name": "黑崎一护",
+      "material": false,
+      "model": "heiqiyihu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "339": {
+      "name": "烬天玉藻前",
+      "material": false,
+      "model": "sp_yuzaoqian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "341": {
+      "name": "鬼王酒吞童子",
+      "material": false,
+      "model": "sp_jiutuntongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "343": {
+      "name": "天剑韧心鬼切",
+      "material": false,
+      "model": "sp_guiqie",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "553": {
+      "name": "闻人翊悬",
+      "material": false,
+      "model": "wenrenyixuan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "crit": 0.1
+      }
+    },
+    "344": {
+      "name": "云外镜",
+      "material": false,
+      "model": "yunwaijing",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "345": {
+      "name": "鬼童丸",
+      "material": false,
+      "model": "guitongwan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "346": {
+      "name": "聆海金鱼姬",
+      "material": false,
+      "model": "sp_jinyuji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "347": {
+      "name": "缘结神",
+      "material": false,
+      "model": "yuanjieshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "349": {
+      "name": "风狸",
+      "material": false,
+      "model": "fengli",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "attackPercent": 0.2
+      }
+    },
+    "350": {
+      "name": "蝎女",
+      "material": false,
+      "model": "xienv",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "351": {
+      "name": "铃鹿御前",
+      "material": false,
+      "model": "lingluyuqian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "352": {
+      "name": "缚骨清姬",
+      "material": false,
+      "model": "sp_qingji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "353": {
+      "name": "紧那罗",
+      "material": false,
+      "model": "jinnaluo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "355": {
+      "name": "麓铭大岳丸",
+      "material": false,
+      "model": "sp_dayuewan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "357": {
+      "name": "初翎山风",
+      "material": false,
+      "model": "sp_shanfeng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "359": {
+      "name": "灶门炭治郎",
+      "material": false,
+      "model": "tanzhilang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "361": {
+      "name": "垢尝",
+      "material": false,
+      "model": "gouchang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.6
+      }
+    },
+    "363": {
+      "name": "帝释天",
+      "material": false,
+      "model": "dishitian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "364": {
+      "name": "阿修罗",
+      "material": false,
+      "model": "axiuluo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "365": {
+      "name": "入内雀",
+      "material": false,
+      "model": "runeique",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "367": {
+      "name": "绘世花鸟卷",
+      "material": false,
+      "model": "sp_huaniaojuan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "369": {
+      "name": "食灵",
+      "material": false,
+      "model": "shiling",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "371": {
+      "name": "川猿",
+      "material": false,
+      "model": "chuanyuan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "373": {
+      "name": "夜刀神",
+      "material": false,
+      "model": "yedaoshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "375": {
+      "name": "影鳄",
+      "material": false,
+      "model": "yinge",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "defensePercent": 0.2
+      }
+    },
+    "376": {
+      "name": "铃彦姬",
+      "material": false,
+      "model": "lingyanji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "377": {
+      "name": "梦寻山兔",
+      "material": false,
+      "model": "sp_shantu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "378": {
+      "name": "迦楼罗",
+      "material": false,
+      "model": "jialouluo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "379": {
+      "name": "不见岳",
+      "material": false,
+      "model": "bujianyue",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "382": {
+      "name": "灵海蝶",
+      "material": false,
+      "model": "linghaidie",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "383": {
+      "name": "神堕八岐大蛇",
+      "material": false,
+      "model": "sp_baqidashe",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "384": {
+      "name": "粉婆婆",
+      "material": false,
+      "model": "fenpopo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "385": {
+      "name": "大夜摩天阎魔",
+      "material": false,
+      "model": "sp_yanmo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "386": {
+      "name": "我妻善逸",
+      "material": false,
+      "model": "shanyi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "387": {
+      "name": "嘴平伊之助",
+      "material": false,
+      "model": "yizhizhu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "speed": 10.0
+      }
+    },
+    "388": {
+      "name": "心狩鬼女红叶",
+      "material": false,
+      "model": "sp_guinvhongye",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "571": {
+      "name": "湍津姬",
+      "material": false,
+      "model": "tuanjinji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.4
+      }
+    },
+    "390": {
+      "name": "神启荒",
+      "material": false,
+      "model": "sp_huang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "392": {
+      "name": "季",
+      "material": false,
+      "model": "ji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "393": {
+      "name": "禅心云外镜",
+      "material": false,
+      "model": "sp_yunwaijing",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.75
+      }
+    },
+    "394": {
+      "name": "月读",
+      "material": false,
+      "model": "yueduming",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "396": {
+      "name": "修罗鬼童丸",
+      "material": false,
+      "model": "sp_guitongwan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "397": {
+      "name": "坂田银时",
+      "material": false,
+      "model": "bantianyinshi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "398": {
+      "name": "天逆每",
+      "material": false,
+      "model": "tiannimei",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "399": {
+      "name": "言灵",
+      "material": false,
+      "model": "yanling",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "400": {
+      "name": "盗墓小鬼",
+      "material": false,
+      "model": "daomuxiaogui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "403": {
+      "name": "唐纸伞妖",
+      "material": false,
+      "model": "tangzhisanyao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "404": {
+      "name": "天邪鬼绿",
+      "material": false,
+      "model": "lvtianxiegui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "406": {
+      "name": "天邪鬼黄",
+      "material": false,
+      "model": "huangtianxiegui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "407": {
+      "name": "天邪鬼青",
+      "material": false,
+      "model": "qingtianxiegui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "408": {
+      "name": "帚神",
+      "material": false,
+      "model": "zhoushen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "409": {
+      "name": "涂壁",
+      "material": false,
+      "model": "tubi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "410": {
+      "name": "招福达摩",
+      "material": true,
+      "model": "damobudaoweng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "412": {
+      "name": "奉为达摩",
+      "material": true,
+      "model": "damobudaoweng_bai",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "414": {
+      "name": "大天狗呱",
+      "material": true,
+      "model": "longche_datiangouwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "561": {
+      "name": "泷",
+      "material": false,
+      "model": "long",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "416": {
+      "name": "荒川呱",
+      "material": true,
+      "model": "longche_huangchuanwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "417": {
+      "name": "阎魔呱",
+      "material": true,
+      "model": "longche_yanmowa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "551": {
+      "name": "寻森小鹿男",
+      "material": false,
+      "model": "sp_xiaolunan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.3
+      }
+    },
+    "418": {
+      "name": "两面佛呱",
+      "material": true,
+      "model": "longche_liangmianfowa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "565": {
+      "name": "福悦座敷童子",
+      "material": false,
+      "model": "sp_zuofutongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "420": {
+      "name": "茨木呱",
+      "material": true,
+      "model": "longche_cimuwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "421": {
+      "name": "青行灯呱",
+      "material": true,
+      "model": "longche_qingxingwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "422": {
+      "name": "妖刀姬呱",
+      "material": true,
+      "model": "longche_yaodaojiwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "423": {
+      "name": "一目连呱",
+      "material": true,
+      "model": "longche_yimulianwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "569": {
+      "name": "猫川",
+      "material": false,
+      "model": "maochuan",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "424": {
+      "name": "花鸟卷呱",
+      "material": true,
+      "model": "longche_huaniaowa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "559": {
+      "name": "本真三尾狐",
+      "material": false,
+      "model": "sp_sanweihu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "426": {
+      "name": "荒呱",
+      "material": true,
+      "model": "longche_huangwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "427": {
+      "name": "彼岸花呱",
+      "material": true,
+      "model": "longche_bianhuawa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "573": {
+      "name": "龙珏",
+      "material": false,
+      "model": "longjue",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "428": {
+      "name": "雪童子呱",
+      "material": true,
+      "model": "longche_xuetongziwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "430": {
+      "name": "御馔津呱",
+      "material": true,
+      "model": "longche_yuzhuanjinwa",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "433": {
+      "name": "生剥鬼",
+      "material": false,
+      "model": "shengbogui",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "581": {
+      "name": "歌留多",
+      "material": false,
+      "model": "geliuduo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "hpPercent": 0.15
+      }
+    },
+    "500": {
+      "name": "神乐&定春",
+      "material": false,
+      "model": "shenle",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.4
+      }
+    },
+    "552": {
+      "name": "慧明灯",
+      "material": false,
+      "model": "huimingdeng",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.3
+      }
+    },
+    "554": {
+      "name": "纺愿缘结神",
+      "material": false,
+      "model": "sp_yuanjieshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "555": {
+      "name": "渺念萤草",
+      "material": false,
+      "model": "sp_yingcao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "556": {
+      "name": "天照",
+      "material": false,
+      "model": "tianzhao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "558": {
+      "name": "盗人神",
+      "material": false,
+      "model": "daorenshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "562": {
+      "name": "鲸汐千姬",
+      "material": false,
+      "model": "sp_qianji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "563": {
+      "name": "初音未来",
+      "material": false,
+      "model": "chuyinweilai",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "564": {
+      "name": "镜音铃·连",
+      "material": false,
+      "model": "jingyinlinglian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "hpPercent": 0.2
+      }
+    },
+    "566": {
+      "name": "晨晖惠比寿",
+      "material": false,
+      "model": "sp_huibishou",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "567": {
+      "name": "申屠子夜",
+      "material": false,
+      "model": "shentuziye",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "568": {
+      "name": "龙吟铃鹿御前",
+      "material": false,
+      "model": "sp_lingluyuqian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "570": {
+      "name": "祸津神",
+      "material": false,
+      "model": "huojinshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "hpPercent": 0.1
+      }
+    },
+    "572": {
+      "name": "遥念烟烟罗",
+      "material": false,
+      "model": "sp_yanyanluo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "574": {
+      "name": "心友犬神",
+      "material": false,
+      "model": "sp_quanshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.3
+      }
+    },
+    "575": {
+      "name": "封阳君",
+      "material": false,
+      "model": "fengyangjun",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectHit": 0.3
+      }
+    },
+    "576": {
+      "name": "夏目&猫老师",
+      "material": false,
+      "model": "xiamu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.3
+      }
+    },
+    "577": {
+      "name": "鬼金羊",
+      "material": false,
+      "model": "guijinyang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectHit": 0.3
+      }
+    },
+    "578": {
+      "name": "神酿星熊童子",
+      "material": false,
+      "model": "sp_xingxiongtongzi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "579": {
+      "name": "瑶音紧那罗",
+      "material": false,
+      "model": "sp_jinnaluo",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "580": {
+      "name": "晴思日和坊",
+      "material": false,
+      "model": "sp_rihefang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "582": {
+      "name": "巡音流歌",
+      "material": false,
+      "model": "xunyinliuge",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.25
+      }
+    },
+    "583": {
+      "name": "卑弥呼",
+      "material": false,
+      "model": "beimihu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "584": {
+      "name": "时曜泷夜叉姬",
+      "material": false,
+      "model": "sp_longyechaji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "585": {
+      "name": "荒骷髅",
+      "material": false,
+      "model": "ssr_huangkulou",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "586": {
+      "name": "云间不见岳",
+      "material": false,
+      "model": "sp_bujianyue",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "587": {
+      "name": "木之本樱",
+      "material": false,
+      "model": "muzhibenying",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectHit": 0.3
+      }
+    },
+    "588": {
+      "name": "李小狼",
+      "material": false,
+      "model": "lixiaolang",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "590": {
+      "name": "妙主九命猫",
+      "material": false,
+      "model": "sp_jiumingmao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.75
+      }
+    },
+    "591": {
+      "name": "雪御前",
+      "material": false,
+      "model": "xueyuqian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "593": {
+      "name": "妖刀姬·绯夜猎刃",
+      "material": false,
+      "model": "ur_yaodaoji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "594": {
+      "name": "梦引蝴蝶精",
+      "material": false,
+      "model": "sp_hudiejing",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "595": {
+      "name": "梦山白藏主",
+      "material": false,
+      "model": "sp_baizangzhu",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "597": {
+      "name": "葛叶",
+      "material": false,
+      "model": "geye",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "598": {
+      "name": "灼华桃花妖",
+      "material": false,
+      "model": "sp_taohuayao",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "599": {
+      "name": "蚀月吸血姬",
+      "material": false,
+      "model": "sp_xixueji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "601": {
+      "name": "思金神",
+      "material": false,
+      "model": "sijinshen",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.3
+      }
+    },
+    "602": {
+      "name": "天火命铃彦姬",
+      "material": false,
+      "model": "sp_lingyanji",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "603": {
+      "name": "毗沙门天",
+      "material": false,
+      "model": "pishamentian",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "effectResist": 0.3
+      }
+    },
+    "605": {
+      "name": "洛天依",
+      "material": false,
+      "model": "luotianyi",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {}
+    },
+    "606": {
+      "name": "言和",
+      "material": false,
+      "model": "yanhe",
+      "baseHit": 0.0,
+      "baseResist": 0,
+      "awakeBonus": {
+        "hpPercent": 0.1
+      }
+    }
+  },
+  "suits": {
+    "300091": {
+      "name": "夜荒魂",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300010": {
+      "name": "招财猫",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300083": {
+      "name": "海月火玉",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300002": {
+      "name": "雪幽魂",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300050": {
+      "name": "土蜘蛛",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300003": {
+      "name": "地藏像",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300004": {
+      "name": "蝠翼",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300057": {
+      "name": "油赤子",
+      "cycle": 4,
+      "twoPiece": {
+        "effectHit": 0.15
+      }
+    },
+    "300006": {
+      "name": "涅槃之火",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300007": {
+      "name": "三味",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300053": {
+      "name": "地震鲶",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300008": {
+      "name": "魍魉之匣",
+      "cycle": 4,
+      "twoPiece": {
+        "effectResist": 0.15
+      }
+    },
+    "300084": {
+      "name": "出世螺",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300009": {
+      "name": "被服",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300058": {
+      "name": "夜啼石",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300011": {
+      "name": "反枕",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300012": {
+      "name": "轮入道",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300032": {
+      "name": "珍珠",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300013": {
+      "name": "日女巳时",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300014": {
+      "name": "镜姬",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300055": {
+      "name": "片叶之苇",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300015": {
+      "name": "钟灵",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300035": {
+      "name": "魅妖",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300099": {
+      "name": "稻荷穗箭",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300018": {
+      "name": "狰",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300019": {
+      "name": "火灵",
+      "cycle": 4,
+      "twoPiece": {
+        "effectHit": 0.15
+      }
+    },
+    "300073": {
+      "name": "飞缘魔",
+      "cycle": 4,
+      "twoPiece": {
+        "effectHit": 0.15
+      }
+    },
+    "300020": {
+      "name": "鸣屋",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300021": {
+      "name": "薙魂",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300022": {
+      "name": "心眼",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300023": {
+      "name": "木魅",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300024": {
+      "name": "树妖",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300026": {
+      "name": "网切",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300074": {
+      "name": "兵主部",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300027": {
+      "name": "阴摩罗",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300048": {
+      "name": "狂骨",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300029": {
+      "name": "伤魂鸟",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300030": {
+      "name": "破势",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300054": {
+      "name": "蜃气楼",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300031": {
+      "name": "镇墓兽",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300033": {
+      "name": "骰子鬼",
+      "cycle": 4,
+      "twoPiece": {
+        "effectResist": 0.15
+      }
+    },
+    "300034": {
+      "name": "蚌精",
+      "cycle": 4,
+      "twoPiece": {
+        "effectHit": 0.15
+      }
+    },
+    "300036": {
+      "name": "针女",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300039": {
+      "name": "返魂香",
+      "cycle": 4,
+      "twoPiece": {
+        "effectResist": 0.15
+      }
+    },
+    "300049": {
+      "name": "幽谷响",
+      "cycle": 4,
+      "twoPiece": {
+        "effectResist": 0.15
+      }
+    },
+    "300051": {
+      "name": "胧车",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300052": {
+      "name": "荒骷髅",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300056": {
+      "name": "尘冢",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300059": {
+      "name": "夜送犬",
+      "cycle": 4,
+      "twoPiece": {
+        "effectResist": 0.15
+      }
+    },
+    "300060": {
+      "name": "雨降",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300075": {
+      "name": "青女房",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300076": {
+      "name": "涂佛",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300077": {
+      "name": "鬼灵歌伎",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300079": {
+      "name": "遗念火",
+      "cycle": 4,
+      "twoPiece": {
+        "effectHit": 0.15
+      }
+    },
+    "300080": {
+      "name": "共潜",
+      "cycle": 4,
+      "twoPiece": {
+        "effectResist": 0.15
+      }
+    },
+    "300081": {
+      "name": "恶楼",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300082": {
+      "name": "贝吹坊",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300085": {
+      "name": "火之车",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300086": {
+      "name": "隐念",
+      "cycle": 4,
+      "twoPiece": {
+        "attackPercent": 0.15
+      }
+    },
+    "300087": {
+      "name": "叠叩",
+      "cycle": 4,
+      "twoPiece": {
+        "hpPercent": 0.15
+      }
+    },
+    "300088": {
+      "name": "应声虫",
+      "cycle": 4,
+      "twoPiece": {
+        "crit": 0.15
+      }
+    },
+    "300089": {
+      "name": "元兴寺",
+      "cycle": 4,
+      "twoPiece": {
+        "effectHit": 0.15
+      }
+    },
+    "300090": {
+      "name": "钓瓶火",
+      "cycle": 4,
+      "twoPiece": {
+        "effectResist": 0.15
+      }
+    },
+    "300092": {
+      "name": "无刀取",
+      "cycle": 4,
+      "twoPiece": {
+        "critDamage": 0.2
+      }
+    },
+    "300093": {
+      "name": "奉海图",
+      "cycle": 4,
+      "twoPiece": {
+        "defensePercent": 0.3
+      }
+    },
+    "300094": {
+      "name": "八咫镜",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300095": {
+      "name": "天羽羽斩",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300096": {
+      "name": "预言星盘",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300097": {
+      "name": "月之石",
+      "cycle": 2,
+      "twoPiece": {}
+    },
+    "300098": {
+      "name": "纺缘锤",
+      "cycle": 2,
+      "twoPiece": {}
+    }
+  }
+}

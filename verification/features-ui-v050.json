@@ -1,0 +1,90 @@
+{
+  "method": "Real Electron production renderer/preload/worker; synthetic authentication and query payloads; virtual clock only for rate limits. No live phone login or real account inventory in UI.",
+  "automaticUnparsedBatch": true,
+  "eachSuccessPersisted": true,
+  "pauseResume": true,
+  "cachedContentSkipped": true,
+  "manualCooldownKeepsCache": true,
+  "singleReparseSaved": true,
+  "failedSaveDoesNotBecomeCached": true,
+  "accountPagination": {
+    "instances": 135,
+    "pages": 3,
+    "lastPage": 15,
+    "search412Count": 33,
+    "name": "奉为达摩"
+  },
+  "calculator": {
+    "sixSlots": true,
+    "eightAttributeRows": true,
+    "deeperSearch": true,
+    "recommendations": 6
+  },
+  "reparseCancelsPreviousCalculation": true,
+  "narrowWindowNoPageOverflow": true,
+  "existingFeatures": {
+    "title": "阴阳师阵容图鉴",
+    "lineups": 155,
+    "roster": 280,
+    "actors": 6,
+    "visibleCards": 24,
+    "brokenImages": 0,
+    "accounts": 1,
+    "views": 5,
+    "hasData": true,
+    "loginModule": {
+      "servers": 1,
+      "authenticated": true,
+      "roles": 1
+    },
+    "detail": {
+      "members": 6,
+      "oneRow": true,
+      "copySucceeded": true,
+      "rowWidth": 1313,
+      "scrollWidth": 1313
+    },
+    "libraryCopySucceeded": true,
+    "localDecode": {
+      "version": 3,
+      "members": [
+        {
+          "name": "晴明",
+          "kind": "onmyoji"
+        },
+        {
+          "name": "天照",
+          "kind": "shikigami"
+        },
+        {
+          "name": "神启荒",
+          "kind": "shikigami"
+        },
+        {
+          "name": "渺念萤草",
+          "kind": "shikigami"
+        },
+        {
+          "name": "流光追月神",
+          "kind": "shikigami"
+        },
+        {
+          "name": "空相面灵气",
+          "kind": "shikigami"
+        }
+      ],
+      "status": "V3 本地解析成功 · 6 位成员 · 已自动保存在本机"
+    },
+    "actorImages": {
+      "rendered": 12,
+      "broken": 0,
+      "cached": 0
+    },
+    "updateSettingRoundTrip": true
+  },
+  "officialRefreshRecalculates": true,
+  "reloginUsesLocalCache": true,
+  "previousSessionImportCannotWrite": true,
+  "rendererErrors": [],
+  "passed": true
+}

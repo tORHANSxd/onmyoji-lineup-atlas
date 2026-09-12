@@ -1,0 +1,73 @@
+{
+  "version": "0.5.0",
+  "type": "NSIS assisted installer",
+  "file": "Onmyoji-Lineup-Atlas-Setup-0.5.0-Windows-x64.exe",
+  "bytes": 258932001,
+  "sha256": "f9691609c1020b53c0633945617705e238a2221ef59bbbedb65ceb35806ade58",
+  "language": "zh_CN",
+  "signature": "NotSigned",
+  "nodeTests": 109,
+  "featureUI": "passed",
+  "featureUIMethod": "Real Electron production renderer/preload/worker; synthetic authentication and query payloads; virtual clock only for rate limits. No live phone login or real account inventory in UI.",
+  "inventoryValidation": {
+    "method": "Three authorized local snapshots; derived six-soul boundary targets with independent panel recomputation. Not gameplay or live TA-service verification.",
+    "personalIdentifiersIncluded": false,
+    "samples": [
+      {
+        "sample": 1,
+        "heroes": 4114,
+        "souls": 1858,
+        "pages": 69,
+        "material412": 299,
+        "unmappedHeroIds": 0,
+        "allInstancesVisitedExactlyOnce": true,
+        "sixPositionSolverPassed": true,
+        "allEightStatsIndependentlyRecomputed": true,
+        "elapsedMs": 210
+      },
+      {
+        "sample": 2,
+        "heroes": 713,
+        "souls": 1154,
+        "pages": 12,
+        "material412": 131,
+        "unmappedHeroIds": 0,
+        "allInstancesVisitedExactlyOnce": true,
+        "sixPositionSolverPassed": true,
+        "allEightStatsIndependentlyRecomputed": true,
+        "elapsedMs": 18
+      },
+      {
+        "sample": 3,
+        "heroes": 2770,
+        "souls": 2008,
+        "pages": 47,
+        "material412": 323,
+        "unmappedHeroIds": 0,
+        "allInstancesVisitedExactlyOnce": true,
+        "sixPositionSolverPassed": true,
+        "allEightStatsIndependentlyRecomputed": true,
+        "elapsedMs": 170
+      }
+    ]
+  },
+  "fullLibraryLiveQueriesPerformed": false,
+  "phoneLoginRepeated": false,
+  "previousRealLoginEvidence": "RESULTS-v0.4.0.md",
+  "install": "not-run-existing-installation",
+  "reinstall": "not-run-existing-installation",
+  "uninstall": "not-run-existing-installation",
+  "packagedStartupSmoke": "passed",
+  "officialLoginQRReady": true,
+  "serverCount": 157,
+  "blockedUnauthenticatedOperations": 9,
+  "payloadFiles": 224,
+  "allPayloadFilesMatch": true,
+  "syntheticDataUnchanged": true,
+  "existingInstallationPreserved": true,
+  "installerPersonalAccountFilesRead": false,
+  "packagedFiles": 1382,
+  "sourceHashChecks": 32,
+  "runtimeHashChecks": 149,
+  "protocolHashChecks": 7
+}

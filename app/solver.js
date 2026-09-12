@@ -1,0 +1,203 @@
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory;else root.AtlasSolver=factory;})(globalThis,function(C){
+'use strict';
+const finite=Number.isFinite,percent=new Set(['crit','critDamage','effectHit','effectResist']);
+const unique=a=>[...new Set(a)],names=C.STAT_NAMES;
+function fmt(stat,value){return finite(value)?(value*(percent.has(stat)?100:1)).toFixed(2).replace(/\.00$/,'')+(percent.has(stat)?'%':''):'未知';}
+function panelGaps(panel,config){
+  const gaps=[];
+  for(const r of config.ranges||[]){
+    const actual=panel[r.stat],div=r.percentage?100:1;
+    if(!finite(actual)){gaps.push({kind:'unknown',stat:r.stat,text:`缺少${names[r.stat]||r.stat}面板`,weight:0});continue;}
+    for(const side of ['min','max']){
+      if(!finite(r[side]))continue;
+      const target=r[side]/div,delta=side==='min'?target-actual:actual-target,exclusive=r[side+'Exclusive'];
+      if(delta>1e-8||(exclusive&&delta>=0))gaps.push({kind:'stat',stat:r.stat,side,actual,target,delta:Math.max(delta,exclusive?1e-6:0),weight:10*Math.max(delta,0)/Math.max(Math.abs(target),percent.has(r.stat)?.01:1),text:`${names[r.stat]} ${fmt(r.stat,actual)}，要求${side==='min'?(exclusive?'>':'≥'):(exclusive?'<':'≤')}${fmt(r.stat,target)}，${side==='min'?'还差':'超出'} ${fmt(r.stat,Math.max(delta,0))}`});
+    }
+  }
+  if(config.targetScore!=null){const actual=C.score(panel,config.metricId),delta=config.targetScore-actual;if(!finite(actual)||delta>1e-8)gaps.push({kind:'score',actual,target:config.targetScore,delta,weight:10*Math.max(0,delta)/Math.max(Math.abs(config.targetScore),1),text:`计算指标 ${finite(actual)?actual.toFixed(2):'未知'}，目标 ≥${config.targetScore}`});}
+  return gaps;
+}
+function suitGaps(souls,config,effects){
+  const counts={};for(const q of souls)counts[q.set]=(counts[q.set]||0)+1;
+  const requests=config.suitRequirements||[];let best=null;
+  const activations=(n,cycle=4)=>Math.floor(n/cycle)+(n%cycle>=2?1:0);
+  function visit(index,remaining,gaps){
+    if(index===requests.length){
+      const available={};for(const e of effects)available[e.stat]=e.suitNames.reduce((n,s)=>n+Math.max(0,activations(counts[s]||0,e.cycle||4)-activations((counts[s]||0)-(remaining[s]||0),e.cycle||4)),0);
+      const all=[...gaps];for(const stat of config.twoPieceStats||[]){if(available[stat]>0)available[stat]--;else all.push({kind:'pair',stat,count:2,delta:2,weight:12,text:`还需一组${names[stat]||stat}两件套；指定套装已提供的加成不重复充数`});}
+      if(!best||all.reduce((n,g)=>n+g.weight,0)<best.reduce((n,g)=>n+g.weight,0))best=all;return;
+    }
+    const r=requests[index],e=effects.find(e=>e.name===r.name||(r.effectId!=null&&e.teamCodeId===r.effectId)),pool=e?.suitNames||[r.name],candidates=pool.filter(s=>(remaining[s]||0)>0);
+    for(const set of candidates.length?candidates:[pool[0]]){const have=Math.min(remaining[set]||0,r.count),missing=have<r.count?[{kind:'set',name:r.name,count:r.count,actual:have,delta:r.count-have,weight:(r.count-have)*6,text:`${r.name}需要${r.count}件，当前方案${have}件`}]:[];visit(index+1,{...remaining,[set]:(remaining[set]||0)-have},[...gaps,...missing]);if(best?.length===0)return;}
+  }
+  visit(0,counts,[]);return best||[];
+}
+function equipmentGaps(souls,config,effects){
+  const gaps=suitGaps(souls,config,effects);
+  for(let slot=1;slot<=6;slot++){
+    const q=souls.find(s=>s.slot===slot),main=config.mainStats?.[slot];
+    if(!q){gaps.push({kind:'slot',slot,weight:12,text:`缺少${slot}号位御魂`});continue;}
+    if(main?.length&&!main.includes(q.mainStat))gaps.push({kind:'main',slot,weight:8,text:`${slot}号位主属性${names[q.mainStat]||q.mainStat}，需要${main.map(s=>names[s]||s).join(' / ')}`});
+    if(config.sixStarOnly&&q.star!==6||config.allowedStars?.length&&!config.allowedStars.includes(q.star))gaps.push({kind:'star',slot,weight:5,text:`${slot}号位${q.star}星不满足星级要求`});
+    const range=config.levelRange||[config.maxLevelOnly?15:0,15];
+    if(q.level<range[0]||q.level>range[1])gaps.push({kind:'level',slot,delta:Math.abs(q.level-range[0]),weight:Math.abs(q.level-range[0])/3,text:`${slot}号位 +${q.level}，要求 +${range[0]}～${range[1]}`});
+  }
+  return gaps;
+}
+function configUnknown(config,effects){
+  if(!config)return ['缺少御魂配置'];
+  const reasons=[...(config.protocolUncertainties||[])];
+  if(config.keepCurrent||config.yuhunConfigEnabled===false)reasons.push('原码要求保留当前御魂；导出未提供穿戴归属');
+  if(config.scope!=null&&!['all','unequipped'].includes(config.scope))reasons.push('未支持的库存范围');
+  if(config.scope==='unequipped'||config.excludeOccupied)reasons.push('导出缺少穿戴归属，不能筛选未占用御魂');
+  if(config.highestStat)reasons.push('旧版最高属性字段需重新解析');
+  if((config.highestStats||[]).some(s=>!Object.hasOwn(names,s)))reasons.push('未知最高属性');
+  if((config.ranges||[]).some(r=>!Object.hasOwn(names,r.stat)||r.stat.endsWith('Percent')))reasons.push('包含未支持的面板范围');
+  if(config.metricId!=null&&!C.METRICS[config.metricId])reasons.push('未知计算指标');
+  if(config.suits?.length&&!config.suitRequirements?.length&&!config.suitSelectionComplete)reasons.push('旧版套装没有明确件数');
+  for(const r of config.suitRequirements||[]){if(![2,4,6].includes(r.count))reasons.push('套装件数未核实');if(r.effectId!=null&&!effects.some(e=>e.teamCodeId===r.effectId))reasons.push('未知两件套效果');}
+  for(const stat of config.twoPieceStats||[])if(!effects.some(e=>e.stat===stat&&e.value))reasons.push(`未支持的两件套属性 ${names[stat]||stat}`);
+  for(const [k,v] of Object.entries(config.extraAttributes||{}))if(!['attackPercent','attack','crit','critDamage'].includes(k)||!finite(v)||v<0)reasons.push(`额外属性 ${names[k]||k} 未核实`);
+  return unique(reasons);
+}
+function suggestions(config,closest,account,effects){
+  if(!config)return [];
+  const inventory=Object.values(account.souls),q=(closest?.soulIds||[]).map(id=>account.souls[id]).filter(Boolean),out=[];
+  const gaps=closest?.gaps||equipmentGaps(q,config,effects);
+  const add=(priority,text)=>{if(!out.some(x=>x.text===text))out.push({priority,text});};
+  for(const g of gaps){
+    if(['slot','main','star','level'].includes(g.kind)){
+      const soul=q.find(s=>s.slot===g.slot),main=config.mainStats?.[g.slot]?.map(s=>names[s]).join(' / ')||({1:'攻击',3:'防御',5:'生命'}[g.slot]||'按数值缺口选择');
+      if(g.kind==='level'&&soul&&soul.level<15)add(0,`优先强化${g.slot}号位「${soul.set}」${names[soul.mainStat]}主属性（当前 +${soul.level}）。强化后重新导入；副属性落点不保证达标。`);
+      else add(0,`补充${g.slot}号位，主属性选${main}${config.sixStarOnly?'，六星':''}；优先从要求的套装中兑换。`);
+    }
+    if(g.kind==='set'||g.kind==='pair'){
+      const sets=g.kind==='set'?[g.name]:(effects.find(e=>e.stat===g.stat)?.suitNames||[]),requiredSlots=[1,2,3,4,5,6].filter(slot=>!q.some(x=>x.slot===slot&&sets.includes(x.set)));
+      const slots=requiredSlots.sort((a,b)=>inventory.filter(x=>x.slot===a&&sets.includes(x.set)).length-inventory.filter(x=>x.slot===b&&sets.includes(x.set)).length).slice(0,Math.min(g.delta,2));
+      for(const slot of slots){const mains=config.mainStats?.[slot]?.map(s=>names[s]).join(' / ')||({1:'攻击',3:'防御',5:'生命'}[slot]||'依下方数值缺口选择');add(1,`优先兑换${sets.slice(0,4).join(' / ')}${sets.length>4?'等同加成套装':''}的${slot}号位，主属性${mains}；先补套装所缺位置。`);}
+    }
+  }
+  const statGaps=gaps.filter(g=>g.kind==='stat').sort((a,b)=>b.weight-a.weight);
+  for(const g of statGaps.slice(0,2)){
+    const direct={speed:[2,'speed'],crit:[6,'crit'],critDamage:[6,'critDamage'],effectHit:[4,'effectHit'],effectResist:[4,'effectResist'],attack:[2,'attackPercent'],hp:[2,'hpPercent'],defense:[2,'defensePercent']}[g.stat];
+    const allowed=direct&&(!config.mainStats?.[direct[0]]?.length||config.mainStats[direct[0]].includes(direct[1]));
+    const statKeys={attack:['attack','attackPercent'],hp:['hp','hpPercent'],defense:['defense','defensePercent']}[g.stat]||[g.stat];
+    const ranked=[...q].sort((a,b)=>statKeys.reduce((n,k)=>n+(a.stats[k]||0)-(b.stats[k]||0),0)*(g.side==='max'?-1:1));
+    const slot=allowed?direct[0]:ranked[0]?.slot;
+    if(slot)add(2,`${names[g.stat]}${g.side==='min'?'不足':'超过上限'}：优先${g.side==='min'?'提升':'更换'}${slot}号位${allowed&&g.side==='min'?'，主属性可选'+names[direct[1]]:'，保留指定主属性并'+(g.side==='min'?'寻找更高':'降低')+names[g.stat]+'副属性'}。${g.text}；其余位置与套装也须保持达标。`);
+  }
+  return out.sort((a,b)=>a.priority-b.priority).slice(0,6).map(x=>x.text);
+}
+function findBuilds(hero,config,account,roster,effects,options={}){
+  const base=C.baseFromRoster(hero,roster),unknown=configUnknown(config,effects);
+  if(!base)return {status:'unknown',reasons:['缺少此实例可核验的基础面板；需要完整 attrs 或对应官方属性'],builds:[],suggestions:[]};
+  if(unknown.length)return {status:'unknown',reasons:unknown,builds:[],suggestions:[]};
+  let cache=null;if(options.cache){cache=options.cache.get(account.souls);if(!cache){cache=new Map();options.cache.set(account.souls,cache);}}
+  const cacheKey=cache&&JSON.stringify([base,config,effects,account.completeness,account.merged]);
+  if(cacheKey&&cache.has(cacheKey)){const saved=cache.get(cacheKey);return {...saved,builds:saved.builds.map(b=>({...b,heroId:hero.instanceId})),closest:saved.closest?{...saved.closest,heroId:hero.instanceId}:null};}
+  const inventory=options.inventory||Object.values(account.souls),known=inventory.filter(q=>!q.unknown.length);
+  const absence=account.completeness==='complete'&&!account.merged&&!inventory.some(q=>q.unknown.length)?'missing':'unknown';
+  const level=config.levelRange||[config.maxLevelOnly?15:0,15];
+  const legal=q=>(!config.sixStarOnly||q.star===6)&&(!config.allowedStars?.length||config.allowedStars.includes(q.star))&&q.level>=level[0]&&q.level<=level[1]&&(!config.mainStats?.[q.slot]?.length||config.mainStats[q.slot].includes(q.mainStat));
+  const slots=[1,2,3,4,5,6],groups=slots.map(s=>known.filter(q=>q.slot===s&&legal(q))),relaxed=groups.map((g,i)=>g.length?g:known.filter(q=>q.slot===i+1));
+  const reasons=[];
+  for(let i=0;i<6;i++)if(!groups[i].length)reasons.push(`${i+1}号位没有符合星级、等级与主属性的御魂`);
+  for(const r of config.suitRequirements||[]){const e=effects.find(e=>e.name===r.name||(r.effectId!=null&&e.teamCodeId===r.effectId));if(!(e?.suitNames||[r.name]).some(s=>groups.filter(g=>g.some(q=>q.set===s)).length>=r.count))reasons.push(`${r.name}不足${r.count}个符合主属性的不同位置`);}
+  const allBuilds=[],seen=new Set();let closest=null,checked=0,unsupported=false;
+  const assess=(q,keep=true)=>{
+    const p=C.panel(base,q,effects,config.extraAttributes),gaps=[...equipmentGaps(q,config,effects),...panelGaps(p.values,config)],distance=gaps.reduce((sum,g)=>sum+(g.weight||0),0);
+    const result={heroId:hero.instanceId,soulIds:[...q].sort((a,b)=>a.slot-b.slot).map(x=>x.id),panel:p.values,rawPanel:C.panel(base,q,effects).values,sets:p.sets,score:C.score(p.values,config.metricId),distance,gaps};
+    if(p.unsupported.length){unsupported=true;return result;}
+    if(keep){if(!closest||distance<closest.distance||distance===closest.distance&&(result.score||0)>(closest.score||0))closest=result;
+      if(q.length===6&&!gaps.length){const key=result.soulIds.join(',');if(!seen.has(key)){seen.add(key);allBuilds.push(result);}}}
+    return result;
+  };
+  for(const preset of account.presets||[]){const ids=Array.isArray(preset)?preset[1]:null;if(!Array.isArray(ids)||ids.length!==6)continue;const q=ids.map(id=>account.souls[id]);if(q.every(s=>s&&!s.unknown.length)&&new Set(q.map(x=>x.slot)).size===6){assess(q);checked++;}}
+  const product=relaxed.reduce((p,g)=>p*g.length,1),limit=options.limit??16000;let exhaustive=product<=limit;
+  if(product===0){assess(relaxed.filter(g=>g.length).map(g=>g[0]));}
+  else if(exhaustive){const q=[];function visit(n){if(n===6){assess(q);checked++;return;}for(const soul of relaxed[n]){q.push(soul);visit(n+1);q.pop();}}visit(0);}
+  else {
+    const width=options.width??64,perSet=options.perSet??5;
+    const rank=q=>{const p=C.panel(base,q,effects,config.extraAttributes).values;const gap=panelGaps(p,config).reduce((n,g)=>n+g.weight,0)+suitGaps(q,config,effects).reduce((n,g)=>n+g.weight,0);return -gap+Math.log1p(Math.max(0,C.score(p,config.metricId)||0))*.015;};
+    const reduced=relaxed.map(g=>{const ordered=g.map(q=>({q,v:rank([q])})).sort((a,b)=>b.v-a.v);const counts={},selected=[];for(const {q} of ordered){const important=(config.suitRequirements||[]).some(r=>r.name===q.set)||(config.twoPieceStats||[]).some(s=>effects.find(e=>e.stat===s)?.suitNames.includes(q.set));if((counts[q.set]||0)<perSet||selected.length<12){selected.push(q);counts[q.set]=(counts[q.set]||0)+1;}if(selected.length>=(important?64:48))break;}return selected;});
+    let beam=[{q:[],v:0}];
+    for(const group of reduced){const next=[];for(const b of beam)for(const q of group){const arr=[...b.q,q];next.push({q:arr,v:rank(arr)});checked++;}next.sort((a,b)=>b.v-a.v);beam=next.slice(0,width);}
+    for(const b of beam)assess(b.q);
+  }
+  allBuilds.sort((a,b)=>(b.score||0)-(a.score||0));
+  // Retain alternatives using different inventory for the joint team assignment.
+  const builds=allBuilds.slice(0,64),selected=new Set(builds);
+  for(const anchor of allBuilds.slice(0,8)){const used=new Set(anchor.soulIds);for(const b of allBuilds)if(!selected.has(b)&&b.soulIds.every(s=>!used.has(s))){builds.push(b);selected.add(b);break;}}
+  for(const b of allBuilds)if(builds.length<128&&!selected.has(b)){builds.push(b);selected.add(b);}
+  const status=builds.length?'found':reasons.length?absence:exhaustive&&!unsupported?absence:'unknown';
+  if(!builds.length&&!reasons.length)reasons.push(unsupported?'候选包含尚未核实的套装属性':exhaustive?'已穷举已识别库存，没有全部满足的六件方案':'限定搜索尚未找到达标方案；下方仅为当前最接近的候选');
+  const result={status,reasons,builds,closest,checked,exhaustive,suggestions:suggestions(config,closest,account,effects)};
+  if(cacheKey)cache.set(cacheKey,result);
+  return result;
+}
+function heroGaps(member,hero){
+  const gaps=[];
+  if(member.awakening!=null&&hero.awake!==member.awakening)gaps.push({kind:'awake',weight:15,text:member.awakening?'此实例尚未觉醒':'需要另备未觉醒实例'});
+  if(member.levelMode!=='recommended')for(const [k,label] of [['level','等级'],['star','星级']])if(member[k]&&hero[k]<member[k])gaps.push({kind:k,weight:(member[k]-hero[k])*(k==='star'?5:1),text:`${label} ${hero[k]}，要求 ≥${member[k]}`});
+  for(const s of member.skills||[]){const actual=hero.skills.find(h=>h.id===s.id)?.level||0;if(s.exact?actual!==s.level:actual<s.level)gaps.push({kind:'skill',skill:s.id,actual,target:s.level,weight:Math.max(1,Math.abs(s.level-actual))*8,text:`技能 ${s.id} 当前${actual?actual+'级':'未拥有'}，要求${s.exact?'=':'≥'}${s.level}级${s.exact&&actual>s.level?'；需要另一符合等级的实例':''}`});}
+  return gaps;
+}
+function memberCandidates(member,account){
+  const all=Object.values(account.heroes).filter(h=>h.shikigamiId===member.shikigamiId);
+  if(!all.length)return {status:'missing',reason:'缺少式神',heroes:[],nearest:null,gaps:[{kind:'hero',weight:100,text:'缺少此式神实例'}]};
+  const ranked=all.map(h=>({hero:h,gaps:heroGaps(member,h)})).sort((a,b)=>a.gaps.reduce((n,g)=>n+g.weight,0)-b.gaps.reduce((n,g)=>n+g.weight,0)||b.hero.level-a.hero.level||b.hero.star-a.hero.star);
+  const heroes=ranked.filter(r=>!r.gaps.length).map(r=>r.hero),near=ranked[0];
+  return {status:heroes.length?'found':'missing',reason:heroes.length?'':near.gaps.map(g=>g.text).join('；'),heroes,nearest:near.hero,gaps:near.gaps};
+}
+function matchLineup(lineup,account,roster,effects,options={}){
+  if(!lineup.members?.some(m=>m.occupied!==false))return {status:'unknown',label:'待解析',distance:null,reasons:['阵容码尚未获得成员数据'],members:[],checks:[]};
+  const members=[],unknown=[],checks=[],required={},roles=lineup.members.filter(m=>m.occupied!==false),search={...options,cache:options.cache||new Map(),inventory:options.inventory||Object.values(account.souls)};
+  let forcedMissing=false;
+  for(const m of roles.filter(m=>m.kind==='shikigami'&&!m.borrowed))required[m.shikigamiId]=(required[m.shikigamiId]||0)+1;
+  for(const [sid,n] of Object.entries(required)){const have=Object.values(account.heroes).filter(h=>h.shikigamiId===sid).length;if(n>have){forcedMissing=account.completeness==='complete'&&!account.merged;checks.push(`${roster.find(r=>r.id===sid)?.name||sid}需要${n}个不同实例，导出有${have}个`);}}
+  for(const m of roles){
+    if(m.kind==='onmyoji'){
+      const requirement=`${m.name}：${m.level||'未指定'}级；技能 ${(m.skills||[]).map(s=>`${s.id} ≥${s.level}级`).join('、')||'未提供'}`;
+      unknown.push('导出未包含阴阳师 / 英杰信息');checks.push(requirement);
+      if(m.qiling)checks.push(`契灵 ID ${m.qiling.id}：${m.qiling.star}星、${m.qiling.lv}级，印记 ${(m.qiling.marks||[]).join(' / ')||'无'}`);
+      if(m.aiSkill!=null)checks.push(`${m.name}自动技能设置：${JSON.stringify(m.aiSkill)}`);
+      members.push({index:m.index,name:m.name,status:'unknown',reasons:['需在游戏内确认主角与契灵配置'],builds:[],distance:0});continue;
+    }
+    if(m.borrowed||!m.shikigamiId){const reason=m.borrowed?'需要借用协战，需确认可借式神及配置':'成员身份未核实';unknown.push(reason);members.push({index:m.index,name:m.name,status:'unknown',reasons:[reason],builds:[],distance:0});continue;}
+    const owned=memberCandidates(m,account),heroes=owned.heroes.length?owned.heroes:owned.nearest?[owned.nearest]:[],tested=[];
+    for(const hero of heroes)tested.push(findBuilds(hero,m.config,account,roster,effects,search));
+    const builds=owned.status==='found'?tested.flatMap(t=>t.builds):[],closest=tested.map(t=>t.closest).filter(Boolean).sort((a,b)=>a.distance-b.distance)[0]||null;
+    const absence=account.completeness==='complete'&&!account.merged?'missing':'unknown';
+    const status=owned.status==='missing'?absence:builds.length?'found':tested.length&&tested.every(t=>t.status==='missing')?'missing':'unknown';
+    const reasons=unique([...(owned.reason?[owned.reason]:[]),...tested.flatMap(t=>t.reasons)]);
+    if(status==='unknown')unknown.push(`${m.name}御魂尚未证实`);
+    if(m.awakening==null)unknown.push(`${m.name}未提供觉醒要求`);
+    if(m.skills==null)unknown.push(`${m.name}未提供技能要求`);
+    if(m.aiSkill!=null)checks.push(`${m.name}自动技能设置：${JSON.stringify(m.aiSkill)}`);
+    if(m.levelMode==='recommended'&&owned.nearest&&(owned.nearest.level!==m.level||owned.nearest.star!==m.star))reasons.push(`原码推荐 ${m.level}级${m.star}星；按实际 ${owned.nearest.level}级${owned.nearest.star}星计算`);
+    members.push({index:m.index,name:m.name,status,reasons,builds,closest,heroGaps:owned.gaps,instanceCount:owned.heroes.length,checked:tested.reduce((n,t)=>n+(t.checked||0),0),distance:owned.gaps.reduce((n,g)=>n+g.weight,0)+(closest?.distance||0),suggestions:unique([...owned.gaps.map(g=>g.text),...tested.flatMap(t=>t.suggestions||[])])});
+  }
+  const buildRoles=members.filter(m=>m.builds.length).sort((a,b)=>a.builds.length-b.builds.length);let assignment=null,steps=0;
+  function highestValid(chosen){
+    for(const owner of chosen){const original=roles.find(m=>m.index===owner.index);for(const stat of original?.config?.highestStats||[])for(const other of chosen){if(other.index<=owner.index)continue;const delta=percent.has(stat)?.001:.1;if(!finite(other.panel[stat])||other.panel[stat]>owner.rawPanel[stat]-delta+1e-8)return false;}}
+    return true;
+  }
+  function assign(n,heroes,souls,chosen){
+    if(++steps>(options.assignmentLimit??100000))return false;
+    if(n===buildRoles.length){assignment=[...chosen].sort((a,b)=>a.index-b.index);return true;}
+    const role=buildRoles[n];for(const b of role.builds){if(heroes.has(b.heroId)||b.soulIds.some(s=>souls.has(s)))continue;const next=[...chosen,{index:role.index,name:role.name,...b}];if(!highestValid(next))continue;if(assign(n+1,new Set([...heroes,b.heroId]),new Set([...souls,...b.soulIds]),next))return true;}return false;
+  }
+  assign(0,new Set(),new Set(),[]);
+  if(!assignment&&buildRoles.length)unknown.push('候选存在式神 / 御魂冲突或最高属性次序不符；尚未找到全队分配');
+  if(!lineup.requirementsComplete)unknown.push('来源要求尚不完整，需核对原文与补充说明');
+  if(account.merged)unknown.push('增量合并可能保留旧资产，需确认仍在仓库');
+  if(account.completeness!=='complete')unknown.push('账号导出不完整');
+  if(checks.length)unknown.push('还有原码中的主角、契灵、自动技能或实例数量待核对');
+  const missing=forcedMissing||members.some(m=>m.status==='missing'),ready=!!assignment?.length&&members.filter(m=>roles.find(r=>r.index===m.index)?.kind==='shikigami').every(m=>m.status==='found');
+  const status=missing?'missing':unknown.length?'unknown':'available';
+  const distance=members.reduce((n,m)=>n+m.distance,0)+(!assignment&&buildRoles.length?15:0)+(forcedMissing?100:0);
+  return {status,label:status==='available'?'配置可组成':missing?'存在缺口':ready?'式神御魂就绪 · 仍需核对':'需核对',ready,distance:Math.round(distance*100)/100,checks,reasons:unique([...(forcedMissing?checks.filter(c=>c.includes('个不同实例')):[]),...members.filter(m=>m.status==='missing').map(m=>`${m.name}：${m.reasons.join('；')}`),...unknown]),members,assignment};
+}
+function compareMatches(a,b){if(a?.status==='available'&&b?.status!=='available')return -1;if(b?.status==='available'&&a?.status!=='available')return 1;return (a?.distance??Infinity)-(b?.distance??Infinity)||(a?.checks?.length||0)-(b?.checks?.length||0);}
+return {findBuilds,memberCandidates,matchLineup,compareMatches,panelGaps,equipmentGaps,suggestions,configUnknown,formatStat:fmt,suitMatches:(q,c,e)=>!suitGaps(q,c,e).length};
+});

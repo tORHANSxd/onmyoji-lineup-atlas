@@ -6,19 +6,20 @@
       "teamCodeId": 0,
       "stat": "attackPercent",
       "suitNames": [
-        "隐念",
-        "贝吹坊",
-        "兵主部",
-        "狂骨",
-        "阴摩罗",
-        "心眼",
-        "鸣屋",
-        "狰",
-        "轮入道",
         "蝠翼",
-        "尘冢"
+        "轮入道",
+        "狰",
+        "鸣屋",
+        "心眼",
+        "阴摩罗",
+        "狂骨",
+        "尘冢",
+        "兵主部",
+        "贝吹坊",
+        "隐念"
       ],
-      "value": 0.15
+      "value": 0.15,
+      "cycle": 4
     },
     {
       "id": "crit",
@@ -26,18 +27,19 @@
       "teamCodeId": 1,
       "stat": "crit",
       "suitNames": [
-        "应声虫",
-        "海月火玉",
-        "青女房",
-        "针女",
-        "镇墓兽",
-        "破势",
-        "伤魂鸟",
-        "网切",
         "三味",
-        "片叶之苇"
+        "网切",
+        "伤魂鸟",
+        "破势",
+        "镇墓兽",
+        "针女",
+        "片叶之苇",
+        "青女房",
+        "海月火玉",
+        "应声虫"
       ],
-      "value": 0.15
+      "value": 0.15,
+      "cycle": 4
     },
     {
       "id": "critDamage",
@@ -47,7 +49,8 @@
       "suitNames": [
         "无刀取"
       ],
-      "value": null
+      "value": 0.2,
+      "cycle": 4
     },
     {
       "id": "hpPercent",
@@ -55,19 +58,20 @@
       "teamCodeId": 6,
       "stat": "hpPercent",
       "suitNames": [
-        "叠叩",
-        "恶楼",
-        "涂佛",
-        "树妖",
-        "薙魂",
-        "钟灵",
-        "镜姬",
-        "被服",
-        "涅槃火",
         "地藏像",
-        "夜啼石"
+        "涅槃之火",
+        "被服",
+        "镜姬",
+        "钟灵",
+        "薙魂",
+        "树妖",
+        "夜啼石",
+        "涂佛",
+        "恶楼",
+        "叠叩"
       ],
-      "value": 0.15
+      "value": 0.15,
+      "cycle": 4
     },
     {
       "id": "defensePercent",
@@ -75,19 +79,20 @@
       "teamCodeId": 7,
       "stat": "defensePercent",
       "suitNames": [
-        "火之车",
-        "出世螺",
-        "魅妖",
-        "珍珠",
-        "木魅",
-        "日女巳时",
-        "反枕",
-        "招财猫",
         "雪幽魂",
-        "奉海图",
-        "雨降"
+        "招财猫",
+        "反枕",
+        "日女巳时",
+        "木魅",
+        "珍珠",
+        "魅妖",
+        "雨降",
+        "出世螺",
+        "火之车",
+        "奉海图"
       ],
-      "value": 0.15
+      "value": 0.3,
+      "cycle": 4
     },
     {
       "id": "effectHit",
@@ -95,14 +100,15 @@
       "teamCodeId": 4,
       "stat": "effectHit",
       "suitNames": [
-        "元兴寺",
-        "遗念火",
-        "飞缘魔",
-        "蚌精",
         "火灵",
-        "油赤子"
+        "蚌精",
+        "油赤子",
+        "飞缘魔",
+        "遗念火",
+        "元兴寺"
       ],
-      "value": 0.15
+      "value": 0.15,
+      "cycle": 4
     },
     {
       "id": "effectResist",
@@ -110,15 +116,38 @@
       "teamCodeId": 5,
       "stat": "effectResist",
       "suitNames": [
-        "钓瓶火",
-        "共潜",
-        "幽谷响",
-        "返魂香",
-        "骰子鬼",
         "魍魉之匣",
-        "夜送犬"
+        "骰子鬼",
+        "返魂香",
+        "幽谷响",
+        "夜送犬",
+        "共潜",
+        "钓瓶火"
       ],
-      "value": 0.15
+      "value": 0.15,
+      "cycle": 4
+    },
+    {
+      "id": "fixedBoss",
+      "name": "首领固定属性（已计入副属性）",
+      "stat": "none",
+      "value": 0,
+      "cycle": 2,
+      "suitNames": [
+        "土蜘蛛",
+        "胧车",
+        "荒骷髅",
+        "地震鲶",
+        "蜃气楼",
+        "鬼灵歌伎",
+        "夜荒魂",
+        "八咫镜",
+        "天羽羽斩",
+        "预言星盘",
+        "月之石",
+        "纺缘锤",
+        "稻荷穗箭"
+      ]
     }
   ],
   "suits": {
@@ -193,5 +222,16 @@
     "300098": "纺缘锤",
     "300099": "稻荷穗箭"
   },
-  "source": "https://github.com/FiresChain/onmyoji-yuhun"
+  "source": {
+    "kind": "user-supplied-apk",
+    "apkFile": "onmyoji_netease_116_2.8.84_py3_small.apk",
+    "packageVersion": "2.8.84",
+    "verifiedFiles": {
+      "assets/res/script3.idx": "ffe1f90325e6dfc203ed94d843e11aa8cf64f76dfae35f5dde0fb71991b0acce",
+      "assets/res/script30.wpk": "f777ee4ff692fc03338b8a3e31a65ada08240dda38a34348c58e331ba3d7341f",
+      "assets/res/script31.wpk": "416ba3507671c7286958c7dd18a74aa005d0a05eb49b7d71d4de61c0fc8c8d67"
+    },
+    "heroEntry": 22953,
+    "equipSuitEntry": 26529
+  }
 }

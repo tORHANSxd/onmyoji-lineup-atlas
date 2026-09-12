@@ -1,0 +1,42 @@
+{
+  "method": "Three authorized local snapshots; derived six-soul boundary targets with independent panel recomputation. Not gameplay or live TA-service verification.",
+  "personalIdentifiersIncluded": false,
+  "samples": [
+    {
+      "sample": 1,
+      "heroes": 4114,
+      "souls": 1858,
+      "pages": 69,
+      "material412": 299,
+      "unmappedHeroIds": 0,
+      "allInstancesVisitedExactlyOnce": true,
+      "sixPositionSolverPassed": true,
+      "allEightStatsIndependentlyRecomputed": true,
+      "elapsedMs": 210
+    },
+    {
+      "sample": 2,
+      "heroes": 713,
+      "souls": 1154,
+      "pages": 12,
+      "material412": 131,
+      "unmappedHeroIds": 0,
+      "allInstancesVisitedExactlyOnce": true,
+      "sixPositionSolverPassed": true,
+      "allEightStatsIndependentlyRecomputed": true,
+      "elapsedMs": 18
+    },
+    {
+      "sample": 3,
+      "heroes": 2770,
+      "souls": 2008,
+      "pages": 47,
+      "material412": 323,
+      "unmappedHeroIds": 0,
+      "allInstancesVisitedExactlyOnce": true,
+      "sixPositionSolverPassed": true,
+      "allEightStatsIndependentlyRecomputed": true,
+      "elapsedMs": 170
+    }
+  ]
+}

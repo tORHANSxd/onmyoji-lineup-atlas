@@ -167,3 +167,14 @@ dialog::backdrop { background: #252320a8; backdrop-filter: blur(4px); }
   .nav.active::before { left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+/* Local parsing and account pagination keep long inventories navigable. */
+.parse-panel{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 22px;margin:0 0 20px;background:#fffaf0;border:1px solid #d8c49e;border-radius:12px}.parse-panel strong{font-size:16px;color:#74532f}.parse-panel p{margin-top:5px;font-size:13px}.parse-panel .actions{flex-shrink:0}.account-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.account-filters input{min-width:160px}.account-filters select{max-width:170px}#account-pagination{flex-wrap:wrap;margin:24px 0}#account-page-indicator{font-size:13px}.owned-hero .small{overflow-wrap:anywhere}@media(max-width:1000px){.parse-panel{align-items:flex-start;flex-direction:column}.account-filters{margin-top:10px}}
+.card-distance{margin:0 16px 12px;color:var(--text-muted,#77664f);font-size:13px}
+.recommendation-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.recommendation{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;text-align:left;border:1px solid #dfd4bd;background:#fbf8ef;border-radius:8px;color:#493923}
+.recommendation span{min-width:0}.recommendation strong{display:block;overflow-wrap:anywhere}.recommendation small{display:block;font-weight:400;margin-top:6px;color:#716651}.recommendation b{flex-shrink:0;font-size:13px;color:#806131}
+.soul-calculator{margin:18px 0}.soul-calculator select{width:100%;min-width:0}.soul-calculator .form-grid{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.soul-calculator>summary{font-size:18px;font-weight:650;cursor:pointer;color:#74532f}.soul-calculator[open]>summary{margin-bottom:18px}
+.member-match{margin:14px 0;padding:12px 14px;border:1px solid #dfd4bd;border-radius:8px;background:#fffdf8}.member-match summary{font-weight:650;cursor:pointer}.member-match p,.member-match li{font-size:14px;line-height:1.75}.member-match h4{margin:18px 0 10px}
+.panel-comparison{min-width:610px}.soul-build-table{min-width:800px}.soul-build-table td:nth-child(4){max-width:300px;min-width:190px;white-space:normal}.soul-build-table code{font-size:11px}.has-gap{background:#fff2e7;color:#824013}.gap-list{padding-left:22px;color:#824013}.improvement-advice{background:#f6f0df;padding:2px 15px 12px;border-radius:6px}.improvement-advice li{margin:8px 0}
+@media(max-width:760px){.recommendation-list{grid-template-columns:1fr}.soul-calculator .form-grid{grid-template-columns:1fr}.member-match{padding:10px}.recommendation{padding:12px}}

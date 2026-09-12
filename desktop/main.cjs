@@ -5,7 +5,8 @@ const { pathToFileURL } = require('node:url');
 const { decodeInput } = require('./ta-codec.cjs');
 const { OfficialData, validFile } = require('./official-data.cjs');
 const { TASession } = require('./ta-session.cjs');
-let win, official, taSession, loginEpoch=0, loggedIn=false;
+const { TAQueryQueue } = require('./ta-query-queue.cjs');
+let win, official, taSession, queryQueue, loginEpoch=0, loggedIn=false;
 const isSmoke = process.argv.includes('--smoke');
 if (isSmoke) app.setPath('userData', process.env.ATLAS_SMOKE_USER_DATA || path.join(app.getPath('temp'), 'onmyoji-atlas-smoke'));
 protocol.registerSchemesAsPrivileged([{scheme:'atlas-asset',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
@@ -17,11 +18,11 @@ function requireLogin(event, epoch=loginEpoch) { trusted(event); if(epoch!==logi
 function handleSignedIn(name, handler) {
   ipcMain.handle(name, async(event,...args)=>{const epoch=loginEpoch;const check=()=>requireLogin(event,epoch);check();const result=await handler(check,...args);check();return result;});
 }
-async function atomicWrite(file, body) {
+async function atomicWrite(file, body, check=()=>{}) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const tmp = file + '.tmp';
-  await fs.writeFile(tmp, body, 'utf8');
-  await fs.rename(tmp, file);
+  try { await fs.writeFile(tmp, body, 'utf8'); check(); await fs.rename(tmp, file); }
+  catch(error) { await fs.rm(tmp,{force:true}).catch(()=>{}); throw error; }
 }
 app.whenReady().then(async () => {
   session.defaultSession.setPermissionRequestHandler((_w, _p, callback) => callback(false));
@@ -33,20 +34,21 @@ app.whenReady().then(async () => {
   protocol.handle('atlas-asset',request=>{const u=new URL(request.url),file=u.pathname.slice(1);if(u.hostname!=='cache'||u.search||!validFile(file))return new Response('Not found',{status:404});if(taSession?.status().authenticated!==true)return new Response('Login required',{status:403});return net.fetch(pathToFileURL(path.join(official.root,'images',file)).href);});
   taSession=new TASession({helperPath:app.isPackaged?path.join(process.resourcesPath,'ta-runtime','atlas-ta-helper.exe'):path.join(__dirname,'../release/ta-runtime/atlas-ta-helper/atlas-ta-helper.exe'),onStatus:state=>{
     const authenticated=state.authenticated===true;
-    if(authenticated!==loggedIn){loginEpoch++;loggedIn=authenticated;if(!authenticated)official?.cancel();else if(!isSmoke)setTimeout(()=>{if(loggedIn&&official.due())official.refresh().catch(()=>{});},6000);}
+    if(authenticated!==loggedIn){loginEpoch++;loggedIn=authenticated;queryQueue?.reset();if(!authenticated)official?.cancel();else if(!isSmoke)setTimeout(()=>{if(loggedIn&&official.due())official.refresh().catch(()=>{});},6000);}
     if(win&&!win.isDestroyed())win.webContents.send('ta-status-changed',state);
   }});
+  queryQueue=new TAQueryQueue({execute:code=>taSession.request('query',{code})});
   ipcMain.handle('ta-status',async e=>{trusted(e);return taSession.status();});
   ipcMain.handle('ta-action',async(e,action,params)=>{trusted(e);if(!['init','qr','select','roles'].includes(action))throw new Error('不支持的登录操作');await taSession.request(action,params);return taSession.status();});
-  handleSignedIn('ta-query',async(check,code)=>{const response=await taSession.request('query',{code});check();if(response?.code!==code||response?.share_key!==code.slice(4)||response?.err!==0)throw new Error('查询响应与本次文字码不一致');const result=decodeInput(response);if(result.ok)result.origin='official-query';return result;});
+  handleSignedIn('ta-query',async(check,code)=>{const response=await queryQueue.query(code,check);check();if(response?.code!==code||response?.share_key!==code.slice(4)||response?.err!==0)throw new Error('查询响应与本次文字码不一致');const result=decodeInput(response);if(result.ok)result.origin='official-query';return result;});
   ipcMain.handle('ta-logout',async e=>{trusted(e);return taSession.stop();});
   handleSignedIn('load-data', async () => official.getData());
   handleSignedIn('copy-code', async (_check,code) => { if(typeof code!=='string'||!code.trim()||Buffer.byteLength(code,'utf8')>32*1024*1024)throw new Error('阵容码为空或超过32 MiB'); await clipboard.writeText(code); return {copied:true}; });
-  handleSignedIn('load-state', async () => { try { return JSON.parse(await fs.readFile(statePath(),'utf8')); } catch (error) { if(error.code==='ENOENT') return null; throw new Error('本地数据库读取失败，请保留数据文件并从备份恢复。'); } });
   let saveQueue=Promise.resolve();
-  handleSignedIn('save-state', async (check,state) => { const body=JSON.stringify(state); if(body.length>100*1024*1024) throw new Error('本地数据超过100 MiB限制'); const current=saveQueue.then(()=>{check();return atomicWrite(statePath(),body);}); saveQueue=current.catch(()=>{}); await current; return {saved:true}; });
+  handleSignedIn('load-state', async check => { await saveQueue;check();try { return JSON.parse(await fs.readFile(statePath(),'utf8')); } catch (error) { if(error.code==='ENOENT') return null; throw new Error('本地数据库读取失败，请保留数据文件并从备份恢复。'); } });
+  handleSignedIn('save-state', async (check,state) => { const body=JSON.stringify(state); if(body.length>100*1024*1024) throw new Error('本地数据超过100 MiB限制'); const current=saveQueue.then(()=>{check();return atomicWrite(statePath(),body,check);}); saveQueue=current.catch(()=>{}); await current; return {saved:true}; });
   handleSignedIn('import-files', async check => { const r=await dialog.showOpenDialog(win,{properties:['openFile','multiSelections'],filters:[{name:'JSON 文件',extensions:['json']}]}); check();if(r.canceled) return []; const results=[]; for(const p of r.filePaths){check();const st=await fs.stat(p); if(st.size>50*1024*1024) throw new Error('单个导入文件超过50 MiB'); results.push({name:path.basename(p),text:await fs.readFile(p,'utf8')}); } return results; });
-  handleSignedIn('export-json', async(check,{name,data}) => { const r=await dialog.showSaveDialog(win,{defaultPath:path.basename(String(name)),filters:[{name:'JSON 文件',extensions:['json']}]}); check();if(r.canceled) return false; await atomicWrite(r.filePath,JSON.stringify(data,null,2)); return true; });
+  handleSignedIn('export-json', async(check,{name,data}) => { const r=await dialog.showSaveDialog(win,{defaultPath:path.basename(String(name)),filters:[{name:'JSON 文件',extensions:['json']}]}); check();if(r.canceled) return false; await atomicWrite(r.filePath,JSON.stringify(data,null,2),check); return true; });
   handleSignedIn('decode', async(_check,input) => {if(JSON.stringify(input??null).length>32*1024*1024)return {ok:false,state:'invalid-input',error:'阵容内容超过32 MiB'};return decodeInput(input);});
   handleSignedIn('official-status',async()=>official.getStatus());
   handleSignedIn('official-refresh',async(_check,options)=>{if(options?.force!=null&&typeof options.force!=='boolean')throw new Error('更新参数无效');return official.refresh({force:options?.force===true});});

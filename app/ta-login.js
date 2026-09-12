@@ -46,6 +46,7 @@
   const next=state.authenticated===true&&(unlocked||!state.busy),changed=next!==unlocked;
   unlocked=next;if(!unlocked)managing=false;showScreen();
   if(changed)window.dispatchEvent(new CustomEvent('atlas-session',{detail:{authenticated:unlocked}}));
+  window.dispatchEvent(new CustomEvent('atlas-login-status',{detail:{authenticated:unlocked,busy:state.busy,hasRole:!!state.selected_avatar}}));
  }
  async function action(name,params){
   if(!api)throw new Error('扫码登录请使用 Windows 安装版');

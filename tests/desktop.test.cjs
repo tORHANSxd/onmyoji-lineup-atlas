@@ -7,12 +7,12 @@ const path=require('node:path');
 const os=require('node:os');
 const vm=require('node:vm');
 const {pathToFileURL}=require('node:url');
-async function harness(fetcher=async()=>new Response('{}'),{signedIn=true}={}){
+async function harness(fetcher=async()=>new Response('{}'),{signedIn=true,fsProxy}={}){
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'atlas-ipc-test-')),handlers={};let external=[],ready,ta;const copied=[];const loaded=new Promise(resolve=>ready=resolve);
  class Window{constructor(){this.webContents={setWindowOpenHandler(fn){this.open=fn;},on(){},send(){}};}isDestroyed(){return false;}loadURL(){ready();}}
  const protocols={};const electron={app:{getPath:()=>tmp,setPath(){},whenReady:()=>Promise.resolve(),on(){}},BrowserWindow:Window,ipcMain:{handle:(name,fn)=>handlers[name]=fn},dialog:{showSaveDialog:async()=>({canceled:false,filePath:path.join(tmp,'backup.json')})},shell:{openExternal:u=>external.push(u)},session:{defaultSession:{setPermissionRequestHandler(){}}},protocol:{registerSchemesAsPrivileged(){},handle:(name,handler)=>protocols[name]=handler},net:{fetch:u=>u},nativeImage:{},clipboard:{writeText:async code=>copied.push(code)}};
  const dirname=path.resolve('desktop');
- vm.runInNewContext(fs.readFileSync('desktop/main.cjs','utf8'),{require:n=>n==='electron'?electron:n==='./ta-session.cjs'?{TASession:class extends require('../desktop/ta-session.cjs').TASession{constructor(options){super(options);ta=this;}}}:require(n.startsWith('.')?path.join(dirname,n):n),__dirname:dirname,process:{argv:[],env:{}},fetch:fetcher,AbortSignal,Buffer,console,setTimeout:()=>0,setInterval:()=>({unref(){}}),URL,Response},{filename:'desktop/main.cjs'});
+ vm.runInNewContext(fs.readFileSync('desktop/main.cjs','utf8'),{require:n=>n==='electron'?electron:n==='node:fs/promises'&&fsProxy?fsProxy:n==='./ta-query-queue.cjs'?{TAQueryQueue:class extends require('../desktop/ta-query-queue.cjs').TAQueryQueue{constructor(options){super({...options,intervalMs:0,cooldownMs:0});}}}:n==='./ta-session.cjs'?{TASession:class extends require('../desktop/ta-session.cjs').TASession{constructor(options){super(options);ta=this;}}}:require(n.startsWith('.')?path.join(dirname,n):n),__dirname:dirname,process:{argv:[],env:{}},fetch:fetcher,AbortSignal,Buffer,console,setTimeout:()=>0,setInterval:()=>({unref(){}}),URL,Response},{filename:'desktop/main.cjs'});
  await loaded;
  const event={senderFrame:{url:pathToFileURL(path.resolve('app/index.html')).href}};
  const signIn=()=>{ta.state={...ta.state,authenticated:true};ta.emit();};if(signedIn)signIn();
@@ -55,4 +55,16 @@ test('退出时待保存和文件对话框不会继续写入，新会话不能�
   h.signIn();let finish;h.dialog.showSaveDialog=()=>new Promise(resolve=>finish=resolve);const pendingExport=h.handlers['export-json'](h.event,{name:'export.json',data:{private:'synthetic'}});
   await h.handlers['ta-logout'](h.event);h.signIn();finish({canceled:false,filePath:path.join(h.tmp,'should-not-exist.json')});await assert.rejects(pendingExport,/请先扫码登录/);assert.equal(fs.existsSync(path.join(h.tmp,'should-not-exist.json')),false);
  }finally{h.cleanup();}
+});
+test('临时文件写入中注销会丢弃旧快照，新会话读取等待写入队列',async()=>{
+ const real=require('node:fs/promises');let release,entered,slow=false;const pending=new Promise(resolve=>entered=resolve);
+ const h=await harness(undefined,{fsProxy:{...real,writeFile:async(...args)=>{await real.writeFile(...args);if(slow&&String(args[0]).endsWith('library-v1.json.tmp')){entered();await new Promise(resolve=>release=resolve);}}}});
+ try{
+  await h.handlers['save-state'](h.event,{revision:'confirmed'});slow=true;
+  const saving=h.handlers['save-state'](h.event,{revision:'obsolete'});await pending;
+  const rejected=assert.rejects(saving,/请先扫码登录/);await h.handlers['ta-logout'](h.event);h.signIn();
+  let readDone=false;const reading=h.handlers['load-state'](h.event).then(value=>{readDone=true;return value;});
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(readDone,false);release();await rejected;
+  assert.equal((await reading).revision,'confirmed');assert.equal(fs.existsSync(path.join(h.tmp,'library-v1.json.tmp')),false);
+ }finally{release?.();h.cleanup();}
 });

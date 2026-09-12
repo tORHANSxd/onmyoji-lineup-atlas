@@ -1,21 +1,36 @@
 {
   "archive": "release/win-unpacked/resources/app.asar",
-  "fileEntries": 1379,
+  "fileEntries": 1382,
   "forbiddenFiles": [],
   "sourceChecks": [
     {
       "path": "app/app.js",
-      "sha256": "8c982f985039160a83ce0173866adf45d976c8891d5f85e32c97e0f5a70d6fc4",
+      "sha256": "2ec5fb5c040851d056feec2dd186671c24b508b63c87630885f31afb1dc18fa7",
       "matchesSource": true
     },
     {
       "path": "app/core.js",
-      "sha256": "abf0dae036daba92aae8de474f97fbea18ffaf54db98978549d9ed8294398877",
+      "sha256": "aa9f3c21dced2b66a0e04f9ff03a5f7c27dcb4386a3e5ba4f396699d16f5a590",
+      "matchesSource": true
+    },
+    {
+      "path": "app/solver.js",
+      "sha256": "340a76a3cdd820a2653a5f5e775e81b4942ee82fde86b8d789923fe46b65d3aa",
+      "matchesSource": true
+    },
+    {
+      "path": "app/match-worker.js",
+      "sha256": "158b82ff4b4989d126be457526098287d2df6eb3ab5f7017f38a431e5fcbbd89",
+      "matchesSource": true
+    },
+    {
+      "path": "app/library-parser.js",
+      "sha256": "e6121ac7e642964ac6faad6eaeacd65fa6faf844df6d1dfc7afcbc777ef25e07",
       "matchesSource": true
     },
     {
       "path": "app/index.html",
-      "sha256": "d5a82515cc30650c44db4d14c3d3a374202149a7b8d3f1517821a0269653af96",
+      "sha256": "66fc9369567911cfbab5c66a64cdf7e8626deba56eadcb1e6b1ed78eff114752",
       "matchesSource": true
     },
     {
@@ -30,12 +45,12 @@
     },
     {
       "path": "app/theme.css",
-      "sha256": "1b0fe40eac6aac20eae550e9973ab453363883e2177d230c9c098721ccd34bfe",
+      "sha256": "5bb020ae99f75edd3071d1bb1d71ca46fc31b838c5eaeeb73005e604741ebd72",
       "matchesSource": true
     },
     {
       "path": "app/ta-login.js",
-      "sha256": "c5b81bcb5cd851ade68a66bd2c4cc7491cfab922228252eb49704debc9c57779",
+      "sha256": "3e20cf9ebc4fbd79ba2a929613426199bf54da9a7cf36b5eae4a84b0e2166b6b",
       "matchesSource": true
     },
     {
@@ -60,7 +75,7 @@
     },
     {
       "path": "desktop/main.cjs",
-      "sha256": "6cdd8789c0dc287bde81b907e5174e5b22e7212c83c944b83a1865f694a0c2ba",
+      "sha256": "c8a7e188a9aa60a084ef35b2236a2c0e9ff85b9125b6815a102a12f228352052",
       "matchesSource": true
     },
     {
@@ -79,13 +94,18 @@
       "matchesSource": true
     },
     {
+      "path": "desktop/ta-query-queue.cjs",
+      "sha256": "5d13a44c492f851b900107bc024bec29c19f7cf03a21b6a5cb5e4eee89caf653",
+      "matchesSource": true
+    },
+    {
       "path": "desktop/official-data.cjs",
-      "sha256": "ba2c29c48e750b7ac4a39f2befe9f05c8ea1420bc8a9079f750090c61e1a6280",
+      "sha256": "2474ec21f3a4d1c52c118ce7ed20842859f98b67e41c8b82e9164f44da616f7c",
       "matchesSource": true
     },
     {
       "path": "data/bundle.json",
-      "sha256": "f82bea3e419b3991eeff3839c571232c1b10273ad9752e58b9987e64ff0267e6",
+      "sha256": "3a3fdcb397b00224dd21c212485d0ee4d919a67b34ebc181d3e7f04425f2e5bf",
       "matchesSource": true
     },
     {

@@ -73,7 +73,7 @@ class OfficialData {
   emit(patch){this.status={...this.status,...patch};this.progress(this.getStatus());}
   getData(){
     const data=structuredClone(this.base),saved=this.snapshot;
-    if(saved.roster?.length)data.roster=saved.roster;
+    if(saved.roster?.length){const builtIn=new Map(data.roster.map(r=>[r.id,r]));data.roster=saved.roster.map(r=>({...r,gameRules:builtIn.get(r.id)?.gameRules||r.gameRules}));data.roster.push(...[...builtIn.values()].filter(r=>!saved.roster.some(s=>s.id===r.id)));}
     if(saved.actors?.length)data.actors=[...new Map([...(data.actors||[]),...saved.actors].map(a=>[a.id,a])).values()];
     data.officialNews=saved.news||data.officialNews||[];
     if(saved.report)data.assetAudit={...data.assetAudit,...saved.report};
