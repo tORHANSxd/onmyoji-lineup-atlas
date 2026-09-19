@@ -1,0 +1,7 @@
+[protocol] account login result code=7
+[protocol] account login result code=0
+......................
+----------------------------------------------------------------------
+Ran 22 tests in 0.043s
+
+OK

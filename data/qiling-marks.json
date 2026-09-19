@@ -1,0 +1,972 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "kind": "user-supplied-client",
+    "snapshot": "20260912_211558_280259",
+    "skillResource": "com/data/cdata/skill.nxs3",
+    "skillDigest": "8618878c0ff6fb046902bb332f1859a4",
+    "resolution": "skill data with _proto_key inheritance; combatDesc by level; opaque bindict variant 1101 retained only for matching"
+  },
+  "marks": [
+    {
+      "id": 1,
+      "skillId": 77800,
+      "name": "术印·乱",
+      "groupId": 1,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「基础术式」造成的伤害额外提升阴阳师攻击的10%，「符咒·乱」造成的伤害降低提升6%。"
+        },
+        {
+          "level": 2,
+          "description": "「基础术式」造成的伤害额外提升阴阳师攻击的20%，「符咒·乱」造成的伤害降低提升12%。"
+        },
+        {
+          "level": 3,
+          "description": "「基础术式」造成的伤害额外提升阴阳师攻击的30%，「符咒·乱」造成的伤害降低提升18%。"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "skillId": 77801,
+      "name": "术印·缚",
+      "groupId": 1,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「言灵·缚」束缚效果命中的基础概率提升15%，使目标受到的伤害额外提升5%。"
+        },
+        {
+          "level": 2,
+          "description": "「言灵·缚」束缚效果命中的基础概率提升30%，使目标受到的伤害额外提升10%。"
+        },
+        {
+          "level": 3,
+          "description": "「言灵·缚」束缚效果命中的基础概率提升45%，使目标受到的伤害额外提升15%。"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "skillId": 77802,
+      "name": "术印·守",
+      "groupId": 1,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「言灵·守」防守结界吸收量额外提升阴阳师生命上限的2%。"
+        },
+        {
+          "level": 2,
+          "description": "「言灵·守」防守结界吸收量额外提升阴阳师生命上限的4%。"
+        },
+        {
+          "level": 3,
+          "description": "「言灵·守」防守结界吸收量额外提升阴阳师生命上限的6%。"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "skillId": 77803,
+      "name": "术印·一式",
+      "groupId": 1,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「言灵·一式」引爆符咒对敌方目标造成的伤害额外提升阴阳师攻击的40%；「狐言·一式」首次触发时永久提升友方全体10%防御。"
+        },
+        {
+          "level": 2,
+          "description": "「言灵·一式」引爆符咒对敌方目标造成的伤害额外提升阴阳师攻击的80%；「狐言·一式」首次触发时永久提升友方全体20%防御。"
+        },
+        {
+          "level": 3,
+          "description": "「言灵·一式」引爆符咒对敌方目标造成的伤害额外提升阴阳师攻击的120%；「狐言·一式」首次触发时永久提升友方全体30%防御。"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "skillId": 77804,
+      "name": "术印·灭",
+      "groupId": 1,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「符咒·灭」使目标受到的伤害额外提升3%。"
+        },
+        {
+          "level": 2,
+          "description": "「符咒·灭」使目标受到的伤害额外提升6%。"
+        },
+        {
+          "level": 3,
+          "description": "「符咒·灭」使目标受到的伤害额外提升9%。"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "skillId": 77805,
+      "name": "术印·生",
+      "groupId": 1,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「符咒·生」使目标受到的伤害额外降低5%。"
+        },
+        {
+          "level": 2,
+          "description": "「符咒·生」使目标受到的伤害额外降低10%。"
+        },
+        {
+          "level": 3,
+          "description": "「符咒·生」使目标受到的伤害额外降低15%。"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "skillId": 77806,
+      "name": "术印·雷帝",
+      "groupId": 1,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「雷帝召来」触发眩晕效果的基础概率额外提升8%。"
+        },
+        {
+          "level": 2,
+          "description": "「雷帝召来」触发眩晕效果的基础概率额外提升16%。"
+        },
+        {
+          "level": 3,
+          "description": "「雷帝召来」触发眩晕效果的基础概率额外提升24%。"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "skillId": 77807,
+      "name": "术印·星",
+      "groupId": 1,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「言灵·星」使目标造成的伤害额外提升3%。"
+        },
+        {
+          "level": 2,
+          "description": "「言灵·星」使目标造成的伤害额外提升6%。"
+        },
+        {
+          "level": 3,
+          "description": "「言灵·星」使目标造成的伤害额外提升9%。"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "skillId": 77808,
+      "name": "术印·伞击",
+      "groupId": 2,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「伞击」造成的伤害额外提升阴阳师攻击的20%。"
+        },
+        {
+          "level": 2,
+          "description": "「伞击」造成的伤害额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 3,
+          "description": "「伞击」造成的伤害额外提升阴阳师攻击的60%。"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "skillId": 77809,
+      "name": "术印·鱼",
+      "groupId": 2,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「召唤·鱼」召唤的灵鱼胖金继承的生命额外提升阴阳师生命的8%，继承的攻击额外提升阴阳师攻击的20%。"
+        },
+        {
+          "level": 2,
+          "description": "「召唤·鱼」召唤的灵鱼胖金继承的生命额外提升阴阳师生命的16%，继承的攻击额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 3,
+          "description": "「召唤·鱼」召唤的灵鱼胖金继承的生命额外提升阴阳师生命的24%，继承的攻击额外提升阴阳师攻击的60%。"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "skillId": 77810,
+      "name": "术印·疾风",
+      "groupId": 2,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「通灵·疾风」增加的攻击额外提升8%。"
+        },
+        {
+          "level": 2,
+          "description": "「通灵·疾风」增加的攻击额外提升16%。"
+        },
+        {
+          "level": 3,
+          "description": "「通灵·疾风」增加的攻击额外提升24%。"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "skillId": 77811,
+      "name": "术印·冥蝶",
+      "groupId": 2,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「通灵·冥蝶」的减疗效果额外提升8%，沉睡的基础概率额外提升3%。"
+        },
+        {
+          "level": 2,
+          "description": "「通灵·冥蝶」的减疗效果额外提升16%，沉睡的基础概率额外提升6%。"
+        },
+        {
+          "level": 3,
+          "description": "「通灵·冥蝶」的减疗效果额外提升24%，沉睡的基础概率额外提升9%。"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "skillId": 77812,
+      "name": "术印·炼狱",
+      "groupId": 2,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「召唤·炼狱」每次攻击造成的伤害额外提升阴阳师攻击的20%。"
+        },
+        {
+          "level": 2,
+          "description": "「召唤·炼狱」每次攻击造成的伤害额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 3,
+          "description": "「召唤·炼狱」每次攻击造成的伤害额外提升阴阳师攻击的60%。"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "skillId": 77813,
+      "name": "术印·唐伞",
+      "groupId": 2,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「召唤·伞」使目标受到的伤害额外降低5%。"
+        },
+        {
+          "level": 2,
+          "description": "「召唤·伞」使目标受到的伤害额外降低10%。"
+        },
+        {
+          "level": 3,
+          "description": "「召唤·伞」使目标受到的伤害额外降低15%。"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "skillId": 77814,
+      "name": "术印·续命",
+      "groupId": 2,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「召唤·续命」使亡魂附身的目标攻防额外提升8%。"
+        },
+        {
+          "level": 2,
+          "description": "「召唤·续命」使亡魂附身的目标攻防额外提升16%。"
+        },
+        {
+          "level": 3,
+          "description": "「召唤·续命」使亡魂附身的目标攻防额外提升24%。"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "skillId": 77815,
+      "name": "术印·天狐",
+      "groupId": 2,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「天狐神火」伤害系数提升10%。"
+        },
+        {
+          "level": 2,
+          "description": "「天狐神火」伤害系数提升20%。"
+        },
+        {
+          "level": 3,
+          "description": "「天狐神火」伤害系数提升30%。"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "skillId": 77816,
+      "name": "术印·破魔矢",
+      "groupId": 3,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「破魔矢」造成的伤害额外提升阴阳师攻击的25%。"
+        },
+        {
+          "level": 2,
+          "description": "「破魔矢」造成的伤害额外提升阴阳师攻击的50%。"
+        },
+        {
+          "level": 3,
+          "description": "「破魔矢」造成的伤害额外提升阴阳师攻击的75%。"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "skillId": 77817,
+      "name": "术印·多重箭",
+      "groupId": 3,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「多重箭」造成的伤害额外提升阴阳师攻击的40%，攻击目标增加1（至多增至3）。"
+        },
+        {
+          "level": 2,
+          "description": "「多重箭」造成的伤害额外提升阴阳师攻击的80%，攻击目标增加2（至多增至3）。"
+        },
+        {
+          "level": 3,
+          "description": "「多重箭」造成的伤害额外提升阴阳师攻击的120%，攻击目标增加3（至多增至3）。"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "skillId": 77818,
+      "name": "术印·诛邪箭",
+      "groupId": 3,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「诛邪箭」每箭造成的基础伤害额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 2,
+          "description": "「诛邪箭」每箭造成的基础伤害额外提升阴阳师攻击的80%。"
+        },
+        {
+          "level": 3,
+          "description": "「诛邪箭」每箭造成的基础伤害额外提升阴阳师攻击的120%。"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "skillId": 77819,
+      "name": "术印·豹眼",
+      "groupId": 3,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「秘术·豹眼」黑豹施放「秘术·穷追」的概率额外提升8%；额外提升全体友方10%普攻伤害。"
+        },
+        {
+          "level": 2,
+          "description": "「秘术·豹眼」黑豹施放「秘术·穷追」的概率额外提升16%；额外提升全体友方20%普攻伤害。"
+        },
+        {
+          "level": 3,
+          "description": "「秘术·豹眼」黑豹施放「秘术·穷追」的概率额外提升24%；额外提升全体友方30%普攻伤害。"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "skillId": 77820,
+      "name": "术印·影分身",
+      "groupId": 3,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「秘术·影分身」影分身造成的伤害额外提升阴阳师攻击的20%。"
+        },
+        {
+          "level": 2,
+          "description": "「秘术·影分身」影分身造成的伤害额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 3,
+          "description": "「秘术·影分身」影分身造成的伤害额外提升阴阳师攻击的60%。"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "skillId": 77821,
+      "name": "术印·豹袭",
+      "groupId": 3,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「秘术·豹袭」黑豹造成的伤害额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 2,
+          "description": "「秘术·豹袭」黑豹造成的伤害额外提升阴阳师攻击的80%。"
+        },
+        {
+          "level": 3,
+          "description": "「秘术·豹袭」黑豹造成的伤害额外提升阴阳师攻击的120%。"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "skillId": 77822,
+      "name": "术印·悲鸣",
+      "groupId": 3,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「悲声哀嚎」增加的伤害额外提升20%，增加的速度额外提升10点。"
+        },
+        {
+          "level": 2,
+          "description": "「悲声哀嚎」增加的伤害额外提升40%，增加的速度额外提升20点。"
+        },
+        {
+          "level": 3,
+          "description": "「悲声哀嚎」增加的伤害额外提升60%，增加的速度额外提升30点。"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "skillId": 77823,
+      "name": "术印·穷追",
+      "groupId": 3,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「秘术·穷追」黑豹的协同攻击概率提升5%。"
+        },
+        {
+          "level": 2,
+          "description": "「秘术·穷追」黑豹的协同攻击概率提升10%。"
+        },
+        {
+          "level": 3,
+          "description": "「秘术·穷追」黑豹的协同攻击概率提升15%。"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "skillId": 77824,
+      "name": "术印·星光",
+      "groupId": 4,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「星之光」造成的伤害额外提升阴阳师攻击的20%。"
+        },
+        {
+          "level": 2,
+          "description": "「星之光」造成的伤害额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 3,
+          "description": "「星之光」造成的伤害额外提升阴阳师攻击的60%。"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "skillId": 77825,
+      "name": "术印·星咒",
+      "groupId": 4,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「星之咒」封印的基础概率提升10%。"
+        },
+        {
+          "level": 2,
+          "description": "「星之咒」封印的基础概率提升20%。"
+        },
+        {
+          "level": 3,
+          "description": "「星之咒」封印的基础概率提升30%。"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "skillId": 77826,
+      "name": "术印·预知",
+      "groupId": 4,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「预知」冷却时间取消，守护的友方暴击触发回复生命效果的概率提升20%，触发时造成的伤害额外提升8%。"
+        },
+        {
+          "level": 2,
+          "description": "「预知」冷却时间取消，守护的友方暴击触发回复生命效果的概率提升40%，触发时造成的伤害额外提升16%。"
+        },
+        {
+          "level": 3,
+          "description": "「预知」冷却时间取消，守护的友方暴击触发回复生命效果的概率提升60%，触发时造成的伤害额外提升24%。"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "skillId": 77827,
+      "name": "术印·星陨",
+      "groupId": 4,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「星陨」造成的伤害额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 2,
+          "description": "「星陨」造成的伤害额外提升阴阳师攻击的80%。"
+        },
+        {
+          "level": 3,
+          "description": "「星陨」造成的伤害额外提升阴阳师攻击的120%。"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "skillId": 77828,
+      "name": "术印·占卜",
+      "groupId": 4,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「占卜之印」复活队友时治疗比例额外提升10%。"
+        },
+        {
+          "level": 2,
+          "description": "「占卜之印」复活队友时治疗比例额外提升20%。"
+        },
+        {
+          "level": 3,
+          "description": "「占卜之印」复活队友时治疗比例额外提升30%。"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "skillId": 77829,
+      "name": "术印·占卜",
+      "groupId": 4,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「占卜之印」反弹伤害的比例额外提升20%。"
+        },
+        {
+          "level": 2,
+          "description": "「占卜之印」反弹伤害的比例额外提升40%。"
+        },
+        {
+          "level": 3,
+          "description": "「占卜之印」反弹伤害的比例额外提升60%。"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "skillId": 77830,
+      "name": "术印·占卜",
+      "groupId": 4,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「占卜之印」治疗比例额外提升20%。"
+        },
+        {
+          "level": 2,
+          "description": "「占卜之印」治疗比例额外提升40%。"
+        },
+        {
+          "level": 3,
+          "description": "「占卜之印」治疗比例额外提升60%。"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "skillId": 77831,
+      "name": "术印·净化",
+      "groupId": 4,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「净化」有33%的概率额外驱散1个目标。"
+        },
+        {
+          "level": 2,
+          "description": "「净化」有67%的概率额外驱散1个目标。"
+        },
+        {
+          "level": 3,
+          "description": "「净化」有100%的概率额外驱散1个目标。"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "skillId": 77832,
+      "name": "术印·天剑",
+      "groupId": 5,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「天剑」造成的伤害额外提升阴阳师攻击的20%。"
+        },
+        {
+          "level": 2,
+          "description": "「天剑」造成的伤害额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 3,
+          "description": "「天剑」造成的伤害额外提升阴阳师攻击的60%。"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "skillId": 77833,
+      "name": "术印·八华",
+      "groupId": 5,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「天诛八华斩」对每个攻击目标额外造成1次攻击33%伤害并降低10点防御，持续2回合。"
+        },
+        {
+          "level": 2,
+          "description": "「天诛八华斩」对每个攻击目标额外造成1次攻击67%伤害并降低20点防御，持续2回合。"
+        },
+        {
+          "level": 3,
+          "description": "「天诛八华斩」对每个攻击目标额外造成1次攻击100%伤害并降低30点防御，持续2回合。"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "skillId": 77834,
+      "name": "术印·布武",
+      "groupId": 5,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「天下布武」伤害系数提升20%。"
+        },
+        {
+          "level": 2,
+          "description": "「天下布武」伤害系数提升40%。"
+        },
+        {
+          "level": 3,
+          "description": "「天下布武」伤害系数提升60%。"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "skillId": 77835,
+      "name": "术印·神策",
+      "groupId": 5,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「鬼神之策」有33%概率额外降低60点防御。"
+        },
+        {
+          "level": 2,
+          "description": "「鬼神之策」有67%概率额外降低60点防御。"
+        },
+        {
+          "level": 3,
+          "description": "「鬼神之策」有100%概率额外降低60点防御。"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "skillId": 77836,
+      "name": "术印·血契",
+      "groupId": 5,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「血之契」额外提升自身与目标15%暴击伤害。"
+        },
+        {
+          "level": 2,
+          "description": "「血之契」额外提升自身与目标30%暴击伤害。"
+        },
+        {
+          "level": 3,
+          "description": "「血之契」额外提升自身与目标45%暴击伤害。"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "skillId": 77837,
+      "name": "术印·鬼胄",
+      "groupId": 5,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「鬼胄」额外吸收初始攻击5%伤害。"
+        },
+        {
+          "level": 2,
+          "description": "「鬼胄」额外吸收初始攻击10%伤害。"
+        },
+        {
+          "level": 3,
+          "description": "「鬼胄」额外吸收初始攻击15%伤害。"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "skillId": 77838,
+      "name": "术印·剑之垒",
+      "groupId": 5,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「剑之垒」使鬼兵在源赖光施放妖术时有33%概率劈斩敌方全体。"
+        },
+        {
+          "level": 2,
+          "description": "「剑之垒」使鬼兵在源赖光施放妖术时有67%概率劈斩敌方全体。"
+        },
+        {
+          "level": 3,
+          "description": "「剑之垒」使鬼兵在源赖光施放妖术时有100%概率劈斩敌方全体。"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "skillId": 77839,
+      "name": "术印·无畏",
+      "groupId": 5,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「无畏」剑意上限增加2层。"
+        },
+        {
+          "level": 2,
+          "description": "「无畏」剑意上限增加4层。"
+        },
+        {
+          "level": 3,
+          "description": "「无畏」剑意上限增加6层。"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "skillId": 77840,
+      "name": "术印·训诫",
+      "groupId": 6,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「训诫之音」造成的伤害额外提升阴阳师攻击的20%。"
+        },
+        {
+          "level": 2,
+          "description": "「训诫之音」造成的伤害额外提升阴阳师攻击的40%。"
+        },
+        {
+          "level": 3,
+          "description": "「训诫之音」造成的伤害额外提升阴阳师攻击的60%。"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "skillId": 77841,
+      "name": "术印·巧韵",
+      "groupId": 6,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「咏叹巧韵」额外提升友方全体3%攻击。"
+        },
+        {
+          "level": 2,
+          "description": "「咏叹巧韵」额外提升友方全体6%攻击。"
+        },
+        {
+          "level": 3,
+          "description": "「咏叹巧韵」额外提升友方全体9%攻击。"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "skillId": 77842,
+      "name": "术印·齐鸣",
+      "groupId": 6,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「琴月齐鸣」每层律音额外提升1%攻击。"
+        },
+        {
+          "level": 2,
+          "description": "「琴月齐鸣」每层律音额外提升2%攻击。"
+        },
+        {
+          "level": 3,
+          "description": "「琴月齐鸣」每层律音额外提升3%攻击。"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "skillId": 77843,
+      "name": "术印·破阵",
+      "groupId": 6,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「破阵奏曲」蓄力攻击伤害系数提升25%。"
+        },
+        {
+          "level": 2,
+          "description": "「破阵奏曲」蓄力攻击伤害系数提升50%。"
+        },
+        {
+          "level": 3,
+          "description": "「破阵奏曲」蓄力攻击伤害系数提升75%。"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "skillId": 77844,
+      "name": "术印·诸律",
+      "groupId": 6,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「诸律精通」每获得1层律音，额外提升友方全体2%的效果抵抗。"
+        },
+        {
+          "level": 2,
+          "description": "「诸律精通」每获得1层律音，额外提升友方全体4%的效果抵抗。"
+        },
+        {
+          "level": 3,
+          "description": "「诸律精通」每获得1层律音，额外提升友方全体6%的效果抵抗。"
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "skillId": 77845,
+      "name": "术印·余音",
+      "groupId": 6,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「余音入梦」触发梦境意识时，额外为友方全体治疗生命上限10%的生命。"
+        },
+        {
+          "level": 2,
+          "description": "「余音入梦」触发梦境意识时，额外为友方全体治疗生命上限20%的生命。"
+        },
+        {
+          "level": 3,
+          "description": "「余音入梦」触发梦境意识时，额外为友方全体治疗生命上限30%的生命。"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "skillId": 77846,
+      "name": "术印·惊弦",
+      "groupId": 6,
+      "levels": [
+        {
+          "level": 1,
+          "description": "施放「神鸟惊弦」后，增加1层律音。"
+        },
+        {
+          "level": 2,
+          "description": "施放「神鸟惊弦」后，增加2层律音。"
+        },
+        {
+          "level": 3,
+          "description": "施放「神鸟惊弦」后，增加3层律音。"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "skillId": 77847,
+      "name": "术印·调律",
+      "groupId": 6,
+      "levels": [
+        {
+          "level": 1,
+          "description": "「调律润心」在消耗1层律音时，有33%的概率使提升行动条的效果作用于全体友方。"
+        },
+        {
+          "level": 2,
+          "description": "「调律润心」在消耗1层律音时，有67%的概率使提升行动条的效果作用于全体友方。"
+        },
+        {
+          "level": 3,
+          "description": "「调律润心」在消耗1层律音时，有100%的概率使提升行动条的效果作用于全体友方。"
+        }
+      ]
+    }
+  ]
+}

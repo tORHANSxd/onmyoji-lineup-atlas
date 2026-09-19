@@ -8,6 +8,26 @@ const raw=(extra={})=>({format:'mumu-snapshot-v1',completeness:'complete',captur
 const cfg=(extra={})=>({suitRequirements:[],suitSelectionComplete:true,ranges:[],mainStats:{},scope:'all',metricId:1,sixStarOnly:true,maxLevelOnly:true,...extra});
 const member=(sid='1',extra={})=>({index:0,kind:'shikigami',shikigamiId:sid,name:'测试式神'+sid,awakening:1,skills:[],config:cfg(),...extra});
 const lineup=(members=[member()],extra={})=>({title:'合成计算案例',members,requirementsComplete:true,...extra});
+test('删除预设和自建阵容后，重启与预设内容更新不会恢复；可以主动重新添加',()=>{
+ const presets=[{id:'preset-a',code:'|TA|a',title:'预设 A'},{id:'preset-b',code:'|TA|b',title:'预设 B'}];
+ const state={schemaVersion:1,lineups:[{...presets[0],title:'已编辑 A'},{id:'user-c',code:'|TA|c'}],accounts:[]},before=JSON.stringify(state);
+ const removed=C.removeLibraryLineups(state,presets,['preset-a','user-c']);
+ assert.equal(JSON.stringify(state),before);assert.deepEqual(removed.deletedPresetIds,['preset-a']);
+ const restored=JSON.parse(JSON.stringify(removed)),updated=presets.map(l=>({...l,title:'更新后的预设'}));
+ assert.deepEqual(C.libraryLineups(updated,restored).map(l=>l.id),['preset-b']);
+ assert.deepEqual(C.removeLibraryLineups(restored,updated,['preset-a']).deletedPresetIds,['preset-a']);
+ restored.lineups.push({...presets[0],id:'user-readded'});
+ assert.equal(C.libraryLineups(updated,restored).filter(l=>l.code==='|TA|a').length,1);
+ restored.lineups=[presets[0]];assert.equal(C.libraryLineups(updated,restored).filter(l=>l.code==='|TA|a').length,1);
+});
+test('预设补齐解析内容仍保留失效证据；旧备份与删除记录校验',()=>{
+ const preset={id:'p',code:'|TA|a',members:[member()],decodeState:'decoded-server'},failure={kind:'expired-code',serverCode:31279};
+ const state={lineups:[{id:'p',code:'|TA|a',members:[],lastParseError:'已过期',lastParseFailure:failure}]};
+ const result=C.libraryLineups([preset],state)[0];
+ assert.equal(result.members.length,1);assert.equal(result.lastParseFailure.serverCode,31279);assert.equal(result.lastParseError,'已过期');
+ assert.deepEqual(C.deletedPresetIds(undefined),[]);assert.deepEqual(C.deletedPresetIds(['p','p']),['p']);
+ for(const bad of [null,'p',[42],[''],['a\nb']])assert.throws(()=>C.deletedPresetIds(bad),/删除记录/);
+});
 test('短码保持原分隔符并支持不透明键和完整内容大小边界',()=>{const code='|TA|'+'a'.repeat(32);assert.equal(C.normalizeCode('\uFEFF '+code+'\n'),code);assert.equal(C.classifyCode(code),'pipe-ta');assert.equal(C.classifyCode('|TA|opaque-key'),'pipe-ta');assert.equal(C.classifyCode('文字'+code),'unknown');assert.equal(C.classifyCode('#TA#payload'),'hash-ta');assert.equal(C.classifyCode('a'.repeat(32*1024*1024+1)),'too-large');});
 test('响应必须是真成功，损坏结构不得生成展示阵容',()=>{assert.throws(()=>C.adaptInspection({ok:false,error:'阵容码不是有效的 Base64'}));assert.throws(()=>C.adaptInspection({ok:true,data:{}}));});
 test('API槽位关联保留重复式神和无御魂阴阳师',()=>{const payload={ok:true,data:{slotCount:3,occupiedSlots:3,entities:[{index:0,kind:'shikigami',occupied:true,shikigamiId:1},{index:1,kind:'shikigami',occupied:true,shikigamiId:1},{index:2,kind:'onmyoji',occupied:true}],editableTargets:[{entityIndex:1,shikigamiId:1,...cfg()}]}};const l=C.adaptInspection(payload,roster);assert.equal(l.members.length,3);assert.equal(l.members[0].config,null);assert.equal(l.members[1].config.entityIndex,1);assert.equal(l.members[2].kind,'onmyoji');payload.data.editableTargets[0].shikigamiId=2;assert.throws(()=>C.adaptInspection(payload,roster));});
@@ -25,6 +45,6 @@ test('受限搜索未命中不能证明做不出',()=>{const a=C.parseAccount(ra
 test('缺少指定套装能报告库存缺口',()=>{const a=C.parseAccount(raw());assert.equal(C.findBuilds(a.heroes.a,cfg({suitRequirements:[{name:'不存在套装',count:4}]}),a,roster,[]).status,'missing');});
 test('未识别御魂/不完整导出不作不存在的证明',()=>{const a=C.parseAccount(raw({completeness:'partial',heroes:{},hero_equips:[]}));assert.equal(C.matchLineup(lineup(),a,roster,[]).status,'unknown');const b=raw();b.hero_equips[0].mainAttrType='future-stat';const parsed=C.parseAccount(b);assert.equal(C.findBuilds(parsed.heroes.a,cfg(),parsed,roster,[]).status,'unknown');});
 test('未知两件套值、负额外属性、最高属性约束保持未知',()=>{const a=C.parseAccount(raw());for(const c of [cfg({highestStat:'attack'}),cfg({extraAttributes:{critDamage:-.2}}),cfg({scope:'unequipped'})])assert.equal(C.findBuilds(a.heroes.a,c,a,roster,[]).status,'unknown');assert.equal(C.findBuilds(a.heroes.a,cfg(),a,roster,[{name:'未知值',stat:'critDamage',value:null,suitNames:['测试套装']}]).status,'unknown');});
-test('未知觉醒、技能、阴阳师与增量快照不能判为全队可组成',()=>{const a=C.parseAccount(raw());for(const l of [lineup([member('1',{awakening:null})]),lineup([member('1',{skills:null})]),lineup([member(),{kind:'onmyoji',name:'晴明'}]),lineup(undefined,{requirementsComplete:false})])assert.equal(C.matchLineup(l,a,roster,[]).status,'unknown');assert.equal(C.matchLineup(lineup(),{...a,merged:true},roster,[]).status,'unknown');});
+test('未知觉醒、技能和增量快照仍不能判为全队可组成',()=>{const a=C.parseAccount(raw());for(const l of [lineup([member('1',{awakening:null})]),lineup([member('1',{skills:null})]),lineup(undefined,{requirementsComplete:false})])assert.equal(C.matchLineup(l,a,roster,[]).status,'unknown');assert.equal(C.matchLineup(lineup(),{...a,merged:true},roster,[]).status,'unknown');});
 test('本地配置校验拒绝非法技能、Infinity和反向区间',()=>{assert.throws(()=>C.validateLineup(lineup([member('1',{skills:[{id:'<img>',level:5}]})])));assert.throws(()=>C.validateLineup(lineup([member('1',{config:cfg({extraAttributes:{attack:Infinity}})})])));assert.throws(()=>C.validateLineup(lineup([member('1',{config:cfg({ranges:[{stat:'speed',min:200,max:100}]})})])));assert.equal(C.validateLineup(lineup()).members[0].shikigamiId,'1');});
 test('协战需求不能误报账号缺式神',()=>{const a=C.parseAccount(raw({heroes:{}}));const r=C.matchLineup(lineup([member('1',{borrowed:true})]),a,roster,[]);assert.equal(r.status,'unknown');assert.match(r.reasons.join(' '),/借用/);});

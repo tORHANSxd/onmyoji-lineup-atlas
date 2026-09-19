@@ -1,0 +1,35 @@
+[
+  {
+    "heroes": 2770,
+    "souls": 2008,
+    "scenario": "单成员速度指标，无套装限制；最多观察3秒后暂停基准",
+    "elapsedMs": 200,
+    "firstFeasibleMs": 141,
+    "state": "optimal",
+    "nodes": 2009,
+    "pruned": 2002,
+    "done": true
+  },
+  {
+    "heroes": 713,
+    "souls": 1154,
+    "scenario": "单成员速度指标，无套装限制；最多观察3秒后暂停基准",
+    "elapsedMs": 120,
+    "firstFeasibleMs": 77,
+    "state": "optimal",
+    "nodes": 1155,
+    "pruned": 1148,
+    "done": true
+  },
+  {
+    "heroes": 4114,
+    "souls": 1858,
+    "scenario": "单成员速度指标，无套装限制；最多观察3秒后暂停基准",
+    "elapsedMs": 300,
+    "firstFeasibleMs": 186,
+    "state": "optimal",
+    "nodes": 3718,
+    "pruned": 3704,
+    "done": true
+  }
+]

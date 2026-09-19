@@ -5,7 +5,8 @@ $taskRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $taskConfig = Get-Content -LiteralPath (Join-Path $taskRoot 'package.json') -Raw -Encoding utf8 | ConvertFrom-Json
 $taskVersion = $taskConfig.version
 if ($taskConfig.build.appId -ne 'io.github.torhansxd.onmyoji-lineup-atlas' -or $taskVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Unexpected application identity' }
-$taskSetup = Join-Path $taskRoot "release\Onmyoji-Lineup-Atlas-Setup-$taskVersion-Windows-x64.exe"
+$taskArtifact = $taskConfig.build.win.artifactName.Replace('${version}', $taskVersion).Replace('${ext}', 'exe')
+$taskSetup = Join-Path $taskRoot (Join-Path 'release' $taskArtifact)
 $taskPayload = [System.IO.Path]::GetFullPath((Join-Path $taskRoot "user-data\qa-payload-$taskVersion"))
 $taskProfile = [System.IO.Path]::GetFullPath((Join-Path $taskRoot "user-data\qa-profile-$taskVersion-payload"))
 foreach ($taskPath in @($taskPayload, $taskProfile)) {
@@ -21,8 +22,10 @@ function Get-ExistingInstallState {
         }
     }
     foreach ($taskFolder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
-        $taskLink = Join-Path $taskFolder '阴阳师阵容图鉴.lnk'
-        $taskState[$taskLink] = if (Test-Path -LiteralPath $taskLink) { (Get-FileHash -LiteralPath $taskLink -Algorithm SHA256).Hash } else { $null }
+        foreach ($taskName in @('阴阳师阵容图鉴.lnk', '御契.lnk')) {
+            $taskLink = Join-Path $taskFolder $taskName
+            $taskState[$taskLink] = if (Test-Path -LiteralPath $taskLink) { (Get-FileHash -LiteralPath $taskLink -Algorithm SHA256).Hash } else { $null }
+        }
     }
     $taskState | ConvertTo-Json -Depth 6 -Compress
 }
@@ -59,15 +62,20 @@ try {
     $taskState = @{ schemaVersion = 1; accounts = $taskFixture.accounts; activeAccount = $taskFixture.accounts[0].id; lineups = @($taskFixture.lineups | Where-Object { $_.code -and $_.code.Trim() }) }
     $taskStatePath = Join-Path $taskProfile 'library-v1.json'
     [System.IO.File]::WriteAllText($taskStatePath, ($taskState | ConvertTo-Json -Depth 100), [System.Text.UTF8Encoding]::new($false))
-    $taskStateHash = (Get-FileHash -LiteralPath $taskStatePath).Hash
+    $taskOriginalRaw = @($taskState.accounts | ForEach-Object { $_.raw | ConvertTo-Json -Depth 100 -Compress }) | ConvertTo-Json -Compress
     $env:ATLAS_SMOKE_USER_DATA = $taskProfile
     $env:ATLAS_SMOKE_OUTPUT = Join-Path $taskRoot "verification\electron-v$($taskVersion.Replace('.',''))-payload-smoke.json"
-    $taskProcess = Start-Process -FilePath (Join-Path $taskPayload '阴阳师阵容图鉴.exe') -ArgumentList '--smoke' -WorkingDirectory $taskRoot -WindowStyle Hidden -Wait -PassThru
+    $taskExe = Join-Path $taskPayload ($taskConfig.build.productName + '.exe')
+    $taskReport.executableProduct = (Get-Item -LiteralPath $taskExe).VersionInfo.ProductName
+    if ($taskReport.executableProduct -ne $taskConfig.build.productName) { throw 'Executable product branding is missing' }
+    $taskProcess = Start-Process -FilePath $taskExe -ArgumentList '--smoke' -WorkingDirectory $taskRoot -WindowStyle Hidden -Wait -PassThru
     $taskSmoke = Get-Content -LiteralPath $env:ATLAS_SMOKE_OUTPUT -Raw -Encoding utf8 | ConvertFrom-Json
-    if ($taskProcess.ExitCode -ne 0 -or $taskSmoke.error -or -not $taskSmoke.gateVisible -or -not $taskSmoke.appHidden -or -not $taskSmoke.appInert -or $taskSmoke.dataLoaded -or $taskSmoke.blockedOperations.Count -ne 9 -or -not $taskSmoke.loginModule.qrReady -or $taskSmoke.loginModule.servers -lt 100 -or -not $taskSmoke.loginModuleLoggedOut) { throw 'Packaged startup gate verification failed' }
+    if ($taskProcess.ExitCode -ne 0 -or $taskSmoke.error -or -not $taskSmoke.offline -or -not $taskSmoke.dataLoaded -or -not $taskSmoke.noAutomaticQR -or -not $taskSmoke.separateLogin -or -not $taskSmoke.returnOffline -or $taskSmoke.blockedOperations.Count -ne 3 -or -not $taskSmoke.loginModule.qrReady -or $taskSmoke.loginModule.servers -lt 100 -or -not $taskSmoke.loginModuleLoggedOut) { throw 'Packaged offline startup and explicit login verification failed' }
     $taskReport.packagedStartupSmoke = 'passed'
-    $taskReport.startupGate = $taskSmoke
-    $taskReport.syntheticDataUnchanged = (Get-FileHash -LiteralPath $taskStatePath).Hash -eq $taskStateHash
+    $taskReport.startupFlow = $taskSmoke
+    $taskAfterState = Get-Content -LiteralPath $taskStatePath -Raw -Encoding utf8 | ConvertFrom-Json
+    $taskAfterRaw = @($taskAfterState.accounts | ForEach-Object { $_.raw | ConvertTo-Json -Depth 100 -Compress }) | ConvertTo-Json -Compress
+    $taskReport.syntheticDataUnchanged = $taskAfterRaw -ceq $taskOriginalRaw
     if (-not $taskReport.syntheticDataUnchanged) { throw 'Synthetic account data changed before login' }
     $taskReport.completed = $true
 } finally {

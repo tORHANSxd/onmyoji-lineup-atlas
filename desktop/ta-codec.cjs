@@ -1,8 +1,10 @@
 'use strict';
+const {normalizeCode}=require('../app/core.js');
 // Port of the user's independently verified TAPacker V0–V3 decoder.
 // Text share keys are RPC indexes; this module performs no network access.
 const zlib = require('node:zlib');
 const { decode, ExtensionCodec, ExtData } = require('@msgpack/msgpack');
+const ParseErrors = require('../app/parse-errors.js');
 const FIELDS = {1:'ver',2:'phconf',3:'desc',4:'title',5:'huids',6:'select_stage_id',7:'data_ver',8:'player_id',9:'hostnum'};
 const ATTRS = ['atk_per','critical_rate','critical_pow','spd','debuff_acc','debuff_res','max_hp_per','def_per'];
 const LIMITS = ['debuff_res','critical_rate','final_atk','debuff_acc','final_max_hp','critical_pow','spd','final_def','ExtraAttr'];
@@ -16,8 +18,8 @@ const truthy = v => v!=null&&v!==false&&v!==0&&v!==''&&(!Array.isArray(v)||v.len
 const fields = (keys,row) => Object.fromEntries(keys.flatMap((k,i)=>row[i]==null?[]:[[k,row[i]]]));
 function extractShareKey(value){
   if(typeof value!=='string')throw new Error('阵容码必须是文本');
-  const code=value.replace(/^\uFEFF/,'').trim(),key=code.slice(4);
-  if(!code.startsWith('|TA|')||!key||key.length>4096||/[\s|\x00-\x1f\x7f]/.test(key))throw new Error('请单独输入一条完整的 |TA| 文字码');
+  const code=normalizeCode(value),key=code.slice(4);
+  if(!code.startsWith('|TA|')||!key||key.length>4096||/[\s|\x00-\x1f\x7f\u200b-\u200d\u2060\ufeff]/.test(key))throw new Error('请单独输入一条完整的 |TA| 文字码');
   return key;
 }
 function lookupRequest(code){return {method:'lineup_assisant_logic.get_share_lineup_data',parameters:{share_key:extractShareKey(code)},iscache:false};}
@@ -63,7 +65,15 @@ function unpackHconf(phconf,version,{yysIds}={}){
   });
 }
 const extensions=new ExtensionCodec();
-extensions.register({type:42,decode:b=>{if(b.length!==12)throw new Error('ObjectId 必须为12字节');return Buffer.from(b).toString('hex');}});
+extensions.register({type:42,decode:b=>{
+  const bytes=Buffer.from(b);
+  if(bytes.length===12)return bytes.toString('hex');
+  // BSON accepts the 24-character hex form too. latin1 preserves high bits
+  // so non-ASCII bytes cannot masquerade as valid hex (Node ascii masks them).
+  const hex=bytes.toString('latin1');
+  if(bytes.length===24&&/^[0-9a-fA-F]{24}$/.test(hex))return hex.toLowerCase();
+  throw new Error('ObjectId 必须为12字节或24位十六进制文本');
+}});
 extensions.register({type:43,decode:b=>{
   const s=Buffer.from(b).toString('ascii'),m=/^(\d{4})-(\d\d)-(\d\d)-(\d\d)-(\d\d)-(\d\d)-(\d{1,6})$/.exec(s);
   if(!m)throw new Error('日期扩展格式无效');const head=`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`,micro=m[7].padEnd(6,'0');
@@ -100,18 +110,19 @@ function decodeInput(input,options={}){
   try{
     let content=input,code=null;
     if(input&&typeof input==='object'){
-      if(input.err!==undefined&&input.err!==0)throw new Error(`服务器查询未成功，err=${input.err}`);
-      if(typeof input.lineup_data!=='string')throw new Error('查询响应缺少 lineup_data');
-      content=input.lineup_data;
       if(input.share_key!=null){code='|TA|'+input.share_key;extractShareKey(code);}
       if(input.code!=null&&input.code!==code)throw new Error('查询响应 share_key 与指定原码不一致');
+      if(input.err!==undefined&&!Number.isSafeInteger(input.err))throw new Error('查询响应错误码类型无效');
+      if(input.err!==undefined&&input.err!==0){const failure=ParseErrors.fromServer(input.err,input.queryAttempts);return {ok:false,state:'lookup-failed',code,error:failure.message,failure};}
+      if(typeof input.lineup_data!=='string')throw new Error('查询响应缺少 lineup_data');
+      content=input.lineup_data;
     }
     if(typeof content!=='string')throw new Error('请输入完整阵容内容');
-    const text=content.replace(/^\uFEFF/,'').trim();
+    const text=normalizeCode(content);
     if(text.startsWith('|TA|'))return {ok:false,state:'lookup-required',error:'文字码只包含服务器分享键。请导入该阵容的自创二维码，或游戏会话查询返回的 lineup_data。',lookup:lookupRequest(text)};
     if(/^#TA#\d+$/.test(text))return {ok:false,state:'official-id',officialId:text.slice(4),error:'该二维码是官方阵容编号，需要对应的官方配置数据。'};
     const data=decodeLineupData(text,options),kinds=(data.phconf||[]).map(row=>isOnmyoji(row,data.ver??0,options.yysIds)?'onmyoji':'shikigami');
     return {ok:true,format:'ta-payload',code:code||(text.startsWith('#TA#')?text:'#TA#'+text),data,kinds};
-  }catch(error){return {ok:false,state:'invalid-payload',error:String(error.message).slice(0,500)};}
+  }catch(error){const message=String(error.message).slice(0,500);return {ok:false,state:'invalid-payload',error:message,failure:{kind:'decode-error',label:'本地解码失败',retryable:true,message}};}
 }
 module.exports={decodeInput,decodeLineupData,unpackHconf,extractShareKey,lookupRequest,isOnmyoji};

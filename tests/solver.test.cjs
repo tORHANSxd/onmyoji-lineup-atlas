@@ -9,6 +9,10 @@ const hero=(instanceId='a',shikigamiId='1')=>({instanceId,shikigamiId,level:40,s
 const soul=(slot,set='招财猫',stats={},id=String(slot))=>({id,slot,set,level:15,star:6,mainStat:'attack',stats,unknown:[],raw:{mainAttrValue:0,subAttributes:[]}});
 const account=souls=>({heroes:{a:hero(),b:hero('b','2')},souls:Object.fromEntries(souls.map(s=>[s.id,s])),presets:[],completeness:'complete'});
 const member=(index=0,sid='1',c=config())=>({index,kind:'shikigami',name:sid,shikigamiId:sid,awakening:1,skills:[],config:c});
+test('主属性不符或面板超上限时，不优先花资源强化当前错误胚子',()=>{
+ const q={...soul(2),level:0},a=account([q]),c=config({levelRange:[15,15],mainStats:{2:['speed']}});
+ for(const conflict of [{kind:'main',slot:2},{kind:'stat',stat:'speed',side:'max',weight:2,delta:3}]){const advice=C.suggestions(c,{soulIds:[q.id],gaps:[{kind:'level',slot:2},conflict]},a,data.effects);assert.ok(!advice.some(s=>s.startsWith('先利用已有')));}
+});
 test('APK确认的四种达摩名称与防御/无刀取二件套',()=>{
   for(const [id,name]of [[410,'招福达摩'],[411,'御行达摩'],[412,'奉为达摩'],[413,'大吉达摩']]){const r=data.roster.find(r=>r.id===String(id));assert.equal(r.name,name);assert.equal(r.isMaterial,true);}
   assert.equal(data.effects.find(e=>e.stat==='defensePercent').value,.3);assert.equal(data.effects.find(e=>e.stat==='critDamage').value,.2);
@@ -66,9 +70,9 @@ test('不同实例拥有不同基础属性时不会只检查前三个',()=>{
  a.heroes=Object.fromEntries([100,100,100,140].map((speed,i)=>['h'+i,{...hero('h'+i),attrs:[[10000,0,0,10000],[speed,0,0,speed],[.5,0,0,.5],[.1,0,0,.1],[500,0,0,500],[1000,0,0,1000],0,0]}]));
  const r=C.matchLineup({requirementsComplete:true,members:[member(0,'1',config({ranges:[{stat:'speed',min:140}]}))]},a,localRoster,data.effects);assert.equal(r.status,'available');assert.equal(r.assignment[0].heroId,'h3');
 });
-test('有主角或契灵缺项只能标记式神御魂就绪，不能全部达标',()=>{
+test('阴阳师契灵术印保留原始配置但不影响核对状态与排序',()=>{
  const a=account(Array.from({length:6},(_,i)=>soul(i+1))),l={requirementsComplete:true,members:[member(),{index:1,kind:'onmyoji',name:'晴明',skills:[{id:1001,level:5}],qiling:{id:1,star:6,lv:20,marks:[1,2]}}]};
- const r=C.matchLineup(l,a,roster,data.effects);assert.equal(r.status,'unknown');assert.equal(r.ready,true);assert.ok(r.checks.some(s=>s.includes('契灵 ID 1')));
+ const before=structuredClone(l),r=C.matchLineup(l,a,roster,data.effects),without=C.matchLineup({...l,members:[l.members[0]]},a,roster,data.effects);assert.equal(r.status,'available');assert.equal(r.ready,true);assert.deepEqual(r.checks,[]);assert.deepEqual(r.reasons,without.reasons);assert.equal(C.compareMatches(r,without),0);assert.equal(r.members[1].status,'display-only');assert.deepEqual(l,before);
 });
 test('差距排序保持待解析最后，未知项目不能消失成可用',()=>{
  const rows=[{distance:null},{distance:20,status:'missing'},{distance:0,status:'unknown',checks:['契灵']},{distance:0,status:'available'}];rows.sort(C.compareMatches);assert.equal(rows[0].status,'available');assert.equal(rows[1].status,'unknown');assert.equal(rows[3].distance,null);

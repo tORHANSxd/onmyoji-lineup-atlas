@@ -1,7 +1,7 @@
 """Small independent client for the APK's official QR and gateway protocols.
 
-Account authorization comes only from a fresh official QR confirmation.
-No saved game login, password collection, or gameplay automation is used.
+Account authorization comes from official QR confirmation and consented renewal.
+No official-client credential extraction or gameplay automation is used.
 """
 from __future__ import annotations
 
@@ -37,6 +37,25 @@ MAX_RESPONSE = 16 * 1024 * 1024
 
 class ProtocolError(RuntimeError):
     pass
+
+
+def game_platform(login_info: dict) -> str:
+    """Keep the QR account's game platform when MPay renews it as PC type 5."""
+    user = login_info.get('mpay_user') or {}
+    channel = user.get('login_channel', login_info.get('login_channel', 'netease'))
+    full_uid = login_info.get('full_uid')
+    if full_uid:
+        for platform_name in ('ios', 'ad'):
+            if full_uid == f'{user.get("id")}@{platform_name}.{channel}.win.163.com':
+                return platform_name
+        raise ProtocolError('已保存账号的游戏平台不匹配，请重新扫码')
+    ext = user.get('pc_ext_info') or {}
+    src_type = ext.get('src_client_type', login_info.get('src_client_type')) if isinstance(ext, dict) else None
+    if src_type in (2, '2'):
+        return 'ios'
+    if src_type in (1, '1'):
+        return 'ad'
+    raise ProtocolError('无法确认扫码账号的游戏平台，请使用手游扫码登录')
 
 
 def http_get(url: str, *, raw=False, timeout=20):
@@ -119,7 +138,9 @@ class MpayQR:
         self.client = MpayClient(CONFIG['game_id'])
 
     def _get(self, path, params=None, *, raw=False):
-        query = {'game_id': CONFIG['game_id'], 'cv': 'p2.0.0'}
+        # Official PC MPay's common parameter builder uses the c-prefixed SDK
+        # version (mpay.dll 4.19.1.489), not the legacy p2.0.0 QR channel.
+        query = {'game_id': CONFIG['game_id'], 'cv': 'c4.19.1'}
         if params:
             query.update(params)
         return http_get(MPAY_BASE + path + '?' + urllib.parse.urlencode(query), raw=raw)
@@ -132,7 +153,9 @@ class MpayQR:
         # This game rejects Android type 4 (MPay 1344). Its official desktop
         # QR type 2 is available; exchange still uses the registered device key.
         reply = self._get('/api/qrcode/create_login', {
-            'qrcode_channel_type': '2', 'device_id': self.client.device_id})
+            # PC MPay 4.19.1.489 uses request mode 2; consent still comes from
+            # the exchange response's boolean pc_ext_info.is_remember.
+            'qrcode_channel_type': '2', 'is_remember': '2', 'device_id': self.client.device_id})
         if not isinstance(reply, dict) or not reply.get('uuid'):
             raise ProtocolError('官方接口未返回有效二维码')
         self.uuid = str(reply['uuid'])
@@ -161,13 +184,21 @@ class MpayQR:
                     raise ProtocolError(str(exc)) from None
                 print('[protocol] MPay account token exchange succeeded', flush=True)
                 ext = user.get('pc_ext_info') or {}
-                src_type = ext.get('src_client_type', info.get('src_client_type')) if isinstance(ext, dict) else info.get('src_client_type')
-                platform_name = 'ios' if src_type in (2, '2') else 'ad'
+                platform_name = game_platform({**info, 'mpay_user': user})
                 channel = user.get('login_channel', info.get('login_channel', 'netease'))
+                # Narrow consent diagnostics: schema names and boolean choices,
+                # never QR codes, tokens, account/device IDs, or signed data.
+                consent = {'query_fields': sorted(reply), 'login_fields': sorted(info),
+                           'user_fields': sorted(user), 'remember_flags': {}}
+                for prefix, record in [('query', reply), ('qrcode', reply.get('qrcode')), ('login_info', info), ('user', user), ('pc_ext_info', ext)]:
+                    if isinstance(record, dict):
+                        for key, value in record.items():
+                            if 'remember' in key.lower():
+                                consent['remember_flags'][prefix + '.' + key] = value if value in (True, False, 0, 1, 'true', 'false', '0', '1') else type(value).__name__
                 return 'confirmed', {**info, 'mpay_user': user, 'user_id': user['id'],
                                      'token': user['token'],
                                      'full_uid': f'{user["id"]}@{platform_name}.{channel}.win.163.com',
-                                     'mpay_device_id': self.client.device_id}
+                                     'mpay_device_id': self.client.device_id, '_consent_observation': consent}
             if status == 1:
                 return 'scanned', None
             if status == 0:
@@ -212,13 +243,14 @@ def account_avatars(result):
 
 
 class Gate:
-    """A single short-lived account/avatar RPC connection."""
+    """One selected avatar connection, reused for consecutive read-only queries."""
     def __init__(self, host, port, timeout=15):
         self.pool = descriptor_pool.DescriptorPool()
         for key in ('22567', '22590'):
             self.pool.AddSerializedFile(base64.b64decode(CONFIG['protobuf'][key]))
         self.sock = socket.create_connection((host, int(port)), timeout=timeout)
         self.sock.settimeout(timeout)
+        self.deadline = time.monotonic() + 65
         self.enc = self.dec = None
         self.comp = self.decomp = None
         self.buf = bytearray()
@@ -233,6 +265,10 @@ class Gate:
         self.index_names = {int(k): v for k, v in CONFIG['static_rpc_names'].items()}
 
     def close(self):
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
         self.sock.close()
         self.buf.clear()
         self.enc = self.dec = None
@@ -254,6 +290,10 @@ class Gate:
 
     def receive(self):
         while True:
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError('官方连接超过本次等待时限')
+            self.sock.settimeout(max(0.1, min(10, remaining)))
             if len(self.buf) >= 4:
                 length = struct.unpack_from('<I', self.buf)[0]
                 if not 2 <= length <= MAX_RESPONSE:
@@ -347,7 +387,7 @@ class Gate:
         return name, {}
 
     def wait_events(self, seconds=35):
-        deadline = time.monotonic() + seconds
+        deadline = min(self.deadline, time.monotonic() + seconds)
         old_timeout = self.sock.gettimeout()
         try:
             while time.monotonic() < deadline:
@@ -366,12 +406,14 @@ class Gate:
         ext = user.get('pc_ext_info') or {}
         if not isinstance(ext, dict):
             raise ProtocolError('MPay 扫码附加信息格式不受支持')
-        src_type = ext.get('src_client_type', login_info.get('src_client_type'))
-        platform_name = 'ios' if src_type in (2, '2') else 'ad'
+        platform_name = game_platform(login_info)
         channel = user.get('login_channel', login_info.get('login_channel', 'netease'))
         if channel != 'netease':
             raise ProtocolError('此联调客户端目前仅接入网易账号的 SDK 授权')
-        app_channel = ext.get('src_app_channel2') or ext.get('src_app_channel') or ('app_store' if platform_name == 'ios' else 'netease')
+        # ClientAccount.loginWithSdk selects the game's platform independently
+        # of the PC SDK, and sets APP_CHANNEL/PAY_CHANNEL to app_store for iOS.
+        app_channel = 'app_store' if platform_name == 'ios' else (ext.get('src_app_channel2') or ext.get('src_app_channel') or 'netease')
+        pay_channel = 'app_store' if platform_name == 'ios' else (ext.get('src_pay_channel') or 'netease')
         sdk_version = ext.get('src_sdk_version') or '5.18.0'
         udid = ext.get('src_udid') or self.device_id
         device_id = login_info.get('mpay_device_id')
@@ -407,7 +449,7 @@ class Gate:
                      'session': user['token'], 'udid': udid, 'first_udid': udid,
                      'device_id': device_id, 'sdk_version': sdk_version, 'version': sdk_version,
                      'sdk_init': 1, 'platform': platform_name, 'app_channel': app_channel,
-                     'pay_channel': ext.get('src_pay_channel') or ('app_store' if platform_name == 'ios' else 'netease'),
+                     'pay_channel': pay_channel,
                      'login_channel': channel, 'app_version': CONFIG['app_version'],
                      'appid': CONFIG['game_id'], 'cpid': 'g37', 'channel_gameid': 'g37',
                      'auth_type': 'netease', 'sauth_str': '&'.join(f'{k}={v}' for k, v in sauth.items()),
@@ -422,6 +464,9 @@ class Gate:
                      'network': {'use_ipv6': False, 'use_3xian': False, 'ip_errcode': 0,
                                  'reconn_count': 0, 'platform': 'win32', 'py': 3, 'network': 'wifi'}})
         info['versions'] = '0#0#0'
+        if ext.get('src_client_type') in (5, '5'):
+            info['is_login_in_pc'] = True
+            info['pc_app_channel'] = ext.get('src_app_channel') or 'netease'
         info['new_engine_info'] = {'package_ver': CONFIG['app_version'], 'ver': CONFIG['patch_version']}
         self.rpc('login_with_sdk', {'account_info': info})
         seen = []
@@ -470,11 +515,11 @@ class Gate:
     def query_lineup(self, share_key):
         if not self.avatar_id:
             raise ProtocolError('请先建立所选角色的会话')
-        if not isinstance(share_key, str) or len(share_key) != 32 or any(c not in '0123456789abcdefABCDEF' for c in share_key):
+        if not isinstance(share_key, str) or not 1 <= len(share_key) <= 4096 or any(c.isspace() or c == '|' or ord(c) < 32 or ord(c) == 127 or c in '\u200b\u200c\u200d\u2060\ufeff' for c in share_key):
             raise ProtocolError('TA 阵容码格式不合法')
         self.rpc('lineup_assisant_logic.get_share_lineup_data',
                  {'share_key': share_key}, entity_id=self.avatar_id)
-        for name, data in self.wait_events():
+        for name, data in self.wait_events(20):
             if name == 'lineup_assisant_logic_get_share_lineup_data_cb':
                 if not isinstance(data, dict):
                     raise ProtocolError('阵容查询回调格式不匹配')
@@ -483,7 +528,7 @@ class Gate:
                 return data
             if name in ('on_lose_server', 'destroy_entity') and data.get('entity_id') == self.avatar_id:
                 raise ProtocolError('角色连接已结束，请重新扫码登录')
-        raise ProtocolError('服务器未返回本次 TA 阵容查询结果')
+        raise ProtocolError('阵容查询超时（20秒内未收到对应回包）；已跳过，可稍后重试')
 
 
 def query_own_roles(account: str):

@@ -1,0 +1,12 @@
+'use strict';
+const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto'),{imageHeader}=require('../desktop/official-data.cjs');
+const root='https://yys.res.netease.com/pc/zt/20161108171335/data/skill/';
+async function get(url){const r=await fetch(url,{signal:AbortSignal.timeout(25000)});if(!r.ok)throw new Error('HTTP '+r.status);return Buffer.from(await r.arrayBuffer());}
+(async()=>{
+ const data=JSON.parse(await fs.readFile('data/bundle.json','utf8')),manifest=JSON.parse(await fs.readFile('data/game-assets.json','utf8')),roster=data.roster.filter(h=>!h.isMaterial),items=new Map(manifest.items.map(i=>[i.library+':'+i.id,i])),failures=[];let next=0,complete=0;
+ await Promise.all(Array.from({length:4},async()=>{while(next<roster.length){const hero=roster[next++];for(const awake of [0,1]){const sourcePage=`https://g37simulator.webapp.163.com/get_hero_skill?heroid=${hero.id}&awake=${awake}&level=0&star=2`;try{
+  const raw=JSON.parse(await get(sourcePage)),skills=raw.data||raw;
+  for(const [id,skill] of Object.entries(skills)){if(!skill?.icon||!skill.name||!/^\d+$/.test(String(skill.icon)))continue;const key='shikigamiSkill:'+hero.id+':'+id;if(items.has(key))continue;const url=root+skill.icon+'.png?v11',bytes=await get(url),info=imageHeader(bytes);if(info.format!=='png')throw new Error('技能图片格式无效');const localPath=`data/images/game/shikigamiSkill/${hero.id}-${id}.png`;await fs.mkdir(path.dirname(localPath),{recursive:true});await fs.writeFile(localPath,bytes);items.set(key,{library:'shikigamiSkill',id:hero.id+':'+id,name:skill.name,heroId:hero.id,skillId:id,icon:String(skill.icon),localPath,url,sourcePage,sourceLabel:'网易官方技能接口',...info,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length,retrievedAt:new Date().toISOString()});}
+ }catch(error){failures.push({heroId:hero.id,awake,error:error.message,sourcePage});}await new Promise(r=>setTimeout(r,150));}if(++complete%25===0)console.log('Skill catalogs',complete,'/',roster.length,'images',items.size-138);}}));
+ manifest.items=[...items.values()];manifest.skillFailures=failures;await fs.writeFile('data/game-assets.json',JSON.stringify(manifest,null,2)+'\n');await fs.writeFile('verification/skill-assets-v070.json',JSON.stringify({heroes:roster.length,images:manifest.items.filter(a=>a.library==='shikigamiSkill').length,failures},null,2));console.log('Skill localization complete',manifest.items.length,'images;',failures.length,'failures');
+})().catch(e=>{console.error(e);process.exitCode=1;});

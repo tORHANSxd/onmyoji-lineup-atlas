@@ -17,7 +17,9 @@ from Crypto.Util.Padding import pad
 
 
 class MpayError(RuntimeError):
-    pass
+    def __init__(self, message, http_status=None):
+        super().__init__(message)
+        self.http_status = http_status
 
 
 class MpayClient:
@@ -30,14 +32,18 @@ class MpayClient:
         self.user = None
 
     def _post(self, path, parameters):
+        return self._request(path, parameters, 'POST')
+
+    def _request(self, path, parameters, method):
         params = {'game_id': self.game_id, 'gv': '260902', 'gvn': '2.8.84',
                   'cv': 'a5.18.0', 'sv': '32', 'app_type': 'games', 'app_mode': '2',
                   'jf_game_id': 'g37', 'pkg_channel': 'netease', 'app_channel': 'netease',
                   'sc': '0'}
         params.update(parameters)
+        encoded = urllib.parse.urlencode(params)
         request = urllib.request.Request(
-            self.BASE + path,
-            data=urllib.parse.urlencode(params).encode('ascii'),
+            self.BASE + path + ('?' + encoded if method == 'GET' else ''),
+            data=encoded.encode('ascii') if method == 'POST' else None, method=method,
             headers={'Content-Type': 'application/x-www-form-urlencoded',
                      'User-Agent': 'NeteaseMobileGame/a5.18.0',
                      'Accept-Language': 'zh-CN'})
@@ -52,7 +58,7 @@ class MpayClient:
             except (ValueError, OSError):
                 code = None
             detail = f'，接口代码 {code}' if isinstance(code, (int, float)) else ''
-            raise MpayError(f'MPay 返回 HTTP {exc.code}{detail}') from None
+            raise MpayError(f'MPay 返回 HTTP {exc.code}{detail}', http_status=exc.code) from None
         except (urllib.error.URLError, TimeoutError, OSError):
             raise MpayError('MPay 接口连接失败') from None
         if len(data) > 2 * 1024 * 1024:
@@ -114,3 +120,34 @@ class MpayClient:
         self.device_id = ''
         self.device_key = b''
         self.user = None
+
+    def resume(self, info):
+        previous = info['mpay_user']
+        self.device_id = info['mpay_device_id']
+        # PC MPay 4.19.1.489, file 0x152db0-0x1535f8: GET the saved
+        # device/user route through the common c4.19.1 parameter builder.
+        # The phone's source platform remains in pc_ext_info; it is not the
+        # login_for parameter used by the Android token-login request.
+        # This client never performs SMS login; the other SDK condition is
+        # login type 7, taken verbatim from the official response.
+        verify = '1' if str(previous.get('login_type', 1)) == '7' else '0'
+        route = '/games/{}/devices/{}/users/{}'.format(*(
+            urllib.parse.quote(value, safe='') for value in (self.game_id, self.device_id, previous['id'])))
+        obj = self._request(route, {'token': previous['token'], 'verify_status': verify,
+                                   'cv': 'c4.19.1',
+                                   'opt_fields': 'nickname,avatar,realname_status,mobile_bind_status'}, 'GET')
+        user = obj.get('user')
+        if not isinstance(user, dict):
+            raise MpayError('MPay 未返回账号续用信息，请重新扫码')
+        # O keeps the previous id/token when omitted. Keep optional QR context
+        # when omitted too; an explicit is_remember=false revokes local saving.
+        current = {**previous, **user}
+        current['id'] = user.get('id') or previous['id']
+        current['token'] = user.get('token') or previous['token']
+        if current['id'] != previous['id'] or not isinstance(current['token'], str):
+            raise MpayError('MPay 续用响应与保存账号不一致，请重新扫码')
+        if 'pc_ext_info' in user and not isinstance(user['pc_ext_info'], dict):
+            raise MpayError('MPay 续用授权格式不受支持，请重新扫码')
+        current['pc_ext_info'] = {**previous.get('pc_ext_info', {}), **user.get('pc_ext_info', {})}
+        self.user = current
+        return current

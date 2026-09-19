@@ -1,0 +1,192 @@
+{
+  "uiLayouts": [
+    {
+      "page": "library",
+      "width": 900,
+      "scroll": 885,
+      "alignment": []
+    },
+    {
+      "page": "manage",
+      "width": 900,
+      "scroll": 885,
+      "alignment": []
+    },
+    {
+      "page": "accounts",
+      "width": 900,
+      "scroll": 900,
+      "alignment": []
+    },
+    {
+      "page": "decode",
+      "width": 900,
+      "scroll": 885,
+      "alignment": []
+    },
+    {
+      "page": "audit",
+      "width": 900,
+      "scroll": 885,
+      "alignment": []
+    },
+    {
+      "page": "library",
+      "width": 1280,
+      "scroll": 1265,
+      "alignment": []
+    },
+    {
+      "page": "manage",
+      "width": 1280,
+      "scroll": 1265,
+      "alignment": []
+    },
+    {
+      "page": "accounts",
+      "width": 1280,
+      "scroll": 1280,
+      "alignment": []
+    },
+    {
+      "page": "decode",
+      "width": 1280,
+      "scroll": 1280,
+      "alignment": []
+    },
+    {
+      "page": "audit",
+      "width": 1280,
+      "scroll": 1265,
+      "alignment": []
+    },
+    {
+      "page": "library",
+      "width": 1920,
+      "scroll": 1905,
+      "alignment": []
+    },
+    {
+      "page": "manage",
+      "width": 1920,
+      "scroll": 1905,
+      "alignment": []
+    },
+    {
+      "page": "accounts",
+      "width": 1920,
+      "scroll": 1920,
+      "alignment": []
+    },
+    {
+      "page": "decode",
+      "width": 1920,
+      "scroll": 1920,
+      "alignment": []
+    },
+    {
+      "page": "audit",
+      "width": 1920,
+      "scroll": 1905,
+      "alignment": []
+    },
+    {
+      "page": "library",
+      "width": 720,
+      "scroll": 705,
+      "alignment": []
+    },
+    {
+      "page": "manage",
+      "width": 720,
+      "scroll": 705,
+      "alignment": []
+    },
+    {
+      "page": "accounts",
+      "width": 720,
+      "scroll": 720,
+      "alignment": []
+    },
+    {
+      "page": "decode",
+      "width": 720,
+      "scroll": 705,
+      "alignment": []
+    },
+    {
+      "page": "audit",
+      "width": 720,
+      "scroll": 705,
+      "alignment": []
+    }
+  ],
+  "tagColors": [
+    {
+      "kind": "hero",
+      "foreground": "rgb(148, 47, 56)",
+      "background": "rgb(253, 232, 233)",
+      "contrast": 6.572358004691032
+    },
+    {
+      "kind": "soul",
+      "foreground": "rgb(32, 88, 154)",
+      "background": "rgb(233, 241, 255)",
+      "contrast": 6.323984478389813
+    },
+    {
+      "kind": "training",
+      "foreground": "rgb(139, 75, 15)",
+      "background": "rgb(255, 240, 216)",
+      "contrast": 6.013138520290988
+    }
+  ],
+  "independentGapCombinations": true,
+  "imageTextAlignment": true,
+  "responsiveViews": true,
+  "zoom125": true,
+  "method": "Real Electron renderer/preload/worker, production TA queue and codec; synthetic login/server responses and legacy 32 failures in 155 entries; accelerated retry delays; no actual phone login",
+  "queries": 165,
+  "legacyBatchQueries": 156,
+  "expiredCleanup": true,
+  "librarySummaryCleanup": true,
+  "summaryRowEditAndDelete": true,
+  "inlineRetryFailureAndSuccess": true,
+  "bulkRetryCachedFailures": true,
+  "managementInlineRetry": true,
+  "sidebarManagementIcon": true,
+  "categoryHomePreviews": true,
+  "deleteConfirmation": true,
+  "deleteFailureRollback": true,
+  "presetDeletionSurvivesRestartAndUpdate": true,
+  "deletionBackupRoundTrip": true,
+  "offlineAddAndReadd": true,
+  "offlineBulkAdd": true,
+  "deleteCustomLineup": true,
+  "inflightDeletionNoResurrection": true,
+  "newExpiredCodeRecorded": true,
+  "success": 146,
+  "failures": 9,
+  "skippedExpired": 9,
+  "objectIdRecovered": 13,
+  "temporaryRecovered": 10,
+  "legacyErrorCategories": true,
+  "retryProgress": true,
+  "structuredFailureExport": true,
+  "rememberedAccountControls": true,
+  "categoryLanding": true,
+  "multipleUses": true,
+  "accountGapFilters": true,
+  "clearedAccountIgnoresGapFilter": true,
+  "offline": true,
+  "slots": 30,
+  "members": 6,
+  "immutableDecodedConfig": true,
+  "codeEditClearsOldPayload": true,
+  "images": true,
+  "markCards": 4,
+  "markLevels": 3,
+  "duplicateMarkCount": true,
+  "unknownMarkPreserved": true,
+  "errors": []
+}

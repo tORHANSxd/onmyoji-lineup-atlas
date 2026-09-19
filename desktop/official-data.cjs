@@ -74,7 +74,7 @@ class OfficialData {
   getData(){
     const data=structuredClone(this.base),saved=this.snapshot;
     if(saved.roster?.length){const builtIn=new Map(data.roster.map(r=>[r.id,r]));data.roster=saved.roster.map(r=>({...r,gameRules:builtIn.get(r.id)?.gameRules||r.gameRules}));data.roster.push(...[...builtIn.values()].filter(r=>!saved.roster.some(s=>s.id===r.id)));}
-    if(saved.actors?.length)data.actors=[...new Map([...(data.actors||[]),...saved.actors].map(a=>[a.id,a])).values()];
+    if(saved.actors?.length){const builtIn=new Map((data.actors||[]).map(a=>[a.id,a]));data.actors=[...new Map([...(data.actors||[]),...saved.actors.map(a=>({...a,gameId:builtIn.get(a.id)?.gameId??a.gameId}))].map(a=>[a.id,a])).values()];}
     data.officialNews=saved.news||data.officialNews||[];
     if(saved.report)data.assetAudit={...data.assetAudit,...saved.report};
     data.officialUpdate={...this.getStatus(),resourceCoverage:saved.coverage||null,scope:['官方名单','40级6星基础属性','官方形象','维护公告'],lineupSnapshot:data.cutoffDate};

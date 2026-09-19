@@ -17,7 +17,8 @@ def main():
             wire.write(json.dumps(value, ensure_ascii=True, allow_nan=False) + '\n')
             wire.flush()
 
-    session = Session(lambda state: send({'type': 'status', 'state': state}))
+    session = Session(lambda state: send({'type': 'status', 'state': state}),
+                      lambda data: send({'type': 'credentials', 'data': data}))
     session.emit(session.status())
     try:
         while True:

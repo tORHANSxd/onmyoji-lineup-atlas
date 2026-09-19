@@ -51,7 +51,7 @@ function configUnknown(config,effects){
   if(config.scope!=null&&!['all','unequipped'].includes(config.scope))reasons.push('未支持的库存范围');
   if(config.scope==='unequipped'||config.excludeOccupied)reasons.push('导出缺少穿戴归属，不能筛选未占用御魂');
   if(config.highestStat)reasons.push('旧版最高属性字段需重新解析');
-  if((config.highestStats||[]).some(s=>!Object.hasOwn(names,s)))reasons.push('未知最高属性');
+  if((config.highestStats||[]).some(s=>!Object.hasOwn(names,s)||s.endsWith('Percent')))reasons.push('未知最高属性');
   if((config.ranges||[]).some(r=>!Object.hasOwn(names,r.stat)||r.stat.endsWith('Percent')))reasons.push('包含未支持的面板范围');
   if(config.metricId!=null&&!C.METRICS[config.metricId])reasons.push('未知计算指标');
   if(config.suits?.length&&!config.suitRequirements?.length&&!config.suitSelectionComplete)reasons.push('旧版套装没有明确件数');
@@ -68,13 +68,15 @@ function suggestions(config,closest,account,effects){
   for(const g of gaps){
     if(['slot','main','star','level'].includes(g.kind)){
       const soul=q.find(s=>s.slot===g.slot),main=config.mainStats?.[g.slot]?.map(s=>names[s]).join(' / ')||({1:'攻击',3:'防御',5:'生命'}[g.slot]||'按数值缺口选择');
-      if(g.kind==='level'&&soul&&soul.level<15)add(0,`优先强化${g.slot}号位「${soul.set}」${names[soul.mainStat]}主属性（当前 +${soul.level}）。强化后重新导入；副属性落点不保证达标。`);
-      else add(0,`补充${g.slot}号位，主属性选${main}${config.sixStarOnly?'，六星':''}；优先从要求的套装中兑换。`);
+      if(g.kind==='level'&&soul&&soul.level<(config.levelRange?.[0]??15)&&!gaps.some(x=>x.slot===g.slot&&['main','star'].includes(x.kind)||['set','pair'].includes(x.kind)||x.kind==='stat'&&x.side==='max'))add(0,`先利用已有${g.slot}号位「${soul.set}」（+${soul.level}）：主属性随强化确定提升；消耗御魂经验与金币，以强化预览为准。分段强化到下一次 +3 / +6 / +9 / +12 / +15 检查副属性，随机落点不能保证达标；达到原码下限即重新核对，不盲目追满。`);
+      else add(1,`先检查已有${g.slot}号位，主属性${main}${config.sixStarOnly?'、六星':''}。主属性种类与星级不能靠普通强化改变；不合适时更换御魂，已强化等级也不能下调。`);
     }
     if(g.kind==='set'||g.kind==='pair'){
       const sets=g.kind==='set'?[g.name]:(effects.find(e=>e.stat===g.stat)?.suitNames||[]),requiredSlots=[1,2,3,4,5,6].filter(slot=>!q.some(x=>x.slot===slot&&sets.includes(x.set)));
       const slots=requiredSlots.sort((a,b)=>inventory.filter(x=>x.slot===a&&sets.includes(x.set)).length-inventory.filter(x=>x.slot===b&&sets.includes(x.set)).length).slice(0,Math.min(g.delta,2));
-      for(const slot of slots){const mains=config.mainStats?.[slot]?.map(s=>names[s]).join(' / ')||({1:'攻击',3:'防御',5:'生命'}[slot]||'依下方数值缺口选择');add(1,`优先兑换${sets.slice(0,4).join(' / ')}${sets.length>4?'等同加成套装':''}的${slot}号位，主属性${mains}；先补套装所缺位置。`);}
+      const voidSets=['尘冢','夜送犬','片叶之苇','雨降','油赤子','夜啼石'],bossSets=['土蜘蛛','胧车','荒骷髅','地震鲶','蜃气楼','鬼灵歌伎'];
+      const route=sets.every(s=>voidSets.includes(s))?'终焉大蛇·虚无对应掉落':sets.every(s=>bossSets.includes(s))?'对应逢魔首领奖励 / 逢魔御魂兑换':'御魂副本对应掉落池 / 游戏内御魂兑换';
+      for(const slot of slots){const mains=config.mainStats?.[slot]?.map(s=>names[s]).join(' / ')||({1:'攻击',3:'防御',5:'生命'}[slot]||'依数值缺口选择');add(2,`缺${sets.slice(0,4).join(' / ')}${sets.length>4?'等同加成套装':''}的${slot}号位（${mains}）。途径：${route}。优先使用已有兑换资源；只有界面明确可选时才视为能指定套装 / 位置 / 主属性，否则仍是随机获取。刷取耗体力、兑换耗对应材料，次数与价格按当前游戏界面；246号位指定主属性通常比135号位更难补。`);}
     }
   }
   const statGaps=gaps.filter(g=>g.kind==='stat').sort((a,b)=>b.weight-a.weight);
@@ -84,7 +86,7 @@ function suggestions(config,closest,account,effects){
     const statKeys={attack:['attack','attackPercent'],hp:['hp','hpPercent'],defense:['defense','defensePercent']}[g.stat]||[g.stat];
     const ranked=[...q].sort((a,b)=>statKeys.reduce((n,k)=>n+(a.stats[k]||0)-(b.stats[k]||0),0)*(g.side==='max'?-1:1));
     const slot=allowed?direct[0]:ranked[0]?.slot;
-    if(slot)add(2,`${names[g.stat]}${g.side==='min'?'不足':'超过上限'}：优先${g.side==='min'?'提升':'更换'}${slot}号位${allowed&&g.side==='min'?'，主属性可选'+names[direct[1]]:'，保留指定主属性并'+(g.side==='min'?'寻找更高':'降低')+names[g.stat]+'副属性'}。${g.text}；其余位置与套装也须保持达标。`);
+    if(slot)add(3,`${names[g.stat]}${g.side==='min'?'不足':'超过上限'}：${g.text}。先换用库存内${slot}号位${allowed&&g.side==='min'?'的'+names[direct[1]]+'主属性':'保留指定主属性、'+(g.side==='min'?'更高':'降低')+names[g.stat]+'副属性'}。如果只能赌强化，该方向投入与随机风险更高，排在利用现成御魂之后；强化不能选择副属性落点，也不能保证同时满足其他面板上限。`);
   }
   return out.sort((a,b)=>a.priority-b.priority).slice(0,6).map(x=>x.text);
 }
@@ -149,6 +151,14 @@ function memberCandidates(member,account){
   const heroes=ranked.filter(r=>!r.gaps.length).map(r=>r.hero),near=ranked[0];
   return {status:heroes.length?'found':'missing',reason:heroes.length?'':near.gaps.map(g=>g.text).join('；'),heroes,nearest:near.hero,gaps:near.gaps};
 }
+function shikigamiRequirementsComplete(lineup){
+  if(lineup.requirementsComplete===true)return true;
+  // Mapper v3 also counted actor-only protocol fields as missing requirements.
+  // Reinterpret only that known legacy case; incomplete shikigami data stays unknown.
+  return lineup.mapperVersion===3&&['decoded-local','decoded-server'].includes(lineup.decodeState)&&
+    !!lineup.members?.some(m=>m.kind==='onmyoji'&&m.config?.protocolUncertainties?.length)&&
+    lineup.members.filter(m=>m.kind==='shikigami'&&m.occupied!==false).every(m=>!m.config?.protocolUncertainties?.length);
+}
 function matchLineup(lineup,account,roster,effects,options={}){
   if(!lineup.members?.some(m=>m.occupied!==false))return {status:'unknown',label:'待解析',distance:null,reasons:['阵容码尚未获得成员数据'],members:[],checks:[]};
   const members=[],unknown=[],checks=[],required={},roles=lineup.members.filter(m=>m.occupied!==false),search={...options,cache:options.cache||new Map(),inventory:options.inventory||Object.values(account.souls)};
@@ -157,11 +167,7 @@ function matchLineup(lineup,account,roster,effects,options={}){
   for(const [sid,n] of Object.entries(required)){const have=Object.values(account.heroes).filter(h=>h.shikigamiId===sid).length;if(n>have){forcedMissing=account.completeness==='complete'&&!account.merged;checks.push(`${roster.find(r=>r.id===sid)?.name||sid}需要${n}个不同实例，导出有${have}个`);}}
   for(const m of roles){
     if(m.kind==='onmyoji'){
-      const requirement=`${m.name}：${m.level||'未指定'}级；技能 ${(m.skills||[]).map(s=>`${s.id} ≥${s.level}级`).join('、')||'未提供'}`;
-      unknown.push('导出未包含阴阳师 / 英杰信息');checks.push(requirement);
-      if(m.qiling)checks.push(`契灵 ID ${m.qiling.id}：${m.qiling.star}星、${m.qiling.lv}级，印记 ${(m.qiling.marks||[]).join(' / ')||'无'}`);
-      if(m.aiSkill!=null)checks.push(`${m.name}自动技能设置：${JSON.stringify(m.aiSkill)}`);
-      members.push({index:m.index,name:m.name,status:'unknown',reasons:['需在游戏内确认主角与契灵配置'],builds:[],distance:0});continue;
+      members.push({index:m.index,name:m.name,status:'display-only',reasons:[],builds:[],distance:0});continue;
     }
     if(m.borrowed||!m.shikigamiId){const reason=m.borrowed?'需要借用协战，需确认可借式神及配置':'成员身份未核实';unknown.push(reason);members.push({index:m.index,name:m.name,status:'unknown',reasons:[reason],builds:[],distance:0});continue;}
     const owned=memberCandidates(m,account),heroes=owned.heroes.length?owned.heroes:owned.nearest?[owned.nearest]:[],tested=[];
@@ -189,15 +195,16 @@ function matchLineup(lineup,account,roster,effects,options={}){
   }
   assign(0,new Set(),new Set(),[]);
   if(!assignment&&buildRoles.length)unknown.push('候选存在式神 / 御魂冲突或最高属性次序不符；尚未找到全队分配');
-  if(!lineup.requirementsComplete)unknown.push('来源要求尚不完整，需核对原文与补充说明');
+  if(!shikigamiRequirementsComplete(lineup))unknown.push('来源要求尚不完整，需核对原文与补充说明');
+  if(!roles.some(m=>m.kind==='shikigami'))unknown.push('原码尚未解析出完整的式神要求');
   if(account.merged)unknown.push('增量合并可能保留旧资产，需确认仍在仓库');
   if(account.completeness!=='complete')unknown.push('账号导出不完整');
-  if(checks.length)unknown.push('还有原码中的主角、契灵、自动技能或实例数量待核对');
+  if(checks.length)unknown.push('还有原码中的式神自动技能或实例数量待核对');
   const missing=forcedMissing||members.some(m=>m.status==='missing'),ready=!!assignment?.length&&members.filter(m=>roles.find(r=>r.index===m.index)?.kind==='shikigami').every(m=>m.status==='found');
   const status=missing?'missing':unknown.length?'unknown':'available';
   const distance=members.reduce((n,m)=>n+m.distance,0)+(!assignment&&buildRoles.length?15:0)+(forcedMissing?100:0);
   return {status,label:status==='available'?'配置可组成':missing?'存在缺口':ready?'式神御魂就绪 · 仍需核对':'需核对',ready,distance:Math.round(distance*100)/100,checks,reasons:unique([...(forcedMissing?checks.filter(c=>c.includes('个不同实例')):[]),...members.filter(m=>m.status==='missing').map(m=>`${m.name}：${m.reasons.join('；')}`),...unknown]),members,assignment};
 }
 function compareMatches(a,b){if(a?.status==='available'&&b?.status!=='available')return -1;if(b?.status==='available'&&a?.status!=='available')return 1;return (a?.distance??Infinity)-(b?.distance??Infinity)||(a?.checks?.length||0)-(b?.checks?.length||0);}
-return {findBuilds,memberCandidates,matchLineup,compareMatches,panelGaps,equipmentGaps,suggestions,configUnknown,formatStat:fmt,suitMatches:(q,c,e)=>!suitGaps(q,c,e).length};
+return {findBuilds,memberCandidates,matchLineup,compareMatches,shikigamiRequirementsComplete,panelGaps,equipmentGaps,suggestions,configUnknown,formatStat:fmt,suitMatches:(q,c,e)=>!suitGaps(q,c,e).length};
 });

@@ -69,25 +69,95 @@ def jsonp(raw):
 
 def extract_excel():
     import openpyxl
-    p=ROOT/'大肾石长姬版本PVE阵容码大全 最新.xlsx'
-    w=openpyxl.load_workbook(p, data_only=False)
-    entries=[]; sheets=[]
-    for s in w:
-        category=''; n=0
-        for cells in s:
-            vals={c.column:str(c.value).strip() for c in cells if c.value is not None}
-            if not vals: continue
-            codes=[(col,m.group()) for col,val in vals.items() for m in re.finditer(r'\|TA\|[0-9a-fA-F]{32}(?![0-9a-fA-F])',val)]
-            if s.max_column>=4 and vals.get(1) and vals[1] not in ['副本','阵容名']: category=vals[1]
-            for col,code in codes:
-                title=vals.get(col-1,'未命名阵容')
-                entries.append({'id':f'excel-{sheets.__len__()}-{cells[0].row}-{col}', 'title':title, 'originalCategory':category if s.max_column>=4 else '近期更新', 'code':code, 'notes':vals.get(col+1,''), 'author':vals.get(col+2,''), 'sourceUrl':vals.get(col+3,''), 'sheet':s.title,'row':cells[0].row,'sourceFile':p.name,'sourceKind':'excel'})
-                n+=1
-        sheets.append({'name':s.title,'rows':s.max_row,'codeOccurrences':n})
-    out={'source':p.name,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'sheets':sheets,'occurrences':len(entries),'uniqueCodes':len(set(x['code'] for x in entries)),'entries':entries}
+    def route(category, subcategory, dungeon=None):
+        return {'category':category,'subcategory':subcategory,'dungeon':dungeon or subcategory}
+    def dashen_paths(group, title):
+        if group=='近期更新': return []  # 更新引用复用正文的用途，不新造一个副本。
+        actor=next((x for x in ['藤原道长','源赖光'] if x in group),None)
+        if actor: return [route('周常','英杰试炼',actor+' · '+('经验本' if '经验' in title else 'PVP技能本' if 'PVP' in title else 'PVE技能本' if 'PVE' in title else '技能本'))]
+        if '突破' in group: return [route('日常','结界突破')]
+        if '契灵' in title:
+            if '首领' in title: return [route('周常','契灵首领')]
+            spirit=next((x for x in ['镇墓兽','月魔兔','薙魂','针女','狐火','火灵','茨球','小黑'] if x in title),'探查')
+            return [route('契灵',spirit)]
+        if '极逢魔' in title: return [route('极逢魔','荒骷髅' if '周四' in title and '除了' not in title else '通用')]
+        if '彼世逢魔' in title: return [route('周常','彼世逢魔')]
+        if '逢魔' in title: return [route('普通逢魔','鬼灵歌伎' if re.search('歌[姬伎]',title) else '通用')]
+        if '寮' in group:
+            if re.search('提赏金|双拉|清杂|有雀',title): return [route('道馆','道馆进攻')]
+            if all(x in title for x in ['麒麟','狭间','退治']): return [route('寮活动',x) for x in ['麒麟','狭间暗域','首领退治']]
+            for key,sub in [('狭间','狭间暗域'),('麒麟','麒麟'),('退治','首领退治')]:
+                if key in title: return [route('寮活动',sub)]
+            return [route('寮活动','僵尸寮通用')]
+        for pattern,category,sub in [
+            ('魂海.?P1','御魂','魂海P1'),('魂海.?P2','御魂','魂海P2'),('魂十','御魂','魂十'),('魂土','御魂','魂土'),('魂王','御魂','魂王'),('虚无','御魂','魂主'),('业原火','御魂','业原火'),('御灵','御魂','御灵'),
+            ('阴界','寮活动','阴界之门'),('真蛇','周常','真蛇'),('秘闻|百战','周常','秘闻'),('六道','周常','六道'),
+            ('地域鬼王','日常','地鬼'),('师徒','日常','师徒副本'),('金币','日常','金币妖怪'),('经验','日常','经验妖怪'),('探索|悬赏','日常','探索 / 悬赏')]:
+            if re.search(pattern,title): return [route(category,sub)]
+        return [route(group.removesuffix('副本'),title)]
+    entries=[]; sources=[]; sheets=[]
+    names=['大肾石长姬版本PVE阵容码大全 最新.xlsx','01 阴阳师阵容码合集  洛天依版本260902.xlsx']
+    for name in names:
+        p=ROOT/name; w=openpyxl.load_workbook(p,data_only=False); luotianyi=name.startswith('01 ')
+        source={'source':name,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'sheets':[]}
+        start=len(entries)
+        for s in w:
+            merged={}
+            for region in s.merged_cells.ranges:
+                value=s.cell(region.min_row,region.min_col).value
+                for row in range(region.min_row,region.max_row+1):
+                    for col in range(region.min_col,region.max_col+1): merged[row,col]=value
+            def value(row,col):
+                v=merged.get((row,col),s.cell(row,col).value)
+                return str(v).strip() if v is not None else ''
+            section=''; detail=''; record_kind='阵容码'; n=0
+            for cells in s:
+                row=cells[0].row; raw_a=str(cells[0].value or '').strip()
+                if luotianyi:
+                    if re.match(r'^\d+、',raw_a): section=raw_a; detail=''; record_kind='阵容码'
+                    elif raw_a.startswith('上方'):
+                        count=3 if '三套' in raw_a else 2
+                        for prior in [e for e in entries if e['sourceFile']==name and e['sheet']==s.title and e['originalCategory']==section][-count:]:
+                            prior['notes']+='\n\n分节补充：'+raw_a
+                    elif cells[0].data_type!='f' and raw_a and not raw_a.isdigit() and row>1:
+                        detail=raw_a
+                        if s.title=='道馆' and '下方' in raw_a and '配置码' in raw_a: record_kind='配置码'
+                        elif s.title=='道馆' and '下方' in raw_a and '队伍码' in raw_a: record_kind='队伍码'
+                elif s.max_column>=4 and value(row,1) and value(row,1) not in ['副本','阵容名']:
+                    section=value(row,1)
+                # 只从原始单元格提取码，不能把合并区域复制成多个引用。
+                codes=[(c.column,m.group()) for c in cells if isinstance(c.value,str) and c.data_type!='f' for m in re.finditer(r'\|TA\|[0-9a-fA-F]{32}(?![0-9a-fA-F])',c.value)]
+                for col,code in codes:
+                    correction=''
+                    if luotianyi:
+                        title=value(row,2); category={'寮活':'寮活动','普逢':'普通逢魔','极逢':'极逢魔'}.get(s.title,s.title)
+                        sub=re.sub(r'^\d+、','',section).split('（')[0].strip()
+                        sub={'业原火痴':'业原火','僵尸寮':'僵尸寮通用','首领退治铁鼠':'首领退治'}.get(sub,sub)
+                        dungeon=sub
+                        if s.title=='普逢':
+                            sub=dungeon=title.split('|')[-1]; correction='按工作表“普逢”及B列BOSS修正A2误写的“结界突破”标题'
+                        if s.title=='契灵' and title.startswith('薙魂') and sub=='狐火':
+                            sub=dungeon='薙魂'; correction='按B列薙魂标题修正A44重复的“狐火”分节'
+                        if s.title=='极逢':
+                            sub=dungeon=next((x for x in ['蜃气楼','土蜘蛛','荒骷髅','地震鲶'] if x in section),'通用')
+                        if sub=='英杰试炼':
+                            actor='源赖光' if '源赖光' in detail else '藤原道长'
+                            dungeon=actor+' · '+('技能本' if '技能' in detail else '经验本')
+                        paths=[route(category,sub,dungeon)]
+                        notes='\n\n'.join(x for x in [detail,value(row,5),'面板要求：'+value(row,6) if value(row,6) else '', '御魂命名：'+value(row,7) if value(row,7) else ''] if x)
+                        author=value(row,9); url=value(row,8)
+                    else:
+                        title=value(row,col-1); group='近期更新' if s.title=='更新内容' else section
+                        paths=dashen_paths(group,title); notes=value(row,col+1); author=value(row,col+2); url=value(row,col+3)
+                    entries.append({'id':f'excel-{len(sources)}-{s.title}-{row}-{col}','title':title or '未命名阵容','originalCategory':section if luotianyi else group,'classificationPaths':paths,'classificationCorrection':correction,'recordKind':record_kind,'code':code,'notes':notes,'author':author,'sourceUrl':url,'sheet':s.title,'row':row,'cell':s.cell(row,col).coordinate,'sourceFile':name,'sourceKind':'excel'})
+                    n+=1
+            info={'name':s.title,'rows':s.max_row,'codeOccurrences':n}
+            source['sheets'].append(info); sheets.append({**info,'sourceFile':name})
+        source.update(occurrences=len(entries)-start,uniqueCodes=len({x['code'] for x in entries[start:]})); sources.append(source); w.close()
+    digest=hashlib.sha256(json.dumps([(x['source'],x['sha256']) for x in sources],ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+    out={'source':'两份用户工作簿','sources':sources,'sha256':digest,'sheets':sheets,'occurrences':len(entries),'uniqueCodes':len(set(x['code'] for x in entries)),'entries':entries}
     save(DATA/'excel.json',out)
     print(json.dumps({k:v for k,v in out.items() if k!='entries'},ensure_ascii=False))
-    print(json.dumps(entries,ensure_ascii=False))
 
 def roster():
     all_rows={}; pages=[]; errors=[]; previous=set(); expected=None

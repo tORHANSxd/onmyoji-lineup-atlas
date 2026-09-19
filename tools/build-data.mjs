@@ -13,9 +13,9 @@ const taxonomy=[
  ['日常','御灵','御灵'],['日常','探索 / 悬赏','探索|悬赏'],['日常','觉醒材料','觉醒本|觉醒材料'],['日常','地域鬼王','地域鬼王'],['日常','师徒协战','师徒'],['日常','金币妖怪','金币妖怪'],['日常','经验妖怪','经验妖怪'],['日常','逢魔之时','逢魔'],['日常','结界突破','突破|低保突破|结突'],
  ['寮活动','道馆','馆主|提赏金|清杂|双拉|有雀'],['寮活动','狭间暗域','狭间'],['寮活动','狩猎战 / 麒麟','麒麟'],['寮活动','首领退治','退治'],['寮活动','寮活动通用','福利寮'],
  ['周常','阴界之门','阴界'],['周常','真·八岐大蛇','真蛇|真·八岐'],['周常','秘闻竞速 / 百战','百战|每周秘闻|秘闻竞速'],['周常','梦墟秘境','梦墟'],['周常','彼世逢魔','彼世逢魔'],
- ['常驻挑战','契灵 · 镇墓兽','镇墓兽'],['常驻挑战','契灵 · 月魔兔','月魔兔'],['常驻挑战','契灵 · 薙魂','薙魂'],['常驻挑战','契灵 · 针女','针女契灵|契灵.?针女'],['常驻挑战','契灵 · 狐火','狐火'],['常驻挑战','契灵 · 火灵','契灵.?火灵'],['常驻挑战','契灵 · 茨球','茨球'],['常驻挑战','契灵探查','契灵小怪|契灵探查'],['常驻挑战','六道之门','六道|真言塔'],
- ['周常','契灵首领','契灵.?首领'],['御魂','魂十三','^御魂副本 虚无'],
- ['常驻挑战','英杰 · 藤原道长','藤原道长'],['常驻挑战','英杰 · 源赖光','源赖光'],['常驻挑战','鬼兵演武 / 兵藏秘境','鬼兵演武|兵藏|英杰试炼'],['首次通关','秘闻副本','秘闻'],['限时活动','拾光永恒','拾光永恒|亘地回响|回响亘地|虚无精锐|周年庆'],['对战','斗技 / 协同斗技','斗技']
+ ['契灵','契灵 · 镇墓兽','镇墓兽'],['契灵','契灵 · 月魔兔','月魔兔'],['契灵','契灵 · 薙魂','薙魂'],['契灵','契灵 · 针女','针女契灵|契灵.?针女'],['契灵','契灵 · 狐火','狐火'],['契灵','契灵 · 火灵','契灵.?火灵'],['契灵','契灵 · 茨球','茨球'],['契灵','契灵探查','契灵小怪|契灵探查'],['常驻挑战','六道之门','六道|真言塔'],
+ ['契灵','契灵首领','契灵.?首领'],['御魂','魂十三','^御魂副本 虚无'],
+ ['常驻挑战','英杰 · 藤原道长','藤原道长'],['常驻挑战','英杰 · 源赖光','源赖光'],['常驻挑战','鬼兵演武 / 兵藏秘境','鬼兵演武|兵藏|英杰试炼'],['首次通关','秘闻副本','秘闻'],['限时活动','拾光永恒','拾光永恒|亘地回响|回响亘地|虚无精锐|周年庆'],['斗技','斗技 / 协同斗技','斗技']
 ];
 function classify(x){const text=[x.originalCategory,x.title,x.dungeon].join(' ');const matches=taxonomy.filter(t=>new RegExp(t[2]).test(text));return {category:x.category||matches[0]?.[0]||'其他',dungeons:[...new Set([...(x.dungeons||[]),...matches.map(t=>t[1])])],dungeon:x.dungeon||matches[0]?.[1]||x.originalCategory||'待分类'};}
 const merged=new Map();
@@ -31,7 +31,7 @@ const cachedMechanics=await read('data/mechanics.json',{});
 const apkRules=await read('data/apk-mechanics.json',{});
 let effects=mappings?[...mappings.matchAll(/id: "two-piece-effect:([^"]+)",\s*name: "([^"]+)",\s*teamCodeId: (\d+),\s*stat: "([^"]+)",\s*suitNames: \[([^\]]+)\]/g)].map(m=>({id:m[1],name:m[2],teamCodeId:+m[3],stat:m[4],suitNames:JSON.parse('['+m[5]+']'),value:m[4]==='critDamage'?null:.15})):cachedMechanics.effects;
 const suitBlock=mappings?mappings.split('export const YUHUN_SUIT_IDS_BY_NAME = {')[1].split('} as const')[0]:'';const suits=mappings?Object.fromEntries([...suitBlock.matchAll(/([^\s:,]+): (\d+)/g)].map(m=>[m[2],m[1]])):cachedMechanics.suits;
-if(apkRules.suits){effects=effects.map(e=>{const rows=Object.values(apkRules.suits).filter(s=>e.stat in s.twoPiece);const values=[...new Set(rows.map(s=>s.twoPiece[e.stat]))];if(values.length>1)throw new Error('套装属性存在不同数值，不能合并');return {...e,suitNames:rows.map(s=>s.name),value:values[0]??0,cycle:4};});effects.push({id:'fixedBoss',name:'首领固定属性（已计入副属性）',stat:'none',value:0,cycle:2,suitNames:Object.values(apkRules.suits).filter(s=>!Object.keys(s.twoPiece).length).map(s=>s.name)});}
+if(apkRules.suits){const canonical=s=>s.name==='涅槃之火'?'涅槃火':s.name;effects=effects.map(e=>{const rows=Object.values(apkRules.suits).filter(s=>e.stat in s.twoPiece);const values=[...new Set(rows.map(s=>s.twoPiece[e.stat]))];if(values.length>1)throw new Error('套装属性存在不同数值，不能合并');return {...e,suitNames:rows.map(canonical),value:values[0]??0,cycle:4};});effects.push({id:'fixedBoss',name:'首领固定属性（已计入副属性）',stat:'none',value:0,cycle:2,suitNames:Object.values(apkRules.suits).filter(s=>!Object.keys(s.twoPiece).length).map(canonical)});}
 await fs.writeFile('data/mechanics.json',JSON.stringify({effects,suits,source:apkRules.source||'https://github.com/FiresChain/onmyoji-yuhun'},null,2));
 const report=await read('data/roster-report.json',{});const updatedRoster=roster.map(r=>({...r,assets:assets[r.id]||null,officialUrl:`https://yys.163.com/shishen/${r.id}.html`,releasedBeforeCutoffVerified:['607','608'].includes(r.id),releasedAt:['607','608'].includes(r.id)?'2026-09-09':null,releaseEvidenceUrls:['607','608'].includes(r.id)?['https://yys.163.com/news/update/20260908/23024_1313394.html']:[],rarityConflict:r.static?.level!==r.rarity}));
 const allAssets=Object.values(assets).flatMap(x=>x.variants).filter(v=>v.applicability!=='not_applicable');
@@ -43,6 +43,26 @@ output.actors=[...await read('data/actors.json',[]),...await read('data/suppleme
 for(const r of output.roster)if(apkRules.heroes?.[r.id])r.gameRules=apkRules.heroes[r.id];
 for(const [id,r] of Object.entries(apkRules.heroes||{}))if(r.material&&!output.roster.some(h=>h.id===id))output.roster.push({id,name:r.name,rarity:'素材',isMaterial:true,gameRules:r,assets:{awakeningAvailability:'not_applicable',variants:[]}});
 output.mechanicsSource=apkRules.source;
+output.serverNames=(await read('desktop/ta-python/server_catalog.json',[])).map(s=>({id:String(s.ServerID),name:s.showName||s.ServerName}));
+output.gameAssets=await read('data/game-assets.json',{items:[]});
+output.qilingMarks=await read('data/qiling-marks.json',{marks:[]});
+output.stageCatalog=await read('data/stages.json',{scenes:[]});
+for(const actor of output.actors){const image=output.gameAssets.items.find(a=>a.library==='onmyoji'&&a.name===actor.name);if(image)actor.gameId=Number(image.id);}
+for(const hero of output.roster){const image=output.gameAssets.items.find(a=>a.library==='daruma'&&a.id===hero.id);if(image)hero.assets={...hero.assets,awakeningAvailability:'not_applicable',variants:[{...image,family:'art-before',status:'downloaded_valid_image',verifiedState:'default'}]};}
+const {default:categories}=await import('../app/categories.js');
+const officialResults=await read('data/ta-workbook-results.json',{});
+const verifiedSource=officialResults.sourceSha256===excel.sha256?excel:(excel.sources||[]).find(s=>s.sha256===officialResults.sourceSha256);
+if(verifiedSource){
+  const {default:core}=await import('../app/core.js');
+  const permittedCodes=new Set(excel.entries.filter(e=>verifiedSource===excel||e.sourceFile===verifiedSource.source).map(e=>e.code));
+  const results=new Map((officialResults.results||[]).filter(r=>permittedCodes.has(r.code)).map(r=>[r.code,r]));
+ output.lineups=output.lineups.map(old=>{const result=results.get(old.code);if(!result)return old;const parsed=core.validateLineup(result.lineup);if(parsed.code!==old.code||parsed.decodeState!=='decoded-server')throw new Error('工作簿查询结果与原码不符');return {...core.mergeDecodedLineup(old,parsed),sourceKind:old.sourceKind,parsedAt:result.fetchedAt,decodeError:null,lastParseError:null,lastParseFailure:null};});
+ output.excelAudit.decoded=new Set(excel.entries.filter(e=>results.has(e.code)).map(e=>e.code)).size;
+ output.excelAudit.rejected=output.lineups.filter(l=>l.sourceKind==='excel'&&l.decodeState==='failed').length;
+ output.excelAudit.method='official-game-session';
+}
+output.excelAudit.sources=excel.sources;
+output.lineups=output.lineups.map(l=>categories.resolve(l,output));
 await fs.writeFile('data/bundle.json',JSON.stringify(output));
 await fs.mkdir('verification',{recursive:true});await fs.writeFile('verification/coverage.json',JSON.stringify({...output.assetAudit,excel:output.excelAudit,totalLineups:output.lineups.length,webSourceCount:sources.filter(x=>!x.error).length,structuredReferenceLineups:curated.length},null,2));
 console.log(JSON.stringify({lineups:output.lineups.length,roster:roster.length,assets:allAssets.length,sources:sources.length}));

@@ -6,11 +6,28 @@ const METRICS={1:['伤害输出','attack × critDamage'],2:['效果命中','effe
 const finite=n=>typeof n==='number'&&Number.isFinite(n);
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const id=x=>/^\d+$/.test(String(x))?String(Number(x)):null;
-const normalizeCode=s=>String(s??'').replace(/^\uFEFF/,'').trim();
+function inspectCode(value){
+ const originalCode=String(value??''),repairs=[];let code=originalCode.replace(/^\uFEFF/,'').trim();
+ if(code!==originalCode)repairs.push('去除首尾空白或 BOM');
+ const prefix=code.match(/^[|｜][TtＴｔ][AaＡａ][|｜]/);
+ if(prefix&&prefix[0]!=='|TA|'){code='|TA|'+code.slice(4);repairs.push('统一文字码前缀');}
+ if(code.startsWith('|TA|')){
+  const key=code.slice(4),joined=key.replace(/[\s\u200b-\u200d\u2060\ufeff]/g,'');
+  // A wrapped 32-digit hexadecimal key has an unambiguous repair. Other
+  // share keys stay opaque; never guess missing characters or change case.
+  if(key!==joined&&/^[a-fA-F0-9]{32}$/.test(joined)){code='|TA|'+joined;repairs.push('去除分享键中的排版空白');}
+ }else if(code.startsWith('#TA#')){
+  const payload=code.slice(4),joined=payload.replace(/\s/g,'');
+  if(payload!==joined&&joined.length%4===0&&/^[A-Za-z0-9+/]+={0,2}$/.test(joined)){code='#TA#'+joined;repairs.push('合并完整阵容内容的换行');}
+ }
+ return {code,originalCode,repairs};
+}
+const normalizeCode=s=>inspectCode(s).code;
+const codeProvenance=value=>{const r=inspectCode(value);return r.repairs.length?{originalCode:r.originalCode,codeRepairs:r.repairs}:{};};
 const hasLineupCode=l=>typeof l?.code==='string'&&!!l.code.trim();
 const hasParsedContent=l=>Array.isArray(l?.members)&&l.members.some(m=>m.occupied!==false)&&!['reference','failed','unattempted','lookup-required'].includes(l.decodeState);
 function paginate(items,page=1,size=60){size=[24,60,120].includes(Number(size))?Number(size):60;const pages=Math.max(1,Math.ceil(items.length/size));page=Math.max(1,Math.min(pages,Math.floor(Number(page)||1)));return {items:items.slice((page-1)*size,page*size),page,pages,total:items.length,start:items.length?(page-1)*size+1:0,end:Math.min(page*size,items.length),size};}
-function classifyCode(s){s=normalizeCode(s);if(new TextEncoder().encode(s).length>32*1024*1024)return 'too-large';if(/^\|TA\|[^\s|\x00-\x1f\x7f]{1,4096}$/.test(s))return 'pipe-ta';if(/^#TA#\S+$/.test(s)&&s.length>4)return 'hash-ta';if(s.length>=8&&s.length%4===0&&/^[A-Za-z0-9+/]+={0,2}$/.test(s))return 'lineup-data';return 'unknown';}
+function classifyCode(s){s=normalizeCode(s);if(new TextEncoder().encode(s).length>32*1024*1024)return 'too-large';if(/^\|TA\|[^\s|\x00-\x1f\x7f\u200b-\u200d\u2060\ufeff]{1,4096}$/.test(s))return 'pipe-ta';if(/^#TA#\S+$/.test(s)&&s.length>4)return 'hash-ta';if(s.length>=8&&s.length%4===0&&/^[A-Za-z0-9+/]+={0,2}$/.test(s))return 'lineup-data';return 'unknown';}
 function adaptTA(payload,data={}){
   if(payload?.ok!==true||payload.format!=='ta-payload'||!object(payload.data)||!Array.isArray(payload.data.hconf)||!Array.isArray(payload.kinds))throw new Error(payload?.error||'TA 解析结果结构无效');
   const d=payload.data;if(d.hconf.length!==payload.kinds.length||!d.hconf.length||d.hconf.length>30)throw new Error('TA 成员数量不合法');
@@ -37,12 +54,31 @@ function adaptTA(payload,data={}){
     return {index,kind,shikigamiId:kind==='shikigami'?String(row.hero_id):null,onmyojiId:kind==='onmyoji'?String(row.hero_id):null,name:kind==='onmyoji'?(actor?.name||`阴阳师 / 英杰 ${row.hero_id}`):(roster?.name||`未知式神 ${row.hero_id}`),occupied:true,awakening:[0,1].includes(row.awake)?row.awake:null,skills:Array.isArray(row.skills)?row.skills.map(([skillId,level])=>({id:skillId,level})):null,level:row.level,star:row.star,levelMode:'recommended',config,qiling:row.qiling_info||null,aiSkill:row.ai_skill,raw:row};
   });
   const queried=payload.origin==='official-query';
-  return {title:typeof d.title==='string'?d.title:'已解析的自创阵容',notes:typeof d.desc==='string'?d.desc:'',gameSceneId:d.select_stage_id,code:payload.code,members,sourceKind:queried?'ta-query':'ta-local',decodeState:queried?'decoded-server':'decoded-local',requirementsComplete:members.every(m=>!m.config?.protocolUncertainties.length),mapperVersion:2,warnings:[queried?'内容来自文字码的官方查询响应，已在本机保存。':'成员与要求来自本地协议解码。','使用实际式神实例的基础属性计算；推荐等级、星级差异会单独列出。主角、契灵和自动技能需依照原码核对。'],protocolVersion:d.ver??0,raw:d};
+  return {title:typeof d.title==='string'?d.title:'已解析的自创阵容',notes:typeof d.desc==='string'?d.desc:'',gameSceneId:d.select_stage_id,code:payload.code,members,sourceKind:queried?'ta-query':'ta-local',decodeState:queried?'decoded-server':'decoded-local',requirementsComplete:members.filter(m=>m.kind==='shikigami').every(m=>!m.config?.protocolUncertainties.length),mapperVersion:4,warnings:[queried?'内容来自文字码的官方查询响应，已在本机保存。':'成员与要求来自本地协议解码。','使用实际式神实例的基础属性计算；推荐等级、星级差异会单独列出。阴阳师、契灵与术印仅展示；式神自动技能按原码设置。'],protocolVersion:d.ver??0,raw:d};
 }
 function mergeDecodedLineup(old,incoming){
   if(!old)return incoming;
   if(old.code!==incoming.code)throw new Error('不能合并不同阵容码');
-  return {...old,...incoming,id:old.id,title:old.title&&old.title!=='未命名阵容'?old.title:incoming.title,notes:old.notes||incoming.notes,category:old.category,dungeon:old.dungeon,dungeons:old.dungeons};
+  return {...old,...incoming,id:old.id,sourceKind:old.sourceKind||incoming.sourceKind,title:old.title&&old.title!=='未命名阵容'?old.title:incoming.title,notes:old.notes||incoming.notes,category:old.category,subcategory:old.subcategory,dungeon:old.dungeon,dungeons:old.dungeons,classificationPaths:old.classificationPaths||incoming.classificationPaths,occurrences:old.occurrences||incoming.occurrences};
+}
+function deletedPresetIds(value){
+  if(value===undefined)return [];
+  if(!Array.isArray(value)||value.some(v=>typeof v!=='string'||!v||v.length>512||/[\x00-\x1f]/.test(v)))throw new Error('预设删除记录格式无效');
+  return [...new Set(value)];
+}
+function libraryLineups(presets,state){
+  const deleted=new Set(deletedPresetIds(state.deletedPresetIds)),map=new Map(presets.filter(l=>!deleted.has(l.id)).map(l=>[l.id,l]));
+  for(const saved of state.lineups){
+    const base=map.get(saved.id),l=base?.code===saved.code?{...base,...saved,occurrences:base.occurrences?.length?base.occurrences:saved.occurrences,sourceFile:base.sourceFile||saved.sourceFile}:saved;
+    // Bundled content may fill an old empty record, but cannot undo a newer
+    // server failure (a share key can expire while its local content survives).
+    map.set(l.id,base?.code===l.code&&hasParsedContent(base)&&!hasParsedContent(l)?{...mergeDecodedLineup(l,base),lastParseError:l.lastParseError||null,lastParseFailure:l.lastParseFailure||null}:l);
+  }
+  return [...map.values()].filter(hasLineupCode);
+}
+function removeLibraryLineups(state,presets,ids){
+  const removed=new Set(ids);
+  return {...state,lineups:state.lineups.filter(l=>!removed.has(l.id)),deletedPresetIds:[...new Set([...deletedPresetIds(state.deletedPresetIds),...presets.filter(l=>removed.has(l.id)).map(l=>l.id)])]};
 }
 function adaptInspection(payload,roster=[]){
   if(payload?.ok!==true)throw new Error(typeof payload?.error==='string'?payload.error:'服务没有返回成功结果');const d=payload.data;
@@ -140,7 +176,7 @@ function checkPanel(p,c){
   return missing;
 }
 
-const api={STAT_NAMES,STAT_TYPES,METRICS,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,checkPanel};
+const api={STAT_NAMES,STAT_TYPES,METRICS,inspectCode,codeProvenance,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,deletedPresetIds,libraryLineups,removeLibraryLineups,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,checkPanel};
 const solver=typeof module==='object'&&module.exports?require('./solver.js'):globalThis.AtlasSolver;
 return Object.assign(api,solver(api));
 });

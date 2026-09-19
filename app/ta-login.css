@@ -16,3 +16,20 @@
 .ta-status{font-size:14px;min-height:24px}.ta-error{font-size:13px;line-height:1.7}.login-card .actions{margin-top:14px;gap:10px}.login-card .actions>button{flex:1;font-size:13px}.login-card details{border-top:1px solid #ddccb0;margin-top:22px;padding-top:16px}.login-card details summary{font-size:14px;color:#806442}.login-card label{font-size:13px}.login-card .form-grid{gap:10px}.login-card select,.login-card input{font-size:12px}
 @media(max-width:1000px){.login-screen{padding:28px 24px}.login-layout{gap:32px;grid-template-columns:1fr 410px}.login-intro h1{font-size:35px}}
 @media(max-width:760px){.login-layout{grid-template-columns:1fr;max-width:460px;gap:24px}.login-screen{padding:24px 18px}.login-intro h1{font-size:30px}.login-intro h1 br{display:none}.login-intro .eyebrow{margin:18px 0 12px}.login-privacy{margin-top:18px;padding-top:16px}.login-card{padding:22px}.login-lead{font-size:15px}}
+
+/* Keep fields and labels aligned when server names or saved accounts are long. */
+.login-layout{width:min(960px,100%);grid-template-columns:minmax(0,1fr) 420px;gap:56px}
+.login-intro h1{font-size:36px;letter-spacing:1px;margin-bottom:18px}
+.login-intro .eyebrow{margin:18px 0 12px}
+.login-lead{font-size:16px}
+.login-privacy{margin-top:24px;padding-top:18px}
+.login-logo{width:80px;height:80px}
+.login-card label:not(.ta-check){display:grid;gap:6px;font-size:13px;margin-top:14px}
+.login-card select,.login-card input{max-width:none;width:100%;font-size:13px}
+.login-card .ta-check input{width:16px;min-height:16px}
+.login-card>.caption{min-height:0;margin-top:12px}
+.login-card-heading h2{font-size:22px}
+.login-card .ta-status{font-size:13px}
+.login-card label.ta-check{white-space:normal}
+@media(max-width:1000px){.login-layout{grid-template-columns:minmax(0,1fr) 390px;gap:28px}.login-intro h1{font-size:30px}}
+@media(max-width:760px){.login-layout{grid-template-columns:1fr;max-width:480px}.login-screen{padding:20px 16px}.login-card{padding:20px}.login-privacy{margin-top:16px;padding-top:12px}}

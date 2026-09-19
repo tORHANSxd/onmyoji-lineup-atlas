@@ -48,3 +48,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## v0.7.0 新增素材
+
+- 70 种御魂图标来自网易藏宝阁 `https://cbg-yys.res.netease.com/game_res/suit/{suitId}.png`。模板在官方 `https://yys.cbg.163.com/yuhun-collocation` 动态页面的御魂组件中直接使用；空御魂图也来自该页面的官方 CSS 资源。未重新绘制或修改画面。
+- 794 张式神技能图标来自网易官方 `get_hero_skill` 返回的 icon 字段及 `yys.res.netease.com`。下载脚本及每项来源、哈希均保留。
+- 5 种达摩形象来自 BWiki 对应角色页，6 位主角头像、48 张主角技能、8 张契灵来自 FiresChain 游戏素材目录。这些镜像来源标为社区资料，不冒称网易官方发布地址。游戏图像权利仍归原权利人。
+- 「御契」名称及应用 logo 为本项目本次设计；logo 通过 OpenAI 图像生成工具创作，与网易官方标识无关联。
+- 686 条关卡分类事实来自用户提供的 APK 指定 cdata，只有必要映射数据随包提供，不分发游戏代码或APK。
+
+## v0.7.1 客户端补全
+
+48 张契灵术印原图及对应名称、各等级效果来自用户提供的网易客户端快照 `20260912_211558_280259`。原始资源通过客户端 THFB 名称索引、IDX 内容摘要与 WPK 数据定位，KTX1 / ASTC 5x5 纹理解码为 PNG，保留原始尺寸和像素方向，未重新绘制或用相似图替换。逐项资源名、源摘要及输出 SHA-256 记录在 `data/game-assets.json`。
+
+客户端只用于本机静态资料核验；安装包不包含 APK、客户端字节码、原资源容器或账号私有目录。图像及描述权利归网易和相关权利人，不属于本项目的 MIT 授权。

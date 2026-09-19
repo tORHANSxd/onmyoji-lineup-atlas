@@ -1,7 +1,9 @@
-"""Memory-only session for the desktop application; no local HTTP server."""
+"""Private session; only the Electron parent may persist authorized credentials."""
 from __future__ import annotations
 
 import base64
+import copy
+import json
 import re
 import threading
 import time
@@ -26,8 +28,9 @@ def normalize_roles(records):
 
 
 class Session:
-    def __init__(self, emit=lambda state: None):
+    def __init__(self, emit=lambda state: None, credentials=lambda data: None):
         self.emit = emit
+        self.credentials = credentials
         self.lock = threading.RLock()
         self.catalog = net.server_catalog('')
         self.roles = []
@@ -38,6 +41,8 @@ class Session:
         self.authenticated = False
         self.login_info = None
         self.qr = self.gate = None
+        self.gate_role = None
+        self.gate_used_at = 0
         self.generation = 0
         self.busy = False
         self.stage, self.message, self.error = 'idle', '点击加载服务器后扫码登录', ''
@@ -83,7 +88,8 @@ class Session:
 
     def run(self, action, params, done):
         methods = {'init': self.load_servers, 'qr': self.start_qr,
-                   'select': self.select, 'roles': self.load_roles, 'query': self.query}
+                   'select': self.select, 'roles': self.load_roles, 'query': self.query,
+                   'restore': self.restore}
         if action not in methods:
             raise net.ProtocolError('不支持的操作')
         with self.lock:
@@ -124,12 +130,69 @@ class Session:
         if not isinstance(avatar_id, str) or (avatar_id and not any(
                 r['server_id'] == server_id and r['avatar_id'] == avatar_id for r in self.roles)):
             raise net.ProtocolError('只能选择本次账号返回的已有角色')
+        if (server_id, avatar_id) != (self.selected_server, self.selected_avatar):
+            self.drop_gate()
         self.selected_server, self.selected_avatar = server_id, avatar_id
+        if self.authenticated:
+            self.save_credentials()
+
+    def save_credentials(self, invalidate=False):
+        info = self.login_info or {}
+        if not info.get('full_uid'):
+            return
+        user = info.get('mpay_user') or {}
+        # No one-time QR code, password, or unrelated refresh token is persisted.
+        minimal = {k: info[k] for k in ('full_uid', 'mpay_device_id', 'src_client_type', 'login_channel') if k in info}
+        minimal['mpay_user'] = {k: user[k] for k in ('id', 'token', 'login_channel', 'login_type', 'pc_ext_info') if k in user}
+        role = next((r for r in self.roles if r['avatar_id'] == self.selected_avatar), {})
+        server = next((s for s in self.catalog if s['id'] == self.selected_server), {})
+        label = role.get('name')
+        if label and server.get('name'):
+            label += ' · ' + server['name']
+        self.credentials({'full_uid': info['full_uid'], 'invalidate': invalidate,
+                          'consent_observation': info.get('_consent_observation'),
+                          'credentials': copy.deepcopy(minimal), 'label': label,
+                          'server_id': self.selected_server, 'avatar_id': self.selected_avatar})
+
+    def restore(self, credentials, server_id='', avatar_id=''):
+        user = credentials.get('mpay_user') if isinstance(credentials, dict) else None
+        ext = user.get('pc_ext_info') if isinstance(user, dict) else None
+        flag = ext.get('is_remember') if isinstance(ext, dict) else None
+        if not (flag is True or isinstance(flag, str) and flag.lower() == 'true') or not all(
+                isinstance(value, str) and value for value in (user.get('id'), user.get('token'),
+                credentials.get('full_uid'), credentials.get('mpay_device_id'))):
+            raise net.ProtocolError('已保存凭据没有记住登录授权，请重新扫码')
+        if len(json.dumps(credentials).encode('utf-8')) > 48000:
+            raise net.ProtocolError('已保存凭据格式无效，请重新扫码')
+        self.clear_login()
+        self.login_info = copy.deepcopy(credentials)
+        self.selected_server = server_id if isinstance(server_id, str) and server_id.isdigit() else '10014'
+        self.selected_avatar = avatar_id if isinstance(avatar_id, str) else ''
+        self.update('account_login', '正在向网易验证已记住的账号')
+        client = net.MpayClient(net.CONFIG['game_id'])
+        try:
+            self.login_info['mpay_user'] = client.resume(self.login_info)
+        except net.MpayError as exc:
+            if exc.http_status in (401, 403):
+                self.save_credentials(invalidate=True)
+            raise net.ProtocolError(str(exc)) from None
+        finally:
+            client.close()
+        # Preserve a rotated token even if the subsequent game connection is
+        # temporarily unavailable. MPay already authenticated this account.
+        self.save_credentials()
+        self.load_servers()
+        self.authenticate()
+
+    def drop_gate(self):
+        gate, self.gate = self.gate, None
+        self.gate_role = None
+        if gate:
+            gate.close()
 
     def clear_login(self):
         self.generation += 1
-        if self.gate:
-            self.gate.close()
+        self.drop_gate()
         if self.qr:
             self.qr.client.close()
         self.qr = self.gate = self.login_info = None
@@ -202,6 +265,13 @@ class Session:
                 if result.get('errorCode') != 0:
                     self.authenticated = False
                     code = result.get('errorCode')
+                    # ClientAccount.on_login_result: 25 is a channel/server
+                    # mismatch. Only code 5 with sauth 401 proves token expiry.
+                    auth = result.get('sauth_result')
+                    if code == 5 and isinstance(auth, dict) and str(auth.get('code')) == '401':
+                        self.save_credentials(invalidate=True)
+                    if code == 25:
+                        raise net.ProtocolError('当前登录渠道不能进入所选服务器（代码 25）；已记住账号仍保留')
                     detail = str(code) if type(code) is int else '未知'
                     raise net.ProtocolError(f'账号登录未成功（代码 {detail}），请重新扫码')
                 return gate
@@ -215,11 +285,12 @@ class Session:
         raise last or net.ProtocolError('无法连接所选服务器')
 
     def authenticate(self):
-        self.update('account_login', '手机已确认，正在验证账号并读取角色')
+        self.update('account_login', '正在验证已授权账号并读取角色')
         try:
             gate = self.open_gate(self.selected_server)
             self.authenticated = True
             self.load_roles(gate)
+            self.save_credentials()
         finally:
             if self.gate:
                 self.gate.close()
@@ -265,42 +336,55 @@ class Session:
         if candidates:
             role = next((r for r in candidates if r['avatar_id'] == self.selected_avatar), candidates[0])
             self.selected_server, self.selected_avatar = role['server_id'], role['avatar_id']
+        else:
+            self.selected_avatar = ''
 
     def query(self, code):
-        if not isinstance(code, str) or not re.fullmatch(r'\|TA\|[0-9a-fA-F]{32}', code):
-            raise net.ProtocolError('请输入完整的 |TA| 文字码（后接32位分享键）')
+        if not isinstance(code, str) or not re.fullmatch(r'\|TA\|[^\s|\x00-\x1f\x7f\u200b-\u200d\u2060\ufeff]{1,4096}', code):
+            raise net.ProtocolError('请输入一条完整的 |TA| 文字码')
         if not self.authenticated or not self.login_info:
             raise net.ProtocolError('请先扫码登录账号')
         sid, aid = self.selected_server, self.selected_avatar
         chosen = next((r for r in self.roles if r['server_id'] == sid and r['avatar_id'] == aid), None)
         if not chosen:
             raise net.ProtocolError('请先选择本次账号已有的角色')
-        self.update('account_login', '正在连接所选服务器')
         try:
-            # Reconnect with the in-memory token: no stale idle avatar socket.
-            gate = self.open_gate(sid)
-            actual = net.account_avatars(gate.login_result)
-            matches = [r for r in actual if aid in (r['avatar_id'], r['record_id'])]
-            if not matches:
-                matches = [r for r in actual if r['name'] == chosen['name']]
-            if len(matches) != 1:
-                raise net.ProtocolError('该服务器未返回唯一匹配的已有角色，请刷新角色列表')
-            self.update('role_login', '正在建立所选角色的查询会话')
-            gate.select_role(matches[0]['avatar_id'])
+            # Reuse the selected avatar during a batch. Retire idle sockets;
+            # transport/protocol failures retire it; clean business errors do not.
+            if self.gate_role != (sid, aid) or time.monotonic() - self.gate_used_at > 25:
+                self.drop_gate()
+            gate = self.gate
+            if gate is None:
+                self.update('account_login', '正在连接所选服务器')
+                gate = self.open_gate(sid)
+                actual = net.account_avatars(gate.login_result)
+                matches = [r for r in actual if aid in (r['avatar_id'], r['record_id'])]
+                if not matches:
+                    matches = [r for r in actual if r['name'] == chosen['name']]
+                if len(matches) != 1:
+                    raise net.ProtocolError('该服务器未返回唯一匹配的已有角色，请刷新角色列表')
+                self.update('role_login', '正在建立所选角色的查询会话')
+                gate.select_role(matches[0]['avatar_id'])
+                self.gate_role = (sid, aid)
+            gate.deadline = time.monotonic() + 25
             self.update('lineup_loading', '正在查询 TA 阵容')
             response = gate.query_lineup(code[4:])
             if not isinstance(response, dict) or response.get('share_key') != code[4:]:
                 raise net.ProtocolError('阵容响应与本次文字码不一致')
-            if type(response.get('err')) is not int or response['err'] != 0:
-                err = response.get('err')
-                detail = str(err) if type(err) is int else '未知'
-                raise net.ProtocolError(f'服务器未返回该阵容（代码 {detail}）；分享可能已失效')
+            if type(response.get('err')) is not int:
+                raise net.ProtocolError('阵容响应错误码类型无效')
+            if response['err'] != 0:
+                self.update('lineup_unavailable', f"服务器返回阵容查询代码 {response['err']}")
+                self.gate_used_at = time.monotonic()
+                # Forward only the typed code and request association, never
+                # arbitrary server bodies. The desktop queue handles retries.
+                return {'err': response['err'], 'share_key': code[4:], 'code': code}
             payload = response.get('lineup_data')
             if not isinstance(payload, str) or len(payload) > 32 * 1024 * 1024:
                 raise net.ProtocolError('阵容响应缺少有效内容')
             self.update('lineup_ready', '已收到本次文字码的官方阵容内容')
+            self.gate_used_at = time.monotonic()
             return {'err': 0, 'share_key': code[4:], 'lineup_data': payload, 'code': code}
-        finally:
-            if self.gate:
-                self.gate.close()
-                self.gate = None
+        except Exception:
+            self.drop_gate()
+            raise

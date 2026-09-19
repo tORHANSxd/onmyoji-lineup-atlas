@@ -7,6 +7,21 @@ const C=require('../app/core.js');
 const vectors=require('./fixtures/ta-vectors.json');
 const bundle=require('../data/bundle.json');
 function pack(entries){return zlib.deflateSync(Buffer.concat([Buffer.from([0x80+entries.length]),...entries.flatMap(([k,v])=>[Buffer.from(encode(k)),Buffer.from(encode(v))])])).toString('base64');}
+test('客户端 ObjectId 二进制与24位大小写文本等价，保持成员UID与配置',()=>{
+ const hex='0123456789abcdefaabbccdd',phconf=vectors.find(v=>v.name==='apk_sample_v3').expected.phconf;
+ const payload=bytes=>pack([[1,3],[2,phconf],[5,[new ExtData(42,bytes)]],[8,new ExtData(42,bytes)]]);
+ const expected=TA.decodeLineupData(payload(Buffer.from(hex,'hex')));
+ for(const text of [hex,hex.toUpperCase()]){const result=TA.decodeLineupData(payload(Buffer.from(text)));assert.deepEqual(result,expected);assert.equal(result.hconf[0].uid,hex);}
+ for(const bytes of [Buffer.from('z'.repeat(24)),Buffer.from('a'.repeat(23)),Buffer.alloc(24,0xe1),Buffer.alloc(24,0xb1)])assert.throws(()=>TA.decodeLineupData(payload(bytes)),/ObjectId/);
+});
+test('服务器错误区分暂时失败、过期、未知，不解码错误响应中的伪造内容',()=>{
+ for(const [err,kind] of [[90011,'retry-later'],[31279,'expired-code'],[17,'server-error']]){
+  const result=TA.decodeInput({err,share_key:'key',code:'|TA|key',queryAttempts:3,lineup_data:'not a payload'});
+  assert.equal(result.state,'lookup-failed');assert.equal(result.failure.kind,kind);assert.equal(result.failure.serverCode,err);assert.equal(result.failure.attempts,3);assert.equal(result.data,undefined);
+ }
+ assert.equal(TA.decodeInput({err:false,share_key:'key'}).state,'invalid-payload');
+ assert.equal(TA.decodeInput({err:90011,share_key:'other',code:'|TA|key'}).state,'invalid-payload');
+});
 for(const v of vectors)test('APK 原函数参考结果：'+v.name,()=>assert.deepEqual(TA.decodeLineupData(v.payload,{yysIds:v.yys_ids}),v.expected));
 test('自创二维码与裸 lineup_data 得到相同内容',()=>{assert.deepEqual(TA.decodeLineupData('#TA#'+vectors[0].payload),vectors[0].expected);assert.equal(TA.decodeInput(vectors[0].payload).code,'#TA#'+vectors[0].payload);});
 test('文字码按不透明分享键分流，不尝试本地解密',()=>{const r=TA.decodeInput(' |TA|opaque_key-1 ');assert.equal(r.state,'lookup-required');assert.deepEqual(r.lookup,{method:'lineup_assisant_logic.get_share_lineup_data',parameters:{share_key:'opaque_key-1'},iscache:false});for(const s of ['|TA|','|TA|abc text','|TA|a|TA|b'])assert.equal(TA.decodeInput(s).ok,false);});

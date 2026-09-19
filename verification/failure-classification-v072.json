@@ -1,0 +1,9 @@
+{
+  "method": "Read-only classification of the supplied 32-row failure JSON; no game queries",
+  "total": 32,
+  "counts": {
+    "decode-error": 13,
+    "retry-later": 10,
+    "expired-code": 9
+  }
+}

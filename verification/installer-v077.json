@@ -1,0 +1,43 @@
+{
+  "version": "0.7.7",
+  "method": "Final NSIS payload extraction, all-file hash comparison and packaged startup smoke",
+  "install": "not-run-existing-installation",
+  "reinstall": "not-run-existing-installation",
+  "uninstall": "not-run-existing-installation",
+  "personalAccountFilesRead": false,
+  "completed": true,
+  "payloadFiles": 208,
+  "allPayloadFilesMatch": true,
+  "executableProduct": "御契",
+  "packagedStartupSmoke": "passed",
+  "startupFlow": {
+    "title": "御契 · 阴阳师阵容助手",
+    "mode": "offline-startup-explicit-login",
+    "offline": true,
+    "dataLoaded": true,
+    "noAutomaticQR": true,
+    "accounts": 1,
+    "lineups": 374,
+    "blockedOperations": [
+      "decode",
+      "query",
+      "parsedSave"
+    ],
+    "localReads": true,
+    "separateLogin": true,
+    "loginModule": {
+      "servers": 157,
+      "authenticated": false,
+      "qrReady": true
+    },
+    "returnOffline": true,
+    "loginModuleLoggedOut": true
+  },
+  "syntheticDataUnchanged": true,
+  "existingInstallationPreserved": true,
+  "artifact": {
+    "path": "E:\\workspace\\AI_project\\阴阳师阵容\\release\\Yuqi-Setup-0.7.7-Windows-x64.exe",
+    "size": 279107978,
+    "sha256": "9ab081b53c0a41a8001d62b4598c268c57c4a56db14a5abc033fe6a0c1ea166e"
+  }
+}

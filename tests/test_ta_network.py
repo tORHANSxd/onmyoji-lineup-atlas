@@ -56,6 +56,21 @@ def qr_login_info():
             'mpay_user': {'id': 'test-user', 'token': 'fresh-test-token', 'login_channel': 'netease'}}
 
 class NetworkTests(unittest.TestCase):
+    def test_pc_qr_uses_verified_common_sdk_version(self):
+        with patch.object(net, 'http_get', return_value={}) as request:
+            net.MpayQR()._get('/api/qrcode/create_login')
+        params = urllib.parse.parse_qs(urllib.parse.urlparse(request.call_args.args[0]).query)
+        self.assertEqual(params['cv'], ['c4.19.1'])
+
+    def test_pc_qr_requests_remember_mode_without_fabricating_consent(self):
+        qr = net.MpayQR()
+        qr.client.register = Mock()
+        qr.client.device_id = 'test-device'
+        qr._get = Mock(side_effect=[{'uuid': 'test-uuid'}, b'\x89PNG\r\n\x1a\nexample'])
+        qr.create()
+        self.assertEqual(qr._get.call_args_list[0].args, ('/api/qrcode/create_login', {
+            'qrcode_channel_type': '2', 'is_remember': '2', 'device_id': 'test-device'}))
+
     def test_account_destroy_after_avatar_creation_does_not_abort_query(self):
         client = gate()
         client.account_id, client.avatar_id = b'a' * 12, b'v' * 12
@@ -148,6 +163,40 @@ class NetworkTests(unittest.TestCase):
         self.assertNotIn('old-phone-token', info['sauth_str'])
         self.assertNotIn('old-phone-uid', info['sauth_str'])
 
+    def test_pc_renewal_keeps_game_platform_and_current_sdk_token(self):
+        for platform_name, app_channel in [('ios', 'app_store'), ('ad', 'netease')]:
+            with self.subTest(platform=platform_name):
+                login = qr_login_info()
+                login['full_uid'] = f'test-user@{platform_name}.netease.win.163.com'
+                login['mpay_user']['pc_ext_info'] = {
+                    'src_client_type': 5, 'src_app_channel': 'netease',
+                    'src_pay_channel': 'netease', 'src_sdk_version': '4.19.1'}
+                client = gate()
+                client.rpc = Mock()
+                client.wait_events = Mock(return_value=iter([('on_login_result', {'ec': 0})]))
+                client.login_by_qr(login, '10014')
+                info = client.rpc.call_args.args[1]['account_info']
+                self.assertEqual(info['full_uid'], login['full_uid'])
+                self.assertEqual(info['platform'], platform_name)
+                self.assertEqual(info['app_channel'], app_channel)
+                self.assertEqual(info['pay_channel'], app_channel)
+                self.assertEqual(info['sdk_version'], '4.19.1')
+                self.assertEqual(info['session'], 'fresh-test-token')
+                self.assertIn('platform=' + platform_name, info['sauth_str'])
+                self.assertIn('app_channel=' + app_channel, info['sauth_str'])
+                self.assertTrue(info['is_login_in_pc'])
+                self.assertEqual(info['pc_app_channel'], 'netease')
+                self.assertEqual(login['mpay_user']['pc_ext_info']['src_client_type'], 5)
+
+    def test_unknown_or_mismatched_game_platform_cannot_default_to_android(self):
+        login = qr_login_info()
+        login['mpay_user']['pc_ext_info'] = {'src_client_type': 5}
+        with self.assertRaises(net.ProtocolError):
+            net.game_platform(login)
+        login['full_uid'] = 'another-user@ios.netease.win.163.com'
+        with self.assertRaises(net.ProtocolError):
+            net.game_platform(login)
+
     def test_mpay_exchange_matches_java_aes_reference(self):
         client = MpayClient('test-game')
         client.device_id = 'test-device'
@@ -204,3 +253,22 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(sum(r['available'] for r in rows), 1)
         self.assertEqual(next(r for r in rows if r['id'] == '99999')['category_id'], 0)
         self.assertEqual(sum(r['category_id'] == 4 for r in rows), 114)
+
+    def test_mpay_remembered_login_uses_get_and_preserves_optional_qr_context(self):
+        saved = {'mpay_device_id': 'test-device', 'mpay_user': {'id': 'test-user', 'token': 'old',
+                 'pc_ext_info': {'is_remember': True, 'src_client_type': 2}}}
+        client = MpayClient('test-game')
+        client._request = Mock(return_value={'user': {'token': 'new'}})
+        user = client.resume(saved)
+        client._request.assert_called_once_with('/games/test-game/devices/test-device/users/test-user',
+                                               {'token': 'old', 'verify_status': '0', 'cv': 'c4.19.1',
+                                                'opt_fields': 'nickname,avatar,realname_status,mobile_bind_status'}, 'GET')
+        self.assertEqual(user['id'], 'test-user')
+        self.assertEqual(user['token'], 'new')
+        self.assertTrue(user['pc_ext_info']['is_remember'])
+        self.assertEqual(user['pc_ext_info']['src_client_type'], 2)
+        client._request.return_value = {'user': {'pc_ext_info': {'is_remember': False}}}
+        self.assertFalse(client.resume(saved)['pc_ext_info']['is_remember'])
+        client._request.return_value = {'user': {'id': 'another-user', 'token': 'wrong'}}
+        with self.assertRaises(Exception):
+            client.resume(saved)

@@ -1,0 +1,342 @@
+{
+  "dllSha256": "8ce77658cdb1cc9fadbd133ce01c51f72fcfb8e77d41fdca257c26a89fcad7f1",
+  "attempts": [
+    {
+      "qrCv": "p2.0.0",
+      "qrRemember": "2",
+      "completedAt": "2026-09-19T06:11:46.571Z",
+      "phoneConfirmed": true,
+      "remembered": false,
+      "restoredWithoutScan": false,
+      "rememberDiagnostics": {
+        "userFieldNames": [
+          "id",
+          "token",
+          "login_channel",
+          "login_type",
+          "pc_ext_info"
+        ],
+        "extensionFieldNames": [
+          "src_jf_game_id",
+          "src_app_channel",
+          "qrcode_confirm_time",
+          "src_sdk_version",
+          "qrcode_create_time",
+          "src_pay_channel",
+          "src_client_country_code",
+          "src_udid",
+          "src_client_ip",
+          "extra_unisdk_data",
+          "from_game_id",
+          "src_client_type",
+          "src_device_id",
+          "is_remember",
+          "src_game_id",
+          "from_game_client"
+        ],
+        "flagType": "boolean",
+        "flag": false
+      },
+      "consentObservation": {
+        "query_fields": [
+          "login_info",
+          "qrcode"
+        ],
+        "login_fields": [
+          "code",
+          "login_channel",
+          "src_client_country_code",
+          "src_client_type"
+        ],
+        "user_fields": [
+          "client_data",
+          "client_username",
+          "id",
+          "is_channel_adult",
+          "login_channel",
+          "login_type",
+          "mask_related_mobile",
+          "mobile_bind_status",
+          "need_aas",
+          "need_mask",
+          "pc_ext_info",
+          "realname_status",
+          "realname_verify_status",
+          "refill_realname_flag",
+          "related_login_status",
+          "token",
+          "username"
+        ],
+        "remember_flags": {
+          "pc_ext_info.is_remember": false
+        }
+      },
+      "storageError": ""
+    },
+    {
+      "startedAt": "2026-09-19T06:35:12.141Z",
+      "completedAt": "2026-09-19T06:36:24.997Z",
+      "qrCv": "c4.19.1",
+      "qrRemember": "2",
+      "resumeOnly": false,
+      "stoppedReason": "MPay 返回 HTTP 400，接口代码 1003",
+      "phoneConfirmed": true,
+      "remembered": true,
+      "restoredWithoutScan": false,
+      "rememberDiagnostics": {
+        "userFieldNames": [
+          "id",
+          "token",
+          "login_channel",
+          "login_type",
+          "pc_ext_info"
+        ],
+        "extensionFieldNames": [
+          "src_jf_game_id",
+          "src_app_channel",
+          "qrcode_confirm_time",
+          "src_sdk_version",
+          "qrcode_create_time",
+          "src_pay_channel",
+          "src_client_country_code",
+          "src_udid",
+          "src_client_ip",
+          "extra_unisdk_data",
+          "from_game_id",
+          "src_client_type",
+          "src_device_id",
+          "is_remember",
+          "src_game_id",
+          "from_game_client"
+        ],
+        "flagType": "boolean",
+        "flag": true
+      },
+      "consentObservation": {
+        "query_fields": [
+          "login_info",
+          "qrcode"
+        ],
+        "login_fields": [
+          "code",
+          "login_channel",
+          "src_client_country_code",
+          "src_client_type"
+        ],
+        "user_fields": [
+          "client_data",
+          "client_username",
+          "id",
+          "is_channel_adult",
+          "login_channel",
+          "login_type",
+          "mask_related_mobile",
+          "mobile_bind_status",
+          "need_aas",
+          "need_mask",
+          "pc_ext_info",
+          "realname_status",
+          "realname_verify_status",
+          "refill_realname_flag",
+          "related_login_status",
+          "token",
+          "username"
+        ],
+        "remember_flags": {
+          "pc_ext_info.is_remember": true
+        }
+      },
+      "storageError": ""
+    },
+    {
+      "startedAt": "2026-09-19T06:39:54.642Z",
+      "completedAt": "2026-09-19T06:39:57.477Z",
+      "qrCv": "c4.19.1",
+      "qrRemember": "2",
+      "resumeOnly": true,
+      "stoppedReason": "账号登录未成功（代码 25），请重新扫码",
+      "phoneConfirmed": false,
+      "remembered": false,
+      "restoredWithoutScan": false,
+      "rememberDiagnostics": {
+        "userFieldNames": [
+          "id",
+          "token",
+          "login_channel",
+          "login_type",
+          "pc_ext_info"
+        ],
+        "extensionFieldNames": [
+          "src_jf_game_id",
+          "src_app_channel",
+          "qrcode_confirm_time",
+          "src_sdk_version",
+          "qrcode_create_time",
+          "src_pay_channel",
+          "src_client_country_code",
+          "src_udid",
+          "src_client_ip",
+          "extra_unisdk_data",
+          "from_game_id",
+          "src_client_type",
+          "src_device_id",
+          "is_remember",
+          "src_game_id",
+          "from_game_client"
+        ],
+        "flagType": "boolean",
+        "flag": true
+      },
+      "consentObservation": null,
+      "storageError": ""
+    },
+    {
+      "startedAt": "2026-09-19T06:47:41.125Z",
+      "completedAt": "2026-09-19T06:48:00.877Z",
+      "qrCv": "c4.19.1",
+      "qrRemember": "2",
+      "resumeOnly": false,
+      "stoppedReason": "当前登录渠道不能进入所选服务器（代码 25）；已记住账号仍保留",
+      "phoneConfirmed": true,
+      "remembered": true,
+      "restoredWithoutScan": false,
+      "channelObservations": [
+        {
+          "stage": "roles_ready",
+          "serverId": "15012",
+          "invalidate": false,
+          "loginChannel": "netease",
+          "loginType": 7,
+          "source": {
+            "src_client_type": 2,
+            "src_app_channel": "app_store",
+            "src_sdk_version": "5.19.2",
+            "src_pay_channel": "app_store"
+          }
+        },
+        {
+          "stage": "account_login",
+          "serverId": "15012",
+          "invalidate": false,
+          "loginChannel": "netease",
+          "loginType": 7,
+          "source": {
+            "src_client_type": 5,
+            "src_app_channel": "netease",
+            "src_sdk_version": "4.19.1",
+            "src_pay_channel": "netease"
+          }
+        }
+      ],
+      "rememberDiagnostics": {
+        "userFieldNames": [
+          "id",
+          "token",
+          "login_channel",
+          "login_type",
+          "pc_ext_info"
+        ],
+        "extensionFieldNames": [
+          "src_jf_game_id",
+          "src_app_channel",
+          "qrcode_confirm_time",
+          "src_sdk_version",
+          "qrcode_create_time",
+          "src_pay_channel",
+          "src_client_country_code",
+          "src_udid",
+          "src_client_ip",
+          "extra_unisdk_data",
+          "from_game_id",
+          "src_client_type",
+          "src_device_id",
+          "is_remember",
+          "src_game_id",
+          "from_game_client"
+        ],
+        "flagType": "boolean",
+        "flag": true
+      },
+      "consentObservation": null,
+      "storageError": "",
+      "freshRoleQuery": {
+        "success": true,
+        "serverCode": 0
+      }
+    },
+    {
+      "startedAt": "2026-09-19T06:55:15.189Z",
+      "completedAt": "2026-09-19T06:55:20.570Z",
+      "qrCv": "c4.19.1",
+      "qrRemember": "2",
+      "resumeOnly": true,
+      "stoppedReason": "",
+      "phoneConfirmed": false,
+      "remembered": true,
+      "restoredWithoutScan": true,
+      "channelObservations": [
+        {
+          "stage": "account_login",
+          "serverId": "15012",
+          "invalidate": false,
+          "loginChannel": "netease",
+          "loginType": 7,
+          "source": {
+            "src_client_type": 5,
+            "src_app_channel": "netease",
+            "src_sdk_version": "4.19.1",
+            "src_pay_channel": "netease"
+          }
+        },
+        {
+          "stage": "roles_ready",
+          "serverId": "15012",
+          "invalidate": false,
+          "loginChannel": "netease",
+          "loginType": 7,
+          "source": {
+            "src_client_type": 5,
+            "src_app_channel": "netease",
+            "src_sdk_version": "4.19.1",
+            "src_pay_channel": "netease"
+          }
+        }
+      ],
+      "rememberDiagnostics": {
+        "userFieldNames": [
+          "id",
+          "token",
+          "login_channel",
+          "login_type",
+          "pc_ext_info"
+        ],
+        "extensionFieldNames": [
+          "src_jf_game_id",
+          "src_app_channel",
+          "qrcode_confirm_time",
+          "src_sdk_version",
+          "qrcode_create_time",
+          "src_pay_channel",
+          "src_client_country_code",
+          "src_udid",
+          "src_client_ip",
+          "extra_unisdk_data",
+          "from_game_id",
+          "src_client_type",
+          "src_device_id",
+          "is_remember",
+          "src_game_id",
+          "from_game_client"
+        ],
+        "flagType": "boolean",
+        "flag": true
+      },
+      "consentObservation": null,
+      "storageError": "",
+      "restoredRoleQuery": {
+        "success": true,
+        "serverCode": 0
+      }
+    }
+  ]
+}

@@ -18,7 +18,7 @@ test('Base64 与 #TA# 完整内容规范化为同一码，仍须解码验证内�
  const base='eJwDAAAAAAE=';const r=B.parse(base+'\n#TA#'+base);assert.equal(r.stats.valid,1);assert.equal(r.stats.duplicate,1);assert.equal(r.entries[0].code,'#TA#'+base);assert.equal(B.parse(base,[{code:base}]).stats.duplicate,1);
 });
 test('坏行给出行号且不丢弃其他有效行',()=>{
- const r=B.parse('|TA|short\n'+code(1)+' || 名称 || 用途 || 备注 || 多一列\n乱码\n'+code(2)+'\n#TA#@bad\n'+code(3)+' || x\ufffd');
+ const r=B.parse('|TA|bad key\n'+code(1)+' || 名称 || 用途 || 备注 || 多一列\n乱码\n'+code(2)+'\n#TA#@bad\n'+code(3)+' || x\ufffd');
  assert.equal(r.stats.invalid,5);assert.equal(r.stats.valid,1);assert.equal(r.entries[0].code,code(2));assert.equal(r.rows[0].line,1);assert.match(r.rows[1].reason,/最多 4 列/);
 });
 test('格式模板占位文字不会被当作待查询原码，超长字段报错',()=>{

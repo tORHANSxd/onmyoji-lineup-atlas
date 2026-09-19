@@ -1,0 +1,8 @@
+{
+  "method": "Two separate Electron processes using the same Windows profile; synthetic accounts only",
+  "encryptedRoundTrip": true,
+  "multipleAccounts": true,
+  "processRestart": true,
+  "forget": true,
+  "noPlaintext": true
+}

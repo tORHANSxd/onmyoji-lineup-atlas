@@ -1,0 +1,853 @@
+{
+  "snapshot": "20260912_211558_280259",
+  "method": "Local static inspection only; no client code execution",
+  "resources": [
+    {
+      "codeFile": "module_new\\hunling\\logic\\hunling_logic.py",
+      "oldDigest": "dced39cfb21744b3a0b6a6612df8b17b",
+      "current": {
+        "name": "module_new/hunling/logic/hunling_logic.nxs3",
+        "nameHash": "39ba94ee27f7ca0f",
+        "seed": 163,
+        "flags": 983112,
+        "size": 73625,
+        "digest": "dced39cfb21744b3a0b6a6612df8b17b"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "2b0db8d43f7542e347c919b1c9ec3330f46a3ce6d2b6b382e430df9db2479953"
+    },
+    {
+      "codeFile": "module_new\\team_assist\\ta_logic\\TACalcMgr.py",
+      "oldDigest": "9fb66601348ac082654cc580f20a24bb",
+      "current": {
+        "name": "module_new/team_assist/ta_logic/TACalcMgr.nxs3",
+        "nameHash": "876efa7ba4bafbf0",
+        "seed": 163,
+        "flags": 983069,
+        "size": 28999,
+        "digest": "9fb66601348ac082654cc580f20a24bb"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "528cfa08701eaa4b2728b0c96c241d3bc12fc0e765ff2d288052ceeaff7d265b"
+    },
+    {
+      "codeFile": "module_new\\team_assist\\ta_logic\\TACalcHelper.py",
+      "oldDigest": "6dec3300c3b7caa18e2ad4739a3ba30e",
+      "current": {
+        "name": "module_new/team_assist/ta_logic/TACalcHelper.nxs3",
+        "nameHash": "61be9b1ec1e0c948",
+        "seed": 163,
+        "flags": 983047,
+        "size": 6514,
+        "digest": "6dec3300c3b7caa18e2ad4739a3ba30e"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "e13812ee452040043ce9164f1aa2024537591e9e936d7f204d382726b1ffefca"
+    },
+    {
+      "codeFile": "module\\equip\\auto_yuhun_helpers.py",
+      "oldDigest": "4cc1d9f5e366938dc00f0805d47da543",
+      "current": {
+        "name": "module/equip/auto_yuhun_helpers.nxs3",
+        "nameHash": "e72ae8ce103e7faf",
+        "seed": 163,
+        "flags": 983054,
+        "size": 14014,
+        "digest": "4cc1d9f5e366938dc00f0805d47da543"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "684e7b41d16be13c8c70f2666da50fd6c251a4e36c7d17978466a427024f79f0"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\hunling_mark_group.py",
+      "oldDigest": "4ea4bcac43a08da49af280b67b7226b7",
+      "current": {
+        "name": "com/data/cdata/hunling_mark_group.nxs3",
+        "nameHash": "d5a7ac87bb2ea56e",
+        "seed": 163,
+        "flags": 983041,
+        "size": 766,
+        "digest": "4ea4bcac43a08da49af280b67b7226b7"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "5961f60d0c4a52516b5944c0b88b4564b28c96fcd0623688b5e142b6c3766aee"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\hunling_mark.py",
+      "oldDigest": "f9c8676ad255b78e7dfaec6b4bfe3011",
+      "current": {
+        "name": "com/data/cdata/hunling_mark.nxs3",
+        "nameHash": "fb043709619f1875",
+        "seed": 163,
+        "flags": 983042,
+        "size": 1832,
+        "digest": "f9c8676ad255b78e7dfaec6b4bfe3011"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "2538fd6263ef123c8299769ef5cc6565a2e3b4297df3cd5917f0cf69ffdefc91"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\equip_suit.py",
+      "oldDigest": "f5d27538b05e4faf7f1b451562f583b7",
+      "current": {
+        "name": "com/data/cdata/equip_suit.nxs3",
+        "nameHash": "f86a7ebb909eed37",
+        "seed": 163,
+        "flags": 983050,
+        "size": 9528,
+        "digest": "f5d27538b05e4faf7f1b451562f583b7"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "9d37bb023d227288842f2fd4f9e74d540ebc52d2cae756d948a52aad31ad12e2"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\auto_yuhun_suit_attr_rate.py",
+      "oldDigest": "842717a7022bdc04a8f515e8a2628f37",
+      "current": {
+        "name": "com/data/cdata/auto_yuhun_suit_attr_rate.nxs3",
+        "nameHash": "99afa940ce1461ee",
+        "seed": 163,
+        "flags": 983041,
+        "size": 694,
+        "digest": "842717a7022bdc04a8f515e8a2628f37"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "b9d569f35b879ba70cef5c48d887f37555b216367384121d789d83e3b3fa2fd9"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\auto_yuhun_single_attr_rate.py",
+      "oldDigest": "f918266d9ae69f408f7aeede4e561c58",
+      "current": {
+        "name": "com/data/cdata/auto_yuhun_single_attr_rate.nxs3",
+        "nameHash": "f51574a8f1767c29",
+        "seed": 163,
+        "flags": 983041,
+        "size": 643,
+        "digest": "f918266d9ae69f408f7aeede4e561c58"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "f7bf6d3d9e54379650f3f54dc45855e72a4f1b3e0cc7570e75d9400464d439aa"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\auto_yuhun_rand_attr_rate.py",
+      "oldDigest": "f846fa79e34a124849054831e50fcd92",
+      "current": {
+        "name": "com/data/cdata/auto_yuhun_rand_attr_rate.nxs3",
+        "nameHash": "a4a1d27bbc367b7c",
+        "seed": 163,
+        "flags": 983041,
+        "size": 727,
+        "digest": "f846fa79e34a124849054831e50fcd92"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "7ef0d47a636f64c120f3f2d28872f4fbd93e26030677f36b5ba419174164c48e"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\auto_yuhun_equip_pos.py",
+      "oldDigest": "c50928eaeb6dd9b87e370197d17de51b",
+      "current": {
+        "name": "com/data/cdata/auto_yuhun_equip_pos.nxs3",
+        "nameHash": "62830cd8727a2c1f",
+        "seed": 163,
+        "flags": 983041,
+        "size": 715,
+        "digest": "c50928eaeb6dd9b87e370197d17de51b"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "82abcfdc519722ad661d03baf753d858507c2737cbf45e9429b9bf4a80c67704"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\auto_yuhun_criteria_expression.py",
+      "oldDigest": "ba38a3f137db5218f6db0ef87caabdbd",
+      "current": {
+        "name": "com/data/cdata/auto_yuhun_criteria_expression.nxs3",
+        "nameHash": "a35c3156dd47254c",
+        "seed": 163,
+        "flags": 983041,
+        "size": 766,
+        "digest": "ba38a3f137db5218f6db0ef87caabdbd"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "7315634af1b22408cdd7d895d055f004b2ec0340ec0a88e0b7f887ebb036a8b6"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\auto_yuhun_const.py",
+      "oldDigest": "6d28ef137e3c466d697f39e71829ac48",
+      "current": {
+        "name": "com/data/cdata/auto_yuhun_const.nxs3",
+        "nameHash": "2c3d4bb651257fc7",
+        "seed": 163,
+        "flags": 983041,
+        "size": 712,
+        "digest": "6d28ef137e3c466d697f39e71829ac48"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "3c2f26414210b5a341a6765bba7fb73cd83682cd97d34352c7b6f17dc561ae8c"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\auto_yuhun_calc_criteria.py",
+      "oldDigest": "eded7efa55fe1e837cd87d30b2f8855b",
+      "current": {
+        "name": "com/data/cdata/auto_yuhun_calc_criteria.nxs3",
+        "nameHash": "89e13d688b738eee",
+        "seed": 163,
+        "flags": 983042,
+        "size": 1217,
+        "digest": "eded7efa55fe1e837cd87d30b2f8855b"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "15e42de4f32aae5714d8cdcfc35abf55b7dd1faeec4119cb049ba361dbad3b32"
+    },
+    {
+      "codeFile": "com\\data\\cdata\\auto_yuhun_calc_base_attr.py",
+      "oldDigest": "221ecef2e53ea1178d8eaa1e757c942d",
+      "current": {
+        "name": "com/data/cdata/auto_yuhun_calc_base_attr.nxs3",
+        "nameHash": "8ab18b92ba2ab7a0",
+        "seed": 163,
+        "flags": 983042,
+        "size": 1486,
+        "digest": "221ecef2e53ea1178d8eaa1e757c942d"
+      },
+      "contentUnchanged": true,
+      "contentSha256": "93c0434f0dcbbd6d36f336680c758a3c89e16d05378b062db0d631e43c0d4eac"
+    },
+    {
+      "codeFile": "AttrCalc.py",
+      "oldDigest": "41236c618e0355f6a988e1481cd601aa",
+      "current": {
+        "name": "AttrCalc.nxs3",
+        "nameHash": "fdc74572ce30f366",
+        "seed": 163,
+        "flags": 983077,
+        "size": 37443,
+        "digest": "2eeb23f8b40eab8647f6230df053d192"
+      },
+      "contentUnchanged": false,
+      "contentSha256": "4a3885e3f59fc1cb018cc81b3392909a5c549337ac86c2f9678040ee303e84d6"
+    }
+  ],
+  "heroFacts": {
+    "method": "static bindict field selection; exact prepare_rules.py awake attribute pair mapping, no execution",
+    "comparedHeroes": 278,
+    "diffCount": 0,
+    "diffs": [],
+    "growthFieldDiffs": [],
+    "marshalSha256": "555b7045e81c47ef291b4e5259a01564d4ad974631fed3ce291079b0bd67f5c4"
+  },
+  "attrCalc": {
+    "method": "recursive static code object comparison including constants, bytecode, names, argument layout, closures and exception tables; filename and line tables excluded",
+    "functionsCompared": 359,
+    "diffs": [
+      {
+        "function": "<module>",
+        "fields": [
+          "co_consts"
+        ],
+        "namesBefore": null,
+        "namesAfter": null
+      },
+      {
+        "function": "<module>.EightAnniGrowthAttrCalcHelper",
+        "fields": [
+          "co_names",
+          "co_consts",
+          "co_varnames"
+        ],
+        "namesBefore": [
+          "DynamicConfigData",
+          "DATA_SPRING_2026_HERO",
+          "DATA_SPRING_2026_HERO_ATTR",
+          "data",
+          "get"
+        ],
+        "namesAfter": [
+          "DynamicConfigData",
+          "DATA_TEN_ANNI_2026_HERO",
+          "DATA_TEN_ANNI_2026_HERO_ATTR",
+          "data",
+          "get"
+        ]
+      },
+      {
+        "function": "<module>.getActAttrCalcHelper",
+        "fields": [
+          "co_code",
+          "co_names"
+        ],
+        "namesBefore": [
+          "const",
+          "BattleMode",
+          "MODE_YIN_HUN_SINGLE_BATTLE",
+          "YinHunGrowthAttrCalcHelper",
+          "MODE_EIGHT_ANNIVERSARY_EXPLORE_BATTLE",
+          "MODE_ACT_BATTLE_FESTIVAL_2026_EXPLORE",
+          "EightAnniGrowthAttrCalcHelper"
+        ],
+        "namesAfter": [
+          "const",
+          "BattleMode",
+          "MODE_YIN_HUN_SINGLE_BATTLE",
+          "YinHunGrowthAttrCalcHelper",
+          "MODE_EIGHT_ANNIVERSARY_EXPLORE_BATTLE",
+          "MODE_ACT_BATTLE_FESTIVAL_2026_EXPLORE",
+          "MODE_ACT_BATTLE_TEN_ANNI_2026_EXPLORE",
+          "EightAnniGrowthAttrCalcHelper"
+        ]
+      }
+    ],
+    "sourceMarshalSha256": {
+      "41236c618e0355f6a988e1481cd601aa": "851eaafb9fd1da1d5743673e9f96280e8d32a25970aecaad6106271601d9538b",
+      "2eeb23f8b40eab8647f6230df053d192": "4303229921fbccfd117286dd1d1cd536604868221ef1322c51a642c40caeeba4"
+    }
+  },
+  "marks": {
+    "count": 48,
+    "descriptions": 144,
+    "fullyDecoded": true,
+    "contactSheetInspected": true,
+    "sameNameDistinctIdsRetained": true,
+    "effectiveLevelInferred": false,
+    "items": [
+      {
+        "id": 1,
+        "skillId": 77800,
+        "name": "术印·乱",
+        "resource": "skill/77800.png",
+        "sourceDigest": "d40e8fae48bfda2dff39b8ebda681625",
+        "ktxSha256": "8764139f4af597b57b94c4f37918e99f1188bb2c5fe90bf423c020bfdf393f3b",
+        "pngSha256": "ed93fbec21908cd41b17f77d0e8badf7ab7f23c6b40fb262bab49c7631174e4c",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 2,
+        "skillId": 77801,
+        "name": "术印·缚",
+        "resource": "skill/77801.png",
+        "sourceDigest": "835d56e0085db64c17b1981ed4030f21",
+        "ktxSha256": "69791675738b7ba9861083fce35a89a006f7971121161c85b730cb8afd380ef4",
+        "pngSha256": "68884844ba96e52957e783b66a1b4b032bab99ce0b80705167cbd3c864b05ff7",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 3,
+        "skillId": 77802,
+        "name": "术印·守",
+        "resource": "skill/77802.png",
+        "sourceDigest": "7c412e45830bcc71e0f6de4a65642bf5",
+        "ktxSha256": "5f61a260a2af586ba6142fe2f5dd92c7bd6c29a8a7600600ad570672d6dce227",
+        "pngSha256": "275cf3b7d2873bdf919123ae3c78614060e311997b224bf99427cc44af3a3db0",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 4,
+        "skillId": 77803,
+        "name": "术印·一式",
+        "resource": "skill/77803.png",
+        "sourceDigest": "53bd4682b74dc5e980f8756b30118909",
+        "ktxSha256": "7c6ece73569d4bf555ce59dac85af86044b87a4b9daba29155531fcf9668716d",
+        "pngSha256": "38c93bb06a840334d6f0c4002a060d4ea02b939ef16e4129b5a946ce9698f3d6",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 5,
+        "skillId": 77804,
+        "name": "术印·灭",
+        "resource": "skill/77804.png",
+        "sourceDigest": "12870f74524086da5c23df40b62daf42",
+        "ktxSha256": "0740f8207148d5bc0c054c92a036bd6d1362f6b2d34a4ecd63c34e24c3063465",
+        "pngSha256": "c54dc27932f1d0797b0588289f148eef7dd680e4b7a100fbfea47114df8b8385",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 6,
+        "skillId": 77805,
+        "name": "术印·生",
+        "resource": "skill/77805.png",
+        "sourceDigest": "96ee1702fc1994fac6d4e01a668c5a2a",
+        "ktxSha256": "5969e26de10670f8b253f164b72353c126479522d5aecc720023724f395851a7",
+        "pngSha256": "895ac0e7c701101c375a39831be0baed9f479f7bbf1965a8ecf14c53c0ed5242",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 7,
+        "skillId": 77806,
+        "name": "术印·雷帝",
+        "resource": "skill/77806.png",
+        "sourceDigest": "680e4d3df0e874e073ec490ef6cfbcb9",
+        "ktxSha256": "0c7d704f739640645ebbddcdc07dfead6cf76aae7f1b28e085cefbeb05ad3b01",
+        "pngSha256": "1bd24f8690653518bac8e514a143f7789f949ce76416763a21b19938a8f8a319",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 8,
+        "skillId": 77807,
+        "name": "术印·星",
+        "resource": "skill/77807.png",
+        "sourceDigest": "e44c6a3430ca7d7b990d19096105f513",
+        "ktxSha256": "cbe8c349491ce68c9d99a47f4e428250bd3c97aa2db6f40ea4cad686d28b8323",
+        "pngSha256": "0a9aace9ff768f3ceda9c644a6e7f3642aeb7f9be3075d4295ab7d6301f0e79f",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 9,
+        "skillId": 77808,
+        "name": "术印·伞击",
+        "resource": "skill/77808.png",
+        "sourceDigest": "bb036ff1f8342f174041eb15e34a0658",
+        "ktxSha256": "723bebfba7aed6d5e0bcd1811f0d8de5e18916359aa06eec73b203bacd52a350",
+        "pngSha256": "1a43bdf99f7365f3b3d709815de1db8a13c0c6e04ee670fd6c97fc4af7827550",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 10,
+        "skillId": 77809,
+        "name": "术印·鱼",
+        "resource": "skill/77809.png",
+        "sourceDigest": "95a843036b3c225995267c513aa71073",
+        "ktxSha256": "dab7e46f396ffb2e9939c111dc614b269aab5aae678018ac3de4d3c62f869a51",
+        "pngSha256": "fe3b770928dcf24c8200ffd599de3cc35065718e404cc4d408e407d4a2246bf8",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 11,
+        "skillId": 77810,
+        "name": "术印·疾风",
+        "resource": "skill/77810.png",
+        "sourceDigest": "98ae21ca2b81eb95ccc7de5f51f3f2db",
+        "ktxSha256": "1775c9c51d89f75b828f34af942d537f251535a862a3b8ed7da11face5da7196",
+        "pngSha256": "4c5efd88f73709aea1fa3393db60e69232b30faa766517fc709a9119bf48229e",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 12,
+        "skillId": 77811,
+        "name": "术印·冥蝶",
+        "resource": "skill/77811.png",
+        "sourceDigest": "5c3b726f882c0687648539f80bf1bf7a",
+        "ktxSha256": "b035262087576f6136e4b73dfbdb489fdeaef66f85ba7bb2aced6e273b58492b",
+        "pngSha256": "61a4f58c178c133477e73594defafa87c8d5ddebbb04f98621d412fdbf89aba9",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 13,
+        "skillId": 77812,
+        "name": "术印·炼狱",
+        "resource": "skill/77812.png",
+        "sourceDigest": "14f584dcea35d765b19914f7de7c0a99",
+        "ktxSha256": "d8c70655fe275f9d9ae07ddd9af61f22592fa9efac9347af662d55ae798c1aa5",
+        "pngSha256": "de33b06040b1ecafa90e4fd24684b9685c4e6ef69c4eff8d8d68ac98e2a6f529",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 14,
+        "skillId": 77813,
+        "name": "术印·唐伞",
+        "resource": "skill/77813.png",
+        "sourceDigest": "6b17ecbe55afb76d5fb29d61c39c3aa1",
+        "ktxSha256": "e7bb152323f65851d2018327223f62db203f50e8df46ac3e611113d0b070918a",
+        "pngSha256": "04211ffdd9794aeb0708528ec00037a3bf6e711a392a2e1ba38c237b2a66e598",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 15,
+        "skillId": 77814,
+        "name": "术印·续命",
+        "resource": "skill/77814.png",
+        "sourceDigest": "bc123a9e62366e6fe82c3ebda9c3eef7",
+        "ktxSha256": "87eb4fefaae28a160ae8641f5654b39f439545959a92de192641146a042a0d1f",
+        "pngSha256": "6576d1089612cafd50ed0cabac0a5e2d449d33cdd2e7aa106193126e84cc6ebe",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 16,
+        "skillId": 77815,
+        "name": "术印·天狐",
+        "resource": "skill/77815.png",
+        "sourceDigest": "4345e800dea0f7cac5becc8b19dcf34c",
+        "ktxSha256": "1da0b4ec49c155444211d0da37ed05e8c579a6599969e7c8247182c5a94020eb",
+        "pngSha256": "23f26f8fe87526115a6241e86f29047324e68f174e79923e609284abad889028",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 17,
+        "skillId": 77816,
+        "name": "术印·破魔矢",
+        "resource": "skill/77816.png",
+        "sourceDigest": "ccc093bd85cfff735c6a3376213ef62b",
+        "ktxSha256": "46d94543c4d0a53fd7522fef086d08dbe972e6a74399d2b8fbe0eb8c27510bea",
+        "pngSha256": "d3faaea2fa06afc74c66c2cd2f18f373b0d20acaab0ec2c57d736669f47eafe5",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 18,
+        "skillId": 77817,
+        "name": "术印·多重箭",
+        "resource": "skill/77817.png",
+        "sourceDigest": "c8a9412be61ad17f5cf60949f0fad6b2",
+        "ktxSha256": "93a9e34e13b2b546349d943d3b28bc856c1155b33e53ea49daaaf8c9357391f9",
+        "pngSha256": "040dd9d489dd93b2ca7151a082418040ee10ffa9e41c2ccbae9b9c7c40b925c8",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 19,
+        "skillId": 77818,
+        "name": "术印·诛邪箭",
+        "resource": "skill/77818.png",
+        "sourceDigest": "b02fe894c4c5560bfa4ef4c9bcac9a0c",
+        "ktxSha256": "d5bef9f291e4c5a899083b9ab48531129a65f2b07dbb3b06dc39c47965647d8a",
+        "pngSha256": "79e8f15ffdea556b248751342e91aad2bede7c871ad75720ecc099b628d756d8",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 20,
+        "skillId": 77819,
+        "name": "术印·豹眼",
+        "resource": "skill/77819.png",
+        "sourceDigest": "6ca5a894666b94c6b9012c2219fc4a3f",
+        "ktxSha256": "3e4b092ee20cd5d11c086662c9c2e5a086c74119c1d114aa00d3161d9f664cc4",
+        "pngSha256": "883fe6ab11cf8beba57793742f3fa071202edf89d3f64750c42bf84cf97c7f2a",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 21,
+        "skillId": 77820,
+        "name": "术印·影分身",
+        "resource": "skill/77820.png",
+        "sourceDigest": "0eaa33d8b9aba4cd5f9c96c28df66c53",
+        "ktxSha256": "9e6c5ace8b24951e9a8b8210d4d590480a23f8bc1ffe09303a2480ddd27d8bce",
+        "pngSha256": "eddc62c0a918d283b48e445f699677b50717b5a2ae8c9f0f6365eb1275f63a38",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 22,
+        "skillId": 77821,
+        "name": "术印·豹袭",
+        "resource": "skill/77821.png",
+        "sourceDigest": "f356df51d1026227e1cabca01103c7a1",
+        "ktxSha256": "eaba4a48da76d5cd8dfd4438b8c1a9f12d63fe6a5047797fbbfa4327b8b938a3",
+        "pngSha256": "a7e5786dbe48b75a51955d223b02efe5ae0b7b8e3bd8ae95b2b7dec65b43b6fa",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 23,
+        "skillId": 77822,
+        "name": "术印·悲鸣",
+        "resource": "skill/77822.png",
+        "sourceDigest": "671b9ad1676f88d6defed2ce6602ec73",
+        "ktxSha256": "982856cb50d301952ccf7ede1ce0039bbecdbee3b88da9e6bbe08e5d456f6ab9",
+        "pngSha256": "105792fceb8d74b5c588ec79a83f18660629ec4ccc4b6977a251eb967d60e0cd",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 24,
+        "skillId": 77823,
+        "name": "术印·穷追",
+        "resource": "skill/77823.png",
+        "sourceDigest": "efec1f4a45f742c998daffbf6cee7bfd",
+        "ktxSha256": "92a91d8938676eecaacbe602d146e067660b109ef2757178a74fe1e198c494a0",
+        "pngSha256": "50d6887e0d442086386c06af8d528a18a58ec3dfa413f754c9362a246855624d",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 25,
+        "skillId": 77824,
+        "name": "术印·星光",
+        "resource": "skill/77824.png",
+        "sourceDigest": "423660b9ad90637a2505356e1a4e253c",
+        "ktxSha256": "0234eae34a3b6a73643da1e11926351d222a4099f7aae6baeb546dbcf3e95849",
+        "pngSha256": "7aa58424f0122e340772cc45d95878562353ef3670cbb45b7a062a5a804fd43d",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 26,
+        "skillId": 77825,
+        "name": "术印·星咒",
+        "resource": "skill/77825.png",
+        "sourceDigest": "ef5af4926b6a497c6e46c17cbeba259a",
+        "ktxSha256": "2cc9c579f4f053eeee12c1e83041a37a43faf34d3e5bf4ee312712ce94414cdd",
+        "pngSha256": "e9a68b12ab16f4b772a1f80c09c679ca213370c5bf9be3b6f0a6baec30060d75",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 27,
+        "skillId": 77826,
+        "name": "术印·预知",
+        "resource": "skill/77826.png",
+        "sourceDigest": "368ac8a51abb216ebd59c0a0893bf9a2",
+        "ktxSha256": "8b3ebea3f4af7b80d3e823c4e449369ebddcc18d26797d41fd6255a3edf80dc9",
+        "pngSha256": "a043095806c35aa437176fec7b62893d62f990314ab87d2e15749bd9318b1432",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 28,
+        "skillId": 77827,
+        "name": "术印·星陨",
+        "resource": "skill/77827.png",
+        "sourceDigest": "6ea04ada831724dbcdd9eab01a1c557d",
+        "ktxSha256": "fb87d1b0daa347b5b708f6765eb387d8fbd8669b2bf151c320312999d2b49bf2",
+        "pngSha256": "ea7fe4f4a2e7665b4d397ed5be4a47458b8b4405b9d8ee00ead1b7d08c8cb9d7",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 29,
+        "skillId": 77828,
+        "name": "术印·占卜",
+        "resource": "skill/77828.png",
+        "sourceDigest": "ad931f82c4cedb96f13ad309cd2663c8",
+        "ktxSha256": "fc01a3bc5a67fd443b5a0fd6f0d730a1f18dc23a4c06a12e0d3521675cb26dfb",
+        "pngSha256": "b134038fe66a56fedf55e6a5c4d0edd6b5c2897a9341c913a4c6739a17f6fa8d",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 30,
+        "skillId": 77829,
+        "name": "术印·占卜",
+        "resource": "skill/77829.png",
+        "sourceDigest": "fe6e5cc655ab56d2c99c97771f0babff",
+        "ktxSha256": "468bcc044e60321d8e2465ceb1381ab9d24d89590495976346ac1a63528218a2",
+        "pngSha256": "b7fe86595e91a7ef8c0f9b7471b7d41d15bfc5f12f54867cf32f00ddf93a730e",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 31,
+        "skillId": 77830,
+        "name": "术印·占卜",
+        "resource": "skill/77830.png",
+        "sourceDigest": "43f179da744206b9a58fa50a06c20c6a",
+        "ktxSha256": "5aa8ee107e00f4fcef699ba756eac175e50ebaad73e5e9490f2da3e03e357dfc",
+        "pngSha256": "7364da2d9c2fa9fa67869f384a347d28c13fefd1981152f2a44b2d42446fdbd1",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 32,
+        "skillId": 77831,
+        "name": "术印·净化",
+        "resource": "skill/77831.png",
+        "sourceDigest": "bced5a888161586244e76a27a23d977f",
+        "ktxSha256": "f66b8675dd8498d6ac7b693cf5c3ce76f9179beb0dff3be5ff45cdedcfeb33a4",
+        "pngSha256": "5b3728b5d8e5b00df252b0331ad98d9a78c7061802923f40f6c50575199e7ba5",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 33,
+        "skillId": 77832,
+        "name": "术印·天剑",
+        "resource": "skill/77832.png",
+        "sourceDigest": "13954bb140b8a047a4200dfd741a7161",
+        "ktxSha256": "1c75bf61d91a4735470d6158f7b12b732056b33091a2c58858592f532a03698f",
+        "pngSha256": "e327f7fc50b30d58c80b32df1030a192b02eb87eea790be96c8f7c9c734aa023",
+        "width": 100,
+        "height": 100
+      },
+      {
+        "id": 34,
+        "skillId": 77833,
+        "name": "术印·八华",
+        "resource": "skill/77833.png",
+        "sourceDigest": "70405a64d16b54f2b0d5694f0f66fd95",
+        "ktxSha256": "f6dd4b92f7eea0315749e2be882b5ff4000550a56375edeafab0e77a8b504c1a",
+        "pngSha256": "c781fd8597087add6b6200cfe10e25435c76f25fda6d3a32a5307d64ac4b63cf",
+        "width": 100,
+        "height": 100
+      },
+      {
+        "id": 35,
+        "skillId": 77834,
+        "name": "术印·布武",
+        "resource": "skill/77834.png",
+        "sourceDigest": "0e9c77f9953dd023ffbb566b93bef7c5",
+        "ktxSha256": "632b6f7cb2a7a013a00a34eb1b8d181acba50307b9a8b66cbd49dc8240eaa6ac",
+        "pngSha256": "995890e9df928aab2ca1a7e6eeed0161cd3274dd302c9a6cdf0ed6b59a8896fd",
+        "width": 100,
+        "height": 100
+      },
+      {
+        "id": 36,
+        "skillId": 77835,
+        "name": "术印·神策",
+        "resource": "skill/77835.png",
+        "sourceDigest": "ea9f9d95004e2fe8a39358332f1dc935",
+        "ktxSha256": "995f89e6dec59100f985d42af0a879565fc198bd7d45f0e73b17e72e8f383a6b",
+        "pngSha256": "f651cbd8698508b33f588d5f667af0ec07026f2b9b33fd41fa466c2eee401d50",
+        "width": 100,
+        "height": 100
+      },
+      {
+        "id": 37,
+        "skillId": 77836,
+        "name": "术印·血契",
+        "resource": "skill/77836.png",
+        "sourceDigest": "780dfa3dde4f05dd0fdcd61f8767175d",
+        "ktxSha256": "7e4bf3f754f28419c8f4c2957834cb69a768f98568b177d8e7bdbc40f3c9a3b7",
+        "pngSha256": "dbf44f20ca85e91e6d89872535d953640b38295c292234f13e830dddb3e22457",
+        "width": 100,
+        "height": 100
+      },
+      {
+        "id": 38,
+        "skillId": 77837,
+        "name": "术印·鬼胄",
+        "resource": "skill/77837.png",
+        "sourceDigest": "6075f60524240a65fa9b6e50ad32a5a6",
+        "ktxSha256": "a985b1bec8dbe9c5db2e55834e3d7e268ee416092f0de64e2ed02ab7429a98a8",
+        "pngSha256": "8a8df87ee79f0abd1f92b024e0a82966d3130701848980fdfb29727e36e2d861",
+        "width": 100,
+        "height": 100
+      },
+      {
+        "id": 39,
+        "skillId": 77838,
+        "name": "术印·剑之垒",
+        "resource": "skill/77838.png",
+        "sourceDigest": "11dc43b20faab9178ba74b51aae11bdc",
+        "ktxSha256": "2ea868a033ce11886e81385d0e337f5db431cf35956de7059758760356c95036",
+        "pngSha256": "6e687866309448766283ee2707638d6af00e453f5b3139784c53733244710ae5",
+        "width": 100,
+        "height": 100
+      },
+      {
+        "id": 40,
+        "skillId": 77839,
+        "name": "术印·无畏",
+        "resource": "skill/77839.png",
+        "sourceDigest": "645151c2312d80c46e235eb441d9a82a",
+        "ktxSha256": "fb2d964bb10239c42dc081df16284a5c9810c0ba5ae6b918e1c45a2543ca49cd",
+        "pngSha256": "8b7ea526f69a8ae4897bbbfedb6ea27c25a64230067dc4ce99601bc1b0d2b236",
+        "width": 100,
+        "height": 100
+      },
+      {
+        "id": 41,
+        "skillId": 77840,
+        "name": "术印·训诫",
+        "resource": "skill/77840.png",
+        "sourceDigest": "a42143dfad312499ec60732f36f6f9a0",
+        "ktxSha256": "be896685c6519f89af1d7bd4366a8fee77cf00f9e525f2a165a2948ab6308cce",
+        "pngSha256": "b8f0ccfb46c1a3356d0fda86a48ffbfe450e62fbdc22299f05fc9c676b3222cf",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 42,
+        "skillId": 77841,
+        "name": "术印·巧韵",
+        "resource": "skill/77841.png",
+        "sourceDigest": "fa3eca05e52176fb92b52387f4765d5b",
+        "ktxSha256": "00e986b04a14c81f3b4c07dd7b785c2b859dab4413794169516dda530314d595",
+        "pngSha256": "b74b9698267b055b58032cf5a007a56ae3a405ef68a4cbeb63c8019946af1f7b",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 43,
+        "skillId": 77842,
+        "name": "术印·齐鸣",
+        "resource": "skill/77842.png",
+        "sourceDigest": "1e256458240e15b83c1a406549564527",
+        "ktxSha256": "0c788e92dcf158e12d3e78280e0195c1c941f5ad89d5c51c3a11cd434f2b6caa",
+        "pngSha256": "bd2beb6b43714810682b5fc6857c02f1d80c2cf7bfde01682c633cb3301ce034",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 44,
+        "skillId": 77843,
+        "name": "术印·破阵",
+        "resource": "skill/77843.png",
+        "sourceDigest": "8fcf133237e98b92b5ff21591b30e754",
+        "ktxSha256": "1863d33491b74dc7fb4094379b24fc187263dfe5c36fead5f0c5e65dc0dbb929",
+        "pngSha256": "475914ea3f5945d18385536b85d8beb79bb8b33f99c8546e64593f562c25f2df",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 45,
+        "skillId": 77844,
+        "name": "术印·诸律",
+        "resource": "skill/77844.png",
+        "sourceDigest": "44fa0d6a836fb2039cc0b381f0776783",
+        "ktxSha256": "8d5f4a7c4dddbb062edd4f92b9748ecf6304fb56a6a17df4aea561d6b8095780",
+        "pngSha256": "da397b580e0ccd4a24928a1626ce4f4d6cdd476c06358bca3441428c57bdc55b",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 46,
+        "skillId": 77845,
+        "name": "术印·余音",
+        "resource": "skill/77845.png",
+        "sourceDigest": "911d804cfae5ea4bc2f4e38f0a8a0f1a",
+        "ktxSha256": "50c78d0298d5a804133c4b06e2dfbd9ce6b4fac31e4aa9e9d6d05e9b1dccab85",
+        "pngSha256": "8bcbe168b4f7fa35035e068d888814f69de458154e139b35c30b0115f9178a60",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 47,
+        "skillId": 77846,
+        "name": "术印·惊弦",
+        "resource": "skill/77846.png",
+        "sourceDigest": "64e90222c8f5e3c1dc48dae13e268ecd",
+        "ktxSha256": "36963f34858c17098b9038598f242dab7a8a19798925adbf21468429af7476bb",
+        "pngSha256": "60c9c967319ae00cb643c24ea5db48cb470c8e14fbd6c5eda4d2327cd6ab361e",
+        "width": 82,
+        "height": 82
+      },
+      {
+        "id": 48,
+        "skillId": 77847,
+        "name": "术印·调律",
+        "resource": "skill/77847.png",
+        "sourceDigest": "f2d84e9e1797c5aed72ab81d46a80331",
+        "ktxSha256": "34f12ea6d669916cceda85e995faad128dab4feb28f7b30727daa61430eea9ef",
+        "pngSha256": "7a762b3cc821e551bfd4c5a38a4431865c2ea5238da36c89ceb731b8cf345700",
+        "width": 82,
+        "height": 82
+      }
+    ]
+  },
+  "privacy": {
+    "privateAccountDirectoriesRead": false,
+    "gameCodeBundled": false,
+    "clientUploaded": false
+  },
+  "limits": [
+    "Client checks do not supply inventory or server combat state",
+    "No full live 155-code query run in this revision",
+    "Mark count is not assumed to be its skill level"
+  ],
+  "activeSkillAndHeroIndexVerified": true
+}

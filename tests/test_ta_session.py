@@ -35,6 +35,21 @@ def client():
 
 
 class SessionTests(unittest.TestCase):
+    def test_business_errors_keep_healthy_connection_and_forward_only_safe_fields(self):
+        app, gate = authorize(make_session()), client()
+        with patch.object(mod.net, 'Gate', return_value=gate) as factory:
+            for err in (90011, 31279, 17):
+                gate.query_lineup.return_value = {'err': err, 'share_key': CODE[4:],
+                                                'lineup_data': 'do-not-forward', 'token': 'private'}
+                self.assertEqual(app.query(CODE), {'err': err, 'share_key': CODE[4:], 'code': CODE})
+                self.assertIs(app.gate, gate)
+                gate.close.assert_not_called()
+            gate.query_lineup.return_value = {'err': 0, 'share_key': CODE[4:], 'lineup_data': 'test-payload'}
+            self.assertEqual(app.query(CODE)['lineup_data'], 'test-payload')
+            self.assertEqual(factory.call_count, 1)
+            gate.select_role.assert_called_once()
+        app.clear_login()
+
     def test_unauthenticated_calls_and_arbitrary_roles_are_rejected(self):
         app = make_session()
         with patch.object(mod.net, 'Gate') as gate, patch.object(mod.net, 'query_own_roles') as roles:
@@ -78,23 +93,28 @@ class SessionTests(unittest.TestCase):
         with self.assertRaises(mod.net.ProtocolError):
             app.select('10123', 'role-a')
 
-    def test_query_reconnects_and_validates_account_role_every_time(self):
+    def test_batch_reuses_avatar_and_retires_failed_or_idle_connection(self):
         app = authorize(make_session())
         first, second = client(), client()
         with patch.object(mod.net, 'Gate', side_effect=[first, second]) as factory:
-            for _ in range(2):
-                result = app.query(CODE)
-                self.assertEqual(result['code'], CODE)
-                self.assertEqual(result['lineup_data'], 'test-payload')
+            for _ in range(155):
+                self.assertEqual(app.query(CODE)['code'], CODE)
+            self.assertEqual(factory.call_count, 1)
+            first.select_role.assert_called_once_with('role-a')
+            first.close.assert_not_called()
+            first.query_lineup.side_effect = TimeoutError()
+            with self.assertRaises(TimeoutError):
+                app.query(CODE)
+            self.assertIsNone(app.gate)
+            self.assertTrue(app.authenticated)
+            self.assertEqual(app.query(CODE)['code'], CODE)
             self.assertEqual(factory.call_count, 2)
-        for gate in (first, second):
-            gate.select_role.assert_called_once_with('role-a')
-            gate.close.assert_called_once()
-        self.assertIsNone(app.gate)
+            app.clear_login()
+            second.close.assert_called_once()
+        first.close.assert_called_once()
 
     def test_wrong_share_key_failed_response_and_wrong_role_never_yield_data(self):
         for reply in ({'err': 0, 'share_key': 'b' * 32, 'lineup_data': 'wrong'},
-                      {'err': 17, 'share_key': CODE[4:]},
                       {'err': False, 'share_key': CODE[4:], 'lineup_data': 'wrong'}):
             app, gate = authorize(make_session()), client()
             gate.query_lineup.return_value = reply
@@ -119,10 +139,75 @@ class SessionTests(unittest.TestCase):
         gate.select_role.assert_not_called()
         gate.query_lineup.assert_not_called()
 
+    def test_channel_rejection_preserves_credentials_but_confirmed_expiry_invalidates(self):
+        for response, expired in [({'errorCode': 25}, False),
+                                  ({'errorCode': 5, 'sauth_result': {'code': 401}}, True)]:
+            app, gate = authorize(make_session()), client()
+            events = []
+            app.credentials = events.append
+            gate.login_by_qr.return_value = response
+            with patch.object(mod.net, 'Gate', return_value=gate):
+                with self.assertRaises(mod.net.ProtocolError):
+                    app.query(CODE)
+            self.assertFalse(app.authenticated)
+            self.assertEqual(any(e['invalidate'] for e in events), expired)
+
     def test_invalid_input_cannot_start_a_connection(self):
         app = authorize(make_session())
         with patch.object(mod.net, 'Gate') as gate:
-            for code in ('|TA|short', '|TA|' + 'x' * 32, '#TA#123', {}, None):
+            for code in ('|TA|bad key', '|TA|' + 'x' * 4097, '#TA#123', {}, None):
                 with self.assertRaises(mod.net.ProtocolError):
                     app.query(code)
+            gate.assert_not_called()
+
+    def test_remembered_restore_requires_consent_mpay_then_game_validation(self):
+        saved = {'full_uid': 'synthetic@ad.netease.win.163.com', 'mpay_device_id': 'device',
+                 'mpay_user': {'id': 'synthetic', 'token': 'old', 'pc_ext_info': {'is_remember': True}}}
+        app, events = make_session(), []
+        app.credentials = events.append
+        mpay = Mock()
+        mpay.resume.return_value = {**saved['mpay_user'], 'token': 'rotated'}
+        app.load_servers = Mock()
+        with patch.object(mod.net, 'MpayClient', return_value=mpay), patch.object(mod.net, 'Gate', return_value=client()), patch.object(mod.net, 'query_own_roles', return_value=[]):
+            app.restore(saved, '10014', 'role-a')
+        self.assertTrue(app.authenticated)
+        self.assertEqual(app.login_info['mpay_user']['token'], 'rotated')
+        self.assertEqual(saved['mpay_user']['token'], 'old')
+        self.assertEqual(events[-1]['avatar_id'], 'role-a')
+        self.assertNotIn('rotated', json.dumps(app.status()))
+        mpay.close.assert_called_once()
+        app.clear_login()
+        saved['mpay_user']['pc_ext_info']['is_remember'] = False
+        with patch.object(mod.net, 'MpayClient') as factory:
+            with self.assertRaises(mod.net.ProtocolError):
+                app.restore(saved)
+            factory.assert_not_called()
+
+    def test_mpay_network_failure_cannot_authenticate_or_invalidate_remembered_account(self):
+        app, events = make_session(), []
+        app.credentials = events.append
+        saved = {'full_uid': 'synthetic', 'mpay_device_id': 'device',
+                 'mpay_user': {'id': 'synthetic', 'token': 'old', 'pc_ext_info': {'is_remember': True}}}
+        mpay = Mock()
+        mpay.resume.side_effect = mod.net.MpayError('连接失败')
+        with patch.object(mod.net, 'MpayClient', return_value=mpay), patch.object(mod.net, 'Gate') as gate:
+            with self.assertRaises(mod.net.ProtocolError):
+                app.restore(saved)
+            gate.assert_not_called()
+        self.assertFalse(app.authenticated)
+        self.assertEqual(events, [])
+        mpay.resume.side_effect = mod.net.MpayError('已失效', http_status=401)
+        with patch.object(mod.net, 'MpayClient', return_value=mpay):
+            with self.assertRaises(mod.net.ProtocolError):
+                app.restore(saved)
+        self.assertTrue(events[-1]['invalidate'])
+
+    def test_missing_roles_cannot_reuse_a_remembered_avatar_id(self):
+        app = authorize(make_session())
+        with patch.object(mod.net, 'query_own_roles', return_value=[]):
+            app.load_roles()
+        self.assertEqual(app.selected_avatar, '')
+        with patch.object(mod.net, 'Gate') as gate:
+            with self.assertRaises(mod.net.ProtocolError):
+                app.query(CODE)
             gate.assert_not_called()
