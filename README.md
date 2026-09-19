@@ -4,7 +4,7 @@ Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式
 
 **Windows x64 · v0.7.8 公开测试版 · 无需另装 Node.js 或 Python**
 
-[下载安装包](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Setup-0.7.8-Windows-x64.exe) · [下载免安装版](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Portable-0.7.8-Windows-x64.zip) · [PDF 图文指南](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.7/Yuqi-Guide-0.7.7.pdf) · [全部版本](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases)
+[下载安装包](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Setup-0.7.8-Windows-x64.exe) · [下载免安装版](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Portable-0.7.8-Windows-x64.zip) · [PDF 图文指南](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Guide-0.7.8.pdf) · [当前版本说明](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.7.8)
 
 ## 主要功能
 
@@ -14,7 +14,7 @@ Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式
 - **管理自己的阵容库**：支持单条和批量添加、编辑、删除，包括内置预设；失效码一键清理，解析失败原地重试。
 - **本地使用与备份**：已有内容可离线查看，支持多库存账号、导出备份和恢复；手机授权后可保存查询登录。
 
-![御契阵容库总览，使用演示数据](docs/images/guide-v077/01-home.png)
+![御契 v0.7.8 阵容库总览，未导入个人账号](docs/images/guide-v078/01-home.png)
 
 图中入口：①登录 / 切换角色，②选择库存账号，③按分类找阵容，④导入库存。
 
@@ -29,7 +29,7 @@ Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式
 
 **扫码登录用于查询阵容码，库存需要另行导入，两者可以使用不同账号。** 御契不负责从游戏导出库存；没有平安志 JSON 时仍可浏览、管理阵容。批量添加支持粘贴原码、TXT / TSV 或从 Excel 复制四列，不直接读取 XLSX。
 
-详细操作、界面标注和常见问题见 [18 页 PDF 使用指南（v0.7.7）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.7/Yuqi-Guide-0.7.7.pdf)。
+详细操作、截图标注和常见问题见 [18 页 PDF 使用指南（v0.7.8）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Guide-0.7.8.pdf)，已包含登录风险确认和保存账号续用步骤。
 
 ## 必要说明
 
@@ -41,7 +41,7 @@ Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式
 - **两种 JSON 分开使用**：平安志文件用「我的账号 → 导入」更新库存；御契备份用「恢复备份」。备份包含个人库存，请自己保管。
 - **版本与来源**：非网易官方工具，当前未数字签名。资料快照截至 2026-09-12，原码有效性以查询结果为准。游戏素材权利见 [第三方说明](THIRD_PARTY_NOTICES.md)。
 
-Release 附有 `SHA256SUMS.txt`，可核对下载文件。完整图文指南截图使用演示数据，不含作者的账号或登录凭据。
+Release 附有 [SHA256SUMS.txt](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/SHA256SUMS.txt)，可核对安装包、免安装版和 PDF 指南。指南截图使用演示数据，不含真实账号或登录凭据。
 
 ## 开发
 
