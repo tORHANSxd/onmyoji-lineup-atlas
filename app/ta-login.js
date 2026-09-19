@@ -14,11 +14,11 @@
    const item=option(server.id,server.name+suffix+(server.available?'':' · 无连接地址'));item.disabled=!server.available;groups.get(server.category).append(item);
   }
   select.value=rows.some(s=>s.id===state.selected_server)?state.selected_server:'';
-  select.disabled=!api||state.busy||!rows.length;
+  select.disabled=!api||!state.risk_accepted||state.busy||!rows.length;
   $('ta-server-count').textContent=`${rows.length} / ${state.servers.length} 个服务器`;
   const server=state.servers.find(s=>s.id===state.selected_server),roles=$('ta-role');roles.replaceChildren(option('','选择已有角色'));
   for(const r of server?.roles||[])roles.append(option(r.avatar_id,r.name+(r.level!=null?' · Lv.'+r.level:'')));
-  roles.value=state.selected_avatar||'';roles.disabled=state.busy||!state.authenticated||!server?.roles.length;
+  roles.value=state.selected_avatar||'';roles.disabled=!state.risk_accepted||state.busy||!state.authenticated||!server?.roles.length;
   $('ta-selected').textContent=server?'当前服务器：'+server.name+(state.authenticated&&!server.roles.length?' · 此服尚无可选角色':''):'';
  }
  function showScreen(){
@@ -30,26 +30,29 @@
  function render(value){
   const roleChanged=value.authenticated===true&&(value.selected_server!==state.selected_server||value.selected_avatar!==state.selected_avatar);
   state={...value,servers:value.servers||[]};
+  const accepted=state.risk_accepted===true;
+  $('ta-risk-accept').checked=accepted;$('ta-risk-accept').disabled=!api;
+  $('ta-risk-status').textContent=accepted?'已确认本次登录风险；取消勾选会停止登录连接。':'确认后才能获取二维码或登录已保存账号。本次确认不会跨软件启动保存。';
   $('ta-message').textContent=state.message||'';$('ta-error').textContent=state.error||'';$('ta-error').hidden=!state.error;
   $('ta-summary').textContent=state.authenticated?'查询账号已登录':'扫码登录';
   const accounts=state.remembered_accounts||[],saved=$('ta-saved-account'),previous=saved.value;
   saved.replaceChildren(option('','选择已记住账号'),...accounts.map(a=>option(a.id,a.label+(a.needs_login?' · 需重新扫码':''))));
   saved.value=accounts.some(a=>a.id===previous)?previous:state.current_account||state.active_account||'';
   saved.disabled=state.busy||!accounts.length;
-  $('ta-resume').disabled=state.busy||!accounts.some(a=>a.id===saved.value&&!a.needs_login);
+  $('ta-resume').disabled=!accepted||state.busy||!accounts.some(a=>a.id===saved.value&&!a.needs_login);
   $('ta-forget').disabled=state.busy||!saved.value;
   $('ta-storage-status').textContent=state.storage_error||(state.authenticated?(accounts.some(a=>a.id===state.current_account&&!a.needs_login)?'已按手机授权加密记住此账号。':'服务端未返回可保存授权，本次仅使用临时会话。'):'已记住账号会在使用前向官方服务器重新验证。');
   const current=$('ta-category').value,categories=[...new Set(state.servers.map(s=>s.category))];$('ta-category').replaceChildren(option('','全部分类'),...categories.map(s=>option(s,s)));$('ta-category').value=categories.includes(current)?current:'';
   renderServers();
-  $('ta-load').disabled=!api||state.busy;$('ta-load').textContent=state.servers.some(s=>s.available)?'刷新服务器':'加载服务器';
-  $('ta-qr').disabled=!api||state.busy;$('ta-qr').textContent=state.qr_image?'刷新二维码':state.authenticated?'切换登录账号':'获取登录二维码';
-  $('ta-refresh-roles').disabled=state.busy||!state.authenticated;$('ta-logout').disabled=!api;
+  $('ta-load').disabled=!api||!accepted||state.busy;$('ta-load').textContent=state.servers.some(s=>s.available)?'刷新服务器':'加载服务器';
+  $('ta-qr').disabled=!api||!accepted||state.busy;$('ta-qr').textContent=state.qr_image?'刷新二维码':state.authenticated?'切换登录账号':'获取登录二维码';
+  $('ta-refresh-roles').disabled=!accepted||state.busy||!state.authenticated;$('ta-logout').disabled=!api;
   $('ta-logout').textContent=state.authenticated?'退出登录':'取消登录';
   $('ta-enter').hidden=false;$('ta-enter').disabled=false;
-  $('ta-qr-image').hidden=!state.qr_image;
-  if(state.qr_image)$('ta-qr-image').src=state.qr_image;else $('ta-qr-image').removeAttribute('src');
-  $('ta-qr-placeholder').hidden=!!state.qr_image;
-  $('ta-qr-placeholder').textContent=!api?'扫码登录请使用 Windows 安装版':state.authenticated?'已通过网易账号认证':state.busy?'正在准备，请稍候…':state.stage==='qr_expired'?'二维码已过期，请重新获取':'获取二维码后，用阴阳师手游扫码';
+  $('ta-qr-image').hidden=!accepted||!state.qr_image;
+  if(accepted&&state.qr_image)$('ta-qr-image').src=state.qr_image;else $('ta-qr-image').removeAttribute('src');
+  $('ta-qr-placeholder').hidden=accepted&&!!state.qr_image;
+  $('ta-qr-placeholder').textContent=!api?'扫码登录请使用 Windows 安装版':!accepted?'请先阅读上方免责声明，并确认使用可弃用的小号':state.authenticated?'已通过网易账号认证':state.busy?'正在准备，请稍候…':state.stage==='qr_expired'?'二维码已过期，请重新获取':'获取二维码后，用阴阳师手游扫码';
   $('ta-query-tip').textContent=state.authenticated?'可在下方选择查询角色。登录账号与导入的库存账号无需一致。':'解析阵容码需要登录；本地阵容和库存可随时离线查看。';
   const next=state.authenticated===true&&(unlocked||!state.busy),changed=next!==unlocked;
   unlocked=next;showScreen();
@@ -58,14 +61,15 @@
  }
  async function action(name,params){
   if(!api)throw new Error('扫码登录请使用 Windows 安装版');
+  if(!state.risk_accepted&&!['risk','forget'].includes(name))throw new Error('请先阅读免责声明，并确认使用可弃用的小号及承担账号风险');
   const result=await api.action(name,params);render(result);return result;
  }
  async function loadCatalog(){
   if(!api)throw new Error('扫码登录请使用 Windows 安装版');
   if(!state.servers.some(s=>s.available)&&!state.busy){pending??=action('init').finally(()=>pending=null);await pending;}
  }
- function manage(){managing=true;$('ta-server-settings').open=true;showScreen();if(unlocked)$('ta-enter').focus();}
- async function ensure(){manage();await loadCatalog();}
+ function manage(){managing=true;$('ta-server-settings').open=state.authenticated===true;showScreen();window.scrollTo(0,0);if(!state.risk_accepted)$('ta-risk-accept').focus({preventScroll:true});else if(unlocked)$('ta-enter').focus();}
+ async function ensure(){manage();}
  async function beginQR(){await loadCatalog();await action('qr');}
  async function query(code,options={}){
   if(AtlasCore.classifyCode(code)!=='pipe-ta')throw new Error('请输入一条完整的 |TA| 文字码');
@@ -80,8 +84,10 @@
  $('ta-saved-account').onchange=()=>render(state);
  $('ta-resume').onclick=handle(()=>action('resume',{account_id:$('ta-saved-account').value}));
  $('ta-forget').onclick=handle(()=>action('forget',{account_id:$('ta-saved-account').value}));
+ $('ta-risk-accept').onchange=handle(async()=>{try{await action('risk',{accepted:$('ta-risk-accept').checked});}finally{$('ta-risk-accept').checked=state.risk_accepted===true;}});
  $('open-login').onclick=manage;
  $('ta-enter').onclick=()=>{managing=false;showScreen();};
+ $('ta-risk-back').onclick=$('ta-enter').onclick;
  $('ta-server').onchange=handle(()=>{const sid=$('ta-server').value,server=state.servers.find(s=>s.id===sid);if(server)return action('select',{server_id:sid,avatar_id:server.roles[0]?.avatar_id||''});});
  $('ta-role').onchange=handle(()=>action('select',{server_id:state.selected_server,avatar_id:$('ta-role').value}));
  $('ta-server-search').oninput=renderServers;$('ta-category').onchange=renderServers;$('ta-only-roles').onchange=renderServers;

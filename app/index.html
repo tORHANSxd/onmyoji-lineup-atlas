@@ -4,8 +4,17 @@
 <title>御契 · 阴阳师阵容助手</title><meta name="description" content="本地阴阳师PVE阵容库、官方式神形象目录与平安志账号核对。"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="updates.css"><link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="ta-login.css"><link rel="stylesheet" href="revision.css"></head>
 <body>
 <section id="login-screen" hidden class="login-screen" aria-labelledby="login-title">
+<section class="login-risk" aria-labelledby="login-risk-title">
+<div class="login-risk-heading"><span>登录前必读 · 免责声明</span><button id="ta-risk-back" class="secondary">返回软件</button></div>
+<h2 id="login-risk-title">必须使用可弃用的小号，禁止使用主号</h2>
+<p><strong>请只用不再使用、没有重要资产且能承受封禁损失的小号登录。</strong>本软件非网易官方工具，无法保证账号安全；如不能接受风险，请勿登录。</p>
+<p>登录账号<strong>仅用于查询、解析阵容码</strong>，可以与导入的库存账号不同。允许保存后，账号凭据仅在本机加密存储，不上传开发者或其他第三方服务器；登录和解析所需的认证、查询请求会发送至<strong>网易官方服务</strong>。</p>
+<p class="login-risk-liability"><strong>如因使用本软件导致封号、冻结或其他账号损失，相关风险由使用者自行承担；在法律允许的范围内，本软件及开发者不承担由此产生的责任。</strong></p>
+<label class="login-risk-confirm"><input id="ta-risk-accept" type="checkbox" autocomplete="off"><span>我确认使用可弃用的小号，已阅读并自行承担上述风险</span></label>
+<p id="ta-risk-status" class="login-risk-status" role="status">确认后才能获取二维码或登录已保存账号。本次确认不会跨软件启动保存。</p>
+</section>
 <div class="login-layout"><div class="login-intro"><img class="login-logo" src="assets/logo.png" alt="御契"><p class="eyebrow">御契 · 阵容助手</p><h1 id="login-title">扫码连接游戏</h1><p class="login-lead">使用阴阳师手游的「扫码登录」。<br>在手机上勾选保存登录，下次可直接续用。</p>
-<details class="login-privacy"><summary>登录与账号保存说明</summary><p>允许保存后，凭据按当前 Windows 用户加密保存在本机。退出会话保留已记住账号；「忘记账号」删除本机凭据。未授权保存的登录只在本次有效。</p><p>登录与查询仅连接网易官方服务。凭据不进入阵容备份，不上传开发者服务器。</p><p>查询账号可使用自己的小号，与库存账号可以不同。</p></details>
+<details class="login-privacy"><summary>登录与账号保存说明</summary><p>允许保存后，凭据按当前 Windows 用户加密保存在本机。退出会话保留已记住账号；「忘记账号」删除本机凭据。未授权保存的登录只在本次有效。</p><p>登录与查询仅连接网易官方服务。凭据不进入阵容备份，不上传开发者服务器。</p><p>每次启动软件后，须先确认上方风险提示，再扫码或选择已保存的小号续用。</p></details>
 <p class="caption">非网易官方工具 · 本地资料无需登录</p></div>
 <div id="ta-login-panel" class="ta-login login-card"><div class="login-card-heading"><h2 id="ta-summary">扫码登录</h2><button id="ta-enter" class="secondary" hidden>返回软件</button></div>
 <label>本机记住的账号<select id="ta-saved-account"><option value="">选择已记住账号</option></select></label><div class="actions"><button id="ta-resume" class="secondary" disabled>登录此账号</button><button id="ta-forget" class="ghost" disabled>忘记账号</button></div><p id="ta-storage-status" class="caption" role="status"></p>
@@ -19,7 +28,7 @@
 <div id="app-shell">
 <aside class="sidebar"><a class="brand" href="#library" data-view="library"><img class="brand-logo" src="assets/logo.png" alt="御契"><span>御契<span class="brand-sub">阴阳师阵容助手</span></span></a><div class="local-badge">本地资料库 <span>CN · 2026.09.12</span></div>
 <nav aria-label="主导航"><button data-view="library" class="nav active"><span>卷</span> 阵容库 <b id="nav-count">—</b></button><button data-view="decode" class="nav"><span>印</span> 阵容码查看</button><button data-view="accounts" class="nav"><span>录</span> 我的账号</button><button data-view="manage" class="nav"><span>管</span> 阵容库管理</button><button data-view="audit" class="nav"><span>考</span> 来源与覆盖</button></nav>
-<div class="side-bottom"><button id="open-login" class="ghost light">登录 / 切换角色</button><button id="export-backup" class="ghost light">导出备份</button><button id="restore-backup" class="ghost light">恢复备份</button><small>非网易官方工具 · v0.7.7</small></div></aside>
+<div class="side-bottom"><button id="open-login" class="ghost light">登录 / 切换角色</button><button id="export-backup" class="ghost light">导出备份</button><button id="restore-backup" class="ghost light">恢复备份</button><small>非网易官方工具 · v0.7.8</small></div></aside>
 <main><header class="topbar"><div><h1 id="page-title">阵容库</h1></div><div class="top-actions"><label id="account-selector">库存账号<select id="active-account"><option value="">尚未导入账号</option></select></label><button class="secondary" id="add-bulk">批量添加</button><button class="primary" id="add-code">＋ 添加阵容码</button></div></header>
 <div id="loading" class="empty">正在读取本地资料…</div>
 <section id="view-library" class="view" hidden>

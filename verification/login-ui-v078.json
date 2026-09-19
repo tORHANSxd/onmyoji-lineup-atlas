@@ -1,0 +1,85 @@
+{
+  "method": "Real Electron renderer and preload; isolated synthetic account and QR response; production IPC gate tested separately in tests/desktop.test.cjs",
+  "startupOffline": true,
+  "noLoginRequestBeforeAcknowledgement": true,
+  "visibleRiskAndAccountWarning": true,
+  "explicitUncheckedAcknowledgement": true,
+  "qrAndSavedAccountBlocked": true,
+  "acknowledgementFailureKeepsGateClosed": true,
+  "confirmedQrAndSavedAccountLogin": true,
+  "revocationHidesQr": true,
+  "logoutRequiresNewAcknowledgement": true,
+  "forgetWithoutAcknowledgement": true,
+  "canReturnOffline": true,
+  "layouts": [
+    {
+      "window": [
+        1440,
+        1000
+      ],
+      "zoom": 1,
+      "width": 1440,
+      "height": 1000,
+      "scroll": 1425,
+      "riskWidth": 1076,
+      "riskScroll": 1076,
+      "titleTop": 127,
+      "titleBottom": 167.5,
+      "warningBottom": 462.484375,
+      "qrTop": 778.265625,
+      "titleSize": 27
+    },
+    {
+      "window": [
+        900,
+        750
+      ],
+      "zoom": 1,
+      "width": 900,
+      "height": 750,
+      "scroll": 885,
+      "riskWidth": 833,
+      "riskScroll": 833,
+      "titleTop": 111,
+      "titleBottom": 151.5,
+      "warningBottom": 500.484375,
+      "qrTop": 816.265625,
+      "titleSize": 27
+    },
+    {
+      "window": [
+        720,
+        960
+      ],
+      "zoom": 1,
+      "width": 720,
+      "height": 960,
+      "scroll": 705,
+      "riskWidth": 669,
+      "riskScroll": 669,
+      "titleTop": 99,
+      "titleBottom": 133.5,
+      "warningBottom": 462.015625,
+      "qrTop": 1154.46875,
+      "titleSize": 23
+    },
+    {
+      "window": [
+        1280,
+        900
+      ],
+      "zoom": 1.25,
+      "width": 1024,
+      "height": 720,
+      "scroll": 1012,
+      "riskWidth": 941,
+      "riskScroll": 941,
+      "titleTop": 126.4000015258789,
+      "titleBottom": 166.9000015258789,
+      "warningBottom": 515.1000061035156,
+      "qrTop": 831.5,
+      "titleSize": 27
+    }
+  ],
+  "errors": []
+}

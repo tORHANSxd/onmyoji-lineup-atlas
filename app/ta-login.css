@@ -33,3 +33,15 @@
 .login-card label.ta-check{white-space:normal}
 @media(max-width:1000px){.login-layout{grid-template-columns:minmax(0,1fr) 390px;gap:28px}.login-intro h1{font-size:30px}}
 @media(max-width:760px){.login-layout{grid-template-columns:1fr;max-width:480px}.login-screen{padding:20px 16px}.login-card{padding:20px}.login-privacy{margin-top:16px;padding-top:12px}}
+
+.login-screen{align-content:start;gap:28px}
+.login-risk{width:min(1080px,100%);border:2px solid #a82922;border-top-width:7px;border-radius:12px;background:#fff1eb;padding:22px 28px;color:#61271e;box-shadow:0 8px 32px #8a251214}
+.login-risk-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;color:#9b211b;font-size:16px;font-weight:700}
+.login-risk-heading button{flex-shrink:0;background:#fffaf5;border-color:#b96752;color:#792a22;font-size:14px}
+.login-risk h2{margin:14px 0;font-family:"Microsoft YaHei",sans-serif;font-size:27px;line-height:1.5;letter-spacing:0;color:#a01916}
+.login-risk p{margin:10px 0;font-size:15px;line-height:1.8;overflow-wrap:anywhere}
+.login-risk .login-risk-liability{padding:12px 15px;background:#f8d9ce;border-left:4px solid #a82922;border-radius:4px;color:#772016}
+.login-risk-confirm{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;margin-top:16px;border:1px solid #bb6b58;border-radius:8px;background:#fffdf8;white-space:normal;font-size:16px;line-height:1.6;font-weight:700;color:#85251d;cursor:pointer}
+.login-risk-confirm input{flex:0 0 20px;width:20px;height:20px;min-height:20px;margin:3px 0 0;accent-color:#a82922}
+.login-risk .login-risk-status{margin-bottom:0;font-size:13px;color:#7b4b3e}
+@media(max-width:760px){.login-risk{padding:18px}.login-risk h2{font-size:23px}.login-risk p{font-size:14px}.login-risk-confirm{font-size:15px;padding:12px}.login-risk-heading{font-size:14px;gap:10px}}

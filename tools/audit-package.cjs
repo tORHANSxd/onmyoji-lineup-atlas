@@ -4,7 +4,7 @@ const path=require('node:path');
 const asar=require('@electron/asar');
 const archive='release/win-unpacked/resources/app.asar';
 const files=asar.listPackage(archive).map(p=>p.replaceAll('\\','/'));
-const forbidden=files.filter(p=>/平安志示例数据|\.xlsx$|\/(tests|tools|user-data|private|ta-python)\/|web-sources\.json$|decoded\.json$/.test(p));
+const forbidden=files.filter(p=>/平安志示例数据|\.xlsx$|\/(tests|tools|user-data|private|ta-python|\.agents|media|output|ta-responses)\/|remembered-accounts\.bin$|library-v1\.json$|web-sources\.json$|decoded\.json$/.test(p));
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const actorImages=JSON.parse(fs.readFileSync('data/bundle.json','utf8')).actors.flatMap(a=>a.assets.variants.map(i=>i.localPath));
 const gameImages=JSON.parse(fs.readFileSync('data/game-assets.json','utf8')).items.map(i=>i.localPath);

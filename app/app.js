@@ -394,10 +394,13 @@ window.runLoginSmoke=async()=>{
  for(const [name,call] of Object.entries({decode:()=>atlas.decode('#TA#invalid'),query:()=>taLogin.query('|TA|'+'a'.repeat(32)),parsedSave:()=>atlas.saveParsedState({})})){try{await call();}catch(error){if(/请先扫码登录/.test(error.message))blocked.push(name);}}
  result.blockedOperations=blocked;result.localReads=!!(await atlas.loadData())&&Array.isArray((await atlas.loadState())?.accounts||[]);
  await TALogin.ensure();result.separateLogin=!$('login-screen').hidden&&$('app-shell').hidden;
+ result.riskNoticeVisible=!!$('login-risk-title')&&!$('ta-risk-accept').checked&&$('ta-qr').disabled;
+ try{await taLogin.action('qr');result.riskBlocksQR=false;}catch(error){result.riskBlocksQR=/免责声明/.test(error.message);}
+ await taLogin.action('risk',{accepted:true});await taLogin.action('init');
  await taLogin.action('qr');const status=await taLogin.status(),image=$('ta-qr-image');if(image.getAttribute('src'))try{await image.decode();}catch{}
  result.loginModule={servers:status.servers.length,authenticated:status.authenticated,qrReady:!image.hidden&&image.naturalWidth>0};
  $('ta-enter').click();result.returnOffline=!$('app-shell').hidden&&$('login-screen').hidden;
- if(!result.offline||!result.dataLoaded||!result.noAutomaticQR||blocked.length!==3||!result.localReads||!result.separateLogin||!result.returnOffline||!result.loginModule.qrReady||status.authenticated)result.error='离线启动、独立登录页或二维码检查失败';
+ if(!result.offline||!result.dataLoaded||!result.noAutomaticQR||blocked.length!==3||!result.localReads||!result.separateLogin||!result.riskNoticeVisible||!result.riskBlocksQR||!result.returnOffline||!result.loginModule.qrReady||status.authenticated)result.error='离线启动、风险确认或二维码检查失败';
  return result;
 };
 window.runSmoke=async()=>{

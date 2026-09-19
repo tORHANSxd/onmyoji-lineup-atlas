@@ -2,9 +2,9 @@
 
 Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式神与御魂库存，查看离配置要求还差什么。
 
-**Windows x64 · v0.7.7 公开测试版 · 无需另装 Node.js 或 Python**
+**Windows x64 · v0.7.8 公开测试版 · 无需另装 Node.js 或 Python**
 
-[下载安装包](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.7/Yuqi-Setup-0.7.7-Windows-x64.exe) · [下载免安装版](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.7/Yuqi-Portable-0.7.7-Windows-x64.zip) · [PDF 图文指南](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.7/Yuqi-Guide-0.7.7.pdf) · [全部版本](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases)
+[下载安装包](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Setup-0.7.8-Windows-x64.exe) · [下载免安装版](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Portable-0.7.8-Windows-x64.zip) · [PDF 图文指南](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.7/Yuqi-Guide-0.7.7.pdf) · [全部版本](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases)
 
 ## 主要功能
 
@@ -22,18 +22,20 @@ Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式
 
 1. **下载安装**：运行安装包并按向导操作；或将免安装 ZIP **完整解压**，运行其中的 `御契.exe`。不要只复制单个 EXE。GitHub 的 `Source code` 是源码，普通使用者不必下载。
 2. **先浏览阵容**：启动后直接进入阵容库，按分类逐级进入，或搜索具体副本；没有结果时先点「重置」清除筛选。
-3. **需要解析新码时登录**：进入「登录 / 切换角色」，用阴阳师手游扫码确认，选择自己已有角色的服务器和角色。希望下次免扫码，在手机确认页允许保存登录。
+3. **需要解析新码时登录**：进入「登录 / 切换角色」，先阅读醒目的免责声明，并勾选确认使用可弃用的小号、自行承担账号风险，再用阴阳师手游扫码，选择已有角色。手机允许保存后可免扫码续用；每次启动仍需先确认风险，再点「登录此账号」。
 4. **导入自己的库存**：进入「我的账号」，导入平安志 `mumu-snapshot-v1` JSON，在右上角选择要核对的账号。首次或更新完整库存时，通常不勾选「增量合并旧库存」。
 5. **看差距与配置**：在卡片查看三个颜色标签，进入详情核对技能、御魂、配速和操作备注，再复制原码到游戏中使用。
 6. **定期备份**：通过「阵容库管理」整理记录；升级、大批删除或换电脑前，点击左下角「导出备份」。
 
 **扫码登录用于查询阵容码，库存需要另行导入，两者可以使用不同账号。** 御契不负责从游戏导出库存；没有平安志 JSON 时仍可浏览、管理阵容。批量添加支持粘贴原码、TXT / TSV 或从 Excel 复制四列，不直接读取 XLSX。
 
-详细操作、界面标注和常见问题见 [18 页 PDF 使用指南](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.7/Yuqi-Guide-0.7.7.pdf)。
+详细操作、界面标注和常见问题见 [18 页 PDF 使用指南（v0.7.7）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.7/Yuqi-Guide-0.7.7.pdf)。
 
 ## 必要说明
 
-- **覆盖安装问题**：v0.7.7 尚未解决部分环境下的 `pwsh.exe / Unknown Hard Error`。遇到后停止覆盖并保留备份，可改用完整免安装版。当前完成了包内容和解包程序运行验证，未完成实际安装、覆盖及卸载验收。
+- **登录风险与免责声明**：必须使用不再使用、无重要资产、能承受封禁损失的小号，禁止使用主号。查询账号仅用于解析阵容码；凭据仅在本机按授权加密保存，不上传开发者或其他第三方服务器，认证与解析请求仍需发送网易官方服务。如因使用本软件导致封号、冻结或其他账号损失，由使用者自行承担风险；在法律允许范围内，本软件及开发者不承担由此产生的责任。新版在扫码和已保存账号续用之前均要求主动确认；不接受时可继续离线使用。
+
+- **覆盖安装问题**：v0.7.8 尚未解决部分环境下的 `pwsh.exe / Unknown Hard Error`。遇到后停止覆盖并保留备份，可改用完整免安装版。当前完成了包内容和解包程序运行验证，未完成实际安装、覆盖及卸载验收。
 - **库存要更新**：培养式神、强化或消耗御魂后，请重新导出完整 JSON 并替换导入。「计算中」「待核对」不表示一定做不出，满足式神御魂要求也不保证通关。
 - **数据在本机**：用户资料位于 `%APPDATA%/onmyoji-lineup-atlas/`。安装包和免安装版不内置已登录账号；保存凭据按当前 Windows 用户加密，不进入备份，换电脑需重新扫码。
 - **两种 JSON 分开使用**：平安志文件用「我的账号 → 导入」更新库存；御契备份用「恢复备份」。备份包含个人库存，请自己保管。
@@ -52,6 +54,6 @@ npm start
 npm run dist
 ```
 
-开发需要 Node.js、Python 和 Windows 构建工具。v0.7.7 已通过 173 项 Node 测试；界面验证覆盖四种窗口宽度和 125% 缩放。构建命令不自动发布 Release。
+开发需要 Node.js、Python 和 Windows 构建工具。v0.7.8 已通过 177 项 Node 测试；界面验证覆盖四种窗口宽度和 125% 缩放。构建命令不自动发布 Release。
 
 [御魂计算口径](docs/SOUL_CALCULATOR.md) · [阵容码协议](docs/TA_PROTOCOL.md) · [登录与解析验证](docs/LOGIN_AND_PARSER_V073.md) · [MIT 许可证](LICENSE)
