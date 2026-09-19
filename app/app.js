@@ -3,6 +3,8 @@ const C=AtlasCore,$=id=>document.getElementById(id), esc=x=>String(x??'').replac
 const safeURL=x=>{try{const u=new URL(x);return u.protocol==='https:'?u.href:'#';}catch{return '#';}};
 const link=(url,label)=>`<a href="${esc(safeURL(url))}" target="_blank" rel="noreferrer">${esc(label)}</a>`;
 let DATA,STATE={schemaVersion:1,lineups:[],deletedPresetIds:[],accounts:[],activeAccount:''},view='library',page=1,accountPage=1,selectedMembers=[],worker=null,matchResults={},currentCodeResult=null,currentDialog=null,detailState='unawakened',toastTimer,sessionRevision=0,libraryBusy=false,appBoot=Promise.resolve();
+let selectedLineups=new Set(),selectionFilter='',targetOnly=false,targetSaving=false;
+const targetIds=()=>new Set(STATE.targetLineups?.[STATE.activeAccount]||[]);
 const todayCN=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(new Date());
 const account=()=>STATE.accounts.find(a=>a.id===STATE.activeAccount);
 const lineups=()=>C.libraryLineups(DATA.lineups,STATE).map(l=>AtlasCategories.resolve(l,DATA));
@@ -47,28 +49,41 @@ function matchStatus(result){
  if(!result)return '未核对';
  if(result.proof?.state==='error')return '计算异常';
  if(gapKinds(result).length)return '有差距';
+ if(result.gapAssessment?.souls==='uncomputed')return '未精算';
+ if(!result.completed&&result.proof?.state==='stopped')return '精算已停止';
+ if(!result.completed&&result.proof?.state==='computing')return result.ready?'已达标 · 继续优化':'精算中';
  if(result.gapCategory==='ready')return '式神御魂达标';
- return result.gapCategory==='pending'?'计算中':'待核对';
+ return result.gapCategory==='pending'?'精算中':'待核对';
 }
 function pathSelected(p,category=$('category').value,subcategory=$('subcategory').value,query=$('dungeon').value){return (!category||p.category===category)&&(!subcategory||p.subcategory===subcategory)&&AtlasCategories.searchMatches(p,query);}
 function classificationCaption(l,category=$('category').value,subcategory=$('subcategory').value,query=$('dungeon').value){return AtlasCategories.caption(l.classificationPaths.find(p=>pathSelected(p,category,subcategory,query))||l.classificationPaths[0]);}
 function filteredLineups(){const query=$('search').value.trim().toLowerCase().split(/\s+/).filter(Boolean),category=$('category').value,dungeon=$('dungeon').value,source=$('source-filter').value,status=$('status-filter').value;return lineups().filter(l=>{
+ if(targetOnly&&!targetIds().has(l.id))return false;
  if(!l.classificationPaths.some(p=>pathSelected(p,category,$('subcategory').value,dungeon)))return false;
  if(account()&&$('gap-filter').value&&!gapKinds(matchResults[l.id]).includes($('gap-filter').value))return false;
  if(source==='excel'&&!l.sourceFile&&!l.occurrences?.some(o=>o.sourceFile))return false;if(source==='web'&&!l.sourceKind?.startsWith('web'))return false;if(source==='user'&&!STATE.lineups.some(x=>x.id===l.id))return false;
- if(status==='structured'&&!l.members?.length)return false;if(status==='pending'&&l.members?.length)return false;if(status==='ready'&&!matchResults[l.id]?.ready)return false;if(['available','missing','unknown'].includes(status)&&matchResults[l.id]?.status!==status)return false;
+ if(status==='structured'&&!l.members?.length)return false;if(status==='pending'&&l.members?.length)return false;
+ const result=matchResults[l.id];
+ if(['available','ready'].includes(status)&&!(result?.ready&&result.gapCategory==='ready'))return false;
+ if(status==='missing'&&!gapKinds(result).length)return false;
+ if(status==='unknown'&&!(result?.completed&&result.gapCategory==='unknown'))return false;
  if(!selectedMembers.every(id=>l.members?.some(m=>m.shikigamiId===id)))return false;
  const text=JSON.stringify(l).toLowerCase();return query.every(q=>text.includes(q));
 });}
 function renderLibrary(){
+ const focused=document.activeElement,focusAttr=[...(focused?.attributes||[])].find(a=>/^data-(select-lineup|detail|copy|reparse|edit-lineup|delete-lineup)$/.test(a.name));
+ refreshAvailability();
  const ls=filteredLineups();
+ const signature=JSON.stringify([STATE.activeAccount,targetOnly,selectedMembers,...['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'].map(id=>$(id).value)]);
+ if(signature!==selectionFilter){selectedLineups.clear();selectionFilter=signature;}
+ const visible=new Set(ls.map(l=>l.id));selectedLineups=new Set([...selectedLineups].filter(id=>visible.has(id)));
  if($('lineup-sort').value==='closest')ls.sort((a,b)=>C.compareMatches(matchResults[a.id],matchResults[b.id]));
  if($('lineup-sort').value==='recent')ls.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
  page=Math.max(1,Math.min(page,Math.ceil(ls.length/24)||1));
  const category=$('category').value,subcategory=$('subcategory').value,query=$('dungeon').value.trim(),paths=ls.flatMap(l=>l.classificationPaths).filter(p=>pathSelected(p));
  const exactPath=query&&paths.find(p=>AtlasCategories.caption(p)===query||AtlasCategories.caption(p).startsWith(query+' → '));
  const prefix=exactPath?query.split(' → '):category?[category,subcategory].filter(Boolean).filter((s,i,a)=>!i||s!==a[i-1]):[],groups=new Map();
- const browsing=!$('search').value.trim()&&!selectedMembers.length&&(!subcategory||category)&&(!query||exactPath)&&paths.some(p=>AtlasCategories.segments(p).length>prefix.length);
+ const browsing=!targetOnly&&!$('search').value.trim()&&!selectedMembers.length&&(!subcategory||category)&&(!query||exactPath)&&paths.some(p=>AtlasCategories.segments(p).length>prefix.length);
  const browseAttrs=parts=>`data-browse-path="${esc(parts.join(' → '))}"${parts.length===1?' data-browse-category="'+esc(parts[0])+'"':parts.length===2?' data-browse-sub="'+esc(parts[1])+'"':''}`;
  $('category-browser').hidden=!browsing&&!prefix.length;$('lineup-grid').hidden=false;$('lineup-grid').classList.toggle('category-previews',browsing);$('previous-page').parentElement.hidden=browsing;
  if(browsing){
@@ -82,14 +97,18 @@ function renderLibrary(){
  }
 
  if(!browsing)$('category-browser').innerHTML='';
- if(prefix.length)$('category-browser').insertAdjacentHTML('afterbegin',`<nav class="category-breadcrumb" aria-label="当前副本路径"><button class="ghost" data-browse-home>全部分类</button>${prefix.map((label,i)=>`<span aria-hidden="true">/</span>${i===prefix.length-1?'<strong>'+esc(label)+'</strong>':'<button class="ghost" '+browseAttrs(prefix.slice(0,i+1))+'>'+esc(label)+'</button>'}`).join('')}</nav>`);
+ if(!prefix.length||targetOnly){$('category-browser').hidden=false;$('category-browser').insertAdjacentHTML('afterbegin',targetOnly?'<nav class="category-breadcrumb"><button class="ghost" data-browse-home>全部分类</button><span aria-hidden="true">/</span><strong>目标阵容</strong></nav>':`<button class="target-directory" data-target-directory><span><strong>目标阵容</strong><small>${account()?esc(account().name):'选择库存账号后设置目标'}</small></span><b>${account()?targetIds().size:0} <span aria-hidden="true">→</span></b></button>`);}
+ if(prefix.length&&!targetOnly)$('category-browser').insertAdjacentHTML('afterbegin',`<nav class="category-breadcrumb" aria-label="当前副本路径"><button class="ghost" data-browse-home>全部分类</button>${prefix.map((label,i)=>`<span aria-hidden="true">/</span>${i===prefix.length-1?'<strong>'+esc(label)+'</strong>':'<button class="ghost" '+browseAttrs(prefix.slice(0,i+1))+'>'+esc(label)+'</button>'}`).join('')}</nav>`);
  const applied=[...new Set(['source-filter','status-filter'].map(id=>$(id).value?$(id).selectedOptions[0]?.textContent:'').filter(Boolean)),...selectedMembers.map(id=>rosterById(id)?.name||id)];
  document.querySelector('.extra-filters summary').textContent=applied.length?'筛选：'+applied.join(' · '):'更多筛选';
  $('gap-filter').disabled=!account();
  $('results-count').textContent=`找到 ${ls.length} 个阵容${browsing?' · 分类预览':''}${selectedMembers.length?' · 不含成员未知的记录':''}`;
- const card=(l,caption=classificationCaption(l))=>`<article class="lineup-card"><div class="card-head"><div><h3>${esc(l.title)}</h3><p class="card-subtitle">${esc(caption)}${l.date?' · '+esc(l.date.slice(0,10)):''}</p></div>${badge(l)}</div>${heroTeam(l)}${gapBadges(matchResults[l.id])}<div class="card-footer"><code class="code" title="${esc(l.code||'来源未提供阵容码')}">${esc(l.code||'来源未提供阵容码')}</code>${l.code?`<button class="copy-code" data-copy="${esc(l.id)}">复制</button>`:''}</div><div class="actions card-actions"><button class="secondary" data-detail="${esc(l.id)}">详情</button><button class="ghost" data-reparse="${esc(l.id)}">${C.hasParsedContent(l)?"重新解析":"解析"}</button><button class="secondary" data-edit-lineup="${esc(l.id)}">编辑</button><button class="danger" data-delete-lineup="${esc(l.id)}">删除</button></div></article>`;
+ const targets=targetIds();
+ const card=(l,caption=classificationCaption(l))=>`<article class="lineup-card${selectedLineups.has(l.id)?' is-selected':''}"><div class="card-selection"><label><input type="checkbox" data-select-lineup="${esc(l.id)}" aria-label="选择阵容 ${esc(l.title)}" ${selectedLineups.has(l.id)?'checked':''}>选择</label>${targets.has(l.id)?'<span class="target-badge">目标阵容</span>':''}</div><div class="card-head"><div><h3>${esc(l.title)}</h3><p class="card-subtitle">${esc(caption)}${l.date?' · '+esc(l.date.slice(0,10)):''}</p></div>${badge(l)}</div>${heroTeam(l)}${gapBadges(matchResults[l.id])}<div class="card-footer"><code class="code" title="${esc(l.code||'来源未提供阵容码')}">${esc(l.code||'来源未提供阵容码')}</code>${l.code?`<button class="copy-code" data-copy="${esc(l.id)}">复制</button>`:''}</div><div class="actions card-actions"><button class="secondary" data-detail="${esc(l.id)}">详情</button><button class="ghost" data-reparse="${esc(l.id)}">${C.hasParsedContent(l)?"重新解析":"解析"}</button><button class="secondary" data-edit-lineup="${esc(l.id)}">编辑</button><button class="danger" data-delete-lineup="${esc(l.id)}">删除</button></div></article>`;
  $('lineup-grid').innerHTML=(browsing?[...groups].map(([label,g])=>`<section class="category-preview"><div class="section-heading"><h3>${esc(label)} <small>${g.items.size} 个阵容</small></h3>${g.terminal?'':`<button class="secondary" ${browseAttrs(g.parts)}>查看全部 →</button>`}</div><div class="lineup-grid">${[...g.items.values()].slice(0,g.terminal?g.items.size:3).map(l=>card(l,classificationCaption(l,category,subcategory,g.parts.join(' → ')))).join('')}</div></section>`).join(''):ls.slice((page-1)*24,page*24).map(l=>card(l)).join(''))||'<div class="empty">没有符合条件的阵容。<br>试试减少关键词或取消部分筛选。</div>';
  renderReparseButtons();
+ renderSelection(ls);
+ if(focusAttr&&!focused.isConnected)[...$('lineup-grid').querySelectorAll('['+focusAttr.name+']')].find(el=>el.getAttribute(focusAttr.name)===focusAttr.value)?.focus({preventScroll:true});
  $('page-indicator').textContent=`${page} / ${Math.ceil(ls.length/24)||1}`;$('previous-page').disabled=page===1;$('next-page').disabled=page*24>=ls.length;$('match-all').disabled=!account()||!!worker;
  $('nav-count').textContent=lineups().length;$('stat-lineups').textContent=lineups().length;$('stat-dungeons').textContent=new Set(lineups().flatMap(l=>l.dungeons||[l.dungeon])).size;$('stat-reference').textContent=lineups().filter(l=>l.members?.length).length;
  const active=DATA.events.filter(e=>e.start<=todayCN()&&e.end>=todayCN()&&e.battle);$('event-strip').innerHTML=active.length?`<div class="event-banner"><div><strong>${esc(active[0].title)} · 进行中</strong><span>截至 ${esc(active[0].end)}</span></div><button class="ghost" id="event-filter">查看活动阵容 →</button></div>`:'';
@@ -102,6 +121,7 @@ function renderDungeonOptions(){
  $('dungeon-options').hidden=false;$('dungeon').setAttribute('aria-expanded','true');$('dungeon').removeAttribute('aria-activedescendant');
 }
 function browseTo(value){
+ targetOnly=false;
  const parts=value?value.split(' → '):[],path=lineups().flatMap(l=>l.classificationPaths).find(p=>AtlasCategories.caption(p)===value||AtlasCategories.caption(p).startsWith(value+' → '));
  $('category').value=parts[0]||'';$('subcategory').value='';$('dungeon').value='';fillFilters();
  if(parts.length>1&&path){$('subcategory').value=path.subcategory;$('dungeon').value=value;}
@@ -179,7 +199,7 @@ function updateCode(){
 }
 async function decodeLocalInput(input){if(window.atlas)return atlas.decode(input);const r=await fetch('/api/decode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});if(!r.ok)throw new Error('本地解析服务不可用，请使用 Windows 桌面版');return r.json();}
 async function decodeContent(input,options={}){return typeof input==='string'&&C.classifyCode(input)==='pipe-ta'?window.TALogin.query(C.normalizeCode(input),options):decodeLocalInput(input);}
-let libraryParser=null,autoParseStarted=false,parsePriority=[],parseReport={phase:'idle'},matchTimer,queryProgress=null;
+let libraryParser=null,autoParseStarted=false,parsePriority=[],parseReport={phase:'idle'},queryProgress=null;
 function queryProgressText(){return !queryProgress?'':queryProgress.phase==='waiting'?`等待 ${Math.max(0,Math.ceil((queryProgress.retryAt-Date.now())/1000))} 秒后查询（第 ${queryProgress.attempt} / ${queryProgress.maxAttempts} 次）`:`正在查询（第 ${queryProgress.attempt} / ${queryProgress.maxAttempts} 次）`;}
 window.taLogin?.onQueryProgress?.(progress=>{queryProgress=progress;renderParseProgress();if(progress&&C.normalizeCode($('code-input').value)===progress.code)$('code-status').textContent=queryProgressText();});
 let bulkBusy=false,bulkReading=false,bulkFileRevision=0,bulkPreviewLimit=50;
@@ -210,7 +230,7 @@ async function readBulkFile(file){
 async function applyBulkImport(){
  if(bulkBusy||bulkReading||!DATA)return;let preview=renderBulkPreview();if(preview.error||!preview.entries.length)return;
  const revision=sessionRevision,parser=libraryParser,resume=parseReport.phase==='running',remaining=lineups().filter(AtlasLibraryParser.canAttempt).map(l=>l.code),auto=$('bulk-auto-parse').checked;
- bulkBusy=true;bulkFileRevision++;clearTimeout(codeTimer);clearTimeout(matchTimer);stopMatch();parser?.pause();renderBulkPreview();
+ bulkBusy=true;bulkFileRevision++;clearTimeout(codeTimer);stopMatch();parser?.pause();renderBulkPreview();
  $('bulk-status').textContent=parser?.inflight.size?'正在等待当前解析保存，然后添加新阵容…':'正在保存到本机…';
  let added=[];
  try{
@@ -231,7 +251,7 @@ async function applyBulkImport(){
    bulkBusy=false;renderBulkPreview();
    if(added.length&&auto){parsePriority=[...new Set([...added.map(l=>l.code),...parsePriority])];autoParseStarted=false;maybeAutoParse();}
    else if(resume)startLibraryParse({codes:remaining});
-   scheduleMatch();
+   refreshAvailability();
   }
  }
 }
@@ -260,7 +280,7 @@ async function retryLineup(l){
  finally{
   if(libraryParser===parser){
    if(view==='library')renderLibrary();if(view==='manage')renderManage();
-   renderParseProgress();scheduleMatch();
+   renderParseProgress();refreshAvailability();
   }
  }
 }
@@ -283,7 +303,7 @@ async function saveParsedLineup(item,payload,valid){
  if(payload.code!==item.code)throw new Error('解析结果原码不一致，未覆盖本地内容');
  stopMatch();
  const incoming=C.validateLineup(C.adaptTA(payload,DATA)),existing=lineups().filter(l=>l.code===item.code),oldRows=existing.length?existing:[item],previous=new Map(STATE.lineups.map(l=>[l.id,l])),updates=[];let saved;
- for(const old of oldRows){saved={...C.mergeDecodedLineup(old,incoming),id:old.id||'user-'+crypto.randomUUID(),parsedAt:new Date().toISOString(),lastParseError:null,lastParseFailure:null};STATE.lineups=STATE.lineups.filter(l=>l.id!==saved.id);STATE.lineups.push(saved);updates.push(saved);delete matchResults[saved.id];}
+ for(const old of oldRows){saved={...C.mergeDecodedLineup(old,incoming),id:old.id||'user-'+crypto.randomUUID(),parsedAt:new Date().toISOString(),lastParseError:null,lastParseFailure:null};STATE.lineups=STATE.lineups.filter(l=>l.id!==saved.id);STATE.lineups.push(saved);updates.push(saved);if(worker&&matchJobIds.has(saved.id))stopMatch();delete matchResults[saved.id];}
  if(!await persist(sessionRevision,valid)){if(valid())for(const row of updates){if(!STATE.lineups.includes(row))continue;STATE.lineups=STATE.lineups.filter(l=>l!==row);if(previous.has(row.id))STATE.lineups.push(previous.get(row.id));}return false;}
  if(!valid())return false;
  fillFilters();if(view==='library')renderLibrary();if(view==='manage')renderManage();renderParseProgress();
@@ -301,7 +321,7 @@ function createLibraryParser(revision){
    if(!await persist(sessionRevision,valid)){if(valid()&&STATE.lineups.includes(failed)){STATE.lineups=STATE.lineups.filter(l=>l!==failed);if(previous)STATE.lineups.push(previous);}throw new Error('失败记录未能保存到本地，已暂停解析');}
    if(valid()){fillFilters();renderParseProgress();if(view==='manage')renderManage();}
   },
-  onProgress:report=>{parseReport=report;renderParseProgress();if(['complete','partial','paused'].includes(report.phase))scheduleMatch();}
+  onProgress:report=>{parseReport=report;renderParseProgress();if(['complete','partial','paused'].includes(report.phase))refreshAvailability();}
  });renderParseProgress();
 }
 function startLibraryParse(options={}){
@@ -316,7 +336,26 @@ function maybeAutoParse(){
  if(needRole&&!window.TALogin.status().selected_avatar){renderParseProgress();return;}
  startLibraryParse();
 }
-function scheduleMatch(){clearTimeout(matchTimer);if(bulkBusy||libraryBusy||!account()||!DATA||['running','pausing'].includes(parseReport.phase))return;const revision=sessionRevision;matchTimer=setTimeout(()=>{if(sameSession(revision)&&account()&&!bulkBusy&&!['running','pausing'].includes(parseReport.phase))startMatch();},400);}
+function refreshAvailability(){
+ if(!account()||!DATA)return;
+ for(const l of lineups())if(!matchResults[l.id]){const {assessment}=AtlasExact.inspectHeroes(l,account());matchResults[l.id]={status:assessment.heroShortage>0||assessment.heroTraining>0?'missing':'uncomputed',gapCategory:AtlasExact.gapCategory(assessment.heroes,'uncomputed'),gapAssessment:assessment,proof:{state:'idle',nodes:0},ready:false,completed:false,members:[],reasons:[],checks:[]};}
+}
+function renderSelection(ls=filteredLineups()){
+ const count=selectedLineups.size,all=$('select-filtered');all.checked=!!ls.length&&count===ls.length;all.indeterminate=count>0&&count<ls.length;all.disabled=!ls.length;
+ $('selection-count').textContent=`已选 ${count} / ${ls.length}`;
+ $('select-invert').disabled=!ls.length;$('select-clear').disabled=!count;
+ for(const id of ['target-add','target-remove','match-selected'])$(id).disabled=!account()||!count||targetSaving;
+ if(account()&&count&&!targetSaving){const targets=targetIds();$('target-add').disabled=[...selectedLineups].every(id=>targets.has(id));$('target-remove').disabled=![...selectedLineups].some(id=>targets.has(id));}
+ $('gap-statistics').disabled=!account()||!ls.length;
+ document.querySelectorAll('[data-select-lineup]').forEach(input=>{input.checked=selectedLineups.has(input.dataset.selectLineup);input.closest('.lineup-card').classList.toggle('is-selected',input.checked);});
+}
+async function saveTargets(remove=false){
+ const active=account();if(!active||targetSaving||!selectedLineups.size)return;
+ const before=STATE.targetLineups,ids=targetIds();for(const id of selectedLineups)remove?ids.delete(id):ids.add(id);
+ targetSaving=true;STATE.targetLineups={...before,[active.id]:[...ids]};renderSelection();
+ try{if(!await persist()){STATE.targetLineups=before;return;}toast(remove?'已从此账号的目标阵容移除':'已保存为此账号的目标阵容');}
+ finally{targetSaving=false;renderLibrary();}
+}
 window.addEventListener('atlas-login-status',()=>{renderParseProgress();maybeAutoParse();});
 async function localDecode(force=false){
  if(!requireParserLogin())return;
@@ -324,7 +363,7 @@ async function localDecode(force=false){
  currentCodeResult=null;$('remote-decode').disabled=true;$('code-status').textContent=C.classifyCode(code)==='pipe-ta'?'正在查询文字阵容码…':'正在本机解析…';
   try{const canonical=C.classifyCode(code)==='lineup-data'?'#TA#'+code:code,existing=lineups().find(l=>l.code===canonical),item=existing||{code:canonical,...C.codeProvenance($('code-input').value),title:$('code-title').value.trim()||'未命名阵容',dungeon:$('code-dungeon').value.trim()||'待分类',notes:$('code-notes').value};
     const result=await libraryParser.parseOne(item,{force});if(revision!==codeRevision||C.normalizeCode($('code-input').value)!==code)return;
-    $('code-input').value=result.code;showCodeResult(result);$('code-status').textContent=`V${result.protocolVersion} ${result.decodeState==='decoded-server'?'查询并解析成功':'本地解析成功'} · ${result.members.length} 位成员 · 已自动保存在本机`;scheduleMatch();
+    $('code-input').value=result.code;showCodeResult(result);$('code-status').textContent=`V${result.protocolVersion} ${result.decodeState==='decoded-server'?'查询并解析成功':'本地解析成功'} · ${result.members.length} 位成员 · 已自动保存在本机`;refreshAvailability();
   }catch(e){if(revision!==codeRevision)return;const saved=lineups().find(l=>l.code===code);if(saved&&C.hasParsedContent(saved))showCodeResult(saved);else{currentCodeResult=null;$('decode-result').innerHTML=`<div class="notice">${esc(e.message)}</div>`;}$('code-status').textContent='解析未完成：'+e.message;}finally{$('remote-decode').disabled=false;}
 }
 async function saveCode(){
@@ -335,7 +374,7 @@ async function saveCode(){
  const l={...existing,...currentCodeResult,...C.codeProvenance($('code-input').value),id:existing?.id||currentCodeResult?.id||'user-'+crypto.randomUUID(),code,title:$('code-title').value.trim()||existing?.title||'未命名阵容',dungeon:$('code-dungeon').value.trim()||'待分类',dungeons:[$('code-dungeon').value.trim()||'待分类'],category:existing?.category||'其他',notes:$('code-notes').value,members:currentCodeResult?.members||existing?.members||[],sourceKind:currentCodeResult?.sourceKind||'user',requirementsComplete:currentCodeResult?.requirementsComplete||false};
  STATE.lineups=[...STATE.lineups.filter(x=>x.id!==l.id),l];
  if(!await persist()){STATE.lineups=previous;return;}
- matchResults={};$('code-input').value=code;fillFilters();renderParseProgress();toast('阵容已保存，重新打开仍可使用');updateCode();
+ stopMatch();matchResults={};$('code-input').value=code;fillFilters();renderParseProgress();toast('阵容已保存，重新打开仍可使用');updateCode();
 }
 async function importTAFiles(files){
  const revision=sessionRevision,mode=importMode;if(!sameSession(revision))return;
@@ -354,11 +393,17 @@ async function importTAFiles(files){
 async function exportJSON(name,data){if(window.atlas){if(await atlas.exportJSON({name,data}))toast('文件已导出');return;}const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 let importMode='accounts';function pickFiles(mode){importMode=mode;$('file-input').value='';$('file-input').multiple=['accounts','payload'].includes(mode);$('file-input').accept=mode==='qr'?'.png,.jpg,.jpeg,.webp':mode==='payload'?'.json,.txt':'.json,application/json';$('file-input').click();}
 function validateLineup(l){if(!C.hasLineupCode(l))throw new Error('阵容必须包含非空 code（原始阵容码）');const valid=C.validateLineup(l);return {...valid,id:valid.id||'manual-'+crypto.randomUUID(),sourceKind:valid.sourceKind||'manual'};}
-async function handleFiles(files){const revision=sessionRevision,mode=importMode;if(!sameSession(revision))return;try{const parsed=[];for(const f of files){if(f.size>50*1024*1024)throw new Error('单个文件不能超过50 MiB');const text=await f.text();if(!sameSession(revision))return;parsed.push({name:f.name,json:JSON.parse(text.replace(/^\uFEFF/,''))});}if(mode==='accounts'){const accounts=parsed.map(p=>C.parseAccount(p.json,p.name));stopMatch();for(const a of accounts){const old=STATE.accounts.find(x=>x.id===a.id),updated=$('merge-import').checked?C.mergeAccount(old,a):a;STATE.accounts=STATE.accounts.filter(x=>x.id!==a.id);STATE.accounts.push(updated);STATE.activeAccount=a.id;}matchResults={};if(await persist()){accountPage=1;resolveServerNames();updateAccountSelect();renderAccounts();scheduleMatch();toast(`已保存 ${accounts.length} 份账号；重启后自动载入`);}}
-else if(mode==='backup'){const b=parsed[0]?.json;if(b?.format!=='onmyoji-atlas-backup'||b.schemaVersion!==1||!Array.isArray(b.accounts)||!Array.isArray(b.lineups))throw new Error('不支持的备份格式');const accounts=b.accounts.map(C.restoreAccount),ls=b.lineups.filter(C.hasLineupCode).map(validateLineup),removed=b.lineups.length-ls.length;const next={schemaVersion:1,accounts,lineups:ls,deletedPresetIds:C.deletedPresetIds(b.deletedPresetIds),activeAccount:accounts[0]?.id||''},previous=STATE;libraryParser?.cancel();stopMatch();STATE=next;matchResults={};if(!await persist()){STATE=previous;createLibraryParser(sessionRevision);return;}createLibraryParser(sessionRevision);if(sameSession(revision)){setLoading(false);$('loading').hidden=true;updateAccountSelect();fillFilters();selectView('library');toast('备份已恢复'+(removed?'，已跳过 '+removed+' 条无阵容码的记录':''));}}
+async function handleFiles(files){const revision=sessionRevision,mode=importMode;if(!sameSession(revision))return;try{const parsed=[];for(const f of files){if(f.size>50*1024*1024)throw new Error('单个文件不能超过50 MiB');const text=await f.text();if(!sameSession(revision))return;parsed.push({name:f.name,json:JSON.parse(text.replace(/^\uFEFF/,''))});}if(mode==='accounts'){const accounts=parsed.map(p=>C.parseAccount(p.json,p.name));resetMatchContext();for(const a of accounts){const old=STATE.accounts.find(x=>x.id===a.id),updated=$('merge-import').checked?C.mergeAccount(old,a):a;STATE.accounts=STATE.accounts.filter(x=>x.id!==a.id);STATE.accounts.push(updated);STATE.activeAccount=a.id;}matchResults={};if(await persist()){accountPage=1;resolveServerNames();updateAccountSelect();renderAccounts();refreshAvailability();toast(`已保存 ${accounts.length} 份账号；重启后自动载入`);}}
+else if(mode==='backup'){const b=parsed[0]?.json;if(b?.format!=='onmyoji-atlas-backup'||b.schemaVersion!==1||!Array.isArray(b.accounts)||!Array.isArray(b.lineups))throw new Error('不支持的备份格式');const accounts=b.accounts.map(C.restoreAccount),ls=b.lineups.filter(C.hasLineupCode).map(validateLineup),removed=b.lineups.length-ls.length;const next={schemaVersion:1,accounts,lineups:ls,deletedPresetIds:C.deletedPresetIds(b.deletedPresetIds),targetLineups:b.targetLineups,activeAccount:accounts.some(a=>a.id===b.activeAccount)?b.activeAccount:accounts[0]?.id||''},previous=STATE;libraryParser?.cancel();stopMatch();STATE=next;STATE.targetLineups=C.normalizeTargets(STATE,DATA.lineups);resetMatchContext();matchResults={};if(!await persist()){STATE=previous;createLibraryParser(sessionRevision);return;}createLibraryParser(sessionRevision);if(sameSession(revision)){setLoading(false);$('loading').hidden=true;updateAccountSelect();fillFilters();selectView('library');toast('备份已恢复'+(removed?'，已跳过 '+removed+' 条无阵容码的记录':''));}}
 else{let l=parsed[0]?.json;if(l?.ok===true)l=validateLineup({...C.adaptInspection(l,DATA.roster),code:l.code,sourceKind:'local-json',id:'local-'+crypto.randomUUID()});else l=validateLineup(l);STATE.lineups=STATE.lineups.filter(x=>x.id!==l.id);STATE.lineups.push(l);if(await persist()){fillFilters();toast('结构化资料已保存');showLineup(l);}}}catch(e){if(sameSession(revision))toast('导入失败：'+e.message);}}
 
-function stopMatch(){if(worker)worker.terminate();worker=null;$('cancel-match').hidden=true;$('match-all').disabled=!account();}
+function stopMatch(){
+ if(worker)worker.terminate();worker=null;matchPaused=false;
+ for(const id of matchJobIds){const r=matchResults[id];if(r&&!r.completed)r.proof={...r.proof,state:'stopped'};}
+ matchJobIds.clear();$('cancel-match').hidden=true;$('match-all').disabled=!account();
+ if(!$('match-progress').hidden)$('match-progress').textContent='精算已停止，已有结果保留';
+ renderGapStatistics();
+}
 function showSamples(){openDialog('官方图片小样','采集后已核对资源类型；没有把立绘、头像或书签当作原生卡面',`<div class="sample-grid">${[['608','art-before','png','石长姬 · 未觉醒官方立绘','830 × 696'],['608','art-after','png','石长姬 · 觉醒官方立绘','830 × 696'],['217','portrait-before','jpg','大天狗 · 官方头像','90 × 90'],['217','bookmark','png','大天狗 · 官方书签','73 × 240']].map(([id,f,ext,name,size])=>`<div><img src="../data/images/${id}/${f}.${ext}" alt="${name}"><h3>${name}</h3><p>${size}</p></div>`).join('')}</div><div class="notice">透明立绘在矩形容器中完整展示，原图未裁切、未拉伸。原生卡面覆盖为 0；双形态图片没有互相复制填补。</div>`);}
 document.addEventListener('click',async e=>{const b=e.target.closest('button,[data-hero],[data-actor],[data-view]');if(!b)return;if(b.dataset.view){e.preventDefault();selectView(b.dataset.view);}if(b.dataset.detail){const l=lineups().find(x=>x.id===b.dataset.detail);if(l)showLineup(l);}if(b.dataset.copy||b.id==='copy-lineup'){const l=b.id==='copy-lineup'?currentDialog:lineups().find(x=>x.id===b.dataset.copy);await copyCode(b,l?.code);}if(b.id==='scroll-members-left'||b.id==='scroll-members-right'){const row=$('dialog-body').querySelector('.member-detail-grid');row.scrollBy({left:row.clientWidth*.75*(b.id.endsWith('left')?-1:1),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});}if(b.dataset.removeMember){selectedMembers=selectedMembers.filter(x=>x!==b.dataset.removeMember);renderSelected();page=1;renderLibrary();}if(b.id==='event-filter'){$('clear-filters').click();browseTo('限时活动 → 拾光永恒');}if((b.id==='parse-lineup'&&currentDialog)||b.dataset.reparse){const l=b.dataset.reparse?lineups().find(x=>x.id===b.dataset.reparse):currentDialog;if(l)await retryLineup(l);}if(b.dataset.parseAction==='start')startLibraryParse();if(b.dataset.parseAction==='pause')libraryParser?.pause();if(b.id==='export-lineup'&&currentDialog)exportJSON(currentDialog.title+'.json',currentDialog);if(b.id==='show-current-code'&&currentCodeResult)showLineup(currentCodeResult);if(b.id==='export-audit')exportJSON('覆盖报告-2026-09-12.json',{assets:DATA.assetAudit,excel:DATA.excelAudit});});
 document.addEventListener('change',e=>{if(e.target.id==='detail-state'){detailState=e.target.value;showLineup(currentDialog);}});
@@ -367,7 +412,7 @@ $('close-dialog').onclick=()=>$('detail-dialog').close();$('detail-dialog').oncl
 for(const id of ['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'])$(id).addEventListener(['search','dungeon'].includes(id)?'input':'change',()=>{if(id==='category')$('subcategory').value='';if(['category','subcategory'].includes(id))$('dungeon').value='';page=1;fillFilters();renderLibrary();});
 function addMemberFilter(){const r=DATA.roster.find(r=>r.name===$('member-filter').value.trim());if(!r)return;if(!selectedMembers.includes(r.id))selectedMembers.push(r.id);$('member-filter').value='';renderSelected();page=1;renderLibrary();}
 $('member-filter').onchange=addMemberFilter;$('add-member-filter').onclick=addMemberFilter;$('member-filter').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addMemberFilter();}};
-$('clear-filters').onclick=()=>{for(const id of ['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'])$(id).value='';selectedMembers=[];renderSelected();page=1;fillFilters();hideDungeonOptions();renderLibrary();};
+$('clear-filters').onclick=()=>{targetOnly=false;for(const id of ['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'])$(id).value='';selectedMembers=[];renderSelected();page=1;fillFilters();hideDungeonOptions();renderLibrary();};
 $('previous-page').onclick=()=>{page--;renderLibrary();};$('next-page').onclick=()=>{page++;renderLibrary();};
 $('add-code').onclick=()=>{selectView('decode');$('code-input').focus();};$('code-input').oninput=updateCode;$('save-code').onclick=saveCode;$('remote-decode').onclick=()=>localDecode(true);$('clear-code').onclick=()=>{for(const id of ['code-input','code-title','code-dungeon','code-notes'])$(id).value='';updateCode();};
 $('lineup-sort').add(new Option('最近添加','recent'));
@@ -383,10 +428,17 @@ $('export-backup').onclick=()=>exportJSON('阴阳师阵容图鉴-本地备份.js
 $('account-search').oninput=()=>{accountPage=1;renderAccounts();};
 for(const id of ['account-kind','account-page-size'])$(id).onchange=()=>{accountPage=1;renderAccounts();};
 $('account-previous-page').onclick=()=>{accountPage--;renderAccounts();};$('account-next-page').onclick=()=>{accountPage++;renderAccounts();};
-$('active-account').onchange=async()=>{stopMatch();STATE.activeAccount=$('active-account').value;accountPage=1;matchResults={};await persist();if(view==='accounts')renderAccounts();if(view==='library')renderLibrary();scheduleMatch();};
+$('active-account').onchange=async()=>{resetMatchContext();STATE.activeAccount=$('active-account').value;accountPage=1;matchResults={};await persist();if(view==='accounts')renderAccounts();if(view==='library')renderLibrary();refreshAvailability();};
 $('lineup-sort').onchange=()=>{page=1;renderLibrary();};$('match-all').onclick=()=>startMatch();$('cancel-match').onclick=()=>toggleMatchPause();
+$('select-filtered').onchange=e=>{selectedLineups=e.target.checked?new Set(filteredLineups().map(l=>l.id)):new Set();renderSelection();};
+$('select-invert').onclick=()=>{selectedLineups=new Set(filteredLineups().filter(l=>!selectedLineups.has(l.id)).map(l=>l.id));renderSelection();};
+$('select-clear').onclick=()=>{selectedLineups.clear();renderSelection();};
+$('target-add').onclick=()=>saveTargets();$('target-remove').onclick=()=>saveTargets(true);$('match-selected').onclick=()=>startMatch([...selectedLineups]);
+$('gap-statistics').onclick=()=>openGapStatistics();$('close-gap-statistics').onclick=()=>$('gap-dialog').close();$('gap-statistics-pause').onclick=()=>toggleMatchPause();
+$('gap-statistics-retry').onclick=()=>statsSnapshot&&startMatch(statsSnapshot.ids,{reuse:true});
+document.addEventListener('change',e=>{const id=e.target.dataset.selectLineup;if(!id)return;e.target.checked?selectedLineups.add(id):selectedLineups.delete(id);renderSelection();});
 $('new-manual').onclick=()=>{$('manual-json').value=JSON.stringify({title:'我的配置（请修改）',code:'',category:'其他',dungeon:'待分类',notes:'手工填写，不是阵容码解码结果',requirementsComplete:false,members:[{kind:'shikigami',name:'石长姬',shikigamiId:'608',awakening:null,skills:null,level:40,star:6,config:{suitRequirements:[],suitSelectionComplete:true,mainStats:{},ranges:[],metricId:1,targetScore:null,sixStarOnly:true,maxLevelOnly:true,scope:'all',excludeOccupied:false}}]},null,2);};
-$('save-manual').onclick=async()=>{try{const l=validateLineup(JSON.parse($('manual-json').value));l.members=l.members.map((m,i)=>({...m,index:i}));STATE.lineups=STATE.lineups.filter(x=>x.id!==l.id);STATE.lineups.push(l);matchResults={};if(await persist()){fillFilters();toast('手工配置已保存');showLineup(l);}}catch(e){toast('配置未保存：'+e.message);}};
+$('save-manual').onclick=async()=>{try{const l=validateLineup(JSON.parse($('manual-json').value));l.members=l.members.map((m,i)=>({...m,index:i}));stopMatch();STATE.lineups=STATE.lineups.filter(x=>x.id!==l.id);STATE.lineups.push(l);matchResults={};if(await persist()){fillFilters();toast('手工配置已保存');showLineup(l);}}catch(e){toast('配置未保存：'+e.message);}};
 window.runLoginSmoke=async()=>{
  await appBoot;await TALogin.ready();const initial=await taLogin.status(),blocked=[];
  const result={title:document.title,mode:'offline-startup-explicit-login',offline:!$('app-shell').hidden&&!$('app-shell').inert&&$('login-screen').hidden,dataLoaded:!!DATA,noAutomaticQR:!initial.qr_image&&!initial.authenticated,accounts:STATE.accounts.length,lineups:lineups().length};
@@ -414,7 +466,7 @@ function renderOfficialStatus(status){
  $('official-errors').textContent=(status?.errors||[]).join('\n');$('official-news').innerHTML=(DATA?.officialNews||[]).map(n=>`<div class="source-item">${link(n.url,n.title)}<p class="caption">${esc(n.date)}</p></div>`).join('')||'<p class="caption">更新官方资料后，这里显示最新维护公告。</p>';
 }
 let reloadingOfficial=false;
-async function reloadOfficial(){if(reloadingOfficial||!window.atlas)return;const revision=sessionRevision;reloadingOfficial=true;try{const data=await atlas.loadData();if(!sameSession(revision))return;DATA=data;stopMatch();matchResults={};fillFilters();selectView(view);scheduleMatch();renderOfficialStatus(DATA.officialUpdate);$('resource-date').textContent=DATA.officialUpdate.lastSuccessAt?'官方资源更新于 '+DATA.officialUpdate.lastSuccessAt.slice(0,10):'内置资源截至 '+DATA.cutoffDate;}finally{reloadingOfficial=false;}}
+async function reloadOfficial(){if(reloadingOfficial||!window.atlas)return;const revision=sessionRevision;reloadingOfficial=true;try{const data=await atlas.loadData();if(!sameSession(revision))return;DATA=data;resetMatchContext();matchResults={};fillFilters();selectView(view);refreshAvailability();renderOfficialStatus(DATA.officialUpdate);$('resource-date').textContent=DATA.officialUpdate.lastSuccessAt?'官方资源更新于 '+DATA.officialUpdate.lastSuccessAt.slice(0,10):'内置资源截至 '+DATA.cutoffDate;}finally{reloadingOfficial=false;}}
 $('official-refresh').onclick=async()=>{try{await atlas.refreshOfficial({force:$('official-force').checked});}catch(e){toast('更新失败：'+e.message);}};
 $('official-cancel').onclick=()=>atlas.cancelOfficial();$('official-auto').onchange=async()=>{try{renderOfficialStatus(await atlas.setAutoUpdate($('official-auto').checked));}catch(e){toast(e.message);}};
 if(window.atlas?.onOfficialProgress)atlas.onOfficialProgress(status=>{if(!DATA)return;renderOfficialStatus(status);if(!status.running&&['complete','partial'].includes(status.phase))reloadOfficial().catch(e=>toast('读取更新失败：'+e.message));});
@@ -425,6 +477,7 @@ async function boot(revision){
   const data=await atlas.loadData(),saved=await atlas.loadState();if(revision!==sessionRevision)return;
   DATA=data;STATE=saved?.schemaVersion===1&&Array.isArray(saved.accounts)&&Array.isArray(saved.lineups)?saved:{schemaVersion:1,lineups:[],accounts:[],activeAccount:''};
   STATE.deletedPresetIds=C.deletedPresetIds(STATE.deletedPresetIds);
+  STATE.targetLineups=C.normalizeTargets(STATE,DATA.lineups);
   let upgraded=false;
   STATE.lineups=STATE.lineups.map(l=>{if(!['ta-query','ta-local'].includes(l.sourceKind)||l.mapperVersion>=4||!l.raw?.hconf)return l;try{const mapped=C.adaptTA({ok:true,format:'ta-payload',origin:l.sourceKind==='ta-query'?'official-query':'local',code:l.code,data:l.raw,kinds:l.members.map(m=>m.kind)},DATA);upgraded=true;return C.mergeDecodedLineup(l,mapped);}catch{return l;}});
   if(upgraded)await persist(revision);
@@ -432,11 +485,11 @@ async function boot(revision){
   const removed=STATE.lineups.length-STATE.lineups.filter(C.hasLineupCode).length;
   if(removed){STATE.lineups=STATE.lineups.filter(C.hasLineupCode);if(await persist(revision))toast('已清理 '+removed+' 条无阵容码的旧阵容');}
   if(revision!==sessionRevision)return;
-  setLoading(false);fillFilters();resolveServerNames();updateAccountSelect();$('loading').hidden=true;selectView('library');createLibraryParser(revision);maybeAutoParse();scheduleMatch();renderOfficialStatus(DATA.officialUpdate);$('resource-date').textContent=DATA.officialUpdate?.lastSuccessAt?'官方资源更新于 '+DATA.officialUpdate.lastSuccessAt.slice(0,10):'内置资源截至 '+DATA.cutoffDate;
+  setLoading(false);fillFilters();resolveServerNames();updateAccountSelect();$('loading').hidden=true;selectView('library');createLibraryParser(revision);maybeAutoParse();refreshAvailability();renderOfficialStatus(DATA.officialUpdate);$('resource-date').textContent=DATA.officialUpdate?.lastSuccessAt?'官方资源更新于 '+DATA.officialUpdate.lastSuccessAt.slice(0,10):'内置资源截至 '+DATA.cutoffDate;
  }catch(e){if(revision!==sessionRevision)return;$('loading').textContent='资料加载失败：'+e.message;if(DATA){$('restore-backup').disabled=false;$('file-input').disabled=false;}}
 }
 window.addEventListener('atlas-session',event=>{
  libraryParser?.cancel();autoParseStarted=false;
- if(DATA){createLibraryParser(sessionRevision);if(event.detail?.authenticated){resolveServerNames();maybeAutoParse();scheduleMatch();}else{parseReport={...parseReport,phase:'paused',error:'登录会话已结束；本地资料仍可查看。'};renderParseProgress();}}
+ if(DATA){createLibraryParser(sessionRevision);if(event.detail?.authenticated){resolveServerNames();maybeAutoParse();refreshAvailability();}else{parseReport={...parseReport,phase:'paused',error:'登录会话已结束；本地资料仍可查看。'};renderParseProgress();}}
 });
 appBoot=boot(sessionRevision).then(()=>window.dispatchEvent(new Event('atlas-ready')));

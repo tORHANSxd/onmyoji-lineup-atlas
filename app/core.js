@@ -78,7 +78,13 @@ function libraryLineups(presets,state){
 }
 function removeLibraryLineups(state,presets,ids){
   const removed=new Set(ids);
-  return {...state,lineups:state.lineups.filter(l=>!removed.has(l.id)),deletedPresetIds:[...new Set([...deletedPresetIds(state.deletedPresetIds),...presets.filter(l=>removed.has(l.id)).map(l=>l.id)])]};
+  const next={...state,lineups:state.lineups.filter(l=>!removed.has(l.id)),deletedPresetIds:[...new Set([...deletedPresetIds(state.deletedPresetIds),...presets.filter(l=>removed.has(l.id)).map(l=>l.id)])]};
+  if(state.targetLineups)next.targetLineups=normalizeTargets(next,presets);
+  return next;
+}
+function normalizeTargets(state,presets){
+  const valid=new Set(libraryLineups(presets,state).map(l=>l.id)),saved=state.targetLineups||{};
+  return Object.fromEntries((state.accounts||[]).map(a=>[a.id,[...new Set((Array.isArray(saved[a.id])?saved[a.id]:[]).filter(id=>valid.has(id)))]]));
 }
 function adaptInspection(payload,roster=[]){
   if(payload?.ok!==true)throw new Error(typeof payload?.error==='string'?payload.error:'服务没有返回成功结果');const d=payload.data;
@@ -168,15 +174,33 @@ function panel(base,souls,effects,extra={}){
   p.attack=p.attack*(1+(extra.attackPercent||0))+(extra.attack||0);p.crit+=extra.crit||0;p.critDamage+=extra.critDamage||0;
   return {values:p,sets,unsupported};
 }
-function score(p,metric){const fields={2:'effectHit',3:'effectResist',4:'hp',5:'attack',6:'defense',7:'speed',8:'crit',9:'critDamage'};if(fields[metric])return p[fields[metric]];if(metric===1)return p.attack*p.critDamage;if(metric===10)return p.hp*p.critDamage;if(metric===11)return p.effectHit+p.effectResist;if(metric===12)return p.defense*p.critDamage;return null;}
-function checkPanel(p,c){
+// APK 2.8.84: auto_yuhun_criteria_expression (33249), with the dynamic
+// Peacock override in YuhunAlgo.AlgoMgr.init_algo (7126:606).
+function objectiveFormula(heroId,metric){
+ const formulas={344:{1:'(攻击 + 防御 × 2) × 暴伤',12:'(防御 + 攻击 × 0.1) × 暴伤'},332:{1:'攻击 × 暴伤²'},392:{1:'攻击 × (暴伤 − 0.5)'},550:{1:'(攻击 + 基础攻击 × (0.75 + 效果命中)) × 暴伤'},590:{1:'攻击 × (暴伤 + 效果抵抗)'}};
+ return formulas[heroId]?.[metric]||METRICS[metric]?.[1]||'满足全部条件';
+}
+function score(p,metric,objective={}){
+ const id=String(objective.heroId||'');
+ if(metric===1){
+  if(id==='344')return (p.attack+p.defense*2)*p.critDamage;
+  if(id==='332')return p.attack*p.critDamage*p.critDamage;
+  if(id==='392')return p.attack*(p.critDamage-.5);
+  if(id==='550')return finite(objective.baseAttack)?(p.attack+objective.baseAttack*(.75+p.effectHit))*p.critDamage:null;
+  if(id==='590')return p.attack*(p.critDamage+p.effectResist);
+  return p.attack*p.critDamage;
+ }
+ if(metric===12&&id==='344')return (p.defense+p.attack*.1)*p.critDamage;
+ const fields={2:'effectHit',3:'effectResist',4:'hp',5:'attack',6:'defense',7:'speed',8:'crit',9:'critDamage'};if(fields[metric])return p[fields[metric]];if(metric===10)return p.hp*p.critDamage;if(metric===11)return p.effectHit+p.effectResist;if(metric===12)return p.defense*p.critDamage;return null;
+}
+function checkPanel(p,c,objective){
   const missing=[];
   for(const r of c.ranges||[]){const v=p[r.stat],div=r.percentage?100:1;if(!finite(v))missing.push(`未知属性 ${r.stat}`);else {if(finite(r.min)&&(r.minExclusive?v<=r.min/div:v<r.min/div-1e-8))missing.push(`${STAT_NAMES[r.stat]||r.stat}未满足${r.minExclusive?'>':'≥'}${r.min}${r.percentage?'%':''}`);if(finite(r.max)&&(r.maxExclusive?v>=r.max/div:v>r.max/div+1e-8))missing.push(`${STAT_NAMES[r.stat]||r.stat}未满足${r.maxExclusive?'<':'≤'}${r.max}${r.percentage?'%':''}`);}}
-  const value=score(p,c.metricId);if(c.targetScore!=null&&(!finite(value)||value<c.targetScore))missing.push(`指标未达${c.targetScore}`);
+  const value=score(p,c.metricId,objective);if(c.targetScore!=null&&(!finite(value)||value<c.targetScore))missing.push(`指标未达${c.targetScore}`);
   return missing;
 }
 
-const api={STAT_NAMES,STAT_TYPES,METRICS,inspectCode,codeProvenance,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,deletedPresetIds,libraryLineups,removeLibraryLineups,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,checkPanel};
+const api={STAT_NAMES,STAT_TYPES,METRICS,inspectCode,codeProvenance,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,deletedPresetIds,libraryLineups,removeLibraryLineups,normalizeTargets,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,objectiveFormula,checkPanel};
 const solver=typeof module==='object'&&module.exports?require('./solver.js'):globalThis.AtlasSolver;
 return Object.assign(api,solver(api));
 });

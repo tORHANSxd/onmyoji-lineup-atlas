@@ -1,5 +1,6 @@
 'use strict';
 let managePage=1,matchPaused=false,manageEditing=null,matchRenderAt=0,pendingRemoval=null;
+let matchJobIds=new Set(),matchVersions={},matchBatch=0,statsSnapshot=null,statsRenderKey='';
 function gameAsset(library,id){return DATA?.gameAssets?.items.find(a=>a.library===library&&String(a.id)===String(id));}
 function gameImage(asset,cls='game-icon'){return asset?`<img class="${cls}" src="../${esc(asset.localPath)}" alt="${esc(asset.name)}" title="${esc(asset.name+' · '+asset.sourceLabel)}" loading="lazy">`:'<span class="image-unavailable" aria-label="资源尚未取得"></span>';}
 function soulAsset(name){return DATA?.gameAssets?.items.find(a=>a.library==='yuhun'&&a.name===name);}
@@ -28,25 +29,52 @@ function renderParseFailures(){
  el.innerHTML=(expired.length?`<section class="failure-summary expired-summary"><div class="failure-heading"><h3>${expired.length} 条失效阵容码</h3><button class="danger" data-delete-expired ${libraryBusy?'disabled':''}>一键删除 ${expired.length} 条失效阵容</button></div><details data-failure-group="expired" ${open.has('expired')?'open':''}><summary>查看失效清单</summary>${table(expired)}</details></section>`:'')+(recoverable.length?`<section class="failure-summary"><div class="failure-heading"><h3>${recoverable.length} 条其他解析失败</h3><button id="retry-parse-failures" class="secondary" ${['running','pausing'].includes(parseReport.phase)||libraryBusy||bulkBusy?'disabled':''}>一键重试失败项</button></div><details data-failure-group="recoverable" ${open.has('recoverable')?'open':''}><summary>查看失败原因</summary>${table(recoverable)}</details></section>`:'')+(rows.length?'<div class="actions"><button id="export-parse-failures" class="secondary">导出失败清单</button></div>':'');
  renderReparseButtons();
 }
-function startMatch(ids=null){
+function startMatch(ids=null,{reuse=false}={}){
  if(!account())return toast('先导入并选择一个账号');
- if(ids&&worker){for(const id of ids)delete matchResults[id];worker.postMessage({action:'replace',lineups:lineups().filter(l=>ids.includes(l.id)),account:account(),roster:DATA.roster,effects:DATA.effects});matchPaused=false;$('cancel-match').textContent='暂停精算';return;}
- stopMatch();matchPaused=false;const ls=ids?lineups().filter(l=>ids.includes(l.id)):lineups();if(!ids)matchResults={};const revision=sessionRevision,accountId=account().id;
- worker=new Worker('match-worker.js');const job=worker;$('match-progress').hidden=false;$('cancel-match').hidden=false;$('cancel-match').textContent='暂停精算';$('match-all').disabled=true;
- $('match-progress').textContent='正在核对账号库存…';
- worker.postMessage({lineups:ls,account:account(),roster:DATA.roster,effects:DATA.effects});
+ const selected=ids?new Set(ids):null,ls=lineups().filter(l=>(!selected||selected.has(l.id))&&(!reuse||!(matchResults[l.id]?.completed&&matchResults[l.id]?.proof?.state!=='error')&&!(worker&&matchJobIds.has(l.id)&&!matchResults[l.id]?.completed)));
+ if(!ls.length){if(worker&&matchPaused)toggleMatchPause();renderGapStatistics();return;}
+ const existing=!!worker,revision=sessionRevision,accountId=account().id;
+ if(!existing){matchJobIds.clear();worker=new Worker('match-worker.js');}
+ const job=worker;
+ for(const l of ls){matchJobIds.add(l.id);matchVersions[l.id]=(matchVersions[l.id]||0)+1;const {assessment}=AtlasExact.inspectHeroes(l,account());matchResults[l.id]={status:'computing',gapCategory:'pending',gapAssessment:{...assessment,souls:'pending'},proof:{state:'computing',nodes:0},completed:false,ready:false,members:[],reasons:[],checks:[]};}
+ matchPaused=false;$('match-progress').hidden=false;$('cancel-match').hidden=false;$('cancel-match').textContent='暂停精算';$('match-all').disabled=true;
+ $('match-progress').textContent=`正在精算 ${matchJobIds.size} 个阵容…`;
  worker.onmessage=({data:d})=>{
   if(worker!==job||!sameSession(revision)||account()?.id!==accountId)return;
-  if(d.error)toast('精算异常：'+d.error+'；未产生最优性结论，可重新计算');
-  if(d.paused){$('match-progress').textContent='计算已暂停';return;}
+  if(d.result&&d.version!==matchVersions[d.id])return;
+  if(d.done&&d.batch!==matchBatch)return;
+  if(d.error)toast('精算异常：'+d.error+'；可重新计算');
+  if(d.paused){renderGapStatistics();return;}
   if(d.result)matchResults[d.id]=d.result;
-  const rows=Object.values(matchResults),optimal=rows.filter(r=>r.proof?.state==='optimal').length,infeasible=rows.filter(r=>r.proof?.state==='infeasible'&&r.gapCategory!=='pending').length,blocked=rows.filter(r=>r.proof?.state==='blocked'&&r.gapCategory!=='pending').length,errors=rows.filter(r=>r.proof?.state==='error').length;
-  if(Date.now()-matchRenderAt>900||d.done){matchRenderAt=Date.now();$('match-progress').textContent=`核对 ${optimal+infeasible+blocked+errors} / ${ls.length} · ${blocked} 个待补资料${errors?' · '+errors+' 个异常待重试':''}`;if(view==='library')renderLibrary();if(view==='accounts')renderRecommendations();if(view==='manage')renderManage();}
-  if(d.done){stopMatch();matchPaused=false;renderLibrary();renderRecommendations();}
+  const rows=[...matchJobIds].map(id=>matchResults[id]),done=rows.filter(r=>r?.completed).length,blocked=rows.filter(r=>r?.completed&&r.gapCategory==='unknown'&&r.proof?.state!=='error').length,errors=rows.filter(r=>r?.proof?.state==='error').length;
+  const progress=`已精算 ${done} / ${matchJobIds.size}${blocked?' · '+blocked+' 个待补资料':''}${errors?' · '+errors+' 个异常待重试':''}`;
+  if(Date.now()-matchRenderAt>350||d.done){matchRenderAt=Date.now();$('match-progress').textContent=progress;if(view==='library')renderLibrary();if(view==='accounts')renderRecommendations();if(view==='manage')renderManage();renderGapStatistics();}
+  if(d.done){stopMatch();$('match-progress').textContent=progress;renderLibrary();renderRecommendations();renderGapStatistics();}
  };
- worker.onerror=e=>{toast('计算任务异常：'+e.message+'；未完成结果不作为最优结论');stopMatch();};
+ worker.onerror=e=>{for(const id of matchJobIds)if(!matchResults[id]?.completed)matchResults[id]={...matchResults[id],completed:true,status:'unknown',gapCategory:'unknown',proof:{...matchResults[id]?.proof,state:'error'}};toast('计算任务异常：'+e.message);stopMatch();renderLibrary();};
+ worker.postMessage({action:existing?'replace':'start',batch:++matchBatch,versions:matchVersions,lineups:ls,account:account(),roster:DATA.roster,effects:DATA.effects});
+ renderLibrary();renderGapStatistics();
 }
-function toggleMatchPause(){if(!worker)return;matchPaused=!matchPaused;worker.postMessage({action:matchPaused?'pause':'resume'});$('cancel-match').textContent=matchPaused?'继续精算':'暂停精算';}
+function toggleMatchPause(){if(!worker)return;matchPaused=!matchPaused;worker.postMessage({action:matchPaused?'pause':'resume'});$('cancel-match').textContent=matchPaused?'继续精算':'暂停精算';$('match-progress').textContent=matchPaused?'精算已暂停，继续后接着搜索':'继续精算中…';renderGapStatistics();}
+function resetMatchContext(){stopMatch();statsSnapshot=null;selectedLineups.clear();$('gap-dialog').close();$('match-progress').hidden=true;}
+function openGapStatistics(){
+ if(!account())return toast('先选择库存账号');
+ statsSnapshot={accountId:account().id,accountName:account().name,ids:filteredLineups().map(l=>l.id)};
+ statsRenderKey='';
+ $('gap-dialog').showModal();startMatch(statsSnapshot.ids,{reuse:true});renderGapStatistics();
+}
+function renderGapStatistics(){
+ if(!statsSnapshot||!$('gap-dialog')?.open)return;
+ if(statsSnapshot.accountId!==account()?.id){$('gap-dialog').close();statsSnapshot=null;return;}
+ const ids=new Set(statsSnapshot.ids),rows=lineups().filter(l=>ids.has(l.id)),summary=AtlasLineupTools.summarize(rows,matchResults),open=new Set([...$('gap-statistics-body').querySelectorAll('details[open]')].map(el=>el.dataset.gapKey));
+ $('gap-statistics-scope').textContent=`${statsSnapshot.accountName} · 打开时筛选的 ${summary.total} 个阵容`;
+ $('gap-statistics-progress').textContent=`已精算 ${summary.done} / ${summary.total}${matchPaused?' · 已暂停':summary.pending?worker?' · 精算中':' · 尚有未完成项':''}${summary.unknown?' · '+summary.unknown+' 个待补资料':''}${summary.errors?' · '+summary.errors+' 个异常':''}`;
+ $('gap-statistics-progressbar').max=Math.max(1,summary.total);$('gap-statistics-progressbar').value=summary.done;
+ $('gap-statistics-pause').hidden=!worker;$('gap-statistics-pause').textContent=matchPaused?'继续精算':'暂停精算';$('gap-statistics-retry').hidden=!!worker||!summary.pending&&!summary.errors;
+ const nextKey=JSON.stringify(summary);if(nextKey===statsRenderKey)return;statsRenderKey=nextKey;
+ const section=(key,title,items)=>`<section class="gap-ranking"><h3>${title}</h3>${items.length?items.map(item=>`<details data-gap-key="${esc(key+':'+item.key)}" ${open.has(key+':'+item.key)?'open':''}><summary><span>${key==='souls'&&soulAsset(item.name)?gameImage(soulAsset(item.name)):['heroes','training'].includes(key)?thumb({kind:'shikigami',shikigamiId:item.key,name:item.name}):''}<strong>${esc(item.name)}</strong></span><b>${item.count} 个阵容</b></summary><ul>${item.lineups.map(l=>`<li><button class="text-button" data-stat-detail="${esc(l.id)}">${esc(l.title)}</button><small>${esc(l.reasons.join('；'))}</small></li>`).join('')}</ul></details>`).join(''):'<p class="muted">暂无已确认缺口</p>'}</section>`;
+ $('gap-statistics-body').innerHTML=section('heroes','缺少式神',summary.heroes)+section('souls','缺少符合要求的御魂套装',summary.souls)+(summary.training.length?section('training','式神培养不足',summary.training):'')+(summary.otherSouls.length?section('otherSouls','其他御魂差距',summary.otherSouls):'');
+}
 function skillMarkup(m,result){
  const gaps=result?.heroGaps?.filter(g=>g.kind==='skill')||[];
  return `<div class="skill-requirements">${m.skills?.length?m.skills.map(s=>{const a=gameAsset(m.kind==='onmyoji'?'onmyojiSkill':'shikigamiSkill',(m.onmyojiId||m.shikigamiId)+':'+s.id);return `<div class="skill-item">${gameImage(a)}<span>${esc(a?.name||'技能 '+s.id)} <b>${s.exact?'=':'≥'}${s.level}级</b></span>${gaps.filter(g=>g.skill===s.id).map(g=>`<small class="inline-gap">${esc(g.text)}</small>`).join('')}</div>`;}).join(''):'<span class="muted">原码未限制技能等级</span>'}</div>`;
@@ -56,14 +84,14 @@ function soulDetail(m,build,slot){
  return `<h4>${slot}号位 · ${q?esc(q.set):'尚无配装候选'}</h4><p class="caption">主属性要求：${required.length?esc(required.map(s=>C.STAT_NAMES[s]||s).join(' / ')):'未限制'}；强化 ${esc((config.levelRange||[0,15]).join('～'))} 级${config.sixStarOnly?'；六星':''}</p>${q?`<div class="selected-soul">${gameImage(soulAsset(q.set),'selected-soul-icon')}<div><strong>${q.star}星 · +${q.level}</strong><p>${esc(C.STAT_NAMES[q.mainStat])} ${esc(attrValue(q.mainStat,q.raw.mainAttrValue))}</p><dl>${q.raw.subAttributes.map(s=>`<dt>${esc(C.STAT_NAMES[C.STAT_TYPES[s.type]]||s.type)}</dt><dd>${esc(attrValue(C.STAT_TYPES[s.type],s.value))}</dd>`).join('')}</dl><small>库存实例 ${esc(q.id)}</small></div></div>`:'<p>精算得到候选后，这里显示该位置的实际主、副属性与库存实例。</p>'}${gaps.map(g=>`<p class="inline-gap">${esc(g.text)}</p>`).join('')}`;
 }
 function buildMarkup(member,build){
- const c=member.config||{},souls=(build?.soulIds||[]).map(id=>account()?.souls[id]).filter(Boolean),gaps=build?C.panelGaps(build.panel,c):[],slots=[1,6,2,5,3,4];
+ const c=member.config||{},souls=(build?.soulIds||[]).map(id=>account()?.souls[id]).filter(Boolean),gaps=build?C.panelGaps(build.panel,c,build.objective):[],slots=[1,6,2,5,3,4];
  return `<div class="soul-ring"><div class="soul-center">${thumb(member)}<small>点击任意御魂位</small></div>${slots.map(slot=>{const q=souls.find(s=>s.slot===slot);return `<button class="soul-slot slot-${slot}" data-soul-slot="${slot}" data-member-index="${member.index}" aria-label="查看${slot}号位御魂"><span class="slot-no">${slot}号位</span>${gameImage(q?soulAsset(q.set):gameAsset('yuhun','300000'))}<strong>${esc(q?.set||'待配装')}</strong><small>${q?q.star+'星 · +'+q.level:'查看位置要求'}</small></button>`;}).join('')}</div><div class="soul-inspector" id="soul-inspector-${member.index}">${soulDetail(member,build,1)}</div><div class="panel-values">${['attack','hp','defense','speed','crit','critDamage','effectHit','effectResist'].map(stat=>{const range=(c.ranges||[]).filter(r=>r.stat===stat),gap=gaps.filter(g=>g.stat===stat);return `<div class="${gap.length?'has-gap':''}"><span>${esc(C.STAT_NAMES[stat])}</span><strong>${build?esc(C.formatStat(stat,build.panel[stat])):'待计算'}</strong>${range.length?`<small>要求 ${esc(propertyText({ranges:range}))}</small>`:''}${gap.map(g=>`<small class="inline-gap">${g.side==='min'?'还差':'超出'} ${esc(C.formatStat(stat,g.delta))}</small>`).join('')}</div>`;}).join('')}</div>`;
 }
 function memberDetail(m){
  const result=currentDialog?matchResults[currentDialog.id]:null,row=result?.members.find(x=>x.index===m.index),build=result?.assignment?.find(x=>x.index===m.index)||result?.gapAssessment?.assignment?.find(x=>x.index===m.index)||row?.closest,config=m.config;
  const otherGaps=(row?.heroGaps||[]).filter(g=>g.kind!=='skill'),sets=config?.suitRequirements||[],equipmentGaps=(build?.gaps||[]).filter(g=>['set','pair'].includes(g.kind));
  if(m.kind==='shikigami'&&account()){const need=currentDialog.members.filter(x=>x.occupied!==false&&x.shikigamiId===m.shikigamiId&&!x.borrowed).length,have=Object.values(account().heroes).filter(h=>h.shikigamiId===m.shikigamiId).length;if(need>have)otherGaps.push({text:`本阵容共需 ${need} 个${m.name}实例，当前库存只有 ${have} 个；同队不可重复占用。`});}
- return `<article class="member-detail readable-member" data-member="${m.index}"><header>${thumb(m)}<div><h3>${esc(m.name)}</h3><p>${m.kind==='onmyoji'?'阴阳师 / 英杰 · '+(m.level||'未指定')+'级':(m.levelMode==='recommended'?'推荐 ':'')+(m.level||'未指定')+'级 · '+(m.star||'未指定')+'星 · '+(m.awakening===1?'觉醒':m.awakening===0?'未觉醒':'觉醒未限制')}</p></div></header>${otherGaps.map(g=>`<p class="inline-gap">${esc(g.text)}</p>`).join('')}<h4>技能要求</h4>${skillMarkup(m,row)}${m.kind==='onmyoji'?`${qilingMarkup(m.qiling)}`:`<h4>御魂要求</h4><div class="suit-requirements">${sets.map(r=>`<div>${gameImage(soulAsset(r.name))}<span>${esc(r.name)} <b>${r.count}件</b></span></div>`).join('')}${(config?.twoPieceStats||[]).map(s=>`<span>${esc(C.STAT_NAMES[s]||s)}两件套</span>`).join('')}${!sets.length&&!config?.twoPieceStats?.length?'<span>散件 / 未限制套装</span>':''}</div>${equipmentGaps.map(g=>`<p class="inline-gap">${esc(g.text)}</p>`).join('')}<p class="caption">目标：${esc(C.METRICS[config?.metricId]?.[0]||'满足约束')} · ${build?(result?.gapAssessment?.assignment?'补齐式神后的御魂方案':result?.proof?.state==='optimal'?'最优配装':'诊断 / 当前候选'):'等待精算'}</p>${buildMarkup(m,build)}${row?.suggestions?.length?`<details class="improvement-advice"><summary>建议优先补什么</summary><p class="caption">以下针对当前诊断候选，不代表唯一补法；原码要求保持不变。</p><ol>${row.suggestions.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>`:''}${row?.reasons?.length?`<details class="member-reasons"><summary>配装核对项</summary>${row.reasons.map(r=>`<p>${esc(r)}</p>`).join('')}</details>`:''}`}${m.aiSkill!=null?`<p class="caption">自动技能设置：${esc(JSON.stringify(m.aiSkill))} · 按原码在游戏内设置</p>`:''}<details class="protocol-fields"><summary>高级要求与原码字段</summary><p>${esc(propertyText(config))}</p><p>额外属性：${esc(JSON.stringify(config?.extraAttributes||{}))}</p>${protocolDetails(m)}</details></article>`;
+ return `<article class="member-detail readable-member" data-member="${m.index}"><header>${thumb(m)}<div><h3>${esc(m.name)}</h3><p>${m.kind==='onmyoji'?'阴阳师 / 英杰 · '+(m.level||'未指定')+'级':(m.levelMode==='recommended'?'推荐 ':'')+(m.level||'未指定')+'级 · '+(m.star||'未指定')+'星 · '+(m.awakening===1?'觉醒':m.awakening===0?'未觉醒':'觉醒未限制')}</p></div></header>${otherGaps.map(g=>`<p class="inline-gap">${esc(g.text)}</p>`).join('')}<h4>技能要求</h4>${skillMarkup(m,row)}${m.kind==='onmyoji'?`${qilingMarkup(m.qiling)}`:`<h4>御魂要求</h4><div class="suit-requirements">${sets.map(r=>`<div>${gameImage(soulAsset(r.name))}<span>${esc(r.name)} <b>${r.count}件</b></span></div>`).join('')}${(config?.twoPieceStats||[]).map(s=>`<span>${esc(C.STAT_NAMES[s]||s)}两件套</span>`).join('')}${!sets.length&&!config?.twoPieceStats?.length?'<span>散件 / 未限制套装</span>':''}</div>${equipmentGaps.map(g=>`<p class="inline-gap">${esc(g.text)}</p>`).join('')}<p class="caption">目标：${esc(C.METRICS[config?.metricId]?.[0]||'满足约束')} · ${build?(result?.gapAssessment?.assignment?'补齐式神后的御魂方案':result?.proof?.state==='optimal'?'最优配装':'诊断 / 当前候选'):'等待精算'}</p>${buildMarkup(m,build)}${row?.suggestions?.length?`<details class="improvement-advice"><summary>建议优先补什么</summary><p class="caption">以下针对当前诊断候选，不代表唯一补法；原码要求保持不变。</p><ol>${row.suggestions.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>`:''}${row?.reasons?.length?`<details class="member-reasons"><summary>配装核对项</summary>${row.reasons.map(r=>`<p>${esc(r)}</p>`).join('')}</details>`:''}`}${m.aiSkill!=null?`<p class="caption">自动技能设置：${esc(JSON.stringify(m.aiSkill))} · 按原码在游戏内设置</p>`:''}<details class="protocol-fields"><summary>高级要求与原码字段</summary><p>${esc(propertyText(config))}</p><p>计算目标：${esc(C.objectiveFormula(m.shikigamiId,config?.metricId))}</p><p>额外属性：${esc(JSON.stringify(config?.extraAttributes||{}))}</p>${protocolDetails(m)}</details></article>`;
 }
 function showLineup(l){
  currentDialog=l;const result=matchResults[l.id],proof=result?.proof,a=result?.gapAssessment;
@@ -85,7 +113,7 @@ async function saveLineupManagement(){
  const changed=old.code!==code,base=changed?{id:old.id,sourceKind:'user',members:[],requirementsComplete:false,decodeState:'unattempted'}:old;
  const updated={...base,...C.codeProvenance($('edit-code').value),code,title:$('edit-title').value.trim()||'未命名阵容',category:$('edit-category').value.trim()||'其他',subcategory:$('edit-subcategory').value.trim()||'自定义',section:$('edit-section').value.trim()||undefined,dungeon:$('edit-dungeon').value.trim()||'待分类',notes:$('edit-notes').value,manualClassification:!$('edit-auto-category').checked,updatedAt:new Date().toISOString()};updated.dungeons=[updated.dungeon];
  libraryParser?.cancel();stopMatch();const previous=STATE.lineups;STATE.lineups=[...STATE.lineups.filter(l=>l.id!==old.id),updated];if(!await persist()){STATE.lineups=previous;return;}
- delete matchResults[old.id];createLibraryParser(sessionRevision);$('detail-dialog').close();fillFilters();renderManage();renderLibrary();scheduleMatch();toast('管理信息已保存'+(changed?'；原码已更换，等待重新解析':''));
+ delete matchResults[old.id];createLibraryParser(sessionRevision);$('detail-dialog').close();fillFilters();renderManage();renderLibrary();refreshAvailability();toast('管理信息已保存'+(changed?'；原码已更换，等待重新解析':''));
 }
 function confirmLineupRemoval(ids,{expiredOnly=false}={}){
  if(libraryBusy||bulkBusy)return toast('正在保存阵容库，请稍候');
@@ -104,7 +132,7 @@ async function removeConfirmedLineups(){
  libraryParser?.cancel();stopMatch();clearTimeout(codeTimer);codeRevision++;
  STATE=C.removeLibraryLineups(STATE,DATA.lineups,rows.map(l=>l.id));
  try{
-  if(!await persist()){STATE={...STATE,lineups:previous.lineups,deletedPresetIds:previous.deletedPresetIds};return;}
+  if(!await persist()){STATE={...STATE,lineups:previous.lineups,deletedPresetIds:previous.deletedPresetIds,targetLineups:previous.targetLineups};return;}
   for(const l of rows)delete matchResults[l.id];
   if(rows.some(l=>l.code===C.normalizeCode($('code-input').value))){
    for(const id of ['code-input','code-title','code-dungeon','code-notes'])$(id).value='';
@@ -114,11 +142,13 @@ async function removeConfirmedLineups(){
   $('detail-dialog').close();toast(`已删除 ${rows.length} 条阵容，重启后仍生效`);
  }finally{
   libraryBusy=false;button.disabled=false;$('close-dialog').disabled=false;
-  createLibraryParser(sessionRevision);fillFilters();renderManage();if(view==='library')renderLibrary();scheduleMatch();
+  createLibraryParser(sessionRevision);fillFilters();renderManage();if(view==='library')renderLibrary();refreshAvailability();
  }
 }
 document.addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b)return;
+ if(b.hasAttribute('data-target-directory')){$('clear-filters').click();targetOnly=true;page=1;renderLibrary();}
+ if(b.dataset.statDetail){const l=lineups().find(l=>l.id===b.dataset.statDetail);if(l)showLineup(l);}
  if(b.hasAttribute('data-browse-home')||b.dataset.browsePath){browseTo(b.dataset.browsePath||'');window.scrollTo(0,0);}
  if(b.dataset.editLineup)editLineup(b.dataset.editLineup);
   if(b.dataset.deleteLineup)confirmLineupRemoval([b.dataset.deleteLineup]);

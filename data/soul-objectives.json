@@ -1,0 +1,81 @@
+{
+  "source": {
+    "kind": "static-game-script-and-bindict",
+    "packageVersion": "2.8.84",
+    "verifiedFiles": {
+      "assets/res/script3.idx": "ffe1f90325e6dfc203ed94d843e11aa8cf64f76dfae35f5dde0fb71991b0acce",
+      "assets/res/script30.wpk": "f777ee4ff692fc03338b8a3e31a65ada08240dda38a34348c58e331ba3d7341f",
+      "assets/res/script31.wpk": "416ba3507671c7286958c7dd18a74aa005d0a05eb49b7d71d4de61c0fc8c8d67"
+    },
+    "entries": [
+      {
+        "id": 33249,
+        "sha256": "cbbe2454891385f27b2cfb46ba9c6f98aaee3a8aceb7ca9945147c1982f62ea9"
+      },
+      {
+        "id": 7126,
+        "sha256": "8da946771bc994c1400c3025b74140f5731588bbca8e40a038a09283897066c5"
+      },
+      {
+        "id": 7124,
+        "sha256": "cf3ecb87e9f2195272cc1169c333a3a98f8c13a8758a4780f36d20a93d249de7"
+      },
+      {
+        "id": 6977,
+        "sha256": "8aaddcfd590a316e951b776ddefc5e44c6c7aadc6aeb009e396583a3ce57b327"
+      }
+    ]
+  },
+  "expressions": [
+    {
+      "criteria": 1,
+      "expression": "(#attack + (#defense * 2)) * (1 + #critPower)",
+      "heroid": 344,
+      "id": 1
+    },
+    {
+      "criteria": 1,
+      "expression": "#attack * (1 + #critPower) * (1 + #critPower)",
+      "heroid": 332,
+      "id": 2
+    },
+    {
+      "criteria": 1,
+      "expression": "#attack*(#critPower+0.5)",
+      "heroid": 392,
+      "id": 3
+    },
+    {
+      "criteria": 1,
+      "expression": "((#attack + 0.75) + #debuffEnhance) * (1 + #critPower)",
+      "heroid": 550,
+      "id": 4
+    },
+    {
+      "criteria": 12,
+      "expression": "(#defense + (#attack* 0.1)) * (1 + #critPower)",
+      "heroid": 344,
+      "id": 5
+    },
+    {
+      "criteria": 1,
+      "expression": "#attack*(#critPower+1+#debuffResist)",
+      "heroid": 590,
+      "id": 6
+    }
+  ],
+  "overrides": [
+    {
+      "heroId": 550,
+      "criteria": 1,
+      "expression": "(attack + baseAttack * (0.75 + effectHit)) * critDamage",
+      "source": "module/yuhun_setting/YuhunAlgo.py:606 AlgoMgr.init_algo",
+      "note": "Overrides the expression table for this hero and metric. critDamage is the full multiplier."
+    }
+  ],
+  "nativeSearch": [
+    "g37misc.auto_yuhun_calc_top_n",
+    "g37misc.auto_yuhun_generate_algo"
+  ],
+  "note": "Only static data and bytecode were read. Native search is not executed or fully reproduced."
+}

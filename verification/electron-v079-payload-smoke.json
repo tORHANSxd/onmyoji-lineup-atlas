@@ -1,0 +1,25 @@
+{
+  "title": "御契 · 阴阳师阵容助手",
+  "mode": "offline-startup-explicit-login",
+  "offline": true,
+  "dataLoaded": true,
+  "noAutomaticQR": true,
+  "accounts": 1,
+  "lineups": 374,
+  "blockedOperations": [
+    "decode",
+    "query",
+    "parsedSave"
+  ],
+  "localReads": true,
+  "separateLogin": true,
+  "riskNoticeVisible": true,
+  "riskBlocksQR": true,
+  "loginModule": {
+    "servers": 157,
+    "authenticated": false,
+    "qrReady": true
+  },
+  "returnOffline": true,
+  "loginModuleLoggedOut": true
+}

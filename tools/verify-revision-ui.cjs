@@ -61,10 +61,10 @@ async function main(){
  assert.equal([...attempts.keys()].some(n=>n>=68&&n<77),false);
  assert.equal(await ui('lineups().filter(AtlasLibraryParser.canAttempt).length'),0);
  await ui('document.getElementById("export-parse-failures").click()');await sleep(50);assert.equal(exported.data.length,9);assert.ok(exported.data.every(r=>r.failure.serverCode===31279));
- await until('matchResults["qa-0"]?.proof?.state==="optimal"',60000);assert.ok((await ui('STATE.accounts[0].server'))!=='XX区10014');
+ assert.equal(await ui('worker===null'),true);await ui('startMatch(["qa-0"])');await until('matchResults["qa-0"]?.proof?.state==="optimal"',60000);assert.ok((await ui('STATE.accounts[0].server'))!=='XX区10014');
 
  // Retry a cached row without leaving the library or changing the decode draft.
- await ui('clearTimeout(matchTimer);stopMatch();document.getElementById("code-input").value="保留的输入";[2,3,4].forEach(n=>Object.assign(STATE.lineups.find(l=>l.id==="qa-"+n),{lastParseError:"稍后再试",lastParseFailure:AtlasParseErrors.fromServer(90011)}));renderParseFailures();document.querySelector("[data-failure-group=recoverable]").open=true');
+ await ui('stopMatch();document.getElementById("code-input").value="保留的输入";[2,3,4].forEach(n=>Object.assign(STATE.lineups.find(l=>l.id==="qa-"+n),{lastParseError:"稍后再试",lastParseFailure:AtlasParseErrors.fromServer(90011)}));renderParseFailures();document.querySelector("[data-failure-group=recoverable]").open=true');
  retryFailure=true;const beforeRetry=queries;
  await ui('document.querySelector("#parse-failures [data-reparse=qa-2]").click()');
  await until('document.querySelector("#parse-failures [data-reparse=qa-2]")?.disabled===true');
@@ -105,7 +105,7 @@ async function main(){
  const before=await ui('JSON.stringify(lineups()[0].raw)');await ui('editLineup("qa-0");document.getElementById("edit-title").value="修改管理名称";document.getElementById("edit-notes").value="保存的备注";saveLineupManagement()');assert.equal(await ui('lineups()[0].title'),'修改管理名称');assert.equal(await ui('JSON.stringify(lineups()[0].raw)'),before);
  await ui('editLineup("qa-0");document.getElementById("edit-code").value='+JSON.stringify(code(500))+';saveLineupManagement()');assert.equal(await ui('lineups()[0].members.length'),0);assert.equal(await ui('lineups()[0].raw===undefined'),true);
  await ui('taLogin.logout()');assert.equal(await ui('document.getElementById("app-shell").hidden'),false);assert.equal(await ui('lineups().length'),155);assert.equal(await ui('!!DATA'),true);
-  await ui('clearTimeout(matchTimer);stopMatch();STATE.activeAccount="";selectView("manage")');
+  await ui('stopMatch();STATE.activeAccount="";selectView("manage")');
   // Cancel and failed persistence must both leave a preset untouched.
   await ui('document.querySelector("[data-delete-lineup=qa-1]").click();document.getElementById("cancel-remove-lineups").click()');
   assert.equal(await ui('lineups().some(l=>l.id==="qa-1")'),true);
@@ -136,7 +136,7 @@ async function main(){
   await ui('importMode="backup";handleFiles([{name:"synthetic-backup.json",size:'+backup.length+',text:async()=>'+JSON.stringify(backup)+'}])');
   assert.equal(await ui('lineups().length'),145);
   // A deleted preset can be explicitly re-added once, without signing in.
-  await ui('clearTimeout(matchTimer);stopMatch();STATE.activeAccount="";selectView("manage");document.querySelector("[data-add-code]").click();document.getElementById("code-input").value='+JSON.stringify(code(1))+';updateCode();document.getElementById("code-title").value="重新添加的原码";saveCode()');
+  await ui('stopMatch();STATE.activeAccount="";selectView("manage");document.querySelector("[data-add-code]").click();document.getElementById("code-input").value='+JSON.stringify(code(1))+';updateCode();document.getElementById("code-title").value="重新添加的原码";saveCode()');
   assert.equal(await ui('document.getElementById("login-screen").hidden'),true);
   assert.equal(await ui('lineups().filter(l=>l.code==='+JSON.stringify(code(1))+').length'),1);
   assert.equal(await ui('lineups().length'),146);
@@ -146,7 +146,7 @@ async function main(){
   assert.equal(await ui('lineups().length'),147);assert.equal(stored.deletedPresetIds.length,10);
   // Delete while a real queue job is waiting; its late success cannot resurrect it.
   data.lineups=[{id:'pending-delete',code:code(8000),title:'正在查询的预设',members:[],decodeState:'unattempted'}];
-  await ui('clearTimeout(matchTimer);stopMatch();STATE.lineups=[];STATE.deletedPresetIds=[];STATE.activeAccount="";persist()');
+  await ui('stopMatch();STATE.lineups=[];STATE.deletedPresetIds=[];STATE.activeAccount="";persist()');
   await new Promise(resolve=>{win.webContents.once('did-finish-load',resolve);win.reload();});await until('!!DATA && document.getElementById("loading").hidden');await ui('TALogin.ready()');
   publish({authenticated:true,selected_avatar:'qa',stage:'roles_ready'});await until('parseReport.phase==="running"');
   for(let i=0;i<100&&!finishDeferred;i++)await sleep(30);assert.equal(typeof finishDeferred,'function');
@@ -160,7 +160,7 @@ async function main(){
   await ui('selectView("manage");document.getElementById("manage-clear-expired").click();removeConfirmedLineups()');
   assert.equal(await ui('lineups().length'),0);await ui('taLogin.logout()');
   data.lineups=presetLineups;
-  await ui("(async()=>{clearTimeout(matchTimer);stopMatch();DATA=await atlas.loadData();STATE.lineups=[];STATE.deletedPresetIds=[];STATE.activeAccount=STATE.accounts[0].id;matchResults={};selectView(\"library\");document.getElementById(\"clear-filters\").click()})()");
+  await ui("(async()=>{stopMatch();DATA=await atlas.loadData();STATE.lineups=[];STATE.deletedPresetIds=[];STATE.activeAccount=STATE.accounts[0].id;matchResults={};selectView(\"library\");document.getElementById(\"clear-filters\").click()})()");
  assert.equal(await ui("document.getElementById(\"lineup-grid\").hidden"),false);
 
  assert.ok(await ui('document.querySelectorAll(".lineup-card").length>0'));
@@ -204,7 +204,7 @@ async function main(){
   await stageSearch('完全不存在的关卡');assert.equal(await ui('filteredLineups().length'),0);assert.ok((await ui('document.getElementById("dungeon-options").textContent')).includes('没有匹配副本'));
   await ui('document.getElementById("clear-filters").click();browseTo("限时活动 → 拾光永恒")');assert.ok(await ui('filteredLineups().filter(l=>/来源用途/.test(l.classificationSource)).length===7'));
 
-  await ui('clearTimeout(matchTimer);stopMatch();matchResults={};document.getElementById("clear-filters").click();document.getElementById("search").value="|TA|";window.testGapIds=lineups().filter(l=>C.hasParsedContent(l)&&l.code.startsWith("|TA|")).slice(0,8).map(l=>l.id);window.testGapIds.forEach((id,i)=>matchResults[id]={gapCategory:i?"both":"ready",gapAssessment:{heroes:i&5?"missing":"ready",souls:i&2?"missing":"ready",heroShortage:i&1?1:0,heroTraining:i&4?1:0},members:[],label:"合成缺口验证",proof:{state:"infeasible",nodes:0,pruned:0,scope:"合成验证"},reasons:[],checks:[]});renderLibrary()');
+  await ui('stopMatch();matchResults={};document.getElementById("clear-filters").click();document.getElementById("search").value="|TA|";window.testGapIds=lineups().filter(l=>C.hasParsedContent(l)&&l.code.startsWith("|TA|")).slice(0,8).map(l=>l.id);for(const l of lineups())matchResults[l.id]={gapAssessment:{souls:"uncomputed"}};window.testGapIds.forEach((id,i)=>matchResults[id]={gapCategory:i?"both":"ready",gapAssessment:{heroes:i&5?"missing":"ready",souls:i&2?"missing":"ready",heroShortage:i&1?1:0,heroTraining:i&4?1:0},members:[],label:"合成缺口验证",proof:{state:"infeasible",nodes:0,pruned:0,scope:"合成验证"},reasons:[],checks:[]});renderLibrary()');
   for(const [kind,mask] of [['hero',1],['soul',2],['training',4]]){
    await ui('document.getElementById("gap-filter").value='+JSON.stringify(kind)+';renderLibrary()');
    assert.equal(await ui('filteredLineups().length'),4);
@@ -239,7 +239,7 @@ async function main(){
   for(const width of [900,1280,1920,720]){
    win.setContentSize(width,900);await sleep(80);
    for(const page of ['library','manage','accounts','decode','audit']){
-    await ui('selectView('+JSON.stringify(page)+');clearTimeout(matchTimer);stopMatch()');
+    await ui('selectView('+JSON.stringify(page)+');stopMatch()');
     if(page==='manage')await ui('document.getElementById("manage-status").value="";renderManage()');
     const dimensions=await ui('({width:innerWidth,scroll:document.documentElement.scrollWidth})'),alignment=await ui("(function(){\n const failures=[],center=r=>({x:r.x+r.width/2,y:r.y+r.height/2}),check=(a,b,axis,label)=>{if(!a||!b)return;const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();if(ar.width&&br.width&&Math.abs(center(ar)[axis]-center(br)[axis])>2)failures.push(label);};\n for(const [selector,first,last,axis] of [['.team-member','.avatar,.image-unavailable','span:not(.image-unavailable)','x'],['.readable-member>header','.avatar,.image-unavailable','div','y'],['.skill-item','.game-icon,.image-unavailable','span:not(.image-unavailable)','y'],['.suit-requirements>div','img','span','y'],['.mark-card summary','img','span','y'],['.owned-hero','.portrait','div:last-child','y']])document.querySelectorAll(selector).forEach(el=>check(el.querySelector(first),el.querySelector(last),axis,selector));\n return failures;\n})()");
     assert.ok(dimensions.scroll<=dimensions.width+2,page+' overflow at '+width);
@@ -254,7 +254,7 @@ async function main(){
   await ui('document.querySelector(".extra-filters").open=false;document.getElementById("add-bulk").click()');
   assert.equal(await ui('document.getElementById("bulk-dialog").scrollWidth<=document.getElementById("bulk-dialog").clientWidth+2'),true);
   await capture('bulk-zoom-125');await ui('document.getElementById("bulk-dialog").close()');win.webContents.setZoomFactor(1);
-  await ui('STATE.activeAccount=STATE.accounts[0].id;selectView("accounts");clearTimeout(matchTimer);stopMatch()');
+  await ui('STATE.activeAccount=STATE.accounts[0].id;selectView("accounts");stopMatch()');
   assert.ok(await ui('document.querySelectorAll(".owned-hero").length>0'));assert.deepEqual(await ui("(function(){\n const failures=[],center=r=>({x:r.x+r.width/2,y:r.y+r.height/2}),check=(a,b,axis,label)=>{if(!a||!b)return;const ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();if(ar.width&&br.width&&Math.abs(center(ar)[axis]-center(br)[axis])>2)failures.push(label);};\n for(const [selector,first,last,axis] of [['.team-member','.avatar,.image-unavailable','span:not(.image-unavailable)','x'],['.readable-member>header','.avatar,.image-unavailable','div','y'],['.skill-item','.game-icon,.image-unavailable','span:not(.image-unavailable)','y'],['.suit-requirements>div','img','span','y'],['.mark-card summary','img','span','y'],['.owned-hero','.portrait','div:last-child','y']])document.querySelectorAll(selector).forEach(el=>check(el.querySelector(first),el.querySelector(last),axis,selector));\n return failures;\n})()"),[]);await capture('inventory-alignment');
   await ui('document.getElementById("open-login").click();document.getElementById("ta-server-settings").open=true');
   assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);

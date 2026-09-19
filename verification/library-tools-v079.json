@@ -1,0 +1,71 @@
+{
+  "version": "0.7.9",
+  "packaged": true,
+  "noStartupCalculation": true,
+  "targetsPersisted": true,
+  "selectedOnly": true,
+  "statisticsAutoScoped": true,
+  "accountIsolation": true,
+  "manualAll": true,
+  "alignments": [
+    {
+      "width": 1440,
+      "zoom": 1,
+      "boxes": [
+        {
+          "offset": 0,
+          "textOffset": 0
+        },
+        {
+          "offset": 0,
+          "textOffset": 0
+        }
+      ]
+    },
+    {
+      "width": 1100,
+      "zoom": 1,
+      "boxes": [
+        {
+          "offset": 0.00000762939453125,
+          "textOffset": 0
+        },
+        {
+          "offset": 0,
+          "textOffset": 0
+        }
+      ]
+    },
+    {
+      "width": 900,
+      "zoom": 1,
+      "boxes": [
+        {
+          "offset": 0.00000762939453125,
+          "textOffset": 0
+        },
+        {
+          "offset": 0,
+          "textOffset": 0
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "zoom": 1.25,
+      "boxes": [
+        {
+          "offset": 0.00000762939453125,
+          "textOffset": 0
+        },
+        {
+          "offset": 0,
+          "textOffset": 0
+        }
+      ]
+    }
+  ],
+  "unknownFilterExcludesComputing": true,
+  "consoleErrors": [],
+  "passed": true
+}

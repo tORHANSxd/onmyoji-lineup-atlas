@@ -3,7 +3,7 @@
 const finite=Number.isFinite,percent=new Set(['crit','critDamage','effectHit','effectResist']);
 const unique=a=>[...new Set(a)],names=C.STAT_NAMES;
 function fmt(stat,value){return finite(value)?(value*(percent.has(stat)?100:1)).toFixed(2).replace(/\.00$/,'')+(percent.has(stat)?'%':''):'未知';}
-function panelGaps(panel,config){
+function panelGaps(panel,config,objective){
   const gaps=[];
   for(const r of config.ranges||[]){
     const actual=panel[r.stat],div=r.percentage?100:1;
@@ -14,7 +14,7 @@ function panelGaps(panel,config){
       if(delta>1e-8||(exclusive&&delta>=0))gaps.push({kind:'stat',stat:r.stat,side,actual,target,delta:Math.max(delta,exclusive?1e-6:0),weight:10*Math.max(delta,0)/Math.max(Math.abs(target),percent.has(r.stat)?.01:1),text:`${names[r.stat]} ${fmt(r.stat,actual)}，要求${side==='min'?(exclusive?'>':'≥'):(exclusive?'<':'≤')}${fmt(r.stat,target)}，${side==='min'?'还差':'超出'} ${fmt(r.stat,Math.max(delta,0))}`});
     }
   }
-  if(config.targetScore!=null){const actual=C.score(panel,config.metricId),delta=config.targetScore-actual;if(!finite(actual)||delta>1e-8)gaps.push({kind:'score',actual,target:config.targetScore,delta,weight:10*Math.max(0,delta)/Math.max(Math.abs(config.targetScore),1),text:`计算指标 ${finite(actual)?actual.toFixed(2):'未知'}，目标 ≥${config.targetScore}`});}
+  if(config.targetScore!=null){const actual=C.score(panel,config.metricId,objective),delta=config.targetScore-actual;if(!finite(actual)||delta>1e-8)gaps.push({kind:'score',actual,target:config.targetScore,delta,weight:10*Math.max(0,delta)/Math.max(Math.abs(config.targetScore),1),text:`计算指标 ${finite(actual)?actual.toFixed(2):'未知'}，目标 ≥${config.targetScore}`});}
   return gaps;
 }
 function suitGaps(souls,config,effects){
@@ -60,6 +60,13 @@ function configUnknown(config,effects){
   for(const [k,v] of Object.entries(config.extraAttributes||{}))if(!['attackPercent','attack','crit','critDamage'].includes(k)||!finite(v)||v<0)reasons.push(`额外属性 ${names[k]||k} 未核实`);
   return unique(reasons);
 }
+// Unknown attributes only matter if this instance could pass the hard filters.
+// An unrecognized main-stat name remains a possible match, not an exclusion.
+function soulEligible(q,config={}){
+  config=config||{};
+  const range=config.levelRange||[config.maxLevelOnly?15:0,15],main=config.mainStats?.[q.slot];
+  return (!config.sixStarOnly||q.star===6)&&(!config.allowedStars?.length||config.allowedStars.includes(q.star))&&q.level>=range[0]&&q.level<=range[1]&&(!main?.length||!Object.hasOwn(names,q.mainStat)||main.includes(q.mainStat));
+}
 function suggestions(config,closest,account,effects){
   if(!config)return [];
   const inventory=Object.values(account.souls),q=(closest?.soulIds||[]).map(id=>account.souls[id]).filter(Boolean),out=[];
@@ -94,8 +101,9 @@ function findBuilds(hero,config,account,roster,effects,options={}){
   const base=C.baseFromRoster(hero,roster),unknown=configUnknown(config,effects);
   if(!base)return {status:'unknown',reasons:['缺少此实例可核验的基础面板；需要完整 attrs 或对应官方属性'],builds:[],suggestions:[]};
   if(unknown.length)return {status:'unknown',reasons:unknown,builds:[],suggestions:[]};
+  const objective={heroId:hero.shikigamiId,baseAttack:base.attack};
   let cache=null;if(options.cache){cache=options.cache.get(account.souls);if(!cache){cache=new Map();options.cache.set(account.souls,cache);}}
-  const cacheKey=cache&&JSON.stringify([base,config,effects,account.completeness,account.merged]);
+  const cacheKey=cache&&JSON.stringify([base,objective,config,effects,account.completeness,account.merged]);
   if(cacheKey&&cache.has(cacheKey)){const saved=cache.get(cacheKey);return {...saved,builds:saved.builds.map(b=>({...b,heroId:hero.instanceId})),closest:saved.closest?{...saved.closest,heroId:hero.instanceId}:null};}
   const inventory=options.inventory||Object.values(account.souls),known=inventory.filter(q=>!q.unknown.length);
   const absence=account.completeness==='complete'&&!account.merged&&!inventory.some(q=>q.unknown.length)?'missing':'unknown';
@@ -107,8 +115,8 @@ function findBuilds(hero,config,account,roster,effects,options={}){
   for(const r of config.suitRequirements||[]){const e=effects.find(e=>e.name===r.name||(r.effectId!=null&&e.teamCodeId===r.effectId));if(!(e?.suitNames||[r.name]).some(s=>groups.filter(g=>g.some(q=>q.set===s)).length>=r.count))reasons.push(`${r.name}不足${r.count}个符合主属性的不同位置`);}
   const allBuilds=[],seen=new Set();let closest=null,checked=0,unsupported=false;
   const assess=(q,keep=true)=>{
-    const p=C.panel(base,q,effects,config.extraAttributes),gaps=[...equipmentGaps(q,config,effects),...panelGaps(p.values,config)],distance=gaps.reduce((sum,g)=>sum+(g.weight||0),0);
-    const result={heroId:hero.instanceId,soulIds:[...q].sort((a,b)=>a.slot-b.slot).map(x=>x.id),panel:p.values,rawPanel:C.panel(base,q,effects).values,sets:p.sets,score:C.score(p.values,config.metricId),distance,gaps};
+    const p=C.panel(base,q,effects,config.extraAttributes),gaps=[...equipmentGaps(q,config,effects),...panelGaps(p.values,config,objective)],distance=gaps.reduce((sum,g)=>sum+(g.weight||0),0);
+    const result={heroId:hero.instanceId,objective,soulIds:[...q].sort((a,b)=>a.slot-b.slot).map(x=>x.id),panel:p.values,rawPanel:C.panel(base,q,effects).values,sets:p.sets,score:C.score(p.values,config.metricId,objective),distance,gaps};
     if(p.unsupported.length){unsupported=true;return result;}
     if(keep){if(!closest||distance<closest.distance||distance===closest.distance&&(result.score||0)>(closest.score||0))closest=result;
       if(q.length===6&&!gaps.length){const key=result.soulIds.join(',');if(!seen.has(key)){seen.add(key);allBuilds.push(result);}}}
@@ -120,7 +128,7 @@ function findBuilds(hero,config,account,roster,effects,options={}){
   else if(exhaustive){const q=[];function visit(n){if(n===6){assess(q);checked++;return;}for(const soul of relaxed[n]){q.push(soul);visit(n+1);q.pop();}}visit(0);}
   else {
     const width=options.width??64,perSet=options.perSet??5;
-    const rank=q=>{const p=C.panel(base,q,effects,config.extraAttributes).values;const gap=panelGaps(p,config).reduce((n,g)=>n+g.weight,0)+suitGaps(q,config,effects).reduce((n,g)=>n+g.weight,0);return -gap+Math.log1p(Math.max(0,C.score(p,config.metricId)||0))*.015;};
+    const rank=q=>{const p=C.panel(base,q,effects,config.extraAttributes).values;const gap=panelGaps(p,config,objective).reduce((n,g)=>n+g.weight,0)+suitGaps(q,config,effects).reduce((n,g)=>n+g.weight,0);return -gap+Math.log1p(Math.max(0,C.score(p,config.metricId,objective)||0))*.015;};
     const reduced=relaxed.map(g=>{const ordered=g.map(q=>({q,v:rank([q])})).sort((a,b)=>b.v-a.v);const counts={},selected=[];for(const {q} of ordered){const important=(config.suitRequirements||[]).some(r=>r.name===q.set)||(config.twoPieceStats||[]).some(s=>effects.find(e=>e.stat===s)?.suitNames.includes(q.set));if((counts[q.set]||0)<perSet||selected.length<12){selected.push(q);counts[q.set]=(counts[q.set]||0)+1;}if(selected.length>=(important?64:48))break;}return selected;});
     let beam=[{q:[],v:0}];
     for(const group of reduced){const next=[];for(const b of beam)for(const q of group){const arr=[...b.q,q];next.push({q:arr,v:rank(arr)});checked++;}next.sort((a,b)=>b.v-a.v);beam=next.slice(0,width);}
@@ -206,5 +214,5 @@ function matchLineup(lineup,account,roster,effects,options={}){
   return {status,label:status==='available'?'配置可组成':missing?'存在缺口':ready?'式神御魂就绪 · 仍需核对':'需核对',ready,distance:Math.round(distance*100)/100,checks,reasons:unique([...(forcedMissing?checks.filter(c=>c.includes('个不同实例')):[]),...members.filter(m=>m.status==='missing').map(m=>`${m.name}：${m.reasons.join('；')}`),...unknown]),members,assignment};
 }
 function compareMatches(a,b){if(a?.status==='available'&&b?.status!=='available')return -1;if(b?.status==='available'&&a?.status!=='available')return 1;return (a?.distance??Infinity)-(b?.distance??Infinity)||(a?.checks?.length||0)-(b?.checks?.length||0);}
-return {findBuilds,memberCandidates,matchLineup,compareMatches,shikigamiRequirementsComplete,panelGaps,equipmentGaps,suggestions,configUnknown,formatStat:fmt,suitMatches:(q,c,e)=>!suitGaps(q,c,e).length};
+return {findBuilds,memberCandidates,matchLineup,compareMatches,shikigamiRequirementsComplete,panelGaps,equipmentGaps,suggestions,configUnknown,soulEligible,formatStat:fmt,suitMatches:(q,c,e)=>!suitGaps(q,c,e).length};
 });

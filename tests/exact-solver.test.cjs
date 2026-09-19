@@ -12,6 +12,56 @@ function brute(l,a){
  const options=l.members.map(m=>{const h=Object.values(a.heroes).find(h=>h.shikigamiId===m.shikigamiId),base=C.baseFromRoster(h,roster),out=[];function walk(slot,items){if(slot===7){const p=C.panel(base,items,D.effects,m.config.extraAttributes);if(!C.equipmentGaps(items,m.config,D.effects).length&&!C.panelGaps(p.values,m.config).length)out.push({ids:items.map(q=>q.id),value:C.score(p.values,m.config.metricId)});return;}for(const q of Object.values(a.souls).filter(q=>q.slot===slot))walk(slot+1,[...items,q]);}walk(1,[]);return out;});
  let best=null;function join(i,used,v){if(i===options.length){if(!best||v.some((x,j)=>x>best[j]&&v.slice(0,j).every((y,k)=>y===best[k])))best=v;return;}for(const b of options[i])if(b.ids.every(id=>!used.has(id)))join(i+1,new Set([...used,...b.ids]),[...v,b.value]);}join(0,new Set(),[]);return best;
 }
+test('超过硬上限明确无解，无关未知御魂不影响证明，相关未知属性仍需补资料',()=>{
+ const a=fixture(false),l=lineup([member(0,'1',config({sixStarOnly:true,ranges:[{stat:'speed',min:162,max:164}]}))]);
+ for(const q of Object.values(a.souls))q.stats.speed=13.7666666667;
+ a.souls.unknown={...a.souls['1-0'],id:'unknown',star:2,unknown:['new_attribute']};
+ const r=finish(l,a);assert.equal(r.proof.state,'infeasible');assert.equal(r.gapAssessment.souls,'missing');assert.equal(r.gapCategory,'soul-only');
+ a.souls.unknown.star=6;assert.equal(finish(l,a).proof.state,'blocked');
+ a.souls.unknown.level=0;l.members[0].config.levelRange=[15,15];assert.equal(finish(l,a).proof.state,'infeasible');
+ a.souls.unknown.level=15;a.souls.unknown.mainStat='hp';l.members[0].config.mainStats={1:['attack']};assert.equal(finish(l,a).proof.state,'infeasible');
+ a.souls.unknown.mainStat='unrecognized';assert.equal(finish(l,a).proof.state,'blocked');
+});
+test('缺少配装资料属于待核对，不能因空配置变成计算异常',()=>{
+ const l=lineup([member(0,'1',null)]),r=finish(l,fixture());assert.equal(r.proof.state,'blocked');assert.ok(r.reasons.includes('缺少御魂配置'));
+});
+test('套装缺口区分不同位置与全队实例不足，允许未知套装作为潜在候选',()=>{
+ const a=fixture(false),roles=[member(0,'1',config({suitRequirements:[{name:'招财猫',count:4}]})),member(1,'2',config({suitRequirements:[{name:'招财猫',count:4}]}))];
+ assert.ok(E.soulShortages(roles,a,D.effects)[0].reasons.some(s=>s.includes('同队共需8件')));
+ roles.pop();a.souls['4-0'].set=a.souls['5-0'].set=a.souls['6-0'].set='火灵';assert.ok(E.soulShortages(roles,a,D.effects)[0].reasons.some(s=>s.includes('不同位置最多3')));
+ a.souls['4-0'].set='未识别套装';assert.deepEqual(E.soulShortages(roles,a,D.effects),[]);
+});
+test('十二种目标与上下限：独立数学公式、套装枚举对照精算剪枝',()=>{
+ const effects=[{name:'甲',suitNames:['甲'],stat:'crit',value:.15},{name:'乙',suitNames:['乙'],stat:'attackPercent',value:.15}];
+ for(let metric=1;metric<=12;metric++)for(let seed=0;seed<4;seed++){
+  const a=fixture(),c=config({metricId:metric,suitRequirements:[{name:'甲',count:4}],twoPieceStats:['attackPercent'],ranges:[{stat:'speed',min:120+seed*2,max:129,maxExclusive:seed===3},{stat:'crit',min:25,percentage:true}],extraAttributes:{attackPercent:.2,attack:123,crit:.04,critDamage:.17}}),l=lineup([member(0,'1',c)]);
+  for(const q of Object.values(a.souls)){const j=Number(q.id[2]),i=q.slot;q.set=j?'乙':'甲';q.stats={speed:i+j+seed%2,attack:i*7+j*11,attackPercent:j*.03,hp:i*13+j*17,hpPercent:j*.02,defense:i*2+j*3,defensePercent:j*.01,crit:.01*j,critDamage:.02*i,effectHit:i*.011+j*.03,effectResist:i*.007+j*.02};}
+  let expected=null;for(let mask=0;mask<64;mask++){
+   const qs=Array.from({length:6},(_,i)=>a.souls[(i+1)+'-'+((mask>>i)&1)]),alpha=qs.filter(q=>q.set==='甲').length;if(alpha!==4)continue;
+   const totals={};for(const q of qs)for(const [k,v] of Object.entries(q.stats))totals[k]=(totals[k]||0)+v;
+   const p={attack:(1000*(1+(totals.attackPercent||0)+.15)+totals.attack)*1.2+123,hp:10000*(1+(totals.hpPercent||0))+totals.hp,defense:500*(1+(totals.defensePercent||0))+totals.defense,speed:100+totals.speed,crit:.1+.15+(totals.crit||0)+.04,critDamage:1.5+totals.critDamage+.17,effectHit:totals.effectHit,effectResist:totals.effectResist};
+   if(p.speed<c.ranges[0].min||p.speed>129||seed===3&&p.speed>=129||p.crit<.25)continue;
+   const scores=[null,p.attack*p.critDamage,p.effectHit,p.effectResist,p.hp,p.attack,p.defense,p.speed,p.crit,p.critDamage,p.hp*p.critDamage,p.effectHit+p.effectResist,p.defense*p.critDamage];
+   expected=expected==null?scores[metric]:Math.max(expected,scores[metric]);
+  }
+  const it=E.search(l,a,roster,effects);let step;do{step=it.next();}while(!step.done);const r=step.value;
+  assert.equal(r.proof.state,expected==null?'infeasible':'optimal',`metric=${metric}, seed=${seed}`);if(expected!=null)assert.ok(Math.abs(r.proof.vector[0]-expected)<1e-7);
+ }
+});
+test('游戏的六条式神专用公式及孔雀动态覆盖用于排序、阈值和上界',()=>{
+ const facts=require('../data/soul-objectives.json');assert.equal(facts.expressions.length,6);assert.equal(facts.overrides[0].heroId,550);
+ const cases=[['344',1,p=>(p.attack+2*p.defense)*p.critDamage],['344',12,p=>(p.defense+.1*p.attack)*p.critDamage],['332',1,p=>p.attack*p.critDamage**2],['392',1,p=>p.attack*(p.critDamage-.5)],['550',1,p=>(p.attack+1000*(.75+p.effectHit))*p.critDamage],['590',1,p=>p.attack*(p.critDamage+p.effectResist)]];
+ for(const [id,metric,score] of cases){
+  const a=fixture(),r=[{id,assets:{baseAttrs40:{1:plain}}}];a.heroes={a:hero('a',id)};
+  for(const q of Object.values(a.souls)){const j=Number(q.id[2]);q.stats={speed:q.slot,attack:j?0:40,defense:j?35:0,critDamage:j?.06:0,effectHit:j?.1:0,effectResist:j?.09:0};}
+  const l=lineup([member(0,id,config({metricId:metric}))]);let best=-Infinity;
+  for(let mask=0;mask<64;mask++){let attack=1000,defense=500*1.6,critDamage=1.5,effectHit=0,effectResist=0;for(let slot=1;slot<=6;slot++){const s=a.souls[slot+'-'+((mask>>(slot-1))&1)].stats;attack+=s.attack;defense+=s.defense;critDamage+=s.critDamage;effectHit+=s.effectHit;effectResist+=s.effectResist;}best=Math.max(best,score({attack,defense,critDamage,effectHit,effectResist}));}
+  function run(){const it=E.search(l,a,r,D.effects);let step;do{step=it.next();}while(!step.done);return step.value;}
+  const result=run();assert.equal(result.proof.state,'optimal');assert.ok(Math.abs(result.proof.vector[0]-best)<1e-7,`${id}/${metric}`);assert.equal(result.assignment[0].objective.heroId,id);
+  l.members[0].config.targetScore=best+1;assert.equal(run().proof.state,'infeasible');
+  l.members[0].config.targetScore=best-.001;assert.equal(run().proof.state,'optimal');
+ }
+});
 test('精确搜索对照独立笛卡尔积穷举，按成员顺序全局最优且不重复御魂',()=>{
  for(let seed=0;seed<4;seed++){const a=fixture(),l=lineup([member(0,'1',config({ranges:[{stat:'speed',max:128+seed}]})),member(1,'2',config({ranges:[{stat:'speed',min:124}]}))]);for(const q of Object.values(a.souls))q.stats.speed+=(seed*Number(q.id[0]))%3;const expected=brute(l,a),r=finish(l,a);assert.equal(r.proof.state,expected?'optimal':'infeasible');assert.deepEqual(r.proof.vector,expected);if(r.assignment)assert.equal(new Set(r.assignment.flatMap(b=>b.soulIds)).size,12);}
 });

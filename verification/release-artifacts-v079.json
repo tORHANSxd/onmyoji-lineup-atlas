@@ -1,0 +1,22 @@
+{
+  "version": "0.7.9",
+  "portableEntries": 208,
+  "portableMatchesUnpacked": true,
+  "assets": [
+    {
+      "file": "Yuqi-Setup-0.7.9-Windows-x64.exe",
+      "size": 279112147,
+      "sha256": "f3bd4e597fa614c9acacfd5227ad1bde838b1a79698e9b5cd1e653922a60540f"
+    },
+    {
+      "file": "Yuqi-Portable-0.7.9-Windows-x64.zip",
+      "size": 349454774,
+      "sha256": "65db852be4171ea36ca5e6008c12bac1467df905d12430e62444d1ed9eac9d7e"
+    }
+  ],
+  "installerPayloadEntries": 208,
+  "installerPayloadMatchesUnpacked": true,
+  "packagedStartupSmoke": "passed",
+  "unitTestsPassed": 185,
+  "libraryToolsUI": "passed"
+}

@@ -2,14 +2,15 @@
 
 Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式神与御魂库存，查看离配置要求还差什么。
 
-**Windows x64 · v0.7.8 公开测试版 · 无需另装 Node.js 或 Python**
+**Windows x64 · v0.7.9 公开测试版 · 无需另装 Node.js 或 Python**
 
-[下载安装包](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Setup-0.7.8-Windows-x64.exe) · [下载免安装版](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Portable-0.7.8-Windows-x64.zip) · [PDF 图文指南](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Guide-0.7.8.pdf) · [当前版本说明](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.7.8)
+[下载安装包](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.9/Yuqi-Setup-0.7.9-Windows-x64.exe) · [下载免安装版](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.9/Yuqi-Portable-0.7.9-Windows-x64.zip) · [PDF 图文指南（v0.7.8）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Guide-0.7.8.pdf) · [当前版本说明](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.7.9)
 
 ## 主要功能
 
 - **按副本找阵容**：内置 373 条有原码的记录，支持逐级分类、首领、层数和魂土 / 真蛇等别名搜索。
 - **核对账号差距**：分别显示「式神缺少」「御魂不达标」「式神技能或等级或觉醒不达标」，同一阵容可同时显示多个标签。
+- **目标与批量精算**：勾选阵容存入当前库存账号的「目标阵容」，支持跨页全选、反选及勾选精算；打开「缺口统计」会计算当前筛选结果，按受影响阵容数汇总缺少的式神与御魂。
 - **查看完整要求**：成员、技能、御魂套装、位置和面板集中展示；阴阳师、契灵和术印保留显示，不参与达标检查。
 - **管理自己的阵容库**：支持单条和批量添加、编辑、删除，包括内置预设；失效码一键清理，解析失败原地重试。
 - **本地使用与备份**：已有内容可离线查看，支持多库存账号、导出备份和恢复；手机授权后可保存查询登录。
@@ -24,24 +25,24 @@ Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式
 2. **先浏览阵容**：启动后直接进入阵容库，按分类逐级进入，或搜索具体副本；没有结果时先点「重置」清除筛选。
 3. **需要解析新码时登录**：进入「登录 / 切换角色」，先阅读醒目的免责声明，并勾选确认使用可弃用的小号、自行承担账号风险，再用阴阳师手游扫码，选择已有角色。手机允许保存后可免扫码续用；每次启动仍需先确认风险，再点「登录此账号」。
 4. **导入自己的库存**：进入「我的账号」，导入平安志 `mumu-snapshot-v1` JSON，在右上角选择要核对的账号。首次或更新完整库存时，通常不勾选「增量合并旧库存」。
-5. **看差距与配置**：在卡片查看三个颜色标签，进入详情核对技能、御魂、配速和操作备注，再复制原码到游戏中使用。
+5. **精算与查看差距**：导入库存后不会自动精算全部阵容。勾选需要的阵容后精算，或点击「精算全部阵容」；可加入「目标阵容」方便下次查看。「缺口统计」会自动精算当前筛选结果，支持暂停、继续。进入详情查看配置，再复制原码到游戏中使用。
 6. **定期备份**：通过「阵容库管理」整理记录；升级、大批删除或换电脑前，点击左下角「导出备份」。
 
 **扫码登录用于查询阵容码，库存需要另行导入，两者可以使用不同账号。** 御契不负责从游戏导出库存；没有平安志 JSON 时仍可浏览、管理阵容。批量添加支持粘贴原码、TXT / TSV 或从 Excel 复制四列，不直接读取 XLSX。
 
-详细操作、截图标注和常见问题见 [18 页 PDF 使用指南（v0.7.8）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Guide-0.7.8.pdf)，已包含登录风险确认和保存账号续用步骤。
+登录、库存导入和备份的截图标注见 [18 页 PDF 使用指南（v0.7.8）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/Yuqi-Guide-0.7.8.pdf)。该指南尚未包含 v0.7.9 新增的目标阵容、批量精算和缺口统计，操作见上文。
 
 ## 必要说明
 
 - **登录风险与免责声明**：必须使用不再使用、无重要资产、能承受封禁损失的小号，禁止使用主号。查询账号仅用于解析阵容码；凭据仅在本机按授权加密保存，不上传开发者或其他第三方服务器，认证与解析请求仍需发送网易官方服务。如因使用本软件导致封号、冻结或其他账号损失，由使用者自行承担风险；在法律允许范围内，本软件及开发者不承担由此产生的责任。新版在扫码和已保存账号续用之前均要求主动确认；不接受时可继续离线使用。
 
-- **覆盖安装问题**：v0.7.8 尚未解决部分环境下的 `pwsh.exe / Unknown Hard Error`。遇到后停止覆盖并保留备份，可改用完整免安装版。当前完成了包内容和解包程序运行验证，未完成实际安装、覆盖及卸载验收。
-- **库存要更新**：培养式神、强化或消耗御魂后，请重新导出完整 JSON 并替换导入。「计算中」「待核对」不表示一定做不出，满足式神御魂要求也不保证通关。
+- **覆盖安装问题**：部分环境下的 `pwsh.exe / Unknown Hard Error` 尚未解决。遇到后停止覆盖并保留备份，可改用完整免安装版。当前完成了包内容和解包程序运行验证，未完成实际安装、覆盖及卸载验收。
+- **计算与库存**：培养式神、强化或消耗御魂后，请重新导出完整 JSON 并替换导入。上下限均为硬约束；「计算中」与资料不足的「待核对」不表示无解。已核对游戏属性与六条式神专用公式，但未完整复刻游戏原生配装内核，不能保证结果完全一致，也不保证通关。
 - **数据在本机**：用户资料位于 `%APPDATA%/onmyoji-lineup-atlas/`。安装包和免安装版不内置已登录账号；保存凭据按当前 Windows 用户加密，不进入备份，换电脑需重新扫码。
 - **两种 JSON 分开使用**：平安志文件用「我的账号 → 导入」更新库存；御契备份用「恢复备份」。备份包含个人库存，请自己保管。
 - **版本与来源**：非网易官方工具，当前未数字签名。资料快照截至 2026-09-12，原码有效性以查询结果为准。游戏素材权利见 [第三方说明](THIRD_PARTY_NOTICES.md)。
 
-Release 附有 [SHA256SUMS.txt](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.8/SHA256SUMS.txt)，可核对安装包、免安装版和 PDF 指南。指南截图使用演示数据，不含真实账号或登录凭据。
+Release 附有 [SHA256SUMS.txt](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.7.9/SHA256SUMS.txt)，可核对安装包和免安装版；旧版 PDF 的校验值保留在 v0.7.8 Release。指南截图使用演示数据，不含真实账号或登录凭据。
 
 ## 开发
 
@@ -54,6 +55,6 @@ npm start
 npm run dist
 ```
 
-开发需要 Node.js、Python 和 Windows 构建工具。v0.7.8 已通过 177 项 Node 测试；界面验证覆盖四种窗口宽度和 125% 缩放。构建命令不自动发布 Release。
+开发需要 Node.js、Python 和 Windows 构建工具。v0.7.9 已通过 185 项 Node 测试，另有目标保存、跨页选择、统计精算及头像居中的 Electron 界面验证。构建命令不自动发布 Release。
 
 [御魂计算口径](docs/SOUL_CALCULATOR.md) · [阵容码协议](docs/TA_PROTOCOL.md) · [登录与解析验证](docs/LOGIN_AND_PARSER_V073.md) · [MIT 许可证](LICENSE)
