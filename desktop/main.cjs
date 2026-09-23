@@ -2,7 +2,9 @@ const { app, BrowserWindow, ipcMain, dialog, shell, session, protocol, net, nati
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { decodeInput } = require('./ta-codec.cjs');
+const {Background}=require('./background.cjs');
+let background;
+const gameCatalog=()=>official.getGameCatalog();
 const { OfficialData, validFile } = require('./official-data.cjs');
 const { TASession } = require('./ta-session.cjs');
 const { TAQueryQueue } = require('./ta-query-queue.cjs');
@@ -21,8 +23,8 @@ function trusted(event) { if (!isAppURL(event.senderFrame?.url)) throw new Error
 function requireRiskAcceptance(){if(!loginRiskAccepted)throw new Error('请先阅读免责声明，并确认使用可弃用的小号及承担账号风险');}
 function loginStatus(){return {...taSession.status(),risk_accepted:loginRiskAccepted};}
 function requireLogin(event, epoch=loginEpoch) { trusted(event); if(epoch!==loginEpoch||taSession?.status().authenticated!==true)throw new Error('请先扫码登录后使用软件'); requireRiskAcceptance(); }
-function handleSignedIn(name, handler) {
-  ipcMain.handle(name, async(event,...args)=>{const epoch=loginEpoch;const check=()=>requireLogin(event,epoch);check();const result=await handler(check,...args);check();return result;});
+function handleSignedIn(name, handler, {commits=false}={}) {
+  ipcMain.handle(name, async(event,...args)=>{const epoch=loginEpoch;const check=()=>requireLogin(event,epoch);check();const result=await handler(check,...args);if(!commits||!result?.saved)check();return result;});
 }
 function handleLocal(name,handler){ipcMain.handle(name,async(event,...args)=>{const check=()=>trusted(event);check();const result=await handler(check,...args);check();return result;});}
 async function atomicWrite(file, body, check=()=>{}) {
@@ -33,14 +35,15 @@ async function atomicWrite(file, body, check=()=>{}) {
 }
 app.whenReady().then(async () => {
   session.defaultSession.setPermissionRequestHandler((_w, _p, callback) => callback(false));
-  win = new BrowserWindow({ width: 1440, height: 940, minWidth: 880, minHeight: 650, show: !isSmoke, icon: path.join(__dirname,'../app/assets/logo.png'), backgroundColor: '#101820', autoHideMenuBar: true,
+  win = new BrowserWindow({ width: 1440, height: 940, minWidth: 720, minHeight: 650, show: !isSmoke, icon: path.join(__dirname,'../app/assets/logo.png'), backgroundColor: '#f3efe7', autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true } });
   win.webContents.setWindowOpenHandler(({url}) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return {action:'deny'}; });
   win.webContents.on('will-navigate', (e,url) => { if (!isAppURL(url)) { e.preventDefault(); if (/^https:\/\//.test(url)) shell.openExternal(url); } });
   official=await new OfficialData({baseData:JSON.parse(await fs.readFile(path.join(__dirname,'../data/bundle.json'),'utf8')),appRoot:path.join(__dirname,'..'),cacheRoot:path.join(app.getPath('userData'),'official-cache'),inspectImage:(bytes,info)=>{const image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw new Error('图片不能完整解码');const size=image.getSize();if(size.width!==info.width||size.height!==info.height||image.toBitmap().length!==size.width*size.height*4)throw new Error('图片解码尺寸不匹配');},onProgress:status=>{if(win&&!win.isDestroyed())win.webContents.send('official-progress',status);}}).init();
   protocol.handle('atlas-asset',request=>{const u=new URL(request.url),file=u.pathname.slice(1);if(u.hostname!=='cache'||u.search||!validFile(file))return new Response('Not found',{status:404});return net.fetch(pathToFileURL(path.join(official.root,'images',file)).href);});
+  background=new Background({statePath:statePath()});
   const credentials=new TACredentials({file:path.join(app.getPath('userData'),'remembered-accounts.bin'),safeStorage});
-  const responseCache=new TAResponseCache(path.join(app.getPath('userData'),'ta-responses'));
+  const responseCache=new TAResponseCache(path.join(app.getPath('userData'),'ta-responses'),{parse:text=>background.run('parse-json',text),stringify:value=>background.run('stringify',value)});
   taSession=new TASession({credentials,helperPath:app.isPackaged?path.join(process.resourcesPath,'ta-runtime','atlas-ta-helper.exe'):path.join(__dirname,'../release/ta-runtime/atlas-ta-helper/atlas-ta-helper.exe'),onStatus:state=>{
     const authenticated=state.authenticated===true;
     const role=authenticated?JSON.stringify([state.selected_server,state.selected_avatar]):'';
@@ -69,19 +72,52 @@ app.whenReady().then(async () => {
     const response=cached||await queryQueue.query(code,check);check();
     if(response?.code!==code||response?.share_key!==code.slice(4))throw new Error('查询响应与本次文字码不一致');
     if(!cached&&response.err===0){try{await responseCache.write(code,response,check);}catch{check();return {ok:false,state:'storage-error',error:'阵容原始返回未能保存，已暂停解析；请检查本机存储后重试'};}}
-    const result=decodeInput(response);if(result.ok){result.origin='official-query';result.cacheHit=!!cached;}return result;
+    const result=await background.run('decode',{input:response,options:{yysIds:official.getData().actors.map(a=>a.gameId)}});if(result.ok){result.origin='official-query';result.cacheHit=!!cached;}return result;
+  });
+  handleSignedIn('ta-share',async(check,code)=>{
+    if(typeof code!=='string'||code.length>131072||!code.startsWith('#TA#'))throw Error('请先生成有效的游戏阵容码');
+    await background.run('validate',{code,catalog:gameCatalog()});check();
+    const job=queryQueue.tail.then(async()=>{check();return taSession.request('share',{code});});
+    queryQueue.tail=job.catch(()=>{});const response=await job;check();
+    const shortCode=await background.run('verify-share',{code,response});check();
+    try{await responseCache.write(shortCode,{...response,code:shortCode},check);}catch(error){check();return {code:shortCode,cacheSaved:false,warning:'官方短码已生成，但本地缓存保存失败。请复制短码留存；无需再次生成。'};}
+    return {code:shortCode,cacheSaved:true};
   });
   ipcMain.handle('ta-logout',async e=>{trusted(e);loginRiskAccepted=false;taSession.stop();return loginStatus();});
   handleLocal('load-data', async () => official.getData());
+  handleLocal('load-data-json',async()=>background.run('stringify',official.getData()));
+  const qrImage=code=>background.run('qr',{code,catalog:gameCatalog()});
+  handleLocal('build-lineup',async(_check,input)=>background.run('build',{input,catalog:gameCatalog()}));
+  handleLocal('export-qr',async(check,{code,name})=>{const image=await qrImage(code);check();const r=await dialog.showSaveDialog(win,{defaultPath:path.basename(String(name||'阵容二维码.png')),filters:[{name:'PNG 图片',extensions:['png']}]});check();if(r.canceled)return false;await atomicWrite(r.filePath,Buffer.from(image.split(',')[1],'base64'),check);return true;});
+  handleLocal('find-short-code',async(_check,code)=>responseCache.findByPayload(code));
   handleLocal('copy-code', async (_check,code) => { if(typeof code!=='string'||!code.trim()||Buffer.byteLength(code,'utf8')>32*1024*1024)throw new Error('阵容码为空或超过32 MiB'); await clipboard.writeText(code); return {copied:true}; });
   let saveQueue=Promise.resolve();
-  handleLocal('load-state', async check => { await saveQueue;check();try { return JSON.parse(await fs.readFile(statePath(),'utf8')); } catch (error) { if(error.code==='ENOENT') return null; throw new Error('本地数据库读取失败，请保留数据文件并从备份恢复。'); } });
-  const saveState = async (check,state) => { const body=JSON.stringify(state); if(body.length>100*1024*1024) throw new Error('本地数据超过100 MiB限制'); const current=saveQueue.then(()=>{check();return atomicWrite(statePath(),body,check);}); saveQueue=current.catch(()=>{}); await current; return {saved:true}; };
+  handleLocal('load-state',async check=>{await saveQueue;check();return background.run('load-state');});
+  handleLocal('load-state-json',async check=>{await saveQueue;check();return background.run('load-state-json');});
+  const saveState=async(check,state,delta,json)=>{
+    const current=saveQueue.then(async()=>{
+      check();
+      try{
+        const prepared=await background.run('prepare-state',{state,delta,json});check();
+        if(prepared.needsSnapshot)return prepared;
+        // Recheck this exact login/role after writing and before publishing.
+        await fs.rename(prepared.file,statePath());
+        return await background.run('commit-state');
+      }catch(error){await background.run('discard-state').catch(()=>{});throw error;}
+    });
+    saveQueue=current.catch(()=>{});return current;
+  };
+  const saveJSONState=(check,json)=>{if(typeof json!=='string'||Buffer.byteLength(json)>100*1024*1024)throw Error('本地数据超过100 MiB限制');return saveState(check,undefined,undefined,json);};
+  handleLocal('save-state-json',saveJSONState);
+  handleSignedIn('save-parsed-state-json',saveJSONState,{commits:true});
   handleLocal('save-state',saveState);
-  handleSignedIn('save-parsed-state',saveState);
+  handleSignedIn('save-parsed-state',saveState,{commits:true});
+  handleSignedIn('save-parsed-delta',(check,delta)=>saveState(check,undefined,delta),{commits:true});
+  handleLocal('parse-json',async(_check,text)=>{if(typeof text!=='string'||text.length>50*1024*1024)throw Error('导入文件超过50 MiB');return background.run('parse-json',text);});
   handleLocal('import-files', async check => { const r=await dialog.showOpenDialog(win,{properties:['openFile','multiSelections'],filters:[{name:'JSON 文件',extensions:['json']}]}); check();if(r.canceled) return []; const results=[]; for(const p of r.filePaths){check();const st=await fs.stat(p); if(st.size>50*1024*1024) throw new Error('单个导入文件超过50 MiB'); results.push({name:path.basename(p),text:await fs.readFile(p,'utf8')}); } return results; });
-  handleLocal('export-json', async(check,{name,data}) => { const r=await dialog.showSaveDialog(win,{defaultPath:path.basename(String(name)),filters:[{name:'JSON 文件',extensions:['json']}]}); check();if(r.canceled) return false; await atomicWrite(r.filePath,JSON.stringify(data,null,2),check); return true; });
-  handleSignedIn('decode', async(_check,input) => {if(JSON.stringify(input??null).length>32*1024*1024)return {ok:false,state:'invalid-input',error:'阵容内容超过32 MiB'};return decodeInput(input);});
+  handleLocal('export-json', async(check,{name,data}) => { const r=await dialog.showSaveDialog(win,{defaultPath:path.basename(String(name)),filters:[{name:'JSON 文件',extensions:['json']}]}); check();if(r.canceled) return false; const body=await background.run('stringify',data);check();await atomicWrite(r.filePath,body,check); return true; });
+  handleLocal('export-json-text',async(check,{name,text})=>{if(typeof text!=='string'||Buffer.byteLength(text)>100*1024*1024)throw Error('导出内容超过100 MiB');const r=await dialog.showSaveDialog(win,{defaultPath:path.basename(String(name)),filters:[{name:'JSON 文件',extensions:['json']}]});check();if(r.canceled)return false;await atomicWrite(r.filePath,text,check);return true;});
+  handleLocal('decode',async(_check,input)=>background.run('decode',{input,options:{yysIds:official.getData().actors.map(a=>a.gameId)}}));
   handleLocal('official-status',async()=>official.getStatus());
   handleLocal('official-refresh',async(_check,options)=>{if(options?.force!=null&&typeof options.force!=='boolean')throw new Error('更新参数无效');return official.refresh({force:options?.force===true});});
   handleLocal('official-cancel',async()=>{official.cancel();return official.getStatus();});
@@ -91,5 +127,5 @@ app.whenReady().then(async () => {
   if(isSmoke) win.webContents.once('did-finish-load', async()=>{setTimeout(async()=>{try{const result=await win.webContents.executeJavaScript('window.runLoginSmoke ? window.runLoginSmoke() : ({error:"smoke entry not ready"})');taSession.stop();result.loginModuleLoggedOut=!taSession.status().authenticated&&!taSession.child;const out=process.env.ATLAS_SMOKE_OUTPUT;if(out)await atomicWrite(path.resolve(out),JSON.stringify(result,null,2));app.exit(result.error?1:0);}catch(e){taSession?.stop();console.error(e);app.exit(1);}},1500);});
   else setInterval(()=>{if(loggedIn&&official.due())official.refresh().catch(()=>{});},3600000).unref();
 });
-app.on('before-quit',()=>{official?.cancel();taSession?.stop();});
+app.on('before-quit',()=>{official?.cancel();taSession?.stop();background?.close();});
 app.on('window-all-closed',()=>app.quit());

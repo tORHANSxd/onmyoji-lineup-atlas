@@ -59,8 +59,18 @@ function crossList(p){
  if(p.category==='日常'&&p.subcategory==='逢魔'&&p.section==='彼世逢魔')return [p,{category:'周常',subcategory:'彼世逢魔',dungeon:p.dungeon}];
  return [p];
 }
+const dataCaches=new WeakMap();
+function index(data){
+ let cached=dataCaches.get(data);
+ if(cached&&cached.scenes===data.stageCatalog?.scenes&&cached.taxonomy===data.taxonomy&&cached.curation===data.lineupCuration&&cached.extended===data.extendedStages)return cached;
+ const byStage=new Map();
+ for(const s of data.stageCatalog?.scenes||[]){const key=String(s.gameSceneId);if(!byStage.has(key))byStage.set(key,[]);byStage.get(key).push(s);}
+ cached={scenes:data.stageCatalog?.scenes,taxonomy:data.taxonomy,curation:data.lineupCuration,extended:data.extendedStages,byStage,sortedTaxonomy:[...(data.taxonomy||[])].sort((a,b)=>b.dungeon.length-a.dungeon.length),resolved:new WeakMap()};
+ dataCaches.set(data,cached);return cached;
+}
 function resolve(lineup,data){
- const candidates=(data.stageCatalog?.scenes||[]).filter(s=>s.gameSceneId!=null&&String(s.gameSceneId)===String(lineup.gameSceneId));
+ const cache=index(data),previous=cache.resolved.get(lineup);if(previous)return previous;
+ const candidates=(cache.byStage.get(String(lineup.gameSceneId))||[]);
  const stages=new Map(candidates.map(s=>[[s.level1,s.level2,s.level3].join('\u0000'),s])),rawStage=stages.size===1?[...stages.values()][0]:null;
  const decodedStage=rawStage?{category:rawStage.level1,subcategory:rawStage.level2,dungeon:rawStage.level3}:null,stage=decodedStage?normalize(decodedStage):null;
  let paths=stage?[stage]:[],classificationSource=stage?'阵容码副本 ID · '+(rawStage.verification==='apk'?'APK 表核验':'社区映射待核验'):lineup.gameSceneId!=null?'副本 ID 尚未收录 · 按管理信息分类':'原码未提供副本 ID · 按管理信息分类';
@@ -69,13 +79,16 @@ function resolve(lineup,data){
  const event=eventCodes[String(lineup.code||'').replace(/^\|TA\|/,'')];
  if(event){paths=[{category:'限时活动',subcategory:'拾光永恒',dungeon:event}];classificationSource='拾光永恒 · 已核实原码来源用途';}
  if(!paths.length){
-  const sourceText=[lineup.originalCategory,lineup.title].filter(Boolean).join(' '),taxonomy=[...(data.taxonomy||[])].sort((a,b)=>b.dungeon.length-a.dungeon.length),matched=taxonomy.find(t=>sourceText.includes(t.dungeon))||taxonomy.find(t=>String(lineup.dungeon||'').includes(t.dungeon));
+  const sourceText=[lineup.originalCategory,lineup.title].filter(Boolean).join(' '),taxonomy=cache.sortedTaxonomy,matched=taxonomy.find(t=>sourceText.includes(t.dungeon))||taxonomy.find(t=>String(lineup.dungeon||'').includes(t.dungeon));
   paths=[normalize(matched?{...matched,subcategory:matched.dungeon}:lineup)];
  }
  paths=paths.flatMap(crossList);
+ const reviewed=data.lineupCuration?.entries?.[lineup.code];
+ if(reviewed?.paths?.length){paths=reviewed.paths;classificationSource='预设用途整理 · '+reviewed.reason;}
  if(lineup.manualClassification){paths=[{category:lineup.category,subcategory:lineup.subcategory||'自定义',...(lineup.section?{section:lineup.section}:{}),dungeon:lineup.dungeon}];classificationSource='手动管理分类';}
+ if(lineup.manualPaths?.length){paths=lineup.manualPaths;classificationSource='手动指定副本 · 优先于原码与预设规则';}
  const classificationPaths=[...new Map(paths.map(p=>[JSON.stringify(p),p])).values()],primary=classificationPaths[0];
- return {...lineup,section:undefined,...primary,classificationPaths,dungeons:[...new Set(classificationPaths.map(p=>p.dungeon))],classificationSource,decodedStage};
+ const result={...lineup,section:undefined,...primary,classificationPaths,dungeons:[...new Set(classificationPaths.map(p=>p.dungeon))],classificationSource,decodedStage};cache.resolved.set(lineup,result);return result;
 }
 function matches(lineup,category='',subcategory='',dungeon=''){return (lineup.classificationPaths||[lineup]).some(p=>(!category||p.category===category)&&(!subcategory||p.subcategory===subcategory)&&(!dungeon||p.dungeon===dungeon));}
 function searchText(p){
@@ -83,9 +96,16 @@ function searchText(p){
  return [text,...[0,1].map(i=>text.replace(/([壹贰叁肆伍陆柒捌玖拾])层/g,(_,n)=>numbers[n].split(' ')[i]+'层')),...aliases.filter(([pattern])=>pattern.test(text)).map(([,s])=>s)].join(' ').toLowerCase();
 }
 function searchMatches(p,query=''){
- const value=query.trim(),full=caption(p);
+ const value=query.trim();if(!value)return true;const full=caption(p);
  if(value.includes(' → '))return full===value||full.startsWith(value+' → ');
  const text=searchText(p).replace(/[·・]/g,'');return value.toLowerCase().split(/\s+/).filter(Boolean).every(q=>text.includes(q.replace(/[·・]/g,'')));
 }
-return {resolve,matches,segments,caption,searchText,searchMatches};
+function choices(data){
+ const cache=index(data);if(cache.choices)return cache.choices;
+ const official=(data.stageCatalog?.scenes||[]).map(s=>({...normalize({category:s.level1,subcategory:s.level2,dungeon:s.level3}),gameSceneId:s.gameSceneId}));
+ const reviewed=Object.values(data.lineupCuration?.entries||{}).flatMap(e=>e.paths||[]);
+ const merged=new Map();for(const p of [...reviewed,...(data.extendedStages||[]),...official]){const key=caption(p);merged.set(key,{...merged.get(key),...p,...(p.gameSceneId?{extended:false}:{})});}
+ return cache.choices=[...merged.values()].sort((a,b)=>caption(a).localeCompare(caption(b),'zh-CN'));
+}
+return {resolve,matches,segments,caption,searchText,searchMatches,choices,normalize};
 });

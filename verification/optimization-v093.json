@@ -1,0 +1,81 @@
+{
+  "version": "0.9.3",
+  "recordedAt": "2026-09-22T17:00:37.037Z",
+  "scope": "按官方阵容助手配置修正制作器、技能、契灵与自动施法；保留既有性能与管理能力。",
+  "counts": {
+    "heroes": 286,
+    "skills": 1036,
+    "skillLevels": 4954,
+    "icons": 1026
+  },
+  "tests": {
+    "node": 244,
+    "python": 55,
+    "creatorUI": 23,
+    "optimizationUI": 37,
+    "presetNativeLineups": 328,
+    "localImages": 2952,
+    "revisionReport": "revision-ui-v093.json",
+    "performanceReport": "performance-ui-v093.json",
+    "nativeRoundTrip": {
+      "count": 328,
+      "memberConfigurationUnchanged": true
+    },
+    "packageChecks": 2204,
+    "packageConsistencyPassed": true
+  },
+  "boundaries": {
+    "defaultOwned": "全部阴阳师／英杰／契灵；等级和配置按阵容设置",
+    "source": "用户本地客户端 20260912_211558_280259 及补丁静态资料",
+    "livePhoneLogin": false,
+    "firstTimeAssistantUnlock": false,
+    "liveGameImport": false,
+    "allChannelsVerified": false,
+    "gitArchive": false
+  },
+  "packaging": {
+    "artifacts": [
+      {
+        "file": "Yuqi-Setup-0.9.3-Windows-x64.exe",
+        "sha256": "122db2f30bbdad4ec90d493a6a1c8451e56a92ca01b25158dd4179fb328a7d12",
+        "bytes": 303390756
+      },
+      {
+        "file": "Yuqi-Portable-0.9.3-Windows-x64.zip",
+        "sha256": "611b2c0cc25481212edfb61b1407be26bc311b126ec145d0e66c7a1aa04559dd",
+        "bytes": 369959256
+      },
+      {
+        "file": "Yuqi-Guide-0.9.3.pdf",
+        "sha256": "7ebbc4cc3a0933b0ececa1eeae4305a2a836aa52c91c3107e2fe2db6c5017313",
+        "bytes": 5230807
+      }
+    ],
+    "packageChecks": 2204,
+    "payloadFiles": 208,
+    "installerPayloadMatches": true,
+    "portable": {
+      "version": "0.9.3",
+      "fileCount": 208,
+      "allHashesMatch": true,
+      "unicodeFileNames": "UTF-8"
+    },
+    "startup": "passed",
+    "existingInstallationPreserved": true,
+    "sourceAudit": "package-audit-v093.json",
+    "installerAudit": "installer-v093.json",
+    "guide": {
+      "pages": 32,
+      "screenshots": 26,
+      "textAndFontChecks": true,
+      "visualReview": "passed",
+      "report": "guide-v093.json"
+    },
+    "recheckedAt": "2026-09-23T00:57:34.930Z"
+  },
+  "release": {
+    "tag": "v0.9.3",
+    "channel": "prerelease",
+    "url": "https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.9.3"
+  }
+}

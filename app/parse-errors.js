@@ -10,6 +10,7 @@ function fromServer(serverCode,attempts=1){
 }
 function fromMessage(value){
  const message=String(value||'解析未完成').replace(/^Error invoking remote method 'ta-query': Error: /,'').slice(0,500);
+ if(message.includes('[TA_ASSISTANT]'))return {kind:'assistant-unavailable',label:'角色阵容助手未就绪',retryable:true,message:message.slice(message.indexOf('[TA_ASSISTANT]')+14).trim()};
  const match=/^服务器未返回该阵容（代码 (\d+)）；分享可能已失效$/.exec(message);
  if(match)return fromServer(Number(match[1]));
  if(/ObjectId/.test(message))return {kind:'decode-error',label:'本地解码失败',retryable:true,message:'旧版本未能解码服务器返回的 ObjectId；此兼容问题已修复，请重新解析。原始错误：'+message};

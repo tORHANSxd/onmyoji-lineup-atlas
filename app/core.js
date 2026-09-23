@@ -51,34 +51,89 @@ function adaptTA(payload,data={}){
       if([...suits.keys()].some(sid=>!data.suits?.[sid]))uncertainties.push('包含未收录套装编号');
       config={sixStarOnly:equip.yuhun_star?.length===1&&equip.yuhun_star[0]===6,maxLevelOnly:equip.yuhun_lv?.[0]===15,allowedStars:equip.yuhun_star,levelRange:equip.yuhun_lv,scope:'all',suitRequirements:[...suits].map(([sid,count])=>({name:data.suits?.[sid]||`未知御魂 ${sid}`,count,gameId:sid})),twoPieceStats:(equip.two_suit||[]).map(a=>attrs[a]||a),suitSelectionComplete:true,mainStats:Object.fromEntries(Object.entries(equip.main_attr||{}).map(([slot,values])=>[String(Number(slot)+1),values.map(v=>attrs[v]||v)])),ranges,extraAttributes:extra,metricId:equip.criteria,highestStats:(row.highest_limit||[]).map(a=>limits[a]||a),keepCurrent:!!row.not_calc_flag,protocolUncertainties:uncertainties,protocol:{criteria:equip.criteria,twoSuit:equip.two_suit||[],limits:equip.limit||{},highest:row.highest_limit||[],notCalcFlag:row.not_calc_flag,useScore:row.use_score,yuhunLevel:equip.yuhun_lv,yuhunStars:equip.yuhun_star},raw:equip};
     }
-    return {index,kind,shikigamiId:kind==='shikigami'?String(row.hero_id):null,onmyojiId:kind==='onmyoji'?String(row.hero_id):null,name:kind==='onmyoji'?(actor?.name||`阴阳师 / 英杰 ${row.hero_id}`):(roster?.name||`未知式神 ${row.hero_id}`),occupied:true,awakening:[0,1].includes(row.awake)?row.awake:null,skills:Array.isArray(row.skills)?row.skills.map(([skillId,level])=>({id:skillId,level})):null,level:row.level,star:row.star,levelMode:'recommended',config,qiling:row.qiling_info||null,aiSkill:row.ai_skill,raw:row};
+    return {index,kind,shikigamiId:kind==='shikigami'?String(row.hero_id):null,onmyojiId:kind==='onmyoji'?String(row.hero_id):null,name:kind==='onmyoji'?(actor?.name||`阴阳师 / 英杰 ${row.hero_id}`):(roster?.name||`未知式神 ${row.hero_id}`),occupied:true,awakening:[0,1].includes(row.awake)?row.awake:null,skills:Array.isArray(row.skills)?row.skills.map(([skillId,level])=>{const game=typeof module==='object'&&module.exports?require('./game-config.js'):globalThis.AtlasGame;return {id:skillId,level,name:game?.skill(data.gameConfig,skillId,level,row.awake)?.name,slotLabel:game?.skillLabel(data.gameConfig,row.hero_id,skillId)};}):null,level:row.level,star:row.star,levelMode:'recommended',config,qiling:row.qiling_info||null,aiSkill:row.ai_skill,raw:row};
   });
   const queried=payload.origin==='official-query';
-  return {title:typeof d.title==='string'?d.title:'已解析的自创阵容',notes:typeof d.desc==='string'?d.desc:'',gameSceneId:d.select_stage_id,code:payload.code,members,sourceKind:queried?'ta-query':'ta-local',decodeState:queried?'decoded-server':'decoded-local',requirementsComplete:members.filter(m=>m.kind==='shikigami').every(m=>!m.config?.protocolUncertainties.length),mapperVersion:4,warnings:[queried?'内容来自文字码的官方查询响应，已在本机保存。':'成员与要求来自本地协议解码。','使用实际式神实例的基础属性计算；推荐等级、星级差异会单独列出。阴阳师、契灵与术印仅展示；式神自动技能按原码设置。'],protocolVersion:d.ver??0,raw:d};
+  return {title:typeof d.title==='string'?d.title:'已解析的自创阵容',notes:typeof d.desc==='string'?d.desc:'',gameSceneId:d.select_stage_id,code:payload.code,shortCode:payload.shortCode||undefined,members,sourceKind:queried?'ta-query':'ta-local',decodeState:queried?'decoded-server':'decoded-local',requirementsComplete:members.filter(m=>m.kind==='shikigami').every(m=>!m.config?.protocolUncertainties.length),mapperVersion:5,warnings:[queried?'内容来自文字码的官方查询响应，已在本机保存。':'成员与要求来自本地协议解码。','使用实际式神实例的基础属性计算；推荐等级、星级差异会单独列出。阴阳师、英杰与契灵默认拥有，等级及配置按阵容设置；其增益单独展示，不追加到式神御魂面板。'],protocolVersion:d.ver??0,raw:d};
 }
 function mergeDecodedLineup(old,incoming){
   if(!old)return incoming;
   if(old.code!==incoming.code)throw new Error('不能合并不同阵容码');
-  return {...old,...incoming,id:old.id,sourceKind:old.sourceKind||incoming.sourceKind,title:old.title&&old.title!=='未命名阵容'?old.title:incoming.title,notes:old.notes||incoming.notes,category:old.category,subcategory:old.subcategory,dungeon:old.dungeon,dungeons:old.dungeons,classificationPaths:old.classificationPaths||incoming.classificationPaths,occurrences:old.occurrences||incoming.occurrences};
+  return {...old,...incoming,id:old.id,sourceKind:old.sourceKind||incoming.sourceKind,title:old.title&&old.title!=='未命名阵容'?old.title:incoming.title,notes:old.notes||incoming.notes,category:old.category,subcategory:old.subcategory,section:old.section,dungeon:old.dungeon,dungeons:old.dungeons,manualPaths:old.manualPaths,manualClassification:old.manualClassification,relations:old.relations,shortCode:incoming.shortCode||old.shortCode,classificationPaths:old.classificationPaths||incoming.classificationPaths,occurrences:old.occurrences||incoming.occurrences};
 }
 function deletedPresetIds(value){
   if(value===undefined)return [];
   if(!Array.isArray(value)||value.some(v=>typeof v!=='string'||!v||v.length>512||/[\x00-\x1f]/.test(v)))throw new Error('预设删除记录格式无效');
   return [...new Set(value)];
 }
+function lineupReplacements(value){
+ if(value===undefined)return {};
+ if(!object(value)||Object.entries(value).some(([from,to])=>[from,to].some(v=>typeof v!=='string'||!v||v.length>512||/[\x00-\x1f]/.test(v))))throw Error('阵容合并记录格式无效');
+ return Object.fromEntries(Object.entries(value));
+}
+function lineupTimestamp(lineup){
+ // Failed attempts and backup/import times do not describe a content update.
+ const times=['updatedAt','parsedAt','createdAt','date'].map(k=>typeof lineup[k]==='string'?Date.parse(lineup[k]):NaN).filter(Number.isFinite);
+ return times.length?Math.max(...times):-Infinity;
+}
+function reconcileLibrary(presets,current,backup=null){
+ const deleted=new Set([...deletedPresetIds(current.deletedPresetIds),...deletedPresetIds(backup?.deletedPresetIds)]);
+ const aliases=[...Object.entries(lineupReplacements(current.lineupReplacements)),...Object.entries(lineupReplacements(backup?.lineupReplacements))];
+ const candidates=[];
+ for(const [rows,source,priority] of [[presets.filter(l=>!deleted.has(l.id)),'preset',0],[current.lineups,'local',2],[backup?.lineups||[],'backup',1]]){
+  for(const lineup of rows)if(hasLineupCode(lineup))candidates.push({lineup,source,priority,time:lineupTimestamp(lineup)});
+ }
+ const parents=candidates.map((_,i)=>i),sizes=parents.map(()=>1),keys=new Map();
+ const find=i=>{while(parents[i]!==i){parents[i]=parents[parents[i]];i=parents[i];}return i;};
+ const join=(a,b)=>{a=find(a);b=find(b);if(a===b)return;if(sizes[a]<sizes[b])[a,b]=[b,a];parents[b]=a;sizes[a]+=sizes[b];};
+ const codeKey=value=>{const normalized=normalizeCode(value);return classifyCode(normalized)==='lineup-data'?'#TA#'+normalized:normalized;};
+ candidates.forEach(({lineup},i)=>{
+  const values=[['id',lineup.id],['title',lineup.title?.trim()],['code',codeKey(lineup.code)]];
+  if(classifyCode(lineup.shortCode)==='pipe-ta')values.push(['code',codeKey(lineup.shortCode)]);
+  for(const [kind,value] of values)if(value){const key=kind+':'+value;if(keys.has(key))join(i,keys.get(key));else keys.set(key,i);}
+ });
+ // Merged records keep their identity even if a later edition changes both
+ // title and code. Remembered IDs also keep old target/draft links usable.
+ const aliasNode=id=>{const key='id:'+id;if(!keys.has(key)){const i=parents.length;parents.push(i);sizes.push(1);keys.set(key,i);}return keys.get(key);};
+ for(const [from,to] of aliases)join(aliasNode(from),aliasNode(to));
+ const groups=new Map();
+ candidates.forEach((candidate,i)=>{const root=find(i);if(!groups.has(root))groups.set(root,[]);groups.get(root).push(candidate);});
+ const lineups=[],idMap=new Map(),replacements=new Map(),conflicts=[],winners=new Map();
+ for(const [root,group] of groups){
+  const winner=group.reduce((best,item)=>item.time>best.time||item.time===best.time&&item.priority>=best.priority?item:best);
+  lineups.push(winner.lineup);winners.set(root,winner.lineup.id);
+  for(const item of group){
+   idMap.set(item.lineup.id,winner.lineup.id);
+   if(item.lineup.id!==winner.lineup.id)replacements.set(item.lineup.id,winner.lineup.id);
+  }
+  if(group.length>1)conflicts.push({id:winner.lineup.id,title:winner.lineup.title,source:winner.source,time:Number.isFinite(winner.time)?new Date(winner.time).toISOString():null,count:group.length});
+ }
+ for(const [key,node] of keys)if(key.startsWith('id:')){const from=key.slice(3),to=winners.get(find(node));if(to){idMap.set(from,to);if(from!==to&&!deleted.has(from))replacements.set(from,to);}}
+ const keptIds=new Set(lineups.map(l=>l.id));
+ const result={...(backup||current),lineups,deletedPresetIds:[...deleted].filter(id=>!keptIds.has(id)),lineupReplacements:Object.fromEntries(replacements)};
+ const targetLists=(state,id)=>Array.isArray(state?.targetLineups?.[id])?state.targetLineups[id]:[];
+ result.targetLineups=Object.fromEntries((result.accounts||[]).map(a=>[a.id,[...new Set([...targetLists(current,a.id),...targetLists(backup,a.id)].map(id=>idMap.get(id)).filter(Boolean))]]));
+ if(result.builderDraft?.savedId)result.builderDraft={...result.builderDraft,savedId:idMap.get(result.builderDraft.savedId)||null};
+ return {state:result,summary:{candidates:candidates.length,kept:lineups.length,removed:candidates.length-lineups.length,groups:conflicts.length},conflicts};
+}
+const hydratedLineups=new WeakMap();
 function libraryLineups(presets,state){
-  const deleted=new Set(deletedPresetIds(state.deletedPresetIds)),map=new Map(presets.filter(l=>!deleted.has(l.id)).map(l=>[l.id,l]));
+  const deleted=new Set([...deletedPresetIds(state.deletedPresetIds),...Object.keys(lineupReplacements(state.lineupReplacements))]),map=new Map(presets.filter(l=>!deleted.has(l.id)).map(l=>[l.id,l]));
   for(const saved of state.lineups){
-    const base=map.get(saved.id),l=base?.code===saved.code?{...base,...saved,occurrences:base.occurrences?.length?base.occurrences:saved.occurrences,sourceFile:base.sourceFile||saved.sourceFile}:saved;
+    const base=map.get(saved.id),cached=hydratedLineups.get(saved);
+    if(cached&&cached.base===base){map.set(saved.id,cached.value);continue;}
+    const l=base?.code===saved.code?{...base,...saved,occurrences:base.occurrences?.length?base.occurrences:saved.occurrences,sourceFile:base.sourceFile||saved.sourceFile}:saved;
     // Bundled content may fill an old empty record, but cannot undo a newer
     // server failure (a share key can expire while its local content survives).
     map.set(l.id,base?.code===l.code&&hasParsedContent(base)&&!hasParsedContent(l)?{...mergeDecodedLineup(l,base),lastParseError:l.lastParseError||null,lastParseFailure:l.lastParseFailure||null}:l);
+    hydratedLineups.set(saved,{base,value:map.get(l.id)});
   }
   return [...map.values()].filter(hasLineupCode);
 }
 function removeLibraryLineups(state,presets,ids){
   const removed=new Set(ids);
-  const next={...state,lineups:state.lineups.filter(l=>!removed.has(l.id)),deletedPresetIds:[...new Set([...deletedPresetIds(state.deletedPresetIds),...presets.filter(l=>removed.has(l.id)).map(l=>l.id)])]};
+  const replacements=Object.entries(lineupReplacements(state.lineupReplacements));
+  const next={...state,lineups:state.lineups.filter(l=>!removed.has(l.id)),deletedPresetIds:[...new Set([...deletedPresetIds(state.deletedPresetIds),...presets.filter(l=>removed.has(l.id)).map(l=>l.id),...replacements.filter(([from,to])=>removed.has(to)&&presets.some(l=>l.id===from)).map(([from])=>from)])],lineupReplacements:Object.fromEntries(replacements.filter(([from,to])=>!removed.has(from)&&!removed.has(to)))};
   if(state.targetLineups)next.targetLineups=normalizeTargets(next,presets);
   return next;
 }
@@ -149,6 +204,7 @@ function validateLineup(l){
     return {...m,index:Number.isInteger(m.index)?m.index:i,shikigamiId:m.kind==='shikigami'?id(m.shikigamiId):null};
   });
   if(new Set(members.map(m=>m.index)).size!==members.length)throw new Error('成员槽位重复');
+  if(l.manualPaths!=null){const lib=typeof module==='object'&&module.exports?require('./library-model.js'):globalThis.AtlasLibrary;l={...l,manualPaths:lib.paths(l.manualPaths)};}
   return {...l,members,requirementsComplete:l.requirementsComplete===true};
 }
 function baseFromRoster(hero,roster){
@@ -200,7 +256,7 @@ function checkPanel(p,c,objective){
   return missing;
 }
 
-const api={STAT_NAMES,STAT_TYPES,METRICS,inspectCode,codeProvenance,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,deletedPresetIds,libraryLineups,removeLibraryLineups,normalizeTargets,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,objectiveFormula,checkPanel};
+const api={STAT_NAMES,STAT_TYPES,METRICS,inspectCode,codeProvenance,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,deletedPresetIds,lineupReplacements,lineupTimestamp,reconcileLibrary,libraryLineups,removeLibraryLineups,normalizeTargets,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,objectiveFormula,checkPanel};
 const solver=typeof module==='object'&&module.exports?require('./solver.js'):globalThis.AtlasSolver;
 return Object.assign(api,solver(api));
 });

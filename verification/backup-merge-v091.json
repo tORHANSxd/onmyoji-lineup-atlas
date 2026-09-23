@@ -1,0 +1,74 @@
+{
+  "version": "0.9.1",
+  "completedAt": "2026-09-22T14:22:18.676Z",
+  "scope": "备份导出及恢复按名称、阵容码或 ID 合并，保留本机独有阵容和最新记录",
+  "rules": {
+    "timeFields": [
+      "updatedAt",
+      "parsedAt",
+      "createdAt",
+      "date"
+    ],
+    "timeComparison": "最新有效记录时间；失败查询、备份导出与本次恢复时间不参与比较",
+    "ties": [
+      "local",
+      "backup",
+      "preset"
+    ],
+    "missingTime": "oldest",
+    "historicalIds": "参与传递合并并重定向目标和草稿",
+    "exportMutatesCurrentLibrary": false,
+    "otherRestoreData": "库存账号、当前账号和制作草稿采用备份"
+  },
+  "tests": {
+    "node": {
+      "passed": 226,
+      "failed": 0,
+      "report": "verification/node-tests-v091.log"
+    },
+    "ui": {
+      "passed": 37,
+      "failed": 0,
+      "report": "verification/optimization-ui-v091.json"
+    },
+    "creator": {
+      "passed": 20,
+      "failed": 0,
+      "report": "verification/creator-ui-v091.json"
+    },
+    "review": "独立核验发现历史 ID 分叉与写盘期间资料更新的撤销问题；均已修复并新增失败至通过的回归测试"
+  },
+  "packaging": {
+    "sourceChecks": 1172,
+    "forbiddenFiles": [],
+    "payloadFiles": 208,
+    "allPayloadFilesMatch": true,
+    "packagedStartupSmoke": "passed",
+    "portable": {
+      "version": "0.9.1",
+      "files": 208,
+      "crcValidated": true,
+      "allFilesMatch": true,
+      "method": "ZIP path set, CRC on all entries and SHA256 against win-unpacked"
+    },
+    "existingInstallationPreserved": true,
+    "install": "not-run-existing-installation",
+    "reinstall": "not-run-existing-installation",
+    "uninstall": "not-run-existing-installation"
+  },
+  "artifacts": [
+    {
+      "file": "release/Yuqi-Setup-0.9.1-Windows-x64.exe",
+      "bytes": 291974673,
+      "sha256": "027d8a803c21e3f9197393d49711fcf3b6311e237c1b4647c51a998309a66fc4"
+    },
+    {
+      "file": "release/Yuqi-Portable-0.9.1-Windows-x64.zip",
+      "bytes": 350131499,
+      "sha256": "f11d5ae0b4001dcd3113121209333c259d00a0c932549bd9b35d96f8b3690c99"
+    }
+  ],
+  "gitArchived": false,
+  "githubReleasePublished": false,
+  "phoneLoginTesting": "本轮未手机扫码；保留 0.9.0 所列真实登录与游戏内导入待测项"
+}

@@ -4,8 +4,11 @@ function tick(token){
  if(token!==generation)return;
  if(paused){running=false;return;}
  if(!tasks.length){running=false;postMessage({done:true,batch,total:ids.size,completed:completed.size});return;}
+ // Round-robin scheduling keeps later jobs responsive even during long searches.
+ // Inventory indexing is shared; each DFS stack is retained for exact resumption.
  const task=tasks.shift();
  try{
+  task.iterator??=AtlasExact.search(task.lineup,task.account,task.roster,task.effects,task.context);
   const step=task.iterator.next();
   if(step.value){
    results[task.id]={...step.value,completed:step.done};
@@ -29,9 +32,10 @@ onmessage=({data})=>{
  batch=data.batch;
  if(data.action!=='replace'){generation++;tasks=[];results={};ids=new Set();completed=new Set();running=false;}
  const incoming=new Set(data.lineups.map(l=>l.id));tasks=tasks.filter(t=>!incoming.has(t.id));
+ const context={};
  for(const lineup of data.lineups){
   ids.add(lineup.id);completed.delete(lineup.id);delete results[lineup.id];
-  tasks.push({id:lineup.id,version:data.versions?.[lineup.id],iterator:AtlasExact.search(lineup,data.account,data.roster,data.effects)});
+  tasks.push({id:lineup.id,version:data.versions?.[lineup.id],lineup,account:data.account,roster:data.roster,effects:data.effects,context,iterator:null});
  }
  paused=false;if(!running){running=true;tick(generation);}
 };

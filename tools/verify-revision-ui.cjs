@@ -11,7 +11,7 @@ const code=n=>'|TA|'+n.toString(16).padStart(32,'0');
 const server={id:'10014',name:'两情相悦',category:'网易双平台',available:true,roles:[{avatar_id:'qa',server_id:'10014',name:'验证角色'}],roles_known:true};
 let status={authenticated:false,stage:'idle',busy:false,servers:[server],selected_server:'10014',selected_avatar:'',qr_image:''};
 const publish=p=>{status={...status,...p};epoch++;win.webContents.send('ta-status-changed',status);};
-const ui=s=>win.webContents.executeJavaScript(s),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const ui=s=>win.webContents.executeJavaScript(s).catch(e=>{throw new Error(e.message+'\nUI: '+s.slice(0,700));}),sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(s,ms=30000){const end=Date.now()+ms;while(Date.now()<end){if(await ui(s))return;await sleep(30);}throw new Error('UI timeout: '+s);}
 async function capture(name){win.webContents.invalidate();await sleep(350);await win.webContents.capturePage();await sleep(80);await fs.writeFile(path.join(profile,name+'.png'),(await win.webContents.capturePage()).toPNG());}
 const payload=text=>{const n=parseInt(text.slice(4),16),hex='0123456789abcdefaabbccdd';return {code:text,share_key:text.slice(4),err:0,lineup_data:pack([[1,3],[2,phconf],[3,'测试配速'],[4,'测试官方名称'],[6,1001000],[8,new ExtData(42,Buffer.from(hex,n>=45&&n<58?'utf8':'hex'))]])};};
@@ -21,7 +21,8 @@ async function main(){
   data.lineups=Array.from({length:155},(_,n)=>({id:'qa-'+n,title:'验证阵容 '+n,code:code(n),members:[],category:'其他',dungeon:'待分类',decodeState:'unattempted'}));
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'本地测试库存',serverId:'10014',shortId:'synthetic',serverName:'XX区10014'},heroes:Object.fromEntries(Array.from({length:5},(_,i)=>['hero-'+i,{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}])),hero_equips:Array.from({length:30},(_,i)=>({id:'soul-'+i,slot:i%6+1,setId:'招财猫',quality:6,level:15,mainAttrType:['attack_flat','speed','defense_flat','attack_rate','hp_flat','crit_rate'][i%6],mainAttrValue:[486,57,104,.55,2052,.55][i%6],subAttributes:[]}))};
  const a=C.parseAccount(raw);stored={schemaVersion:1,lineups:data.lineups.slice(45,77).map((l,i)=>({...l,lastParseError:i<13?'ObjectId 必须为12字节':`Error invoking remote method 'ta-query': Error: 服务器未返回该阵容（代码 ${i<23?90011:31279}）；分享可能已失效`})),accounts:[a],activeAccount:a.id};
- const local=(name,fn)=>ipcMain.handle(name,(_e,...args)=>fn(...args));const auth=(name,fn)=>local(name,async(...args)=>{if(!status.authenticated)throw new Error('请先扫码登录');const token=epoch,result=await fn(...args);if(token!==epoch)throw new Error('登录已结束');return result;});
+ const local=(name,fn)=>{ipcMain.handle(name,(_e,...args)=>fn(...args));if(name==='export-json')ipcMain.handle('export-json-text',(_e,p)=>fn({name:p.name,data:JSON.parse(p.text)}));if(['load-data','load-state'].includes(name))ipcMain.handle(name+'-json',async(_e,...args)=>JSON.stringify(await fn(...args)));if(['save-state','save-parsed-state'].includes(name))ipcMain.handle(name+'-json',(_e,text)=>fn(JSON.parse(text)));};const auth=(name,fn)=>local(name,async(...args)=>{if(!status.authenticated)throw new Error('请先扫码登录');const token=epoch,result=await fn(...args);if(token!==epoch)throw new Error('登录已结束');return result;});
+ local('parse-json',text=>JSON.parse(text));local('save-parsed-delta',()=>({needsSnapshot:true}));
  const loginActions=[];local('ta-status',()=>status);local('ta-action',(action,params)=>{loginActions.push({action,params});if(action==='risk')publish({risk_accepted:params.accepted});if(action==='forget')publish({remembered_accounts:status.remembered_accounts.filter(a=>a.id!==params.account_id)});return status;});local('ta-logout',()=>{publish({authenticated:false,selected_avatar:''});return status;});
   local('load-data',()=>data);local('load-state',()=>stored);const save=async s=>{if(failNextSave){failNextSave=false;throw new Error('simulated disk full');}stored=structuredClone(s);await fs.writeFile(path.join(profile,'library-v1.json'),JSON.stringify(stored));return {saved:true};};local('save-state',save);auth('save-parsed-state',save);auth('decode',TA.decodeInput);
   const queue=new TAQueryQueue({intervalMs:0,cooldownMs:0,retryDelays:[300,600],onProgress:p=>win.webContents.send('ta-query-progress',p),execute:async text=>{queries++;const n=parseInt(text.slice(4),16),attempt=(attempts.get(n)||0)+1;attempts.set(n,attempt);if(n>=68&&n<77||n===9000)return {code:text,share_key:text.slice(4),err:31279};if(n===8000)await new Promise(resolve=>finishDeferred=resolve);if(n===2&&retryFailure||n>=58&&n<68&&attempt===1)return {code:text,share_key:text.slice(4),err:90011};return payload(text);}});
@@ -29,7 +30,7 @@ async function main(){
  local('copy-code',()=>({copied:true}));for(const name of ['official-status','official-auto','official-refresh','official-cancel'])local(name,()=>({autoUpdate:false}));local('export-json',p=>{exported=p;return true;});local('import-files',()=>[]);
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
  win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
- await win.loadFile(path.join(root,'app/index.html'));await until('!!DATA && !document.getElementById("loading").hidden===false');await ui('TALogin.ready()');
+ await win.loadFile(path.join(root,'app/index.html'));win.webContents.setZoomFactor(1);await until('!!DATA && !document.getElementById("loading").hidden===false');await ui('TALogin.ready()');
  assert.equal(queries,0);assert.equal(await ui('document.getElementById("app-shell").hidden'),false);assert.equal(await ui('document.getElementById("view-gallery")===null&&document.getElementById("soul-calculator")===null'),true);
  publish({remembered_accounts:[{id:'a'.repeat(64),label:'验证账号一'},{id:'b'.repeat(64),label:'验证账号二',needs_login:true}]});
  await ui('taLogin.action("risk",{accepted:true})');
@@ -39,14 +40,15 @@ async function main(){
  await ui('document.getElementById("ta-saved-account").value="'+ 'b'.repeat(64) +'";document.getElementById("ta-saved-account").dispatchEvent(new Event("change"))');assert.equal(await ui('document.getElementById("ta-resume").disabled'),true);assert.equal(await ui('document.getElementById("ta-forget").disabled'),false);
  publish({remembered_accounts:[]});await ui('document.getElementById("ta-enter").click()');
   await ui('selectView("decode")');assert.equal(await ui('document.getElementById("login-screen").hidden'),true);assert.equal(await ui('document.getElementById("save-code").disabled'),false);await ui('selectView("library")');
- assert.equal(await ui('document.querySelectorAll("#parse-failures tbody tr").length'),32);
+ assert.equal(await ui('document.querySelectorAll("#parse-failures tbody tr").length'),0);
+ await ui('document.querySelectorAll("#parse-failures details[data-failure-group]").forEach(el=>el.open=true)');await until('document.querySelectorAll("#parse-failures tbody tr").length===32');
  assert.equal(await ui('document.querySelectorAll("#parse-failures [data-edit-lineup]").length'),32);
  assert.ok((await ui('document.getElementById("parse-failures").textContent')).includes('暂时无法查询'));
 
  assert.equal(await ui('document.querySelectorAll("#parse-failures [data-delete-lineup]").length'),32);
  assert.equal(await ui('document.querySelector("#parse-failures [data-delete-expired]").closest("details")===null'),true);
  assert.equal(await ui('document.getElementById("retry-parse-failures").closest("details")===null'),true);
- assert.equal(await ui('document.querySelector("nav [data-view=manage] span").textContent'),'管');
+ assert.equal(await ui('document.querySelector("nav [data-view=manage] .nav-label").textContent'),'阵容库管理');
  await ui('document.querySelector("#parse-failures [data-edit-lineup=qa-68]").click()');
  assert.equal(await ui('document.getElementById("edit-code").value'),code(68));
  assert.equal(await ui('view'),'library');await ui('document.getElementById("detail-dialog").close()');
@@ -56,7 +58,7 @@ async function main(){
  await ui('document.querySelector("[data-failure-group=expired]").open=true');await capture('legacy-failure-categories');
  publish({authenticated:true,selected_avatar:'qa',stage:'roles_ready'});
  await until('queryProgress?.phase==="waiting"&&queryProgress.attempt===2',60000);
- assert.ok((await ui('document.querySelector("[data-parse-progress]").textContent')).includes('第 2 / 3 次'));
+ await until('document.querySelector("[data-parse-progress]").textContent.includes("第 2 / 3 次")');
  await until('parseReport.phase==="complete"',60000);assert.equal(queries,156);const legacyQueries=queries;assert.equal(stored.lineups.filter(l=>l.members?.length).length,146);assert.equal(stored.lineups.filter(l=>l.lastParseError).length,9);
  assert.equal([...attempts.keys()].some(n=>n>=68&&n<77),false);
  assert.equal(await ui('lineups().filter(AtlasLibraryParser.canAttempt).length'),0);
@@ -64,7 +66,7 @@ async function main(){
  assert.equal(await ui('worker===null'),true);await ui('startMatch(["qa-0"])');await until('matchResults["qa-0"]?.proof?.state==="optimal"',60000);assert.ok((await ui('STATE.accounts[0].server'))!=='XX区10014');
 
  // Retry a cached row without leaving the library or changing the decode draft.
- await ui('stopMatch();document.getElementById("code-input").value="保留的输入";[2,3,4].forEach(n=>Object.assign(STATE.lineups.find(l=>l.id==="qa-"+n),{lastParseError:"稍后再试",lastParseFailure:AtlasParseErrors.fromServer(90011)}));renderParseFailures();document.querySelector("[data-failure-group=recoverable]").open=true');
+ await ui('stopMatch();document.getElementById("code-input").value="保留的输入";STATE.lineups=STATE.lineups.map(l=>["qa-2","qa-3","qa-4"].includes(l.id)?{...l,lastParseError:"稍后再试",lastParseFailure:AtlasParseErrors.fromServer(90011)}:l);renderParseFailures();document.querySelector("[data-failure-group=recoverable]").open=true');
  retryFailure=true;const beforeRetry=queries;
  await ui('document.querySelector("#parse-failures [data-reparse=qa-2]").click()');
  await until('document.querySelector("#parse-failures [data-reparse=qa-2]")?.disabled===true');
@@ -92,7 +94,7 @@ async function main(){
  win.setSize(900,850);await sleep(150);assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);await capture('lineup-equipment-small');win.setSize(1440,1000);
  await ui('document.querySelector(".qiling-section").scrollIntoView({block:"center"})');
  assert.equal(await ui('document.querySelectorAll(".mark-card").length'),4);
- assert.ok((await ui('document.querySelector(\'[data-mark-id="36"]\').textContent')).includes('2 枚'));
+ assert.ok((await ui('document.querySelector(\'[data-mark-id="36"]\').textContent')).includes('2级'));
  await ui('document.querySelector(\'[data-mark-id="36"] summary\').click()');
  assert.equal(await ui('document.querySelector(\'[data-mark-id="36"]\').open'),true);
  assert.equal(await ui('document.querySelectorAll(\'[data-mark-id="36"] dt\').length'),3);
@@ -117,7 +119,7 @@ async function main(){
   await capture('delete-confirmation');await ui('removeConfirmedLineups()');
   assert.equal(await ui('lineups().some(l=>l.id==="qa-1")'),false);
   // Keep a temporary failure while removing all nine proven expired codes.
-  await ui('(async()=>{Object.assign(STATE.lineups.find(l=>l.id==="qa-2"),{lastParseError:"稍后再试",lastParseFailure:AtlasParseErrors.fromServer(90011)});await persist();renderManage();renderParseFailures()})()');
+  await ui('(async()=>{STATE.lineups=STATE.lineups.map(l=>l.id==="qa-2"?{...l,lastParseError:"稍后再试",lastParseFailure:AtlasParseErrors.fromServer(90011)}:l);await persist();renderManage();renderParseFailures()})()');
   assert.equal(await ui('document.querySelectorAll("[data-failure-group=expired] tbody tr").length'),9);
   await ui('document.getElementById("manage-status").value="expired";renderManage()');
   assert.equal(await ui('document.querySelectorAll(".management-table tbody tr").length'),9);
@@ -130,10 +132,11 @@ async function main(){
   stored=JSON.parse(await fs.readFile(path.join(profile,'library-v1.json'),'utf8'));data.lineups[1].title='更新后的预设';
   await new Promise(resolve=>{win.webContents.once('did-finish-load',resolve);win.reload();});await until('!!DATA && document.getElementById("loading").hidden');await ui('TALogin.ready()');
   assert.equal(await ui('lineups().length'),145);
-  await ui('document.getElementById("export-backup").click()');await sleep(30);const backup=JSON.stringify(exported.data);
+  await ui('exportBackup()');const backup=JSON.stringify(exported.data);
   assert.equal(exported.data.deletedPresetIds.length,10);
   await ui('STATE.deletedPresetIds=[];persist()');assert.equal(await ui('lineups().length'),155);
   await ui('importMode="backup";handleFiles([{name:"synthetic-backup.json",size:'+backup.length+',text:async()=>'+JSON.stringify(backup)+'}])');
+  assert.equal(await ui('lineups().length'),155);await ui('applyBackupRestore()');
   assert.equal(await ui('lineups().length'),145);
   // A deleted preset can be explicitly re-added once, without signing in.
   await ui('stopMatch();STATE.activeAccount="";selectView("manage");document.querySelector("[data-add-code]").click();document.getElementById("code-input").value='+JSON.stringify(code(1))+';updateCode();document.getElementById("code-title").value="重新添加的原码";saveCode()');
@@ -184,12 +187,12 @@ async function main(){
   await ui('document.querySelector("[data-browse-path=\\"日常 → 逢魔 → 普通逢魔\\"]").click()');
   assert.equal(await ui('filteredLineups().every(l=>l.classificationPaths.some(p=>p.category==="日常"&&p.subcategory==="逢魔"&&p.section==="普通逢魔"))'),true);
   await capture('fengmo-hierarchy');
-  const stageSearch=async query=>ui('document.getElementById("clear-filters").click();document.getElementById("dungeon").focus();document.getElementById("dungeon").value='+JSON.stringify(query)+';document.getElementById("dungeon").dispatchEvent(new Event("input"))');
+  const stageSearch=async query=>ui('document.getElementById("clear-filters").click();document.querySelector(".extra-filters").open=true;document.getElementById("dungeon").focus();document.getElementById("dungeon").value='+JSON.stringify(query)+';document.getElementById("dungeon").dispatchEvent(new Event("input"))');
   for(const [query,leaf] of [['魂土','悲鸣'],['魂王','神罚'],['鬼灵歌姬','鬼灵歌伎'],['火麒麟 10层','火麒麟·拾层']]){
-   await stageSearch(query);assert.ok(await ui('filteredLineups().length>0'));
+   await stageSearch(query);await sleep(150);assert.ok(await ui('filteredLineups().length>0'));
    assert.equal(await ui('[...document.querySelectorAll("#dungeon-options [role=option]")].every(e=>e.textContent.includes('+JSON.stringify(leaf)+'))'),true);
   }
-  await stageSearch('鬼灵歌姬');await capture('stage-search-options');
+  await stageSearch('鬼灵歌姬');await sleep(150);await capture('stage-search-options');
   await ui('document.getElementById("dungeon").dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowDown",bubbles:true}));document.getElementById("dungeon").dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true}))');
   assert.equal(await ui('document.getElementById("dungeon").value'),'日常 → 逢魔 → 普通逢魔 → 鬼灵歌伎');
   assert.equal(await ui('document.getElementById("dungeon-options").hidden'),true);
@@ -201,8 +204,8 @@ async function main(){
   await stageSearch('真蛇');assert.ok(await ui('filteredLineups().length>0'));
   assert.equal(await ui('new Set(filteredLineups().map(l=>l.id)).size===filteredLineups().length'),true);
   assert.equal(await ui('filteredLineups().every(l=>AtlasCategories.matches(l,"御魂","真·八岐大蛇")&&AtlasCategories.matches(l,"周常","真·八岐大蛇"))'),true);
-  await stageSearch('完全不存在的关卡');assert.equal(await ui('filteredLineups().length'),0);assert.ok((await ui('document.getElementById("dungeon-options").textContent')).includes('没有匹配副本'));
-  await ui('document.getElementById("clear-filters").click();browseTo("限时活动 → 拾光永恒")');assert.ok(await ui('filteredLineups().filter(l=>/来源用途/.test(l.classificationSource)).length===7'));
+  await stageSearch('完全不存在的关卡');await sleep(150);assert.equal(await ui('filteredLineups().length'),0);assert.ok((await ui('document.getElementById("dungeon-options").textContent')).includes('没有匹配副本'));
+  await ui('document.getElementById("clear-filters").click();browseTo("限时活动 → 拾光永恒")');assert.ok(await ui('filteredLineups().filter(l=>/预设用途整理/.test(l.classificationSource)).length===10'));
 
   await ui('stopMatch();matchResults={};document.getElementById("clear-filters").click();document.getElementById("search").value="|TA|";window.testGapIds=lineups().filter(l=>C.hasParsedContent(l)&&l.code.startsWith("|TA|")).slice(0,8).map(l=>l.id);for(const l of lineups())matchResults[l.id]={gapAssessment:{souls:"uncomputed"}};window.testGapIds.forEach((id,i)=>matchResults[id]={gapCategory:i?"both":"ready",gapAssessment:{heroes:i&5?"missing":"ready",souls:i&2?"missing":"ready",heroShortage:i&1?1:0,heroTraining:i&4?1:0},members:[],label:"合成缺口验证",proof:{state:"infeasible",nodes:0,pruned:0,scope:"合成验证"},reasons:[],checks:[]});renderLibrary()');
   for(const [kind,mask] of [['hero',1],['soul',2],['training',4]]){

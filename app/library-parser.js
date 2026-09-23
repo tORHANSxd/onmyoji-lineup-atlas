@@ -26,8 +26,10 @@ class LibraryParser {
    if(!valid())throw new Error('登录会话已结束');
    return saved;
   })().catch(async error=>{
-   if(valid()&&!error.storageFailure){
-    error.failure=error.failure||Errors.fromMessage(error.message);
+   error.failure=error.failure||Errors.fromMessage(error.message);
+   error.sessionFailure=error.failure.kind==='assistant-unavailable';
+   if(error.sessionFailure)error.message=error.failure.message;
+   if(valid()&&!error.storageFailure&&!error.sessionFailure){
     try{await this.saveFailure(item,error.message,valid,error.failure);}
     catch(saveError){saveError.storageFailure=true;throw saveError;}
    }
@@ -56,11 +58,12 @@ class LibraryParser {
     catch(error){
      if(!valid())break;
      this.report.failed++;this.report.error=error.message;
-     if(error.storageFailure)this.paused=true;
+     if(error.storageFailure||error.sessionFailure)this.paused=true;
      this.report.failures.push({id:latest.id,code:latest.code,title:latest.title,reason:error.message,failure:error.failure,durationMs:Date.now()-started,at:new Date().toISOString()});
     }
     finally{clearInterval(pulse);}
     if(!valid())break;this.report.completed++;this.report.elapsedMs=Date.now()-this.report.startedAt;this.emit();
+    await new Promise(resolve=>setTimeout(resolve,0));
    }
    if(valid()){this.report.phase=this.paused?'paused':this.report.failed?'partial':'complete';this.report.current='';this.emit();}
    return {...this.report};

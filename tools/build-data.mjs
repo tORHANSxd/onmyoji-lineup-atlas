@@ -46,6 +46,7 @@ output.mechanicsSource=apkRules.source;
 output.serverNames=(await read('desktop/ta-python/server_catalog.json',[])).map(s=>({id:String(s.ServerID),name:s.showName||s.ServerName}));
 output.gameAssets=await read('data/game-assets.json',{items:[]});
 output.qilingMarks=await read('data/qiling-marks.json',{marks:[]});
+output.gameConfig=await read('data/game-config.json',null);
 output.stageCatalog=await read('data/stages.json',{scenes:[]});
 for(const actor of output.actors){const image=output.gameAssets.items.find(a=>a.library==='onmyoji'&&a.name===actor.name);if(image)actor.gameId=Number(image.id);}
 for(const hero of output.roster){const image=output.gameAssets.items.find(a=>a.library==='daruma'&&a.id===hero.id);if(image)hero.assets={...hero.assets,awakeningAvailability:'not_applicable',variants:[{...image,family:'art-before',status:'downloaded_valid_image',verifiedState:'default'}]};}
@@ -62,6 +63,8 @@ if(verifiedSource){
  output.excelAudit.method='official-game-session';
 }
 output.excelAudit.sources=excel.sources;
+output.lineupCuration=await read('data/lineup-classification.json',{entries:{}});
+output.extendedStages=output.lineupCuration.extendedStages||[];
 output.lineups=output.lineups.map(l=>categories.resolve(l,output));
 await fs.writeFile('data/bundle.json',JSON.stringify(output));
 await fs.mkdir('verification',{recursive:true});await fs.writeFile('verification/coverage.json',JSON.stringify({...output.assetAudit,excel:output.excelAudit,totalLineups:output.lineups.length,webSourceCount:sources.filter(x=>!x.error).length,structuredReferenceLineups:curated.length},null,2));

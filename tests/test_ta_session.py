@@ -35,6 +35,122 @@ def client():
 
 
 class SessionTests(unittest.TestCase):
+    def test_query_and_share_wait_for_assistant_initialization(self):
+        for operation in ('query', 'share'):
+            for accepted in (True, False):
+                app, gate = authorize(make_session()), client()
+                gate.assistant_ready = False
+                calls = []
+                def initialize():
+                    calls.append('initialize')
+                    if not accepted:
+                        raise mod.net.AssistantUnavailable('初始化未完成')
+                    gate.assistant_ready = True
+                gate.ensure_lineup_assistant.side_effect = initialize
+                gate.query_lineup.side_effect = lambda key: (calls.append('query') or {'err': 0, 'share_key': key, 'lineup_data': 'payload'})
+                gate.share_lineup.side_effect = lambda code: (calls.append('share') or {'err': 0, 'share_key': 'new-code', 'lineup_data': code})
+                with patch.object(mod.net, 'Gate', return_value=gate):
+                    invoke = lambda: app.query(CODE) if operation == 'query' else app.share('#TA#YQ==')
+                    if accepted:
+                        invoke()
+                        self.assertEqual(calls, ['initialize', operation])
+                    else:
+                        with self.assertRaises(mod.net.AssistantUnavailable):
+                            invoke()
+                        self.assertEqual(calls, ['initialize'])
+                        self.assertIsNone(app.gate)
+                app.clear_login()
+
+    def test_new_login_selects_lowest_known_level_across_available_servers(self):
+        app = authorize(make_session())
+        app.selected_avatar = ''
+        app.catalog.append({**app.catalog[0], 'id': '10123'})
+        records = [
+            {'server_id': '10014', 'avatarId': 'high', 'name': '高等级', 'level': 60},
+            {'server_id': '10123', 'avatarId': 'unknown', 'name': '未知等级'},
+            {'server_id': '10123', 'avatarId': 'low', 'name': '低等级', 'level': '2'},
+            {'server_id': '19999', 'avatarId': 'offline', 'name': '不可连接', 'level': 1},
+            {'server_id': '10123', 'avatarId': 'deleted', 'name': '注销', 'level': 1, 'deactive': 1},
+        ]
+        with patch.object(mod.net, 'query_own_roles', return_value=records):
+            app.load_roles()
+        self.assertEqual((app.selected_server, app.selected_avatar), ('10123', 'low'))
+        self.assertTrue(app.status()['query_ready'])
+        app.select('10014')
+        self.assertEqual(app.selected_avatar, 'high')
+
+    def test_refresh_keeps_valid_manual_selection_and_ties_are_stable(self):
+        app = authorize(make_session())
+        app.roles = [{'server_id': '10014', 'avatar_id': 'role-a', 'name': '已有选择', 'level': 60},
+                     {'server_id': '10014', 'avatar_id': 'b', 'name': '同级乙', 'level': 1},
+                     {'server_id': '10014', 'avatar_id': 'a', 'name': '同级甲', 'level': 1}]
+        app.choose_role()
+        self.assertEqual(app.selected_avatar, 'role-a')
+        app.selected_avatar = ''
+        app.choose_role()
+        self.assertEqual(app.selected_avatar, 'a')
+        app.selected_avatar = ''
+        app.roles.reverse()
+        app.choose_role()
+        self.assertEqual(app.selected_avatar, 'a')
+
+    def test_local_missing_level_does_not_erase_known_cross_server_level(self):
+        app = authorize(make_session())
+        with patch.object(mod.net, 'query_own_roles', return_value=[
+                {'server_id': '10014', 'avatarId': 'role-a', 'name': '测试角色', 'level': 12}]):
+            app.load_roles(client())
+        self.assertEqual(app.roles[0]['level'], 12)
+
+    def test_empty_failed_and_unavailable_roles_have_distinct_recovery_messages(self):
+        app = authorize(make_session())
+        with patch.object(mod.net, 'query_own_roles', return_value=[]):
+            app.load_roles()
+        self.assertEqual(app.stage, 'roles_empty')
+        self.assertIn('创建角色', app.message)
+        self.assertFalse(app.status()['query_ready'])
+        with patch.object(mod.net, 'query_own_roles', side_effect=OSError()):
+            app.load_roles()
+        self.assertEqual(app.stage, 'roles_partial')
+        self.assertIn('重试', app.message)
+        with patch.object(mod.net, 'query_own_roles', return_value=[
+                {'server_id': '19999', 'avatarId': 'a', 'name': '已有角色', 'level': 1}]):
+            app.load_roles()
+        self.assertEqual(app.stage, 'roles_unavailable')
+        self.assertEqual(app.selected_avatar, '')
+        self.assertFalse(app.status()['query_ready'])
+        self.assertNotIn('创建角色', app.message)
+        with self.assertRaises(mod.net.ProtocolError):
+            app.select('19999', 'a')
+
+    def test_invalid_levels_sort_after_valid_levels(self):
+        app = authorize(make_session())
+        app.selected_avatar = ''
+        app.roles = [{'server_id': '10014', 'avatar_id': str(i), 'name': '角色', 'level': level}
+                     for i, level in enumerate([None, '', 'bad', -1, True, float('nan'), 2.5, 5])]
+        app.choose_role()
+        self.assertEqual(app.selected_avatar, '7')
+
+    def test_qr_confirmation_waits_for_busy_operation_and_respects_cancellation(self):
+        for cancelled in (False, True):
+            app, qr = make_session(), Mock(interval=.01, image=b'', created_at=mod.time.monotonic())
+            qr.poll.return_value = ('confirmed', {'full_uid': 'synthetic'})
+            app.authenticate = Mock()
+            with patch.object(mod.net, 'MpayQR', return_value=qr), patch.object(mod.threading, 'Thread') as thread:
+                app.start_qr()
+                poll = thread.call_args.kwargs['target']
+            app.busy = True
+            sleeps = []
+            def finish_operation(delay):
+                sleeps.append(delay)
+                if len(sleeps) == 2:
+                    app.busy = False
+                    if cancelled:
+                        app.clear_login()
+            with patch.object(mod.time, 'sleep', side_effect=finish_operation):
+                poll()
+            self.assertEqual(app.authenticate.call_count, 0 if cancelled else 1)
+            self.assertFalse(app.busy)
+
     def test_business_errors_keep_healthy_connection_and_forward_only_safe_fields(self):
         app, gate = authorize(make_session()), client()
         with patch.object(mod.net, 'Gate', return_value=gate) as factory:
@@ -211,3 +327,36 @@ class SessionTests(unittest.TestCase):
             with self.assertRaises(mod.net.ProtocolError):
                 app.query(CODE)
             gate.assert_not_called()
+
+    def test_authentication_discovers_lowest_compatible_role_before_gateway(self):
+        app = make_session()
+        app.catalog[0]['source_type'] = 2
+        app.catalog.append({**app.catalog[0], 'id':'15021', 'source_type':4})
+        app.login_info = {'src_client_type':1, 'full_uid':'sdk-test', 'mpay_user':{'id':'user','token':'test','login_channel':'bilibili_sdk'}}
+        result = client()
+        result.server_id = '15021'
+        result.login_result['avatar_list'] = {'x':{'avatarId':'low','name':'小号','level':2}}
+        events = []
+        def roles(_):
+            events.append('roles')
+            return [{'server_id':'10014','avatarId':'wrong-channel','name':'不兼容','level':1},
+                    {'server_id':'15021','avatarId':'low','name':'小号','level':2}]
+        def open_gate(sid):
+            events.append(sid)
+            return result
+        app.open_gate = open_gate
+        with patch.object(mod.net, 'query_own_roles', side_effect=roles):
+            app.authenticate()
+        self.assertEqual(events[:2], ['roles','15021'])
+        self.assertEqual(app.selected_avatar, 'low')
+        self.assertFalse(app.status()['servers'][0]['available'])
+
+    def test_share_reuses_only_an_owned_role_and_sanitizes_response(self):
+        app, result = authorize(make_session()), client()
+        result.share_lineup.return_value = {'err':0,'share_key':'new-key','lineup_data':'dGVzdA==','token':'must-not-leak'}
+        with patch.object(mod.net, 'Gate', return_value=result):
+            self.assertEqual(app.share('#TA#dGVzdA=='),{'err':0,'share_key':'new-key','code':'|TA|new-key','lineup_data':'dGVzdA=='})
+            result.share_lineup.assert_called_once_with('dGVzdA==')
+        app.clear_login()
+        with self.assertRaises(mod.net.ProtocolError):
+            app.share('#TA#dGVzdA==')

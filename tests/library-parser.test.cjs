@@ -59,3 +59,9 @@ test('一键重试包含已有缓存但刷新失败的记录，跳过失效码�
  assert.deepEqual(calls,[{code:'cached',force:true},{code:'pending',force:true}]);
  assert.equal(report.succeeded,2);assert.equal(report.total,2);
 });
+
+test('assistant initialization failure pauses without invalidating lineup codes',async()=>{
+ let calls=0,failures=0;
+ const parser=new LibraryParser({items:()=>[{id:'a',code:'|TA|a'},{id:'b',code:'|TA|b'}],decode:async()=>{calls++;throw Error('[TA_ASSISTANT] 初始化未完成');},save:async()=>true,saveFailure:async()=>{failures++;}});
+ const result=await parser.run();assert.equal(calls,1);assert.equal(failures,0);assert.equal(result.phase,'paused');assert.match(result.error,/初始化/);
+});

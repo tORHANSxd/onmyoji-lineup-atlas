@@ -30,7 +30,7 @@ CONFIG = json.loads((ROOT / 'login_protocol.json').read_text(encoding='utf-8'))
 SERVER_LIST_URL = 'https://g37.update.netease.com/mini_server_list_cn.txt'
 MPAY_BASE = 'https://service.mkey.163.com/mpay'
 ROLE_QUERY_URL = 'https://g37dc.webapp.163.com/query_role'
-CATEGORIES = {4: '全平台', 1: '中国区-iOS', 2: '网易-双平台', 3: '中国区-安卓',
+CATEGORIES = {4: '哔哩哔哩 / iOS渠道', 6: '全平台', 1: '中国区-iOS', 2: '网易-双平台', 3: '中国区-安卓',
               5: '国际区', 7: '抢先体验'}
 MAX_RESPONSE = 16 * 1024 * 1024
 
@@ -39,14 +39,19 @@ class ProtocolError(RuntimeError):
     pass
 
 
+class AssistantUnavailable(ProtocolError):
+    def __init__(self, message):
+        super().__init__('[TA_ASSISTANT] ' + message)
+
+
 def game_platform(login_info: dict) -> str:
     """Keep the QR account's game platform when MPay renews it as PC type 5."""
     user = login_info.get('mpay_user') or {}
     channel = user.get('login_channel', login_info.get('login_channel', 'netease'))
     full_uid = login_info.get('full_uid')
-    if full_uid:
+    if full_uid and channel in ('netease', 'external_netease'):
         for platform_name in ('ios', 'ad'):
-            if full_uid == f'{user.get("id")}@{platform_name}.{channel}.win.163.com':
+            if full_uid == f'{user.get("id")}@{platform_name}.{"netease" if platform_name == "ios" else channel}.win.163.com':
                 return platform_name
         raise ProtocolError('已保存账号的游戏平台不匹配，请重新扫码')
     ext = user.get('pc_ext_info') or {}
@@ -57,6 +62,80 @@ def game_platform(login_info: dict) -> str:
         return 'ad'
     raise ProtocolError('无法确认扫码账号的游戏平台，请使用手游扫码登录')
 
+
+
+def login_channel(login_info):
+    user = login_info.get('mpay_user') or {}
+    return user.get('login_channel') or login_info.get('login_channel') or 'netease'
+
+
+def third_party(login_info):
+    return login_channel(login_info) not in ('netease', 'external_netease')
+
+
+def sdk_session(login_info):
+    token = (login_info.get('mpay_user') or {}).get('token')
+    if not isinstance(token, str) or not token:
+        raise ProtocolError('扫码授权缺少有效会话，请重新扫码')
+    if not third_party(login_info):
+        return token
+    try:
+        decoded = base64.b64decode(urllib.parse.unquote_plus(token)).decode('utf-8')
+        if not decoded:
+            raise ValueError()
+        return decoded
+    except (ValueError, UnicodeError):
+        raise ProtocolError('此渠道返回的游戏会话格式尚未兼容，请重新扫码') from None
+
+
+def role_query_uid(login_info):
+    user = login_info.get('mpay_user') or {}
+    platform_name = game_platform(login_info)
+    channel = login_channel(login_info)
+    if channel == 'harmony_huawei':
+        channel = 'huawei'
+    return f'{user["id"]}@{platform_name}.{"netease" if platform_name == "ios" else channel}.win.163.com'
+
+
+def sdk_full_uid(login_info):
+    if not third_party(login_info):
+        return login_info.get('full_uid') or role_query_uid(login_info)
+    # Use only a named SDK identity from this official authorization response.
+    # Never interpret an opaque channel SESSION as JSON or invent FULL_UID.
+    user = login_info.get('mpay_user') or {}
+    explicit = login_info.get('full_uid') or user.get('full_uid')
+    if isinstance(explicit, str) and explicit and len(explicit) < 300:
+        return explicit
+    ext = user.get('pc_ext_info') or {}
+    try:
+        extra = json.loads(ext.get('extra_unisdk_data') or '{}')
+        native = extra.get('UNISDK_LOGIN_JSON')
+        if isinstance(native, str):
+            native = json.loads(native)
+        if isinstance(native, dict) and isinstance(native.get('username'), str) and 0 < len(native['username']) < 300:
+            return native['username']
+    except (ValueError, TypeError, AttributeError):
+        pass
+    raise ProtocolError('此渠道授权未提供可核验的游戏账号标识；目前无法进入角色，请保留渠道名称用于后续适配')
+
+
+def server_compatible(server, login_info, roles=()):
+    if not login_info:
+        return True
+    channel = login_channel(login_info)
+    if any(r.get('server_id') == server['id'] and r.get('from_channel') == channel for r in roles):
+        return True
+    kind = server.get('source_type')
+    if kind is None:
+        return True  # Live servers without a bundled category are verified at login.
+    platform_name = game_platform(login_info)
+    if kind in (1, 2):
+        return channel == 'netease'
+    if kind == 3:
+        return platform_name in ('ad', 'hm') and channel != 'netease'
+    if kind == 4:
+        return platform_name == 'ios' or platform_name == 'ad' and channel == 'bilibili_sdk'
+    return kind in (5, 6, 7) and bool(channel)
 
 def http_get(url: str, *, raw=False, timeout=20):
     request = urllib.request.Request(url, headers={'User-Agent': 'OnmyojiLocalQuery/0.1'})
@@ -111,7 +190,7 @@ def server_catalog(live_text: str | None = None) -> list[dict]:
         sid = str(info['ServerID'])
         live = records.pop(sid, {})
         source_type = info.get('serverType')
-        category = 4 if source_type == 6 else source_type
+        category = source_type
         if info.get('is_gray') == 1:
             category = 7
         result.append({'id': sid, 'name': info.get('showName') or info.get('ServerName') or sid,
@@ -197,7 +276,7 @@ class MpayQR:
                                 consent['remember_flags'][prefix + '.' + key] = value if value in (True, False, 0, 1, 'true', 'false', '0', '1') else type(value).__name__
                 return 'confirmed', {**info, 'mpay_user': user, 'user_id': user['id'],
                                      'token': user['token'],
-                                     'full_uid': f'{user["id"]}@{platform_name}.{channel}.win.163.com',
+                                     'full_uid': sdk_full_uid({**info, 'mpay_user': user}),
                                      'mpay_device_id': self.client.device_id, '_consent_observation': consent}
             if status == 1:
                 return 'scanned', None
@@ -257,10 +336,12 @@ class Gate:
         self.account_id = b''
         self.avatar_id = b''
         self.selected_role = ''
+        self.function_switch = {}
+        self.assistant_ready = False
         self.login_result = None
         self.server_id = ''
         self.device_id = secrets.token_hex(16)
-        names = set(CONFIG['rpc_names']) | set(CONFIG['static_rpc_names'].values()) | {'become_player'}
+        names = set(CONFIG['rpc_names']) | set(CONFIG['static_rpc_names'].values()) | {'become_player', 'lineup_assisant_logic_get_info_cb'}
         self.md5_names = {hashlib.md5(n.encode('ascii')).digest(): n for n in names}
         self.index_names = {int(k): v for k, v in CONFIG['static_rpc_names'].items()}
 
@@ -347,8 +428,9 @@ class Gate:
         raise ProtocolError('未收到账号连接对象')
 
     def rpc(self, method, parameters, *, entity_id=None):
-        allowed = {'login_with_sdk', 'select_role',
-                   'lineup_assisant_logic.get_share_lineup_data'}
+        allowed = {'login_with_sdk', 'select_role', 'lineup_assisant_logic.get_info',
+                   'lineup_assisant_logic.get_share_lineup_data',
+                   'lineup_assisant_logic.save_and_share_lineup_data'}
         if method not in allowed:
             raise ProtocolError('此工具未实现该操作')
         msg = self.message('EntityMessage', id=entity_id or self.account_id,
@@ -367,7 +449,10 @@ class Gate:
             method = method or self.md5_names.get(bytes(reply.method.md5))
             # Only decode expected callbacks; discard unrelated account content.
             expected = self.account_id if method == 'on_login_result' else self.avatar_id
-            if method in ('on_login_result', 'lineup_assisant_logic_get_share_lineup_data_cb') and bytes(reply.id) == expected:
+            if method in ('on_login_result', 'lineup_assisant_logic_get_info_cb', 'lineup_assisant_logic_get_share_lineup_data_cb',
+                          'lineup_assisant_logic_save_and_share_lineup_data_cb'):
+                if bytes(reply.id) != expected:
+                    return 'ignored_entity_callback', {}
                 return method, unpack_rpc(reply.parameters)
             if method == 'on_lose_server':
                 return method, {'entity_id': bytes(reply.id)}
@@ -379,7 +464,15 @@ class Gate:
             return method, {}
         if name == 'create_entity':
             kind = self.md5_names.get(bytes(reply.type.md5), '')
-            return 'create_entity', {'entity_id': bytes(reply.id), 'entity_type': kind}
+            data = {'entity_id': bytes(reply.id), 'entity_type': kind}
+            if kind == 'ClientAvatar':
+                info = unpack_rpc(reply.info)
+                if not isinstance(info, dict) or not isinstance(info.get('function_switch', {}), dict):
+                    raise ProtocolError('角色功能开关格式不匹配')
+                # Only retain the feature gate needed by the assistant.
+                switches = info.get('function_switch', {})
+                data['function_switch'] = {'988': switches.get('988', switches.get(988, True))}
+            return 'create_entity', data
         if name == 'destroy_entity':
             # Account and avatar entities have separate lifetimes. The server
             # can destroy the account entity after creating the selected avatar.
@@ -389,6 +482,7 @@ class Gate:
     def wait_events(self, seconds=35):
         deadline = min(self.deadline, time.monotonic() + seconds)
         old_timeout = self.sock.gettimeout()
+        old_deadline, self.deadline = self.deadline, deadline
         try:
             while time.monotonic() < deadline:
                 self.sock.settimeout(max(0.1, min(10, deadline - time.monotonic())))
@@ -397,6 +491,7 @@ class Gate:
                 except socket.timeout:
                     continue
         finally:
+            self.deadline = old_deadline
             self.sock.settimeout(old_timeout)
 
     def login_by_qr(self, login_info: dict, server_id: str):
@@ -408,8 +503,8 @@ class Gate:
             raise ProtocolError('MPay 扫码附加信息格式不受支持')
         platform_name = game_platform(login_info)
         channel = user.get('login_channel', login_info.get('login_channel', 'netease'))
-        if channel != 'netease':
-            raise ProtocolError('此联调客户端目前仅接入网易账号的 SDK 授权')
+        session_token = sdk_session(login_info)
+        full_uid = sdk_full_uid(login_info)
         # ClientAccount.loginWithSdk selects the game's platform independently
         # of the PC SDK, and sets APP_CHANNEL/PAY_CHANNEL to app_store for iOS.
         app_channel = 'app_store' if platform_name == 'ios' else (ext.get('src_app_channel2') or ext.get('src_app_channel') or 'netease')
@@ -439,20 +534,21 @@ class Gate:
         sauth = {k: v for k, v in sauth.items() if k not in reserved}
         sauth.update({'gameid': 'g37', 'login_channel': channel, 'app_channel': app_channel,
                       'platform': platform_name, 'sdkuid': user['id'], 'udid': udid,
-                      'sessionid': user['token'], 'sdk_version': sdk_version,
+                      'sessionid': session_token, 'sdk_version': sdk_version,
                       'deviceid': device_id})
         fields = ('uid', 'full_uid', 'session', 'cpid', 'appid', 'channel_gameid',
                   'timestamp', 'sauth_str', 'auth_type', 'old_accountid', 'engine_version',
                   'device_name', 'device_model', 'device', 'real_ip', 'ip_country')
         info = dict.fromkeys(fields, '')
-        info.update({'uid': user['id'], 'full_uid': f'{user["id"]}@{platform_name}.netease.win.163.com',
-                     'session': user['token'], 'udid': udid, 'first_udid': udid,
+        info.update({'uid': user['id'], 'full_uid': full_uid,
+                     'session': session_token, 'udid': udid, 'first_udid': udid,
                      'device_id': device_id, 'sdk_version': sdk_version, 'version': sdk_version,
                      'sdk_init': 1, 'platform': platform_name, 'app_channel': app_channel,
                      'pay_channel': pay_channel,
                      'login_channel': channel, 'app_version': CONFIG['app_version'],
                      'appid': CONFIG['game_id'], 'cpid': 'g37', 'channel_gameid': 'g37',
-                     'auth_type': 'netease', 'sauth_str': '&'.join(f'{k}={v}' for k, v in sauth.items()),
+                     'auth_type': 'native' if third_party(login_info) else 'netease',
+                     'sauth_str': urllib.parse.urlencode(sauth),
                      'patch_version': CONFIG['patch_version'],
                      'res_version': CONFIG['patch_version'], 'script_version': CONFIG['patch_version'],
                      'serverid': str(server_id), 'client_cloud': False, 'is_simulator': False,
@@ -463,6 +559,13 @@ class Gate:
                      'NgPush': 'aad55fa6cd692593d4b92820d0e27f6cca62a273caefc810cfae3c5d8e8a2129',
                      'network': {'use_ipv6': False, 'use_3xian': False, 'ip_errcode': 0,
                                  'reconn_count': 0, 'platform': 'win32', 'py': 3, 'network': 'wifi'}})
+        # ClientAccount.loginWithSdk applies these four non-empty PC values last.
+        for key, target in (('login_channel', 'login_channel'), ('sessionid', 'session'),
+                            ('sdk_version', 'sdk_version'), ('cpid', 'cpid')):
+            if sauth.get(key):
+                info[target] = sauth[key]
+        if ext.get('src_device_id'):
+            info['src_device_id'] = ext['src_device_id']
         info['versions'] = '0#0#0'
         if ext.get('src_client_type') in (5, '5'):
             info['is_login_in_pc'] = True
@@ -507,10 +610,34 @@ class Gate:
                 if not isinstance(entity, bytes) or len(entity) != 12 or entity == self.account_id:
                     raise ProtocolError('角色连接对象格式不匹配')
                 self.avatar_id, self.selected_role = entity, aid
+                self.function_switch = data.get('function_switch', {})
+                self.assistant_ready = False
                 return
             if name == 'notify_error_cb' or (name == 'on_lose_server' and data.get('entity_id') == self.account_id):
                 raise ProtocolError('服务器未建立角色会话，请重新扫码或检查角色状态')
         raise ProtocolError('未收到角色连接对象；已收到事件：' + ', '.join(seen[:8]))
+
+    def ensure_lineup_assistant(self):
+        if self.assistant_ready:
+            return
+        if not self.avatar_id:
+            raise AssistantUnavailable('请先建立所选角色的会话')
+        if not self.function_switch.get('988', True):
+            raise AssistantUnavailable('当前角色尚未开放阵容助手，请进入游戏确认解锁条件，或切换其他已有角色')
+        # TeamAssistView.initDefault always invokes this before a share lookup.
+        self.rpc('lineup_assisant_logic.get_info', {}, entity_id=self.avatar_id)
+        try:
+            for name, data in self.wait_events(20):
+                if name == 'lineup_assisant_logic_get_info_cb':
+                    if not isinstance(data, dict) or not isinstance(data.get('info'), dict):
+                        raise AssistantUnavailable('阵容助手初始化回包不完整，请在游戏内打开一次阵容助手后重试')
+                    self.assistant_ready = True
+                    return
+                if name in ('on_lose_server', 'destroy_entity') and data.get('entity_id') == self.avatar_id:
+                    raise AssistantUnavailable('角色连接已结束，请重新登录后重试')
+        except TimeoutError:
+            pass
+        raise AssistantUnavailable('阵容助手初始化未完成，已暂停查询。请在游戏中打开一次阵容助手，或切换已有角色后重试')
 
     def query_lineup(self, share_key):
         if not self.avatar_id:
@@ -529,6 +656,20 @@ class Gate:
             if name in ('on_lose_server', 'destroy_entity') and data.get('entity_id') == self.avatar_id:
                 raise ProtocolError('角色连接已结束，请重新扫码登录')
         raise ProtocolError('阵容查询超时（20秒内未收到对应回包）；已跳过，可稍后重试')
+
+    def share_lineup(self, payload):
+        if not self.avatar_id:
+            raise ProtocolError('请先建立所选角色的会话')
+        self.rpc('lineup_assisant_logic.save_and_share_lineup_data',
+                 {'lineup_data': payload}, entity_id=self.avatar_id)
+        for name, data in self.wait_events(25):
+            if name == 'lineup_assisant_logic_save_and_share_lineup_data_cb':
+                if not isinstance(data, dict):
+                    raise ProtocolError('阵容分享回调格式不匹配')
+                return data
+            if name in ('on_lose_server', 'destroy_entity') and data.get('entity_id') == self.avatar_id:
+                raise ProtocolError('角色连接已结束，请重新扫码登录')
+        raise ProtocolError('官方分享响应超时，请稍后重试')
 
 
 def query_own_roles(account: str):

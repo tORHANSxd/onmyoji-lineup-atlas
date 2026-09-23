@@ -38,3 +38,9 @@ test('已保存账号只通过私有管道恢复，状态不含凭据，旧进�
  assert.throws(()=>h.session.request('restore',{credentials:info}),/无效/);
  h.session.forget(id);await assert.rejects(pending,/忘记账号/);h.reply(old,{type:'credentials',data:{full_uid:'synthetic',credentials:info}});h.reply(old,{type:'status',state:{authenticated:true,token:'secret-private'}});assert.deepEqual(events,['forgotten']);assert.equal(h.session.status().authenticated,false);
 });
+
+test('登录桥接保留角色查询就绪状态，退出后恢复为不可查询',()=>{
+ const h=harness();h.session.start();const child=h.children[0];
+ for(const ready of [true,false]){h.reply(child,{type:'status',state:{authenticated:true,query_ready:ready,selected_server:'1',selected_avatar:'role'}});assert.equal(h.session.status().query_ready,ready);}
+ h.session.stop();assert.equal(h.session.status().query_ready,false);
+});

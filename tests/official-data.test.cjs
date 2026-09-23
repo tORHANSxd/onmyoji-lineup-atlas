@@ -30,3 +30,13 @@ test('主角身份由页面标题、正文类、头像alt和CSS共同关联',()=
 test('取消更新会终止请求并保留原数据',async()=>{const h=await harness(async(_url,options)=>new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new Error('aborted')),{once:true})));try{const pending=h.u.refresh();h.u.cancel();const result=await pending;assert.equal(result.running,false);assert.match(result.errors.join(),/取消/);assert.equal(h.u.getData().roster[0].name,'原有式神');}finally{await h.cleanup();}});
 test('已验证目录后取消或限流也不提交部分更新',async()=>{for(const action of ['cancel',403,429]){let updater;const h=await harness(async url=>{if(url===URLS.static)return json([{id:201,name:'测试式神201'}]);if(url.startsWith(URLS.catalog))return page({'201':row(201)});if(action==='cancel'){updater.cancel();throw new Error('aborted');}return new Response('',{status:action});});updater=h.u;try{const result=await h.u.refresh();assert.equal(result.phase,'partial');assert.equal(h.u.getData().roster[0].name,'原有式神');assert.equal(result.lastCheckedAt,null);await assert.rejects(fs.stat(path.join(h.u.root,'manifest.json')));}finally{await h.cleanup();}}});
 test('旧缓存官方主角与新增内置社区主角合并，不覆盖其他本地资料',async()=>{const h=await harness(async()=>json({}));try{h.u.base.actors=[{id:'seimei',name:'晴明'},{id:'yorimitsu',name:'源赖光'}];h.u.snapshot={actors:[{id:'seimei',name:'晴明',revision:2}]};const data=h.u.getData();assert.deepEqual(data.actors.map(a=>a.id),['seimei','yorimitsu']);assert.equal(data.actors[0].revision,2);assert.equal(data.lineups[0].id,'baseline');}finally{await h.cleanup();}});
+
+test('连续导出复用精简校验资料且官方名单更新使缓存失效',async()=>{
+ const h=await harness(async()=>json({}));try{
+  h.u.base=require('../data/bundle.json');h.u.getData=()=>{throw Error('导出不应克隆全部资料');};
+  const first=h.u.getGameCatalog();assert.equal(h.u.getGameCatalog(),first);
+  assert.ok(JSON.stringify(first).length<JSON.stringify(h.u.base).length/5);
+  const G=require('../app/game-config.js');for(const l of h.u.base.lineups.filter(l=>l.raw?.hconf))G.validate(first.gameConfig,l.raw);
+  h.u.snapshot={roster:[{id:'99999'}]};const next=h.u.getGameCatalog();assert.notEqual(next,first);assert.ok(next.roster.some(r=>r.id==='99999'));
+ }finally{await h.cleanup();}
+});

@@ -71,6 +71,18 @@ class OfficialData {
   due(){return this.settings.autoUpdate&&!this.status.running&&(!this.snapshot.checkedAt||this.now()-new Date(this.snapshot.checkedAt)>=86400000);}
   cancel(){this.controller?.abort();}
   emit(patch){this.status={...this.status,...patch};this.progress(this.getStatus());}
+  getGameCatalog(){
+    if(this.gameCatalogCache?.snapshot===this.snapshot)return this.gameCatalogCache.value;
+    const b=this.base,d=b.gameConfig;
+    // Export validation does not need descriptions, images or the full lineup library.
+    const gameConfig=d?{heroes:d.heroes,stages:d.stages,spiritMaxLevel:d.spiritMaxLevel,markGroups:d.markGroups,
+      spirits:Object.fromEntries(Object.entries(d.spirits).map(([id,s])=>[id,{heroes:s.heroes}])),
+      skills:Object.fromEntries(Object.entries(d.skills).map(([id,s])=>[id,{variants:Object.fromEntries(Object.entries(s.variants).map(([v,rows])=>[v,rows.map(({level,passive,branches,aiBranches})=>({level,passive,branches,aiBranches}))]))}]))}:undefined;
+    const value={roster:[...new Set([...(b.roster||[]),...(this.snapshot.roster||[])].map(r=>r.id))].map(id=>({id})),
+      actors:b.actors||[],suits:Object.fromEntries(Object.keys(b.suits||{}).map(id=>[id,true])),
+      stageCatalog:{scenes:(b.stageCatalog?.scenes||[]).map(s=>({gameSceneId:s.gameSceneId}))},gameConfig};
+    this.gameCatalogCache={snapshot:this.snapshot,value};return value;
+  }
   getData(){
     const data=structuredClone(this.base),saved=this.snapshot;
     if(saved.roster?.length){const builtIn=new Map(data.roster.map(r=>[r.id,r]));data.roster=saved.roster.map(r=>({...r,gameRules:builtIn.get(r.id)?.gameRules||r.gameRules}));data.roster.push(...[...builtIn.values()].filter(r=>!saved.roster.some(s=>s.id===r.id)));}

@@ -1,30 +1,48 @@
 (function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./core.js'):root.AtlasCore);if(typeof module==='object'&&module.exports)module.exports=api;else root.AtlasExact=api;})(globalThis,function(C){
 'use strict';
-const stats=Object.keys(C.STAT_NAMES),percent=new Set(['crit','critDamage','effectHit','effectResist']),version='exact-2';
+const stats=Object.keys(C.STAT_NAMES),percent=new Set(['crit','critDamage','effectHit','effectResist']),version='exact-3';
 const compare=(a,b)=>{for(let i=0;i<a.length;i++)if(a[i]!==b[i])return a[i]>b[i]?1:-1;return 0;};
 const tolerance=x=>1e-7+Math.abs(x)*1e-12;
+// Scoped to one immutable worker inventory. Direct callers get a fresh index.
+function* inventoryContext(souls,shared){
+ shared.inventories??=new WeakMap();let entry=shared.inventories.get(souls);
+ if(!entry){entry={};shared.inventories.set(souls,entry);entry.preparation=(function*(){
+  const inventory=Object.values(souls),slots=Array.from({length:6},()=>[]),soulKey=new Map(),sampleSlots=Array.from({length:6},()=>[]),counts=Array.from({length:6},()=>new Map());let checkpoint=Date.now();
+  for(let i=0;i<inventory.length;i++){
+   const q=inventory[i],slot=q.slot-1;slots[slot]?.push(q);
+   soulKey.set(q.id,JSON.stringify([q.slot,q.set,q.star,q.level,q.mainStat,stats.map(s=>q.stats[s]||0)]));
+   if(sampleSlots[slot]?.length<32&&(counts[slot].get(q.set)||0)<2){sampleSlots[slot].push(q);counts[slot].set(q.set,(counts[slot].get(q.set)||0)+1);}
+   if(i%256===0&&Date.now()-checkpoint>=8){yield;checkpoint=Date.now();}
+  }
+  entry.value={inventory,slots,soulKey,sample:inventory.length<=192?inventory:sampleSlots.flat()};
+ })();}
+ while(!entry.value){entry.preparation.next();if(!entry.value)yield;}
+ return entry.value;
+}
 // Every eligible instance remains in the search. Yields preserve the complete
 // DFS stack; neither a time limit nor heuristic failure is an optimality proof.
-function* solve(lineup,account,roster,effects){
- const diagnostic=C.matchLineup(lineup,account,roster,effects,{limit:64,width:6,perSet:1,assignmentLimit:1000});
+function* solve(lineup,account,roster,effects,context){
+ const diagnostic=C.matchLineup(lineup,account,roster,effects,{limit:64,width:6,perSet:1,assignmentLimit:1000,inventory:context.sample,approximateInventory:context.sample!==context.inventory,diagnosticHeroLimit:3});
  for(const row of diagnostic.members)row.builds=(row.builds||[]).slice(0,1);
  const roles=(lineup.members||[]).filter(m=>m.occupied!==false&&m.kind==='shikigami').sort((a,b)=>a.index-b.index);
- const inventory=Object.values(account.souls),unknown=[];let nodes=0,pruned=0,best=null,bestVector=null;
+ const inventory=context.inventory,unknown=[];let nodes=0,pruned=0,best=null,bestVector=null,checkpoint=Date.now();
  if(!roles.length||!C.hasParsedContent(lineup))unknown.push('原码尚未解析出完整的式神要求');
  if(account.completeness!=='complete'||account.merged)unknown.push('需要完整替换导出的库存，才能证明全局最优或无解');
  const relevant=inventory.filter(q=>roles.some(m=>C.soulEligible(q,m.config)));
  if(relevant.some(q=>q.unknown?.length||!effects.some(e=>e.suitNames.includes(q.set))||Object.values(q.stats).some(v=>!Number.isFinite(v)||v<0)))unknown.push('符合配装筛选的御魂含未识别属性或套装，无法确定结果');
  if(effects.some(e=>!Number.isFinite(e.value)||e.value<0))unknown.push('套装加成数据未完整核实');
- const prepared=roles.map(m=>{
+ const prepared=[];
+ for(const m of roles){
   const owned=C.memberCandidates(m,account),config=m.config||{};
   unknown.push(...C.configUnknown(m.config,effects));
   if(m.borrowed||!m.shikigamiId)unknown.push('协战或成员身份需要补全');
   const heroes=owned.heroes.map(hero=>({hero,base:C.baseFromRoster(hero,roster)}));
   if(heroes.some(h=>!h.base))unknown.push(m.name+'缺少可核验的基础属性');
   if(heroes.some(({base})=>base&&(base.critDamage<1||['attack','hp','defense','speed','crit','critDamage','effectHit','effectResist'].some(s=>!Number.isFinite(base[s])||base[s]<0)||Object.values(base.innate||{}).some(v=>!Number.isFinite(v)||v<0))))unknown.push(m.name+'基础属性异常，不能使用单调指标上界证明');
-  const groups=[1,2,3,4,5,6].map(slot=>inventory.filter(q=>q.slot===slot&&!q.unknown?.length&&C.soulEligible(q,config)));
-  return {m,owned,config,heroes,groups};
- });
+   const groups=[];
+   for(const slot of context.slots){groups.push(slot.filter(q=>!q.unknown?.length&&C.soulEligible(q,config)));if(Date.now()-checkpoint>=8){yield {...diagnostic,assignment:null,ready:false,status:'unknown',label:'正在准备库存',proof:{state:'computing',phase:'preparing',version,nodes,pruned}};checkpoint=Date.now();}}
+   prepared.push({m,owned,config,heroes,groups});
+  }
  const snapshot=(state='computing')=>{
   const result={...diagnostic,members:diagnostic.members.map(m=>({...m}))};
   result.proof={state,version,nodes,pruned,objective:roles.map(m=>({index:m.index,metricId:m.config?.metricId??null})),vector:bestVector,scope:'完整导出库存中的式神与御魂；阴阳师、契灵与术印仅展示'};
@@ -40,10 +58,19 @@ function* solve(lineup,account,roster,effects){
  if(unknown.length)return snapshot('blocked');
  // Exchangeable instances have identical effects on every supported constraint.
  // Keep their multiplicity in inventory, but skip permutations of their IDs.
- const soulKey=new Map(inventory.map(q=>[q.id,JSON.stringify([q.slot,q.set,q.star,q.level,q.mainStat,stats.map(s=>q.stats[s]||0)])]));
+ const soulKey=context.soulKey;
  const maxBonus=Object.fromEntries(stats.map(s=>[s,3*Math.max(0,...effects.filter(e=>e.stat===s).map(e=>e.value))]));
  const usedHeroes=new Set(),usedSouls=new Set(),chosen=[];
  const rankedGroups=new Map();
+ // This conservative case has exactly one objective vector. It does not
+ // discard candidates before finding a complete, constraint-valid assignment.
+ const constantObjective=prepared.every(({config,heroes,groups})=>{
+  if(config.metricId==null)return true;
+  const keys={2:['effectHit'],3:['effectResist'],7:['speed'],8:['crit'],9:['critDamage'],11:['effectHit','effectResist']}[config.metricId];
+  return !!keys&&heroes.length>0&&groups.every(g=>g.length)&&keys.every(k=>
+   !effects.some(e=>e.stat===k&&e.value)&&heroes.every(h=>h.base[k]===heroes[0].base[k]&&(h.base.innate?.[k]||0)===(heroes[0].base.innate?.[k]||0))&&
+   groups.every(g=>g.every(q=>(q.stats[k]||0)===(groups[0][0].stats[k]||0))));
+ });
  // A necessary matching check for every remaining slot. It only rejects a
  // branch when even independent per-slot assignments cannot avoid reuse.
  function remainingPossible(n){
@@ -86,7 +113,7 @@ function* solve(lineup,account,roster,effects){
    const key=JSON.stringify([hero.shikigamiId,hero.level,hero.star,hero.awake,hero.skills,base]);if(seenHeroes.has(key)){pruned++;continue;}seenHeroes.add(key);
    const objective={heroId:hero.shikigamiId,baseAttack:base.attack};
    const rankKey=JSON.stringify([n,base]);let ordered=rankedGroups.get(rankKey);
-   if(!ordered){ordered=allGroups.map(group=>group.map(q=>({q,score:C.score(C.panel(base,[q],effects,config.extraAttributes).values,config.metricId,objective)||0})).sort((a,b)=>b.score-a.score).map(x=>x.q));rankedGroups.set(rankKey,ordered);}
+    if(!ordered){ordered=[];for(const group of allGroups){const ranked=[];for(let i=0;i<group.length;i++){const q=group[i];ranked.push({q,score:C.score(C.panel(base,[q],effects,config.extraAttributes).values,config.metricId,objective)||0});if(i%128===0&&Date.now()-checkpoint>=8){yield snapshot();checkpoint=Date.now();}}ordered.push(ranked.sort((a,b)=>b.score-a.score).map(x=>x.q));}rankedGroups.set(rankKey,ordered);}
    const groups=ordered.map(g=>g.filter(q=>!usedSouls.has(q.id))).sort((a,b)=>a.length-b.length);
    if(groups.some(g=>!g.length)){pruned++;continue;}
    // Sorting finds an incumbent sooner without discarding any candidate.
@@ -94,7 +121,7 @@ function* solve(lineup,account,roster,effects){
    for(let i=5;i>=0;i--){const low=zero(),high=zero(),sets={...suffix[i+1].sets};for(const set of new Set(groups[i].map(q=>q.set)))sets[set]=(sets[set]||0)+1;for(const s of stats){let min=Infinity,max=-Infinity;for(const q of groups[i]){min=Math.min(min,q.stats[s]||0);max=Math.max(max,q.stats[s]||0);}low[s]=suffix[i+1].low[s]+min;high[s]=suffix[i+1].high[s]+max;}suffix[i]={low,high,sets};}
    const picked=[],seenStates=new Set();
    function* visitSlot(depth){
-    nodes++;if(nodes%256===0)yield snapshot();
+     nodes++;if(nodes%64===0&&Date.now()-checkpoint>=8){yield snapshot();checkpoint=Date.now();}
     if(n===prepared.length-1&&depth>=2){
      // On the last member, interchangeable prefixes affect no later soul
      // ownership. Cache exact sums and set counts, never rounded attributes.
@@ -123,17 +150,20 @@ function* solve(lineup,account,roster,effects){
    yield* visitSlot(0);
   }
  }
- yield snapshot();yield* visitMember(0);return snapshot(best?'optimal':'infeasible');
+  yield snapshot();const traversal=visitMember(0);
+  while(true){const step=traversal.next();if(step.done)break;if(constantObjective&&best){traversal.return();return snapshot('optimal');}yield step.value;}
+  return snapshot(best?'optimal':'infeasible');
 }
 // Match actual instances across the whole team, including repeated species and
 // incompatible skill requirements. A count per species alone is insufficient.
-function heroAvailability(roles,account){
+function heroAvailability(roles,account,{reuseIndex=false}={}){
+ C.heroIndex(account,!reuseIndex);
  const owners=new Map(),choices=roles.map(m=>C.memberCandidates(m,account).heroes);
  function assign(i,seen){for(const h of choices[i]){if(seen.has(h.instanceId))continue;seen.add(h.instanceId);const previous=owners.get(h.instanceId);if(previous==null||assign(previous,seen)){owners.set(h.instanceId,i);return true;}}return false;}
  for(let i=0;i<roles.length;i++)assign(i,new Set());
  const matched=new Set(owners.values()),required=new Map(),owned=new Map();
  for(const m of roles)required.set(m.shikigamiId,(required.get(m.shikigamiId)||0)+1);
- for(const h of Object.values(account.heroes))owned.set(h.shikigamiId,(owned.get(h.shikigamiId)||0)+1);
+ for(const [id,rows] of C.heroIndex(account))owned.set(id,rows.length);
  const coverage=[...required].reduce((n,[id,count])=>n+Math.min(count,owned.get(id)||0),0);
  const unknown=account.completeness!=='complete'||account.merged||!roles.length||roles.some(m=>m.borrowed||!m.shikigamiId);
  const deficits=unknown?[]:[...required].map(([id,count])=>{const rows=roles.filter(m=>m.shikigamiId===id),have=owned.get(id)||0,ready=roles.filter((m,i)=>m.shikigamiId===id&&matched.has(i)).length;return {id,name:rows[0].name,shortage:Math.max(0,count-have),training:Math.min(count,have)-ready,required:count,owned:have};}).filter(d=>d.shortage||d.training);
@@ -144,15 +174,15 @@ function gapCategory(heroes,souls){
  if(souls==='pending'||souls==='uncomputed')return 'pending';
  return heroes==='missing'?(souls==='missing'?'both':'hero-only'):(souls==='missing'?'soul-only':'ready');
 }
-function inspectHeroes(lineup,account){
- const roles=(lineup.members||[]).filter(m=>m.occupied!==false&&m.kind==='shikigami'),availability=heroAvailability(roles,account);
+function inspectHeroes(lineup,account,options){
+ const roles=(lineup.members||[]).filter(m=>m.occupied!==false&&m.kind==='shikigami'),availability=heroAvailability(roles,account,options);
  const complete=C.hasParsedContent(lineup)&&C.shikigamiRequirementsComplete(lineup)&&roles.every(m=>Array.isArray(m.skills)&&[0,1].includes(m.awakening));
  const heroes=complete?availability.state:'unknown';
  return {availability,assessment:{heroes,souls:'uncomputed',heroShortage:heroes==='unknown'?null:availability.shortage,heroTraining:heroes==='unknown'?null:availability.training,heroDeficits:heroes==='unknown'?[]:availability.deficits}};
 }
-function soulShortages(roles,account,effects){
+function soulShortages(roles,account,effects,inventory=Object.values(account.souls)){
  if(account.completeness!=='complete'||account.merged)return [];
- const inventory=Object.values(account.souls),knownSets=new Set(effects.flatMap(e=>e.suitNames)),requests=new Map(),deficits=new Map();
+ const knownSets=new Set(effects.flatMap(e=>e.suitNames)),requests=new Map(),deficits=new Map();
  const add=(name,text)=>{if(!deficits.has(name))deficits.set(name,{name,reasons:[]});deficits.get(name).reasons.push(text);};
  for(const m of roles){
   if(m.borrowed||!m.config||C.configUnknown(m.config,effects).length)continue;
@@ -169,12 +199,19 @@ function soulShortages(roles,account,effects){
  for(const r of requests.values())if(r.ids.size<r.count)add(r.name,`同队共需${r.count}件，符合条件的库存最多${r.ids.size}件`);
  return [...deficits.values()].map(d=>({...d,reasons:[...new Set(d.reasons)]}));
 }
-function* search(lineup,account,roster,effects){
+function* search(lineup,account,roster,effects,shared={}){
  const roles=(lineup.members||[]).filter(m=>m.occupied!==false&&m.kind==='shikigami');
- const {availability,assessment}=inspectHeroes(lineup,account),heroes=assessment.heroes,shortages=soulShortages(roles,account,effects);
+ shared.heroIndex??=C.heroIndex(account,true);
+ const {availability,assessment}=inspectHeroes(lineup,account,{reuseIndex:true}),heroes=assessment.heroes;let shortages=[];
  let result,souls='pending';
  const withGaps=(value,extra={})=>({...value,gapCategory:gapCategory(heroes,souls),gapAssessment:{...assessment,souls,soulShortages:shortages,...extra}});
- const actual=solve(lineup,account,roster,effects);
+ const preparing={status:'unknown',ready:false,members:[],checks:[],reasons:[],label:'正在准备库存',proof:{state:'computing',phase:'preparing',version,nodes:0,pruned:0}};
+ yield withGaps(preparing);
+ const preparation=inventoryContext(account.souls,shared);let context;
+ while(true){const step=preparation.next();if(step.done){context=step.value;break;}yield withGaps(preparing);}
+ shortages=soulShortages(roles,account,effects,context.inventory);
+ yield withGaps(preparing);
+ const actual=solve(lineup,account,roster,effects,context);
  while(true){const step=actual.next();result=step.value;
   if(result.assignment)souls='ready';else if(result.proof.state==='blocked')souls='unknown';else if(result.proof.state==='infeasible'&&heroes==='ready')souls='missing';
   if(step.done)break;yield withGaps(result);
@@ -193,7 +230,7 @@ function* search(lineup,account,roster,effects){
  }
  souls='pending';const extra={assumptions,scope:'按原码补齐式神条件后，使用当前御魂库存；同队不重复占用'};
  yield withGaps(result,extra);
- const hypothetical=solve(lineup,projected,roster,effects);
+ const hypothetical=solve(lineup,projected,roster,effects,context);
  while(true){const step=hypothetical.next(),candidate=step.value;
   if(candidate.assignment){souls='ready';hypothetical.return();return withGaps(result,{...extra,assignment:candidate.assignment});}
   if(step.done){souls=candidate.proof.state==='infeasible'?'missing':'unknown';return withGaps(result,{...extra,reason:souls==='unknown'?candidate.reasons.join('；'):''});}

@@ -9,6 +9,15 @@ const hero=(instanceId='a',shikigamiId='1')=>({instanceId,shikigamiId,level:40,s
 const soul=(slot,set='招财猫',stats={},id=String(slot))=>({id,slot,set,level:15,star:6,mainStat:'attack',stats,unknown:[],raw:{mainAttrValue:0,subAttributes:[]}});
 const account=souls=>({heroes:{a:hero(),b:hero('b','2')},souls:Object.fromEntries(souls.map(s=>[s.id,s])),presets:[],completeness:'complete'});
 const member=(index=0,sid='1',c=config())=>({index,kind:'shikigami',name:sid,shikigamiId:sid,awakening:1,skills:[],config:c});
+test('诊断缓存与库存子集、搜索参数隔离，预设不能越过库存范围',()=>{
+ const a=account(Array.from({length:6},(_,i)=>soul(i+1))),cache=new Map(),c=config();
+ const full=C.findBuilds(a.heroes.a,c,a,roster,data.effects,{cache});assert.equal(full.status,'found');
+ a.presets=[['synthetic',Object.keys(a.souls)]];
+ const empty=C.findBuilds(a.heroes.a,c,a,roster,data.effects,{cache,inventory:[]});
+ assert.equal(empty.status,'missing');assert.equal(empty.builds.length,0);
+ const limited=C.findBuilds(a.heroes.a,c,a,roster,data.effects,{cache,limit:0});
+ assert.equal(limited.exhaustive,false);
+});
 test('主属性不符或面板超上限时，不优先花资源强化当前错误胚子',()=>{
  const q={...soul(2),level:0},a=account([q]),c=config({levelRange:[15,15],mainStats:{2:['speed']}});
  for(const conflict of [{kind:'main',slot:2},{kind:'stat',stat:'speed',side:'max',weight:2,delta:3}]){const advice=C.suggestions(c,{soulIds:[q.id],gaps:[{kind:'level',slot:2},conflict]},a,data.effects);assert.ok(!advice.some(s=>s.startsWith('先利用已有')));}

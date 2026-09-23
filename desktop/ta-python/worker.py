@@ -22,10 +22,10 @@ def main():
     session.emit(session.status())
     try:
         while True:
-            line = sys.stdin.buffer.readline(65537)
+            line = sys.stdin.buffer.readline(196609)
             if not line:
                 break
-            if len(line) > 65536:
+            if len(line) > 196608:
                 break
             request_id = None
             try:

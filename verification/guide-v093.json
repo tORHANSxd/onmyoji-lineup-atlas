@@ -1,0 +1,5011 @@
+{
+  "version": "0.9.3",
+  "output": "output\\pdf\\Yuqi-Guide-0.9.3.pdf",
+  "pageCount": 32,
+  "sha256": "7ebbc4cc3a0933b0ececa1eeae4305a2a836aa52c91c3107e2fe2db6c5017313",
+  "bytes": 5230807,
+  "screenshots": 26,
+  "sourceScreenshots": 27,
+  "synthetic": true,
+  "privateDataUsed": false,
+  "embeddedFonts": [
+    "Guide",
+    "GuideBold"
+  ],
+  "allTitlesPresent": true,
+  "textWithinPage": true,
+  "annotationCount": 37,
+  "visualReview": "passed",
+  "pages": [
+    {
+      "page": 1,
+      "title": "御契 · 使用指南"
+    },
+    {
+      "page": 2,
+      "title": "从这里开始"
+    },
+    {
+      "page": 3,
+      "title": "下载、安装与升级"
+    },
+    {
+      "page": 4,
+      "title": "认识首页"
+    },
+    {
+      "page": 5,
+      "title": "查找、筛选与排序"
+    },
+    {
+      "page": 6,
+      "title": "读懂一套阵容"
+    },
+    {
+      "page": 7,
+      "title": "导入平安志库存"
+    },
+    {
+      "page": 8,
+      "title": "查看库存中的技能"
+    },
+    {
+      "page": 9,
+      "title": "选择阵容，设为目标"
+    },
+    {
+      "page": 10,
+      "title": "按需精算，查看结果"
+    },
+    {
+      "page": 11,
+      "title": "汇总缺口，安排培养"
+    },
+    {
+      "page": 12,
+      "title": "看清御魂的六个位置"
+    },
+    {
+      "page": 13,
+      "title": "导入并解析阵容码"
+    },
+    {
+      "page": 14,
+      "title": "进入扫码登录"
+    },
+    {
+      "page": 15,
+      "title": "选择服务器与角色"
+    },
+    {
+      "page": 16,
+      "title": "保存登录与切换账号"
+    },
+    {
+      "page": 17,
+      "title": "开始制作一套阵容"
+    },
+    {
+      "page": 18,
+      "title": "阴阳师技能与自动施法"
+    },
+    {
+      "page": 19,
+      "title": "式神的技能与养成要求"
+    },
+    {
+      "page": 20,
+      "title": "查看逐级效果与变化技能"
+    },
+    {
+      "page": 21,
+      "title": "设置御魂与计算目标"
+    },
+    {
+      "page": 22,
+      "title": "数值范围与原生配速"
+    },
+    {
+      "page": 23,
+      "title": "契灵、等级与两个术印位"
+    },
+    {
+      "page": 24,
+      "title": "导出二维码与官方短码"
+    },
+    {
+      "page": 25,
+      "title": "批量管理阵容库"
+    },
+    {
+      "page": 26,
+      "title": "手动指定多个适用副本"
+    },
+    {
+      "page": 27,
+      "title": "备份到底包含什么"
+    },
+    {
+      "page": 28,
+      "title": "恢复备份：合并并取最新"
+    },
+    {
+      "page": 29,
+      "title": "复位为全部内置预设"
+    },
+    {
+      "page": 30,
+      "title": "检查官方资料与来源"
+    },
+    {
+      "page": 31,
+      "title": "遇到问题时这样处理"
+    },
+    {
+      "page": 32,
+      "title": "本版范围与验证说明"
+    }
+  ],
+  "layout": [
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "开始使用",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "御契",
+      "x": 105,
+      "top": 793.89,
+      "bottom": 754.89,
+      "width": 453.28,
+      "fontSize": 30
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "阴阳师阵容助手",
+      "x": 106,
+      "top": 745.89,
+      "bottom": 728.89,
+      "width": 453.28,
+      "fontSize": 11
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "新版图文使用指南",
+      "x": 36,
+      "top": 692.89,
+      "bottom": 656.89,
+      "width": 523.28,
+      "fontSize": 26
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "v0.9.3  /  Windows x64  /  2026 年 9 月 23 日",
+      "x": 36,
+      "top": 643.89,
+      "bottom": 627.89,
+      "width": 523.28,
+      "fontSize": 10
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料",
+      "x": 38,
+      "top": 285.67,
+      "bottom": 273.67,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 1,
+      "kind": "screenshot",
+      "name": "01-home",
+      "x": 44,
+      "top": 593.8897637795277,
+      "bottom": 298.669051038599,
+      "width": 507.27559055118115,
+      "height": 295.2207127409287,
+      "markers": []
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "查找阵容 · 核对库存 · 制作与导出 · 安心管理备份",
+      "x": 36,
+      "top": 262.67,
+      "bottom": 239.67,
+      "width": 523.28,
+      "fontSize": 15
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "32 页操作说明，配合 0.9.3 实际界面截图。示例账号、库存和制作阵容均为合成内容，不包含真实登录凭据，也不作为实战阵容推荐。",
+      "x": 36,
+      "top": 226.67,
+      "bottom": 190.67,
+      "width": 523.28,
+      "fontSize": 11
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "阅读前",
+      "x": 52,
+      "top": 160.67,
+      "bottom": 147.67,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "本版为公开测试版。二维码、官方短码、首次角色初始化及各渠道登录的实机验证范围，见最后一页。",
+      "x": 52,
+      "top": 142.67,
+      "bottom": 127.17,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 1,
+      "kind": "text",
+      "text": "<link href=\"https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.9.3\" color=\"#99712d\">打开 v0.9.3 发布页与下载附件</link>",
+      "x": 36,
+      "top": 100.17,
+      "bottom": 83.17,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "开始使用",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "从这里开始",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "按你的目标选一条路线；目录条目和页面书签都可以直接跳转。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "只想查一套阵容",
+      "x": 50,
+      "top": 688.89,
+      "bottom": 671.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "首页 → 筛选 → 详情",
+      "x": 50,
+      "top": 666.89,
+      "bottom": 651.89,
+      "width": 453.28,
+      "fontSize": 10
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "核对自己的库存",
+      "x": 50,
+      "top": 622.89,
+      "bottom": 605.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "导入平安志 → 目标 → 精算",
+      "x": 50,
+      "top": 600.89,
+      "bottom": 585.89,
+      "width": 453.28,
+      "fontSize": 10
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "制作可导出的阵容",
+      "x": 50,
+      "top": 556.89,
+      "bottom": 539.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "成员 → 技能／御魂 → 导出",
+      "x": 50,
+      "top": 534.89,
+      "bottom": 519.89,
+      "width": 453.28,
+      "fontSize": 10
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "开始使用",
+      "x": 36,
+      "top": 489.89,
+      "bottom": 472.89,
+      "width": 248.64,
+      "fontSize": 11
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "03  下载、安装与升级",
+      "x": 36,
+      "top": 468.89,
+      "bottom": 451.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 36,
+      "top": 437.89,
+      "bottom": 420.89,
+      "width": 248.64,
+      "fontSize": 11
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "04  认识首页",
+      "x": 36,
+      "top": 416.89,
+      "bottom": 399.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "05  查找、筛选与排序",
+      "x": 36,
+      "top": 397.89,
+      "bottom": 380.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "06  读懂一套阵容",
+      "x": 36,
+      "top": 378.89,
+      "bottom": 361.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "07  导入平安志库存",
+      "x": 36,
+      "top": 359.89,
+      "bottom": 342.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "08  查看库存中的技能",
+      "x": 36,
+      "top": 340.89,
+      "bottom": 323.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "09  选择阵容，设为目标",
+      "x": 36,
+      "top": 321.89,
+      "bottom": 304.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "10  按需精算，查看结果",
+      "x": 36,
+      "top": 302.89,
+      "bottom": 285.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "11  汇总缺口，安排培养",
+      "x": 36,
+      "top": 283.89,
+      "bottom": 266.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "12  看清御魂的六个位置",
+      "x": 36,
+      "top": 264.89,
+      "bottom": 247.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "阵容码与登录",
+      "x": 36,
+      "top": 233.89,
+      "bottom": 216.89,
+      "width": 248.64,
+      "fontSize": 11
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "13  导入并解析阵容码",
+      "x": 36,
+      "top": 212.89,
+      "bottom": 195.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "14  进入扫码登录",
+      "x": 36,
+      "top": 193.89,
+      "bottom": 176.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "15  选择服务器与角色",
+      "x": 36,
+      "top": 174.89,
+      "bottom": 157.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "16  保存登录与切换账号",
+      "x": 36,
+      "top": 155.89,
+      "bottom": 138.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "阵容制作器",
+      "x": 310.64,
+      "top": 489.89,
+      "bottom": 472.89,
+      "width": 248.64,
+      "fontSize": 11
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "17  开始制作一套阵容",
+      "x": 310.64,
+      "top": 468.89,
+      "bottom": 451.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "18  阴阳师技能与自动施法",
+      "x": 310.64,
+      "top": 449.89,
+      "bottom": 432.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "19  式神的技能与养成要求",
+      "x": 310.64,
+      "top": 430.89,
+      "bottom": 413.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "20  查看逐级效果与变化技能",
+      "x": 310.64,
+      "top": 411.89,
+      "bottom": 394.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "21  设置御魂与计算目标",
+      "x": 310.64,
+      "top": 392.89,
+      "bottom": 375.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "22  数值范围与原生配速",
+      "x": 310.64,
+      "top": 373.89,
+      "bottom": 356.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "23  契灵、等级与两个术印位",
+      "x": 310.64,
+      "top": 354.89,
+      "bottom": 337.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "24  导出二维码与官方短码",
+      "x": 310.64,
+      "top": 335.89,
+      "bottom": 318.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "管理与备份",
+      "x": 310.64,
+      "top": 304.89,
+      "bottom": 287.89,
+      "width": 248.64,
+      "fontSize": 11
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "25  批量管理阵容库",
+      "x": 310.64,
+      "top": 283.89,
+      "bottom": 266.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "26  手动指定多个适用副本",
+      "x": 310.64,
+      "top": 264.89,
+      "bottom": 247.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "27  备份到底包含什么",
+      "x": 310.64,
+      "top": 245.89,
+      "bottom": 228.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "28  恢复备份：合并并取最新",
+      "x": 310.64,
+      "top": 226.89,
+      "bottom": 209.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "29  复位为全部内置预设",
+      "x": 310.64,
+      "top": 207.89,
+      "bottom": 190.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "30  检查官方资料与来源",
+      "x": 310.64,
+      "top": 188.89,
+      "bottom": 171.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "排错与验证",
+      "x": 310.64,
+      "top": 157.89,
+      "bottom": 140.89,
+      "width": 248.64,
+      "fontSize": 11
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "31  遇到问题时这样处理",
+      "x": 310.64,
+      "top": 136.89,
+      "bottom": 119.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 2,
+      "kind": "text",
+      "text": "32  本版范围与验证说明",
+      "x": 310.64,
+      "top": 117.89,
+      "bottom": 100.89,
+      "width": 248.64,
+      "fontSize": 9.5
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "开始使用",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "下载、安装与升级",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "从 v0.9.3 Release 的附件区选择程序。GitHub 的 Source code 文件不是可直接运行的软件。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "安装版",
+      "x": 51,
+      "top": 685.89,
+      "bottom": 667.89,
+      "width": 493.28,
+      "fontSize": 12
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "Yuqi-Setup-0.9.3-Windows-x64.exe",
+      "x": 51,
+      "top": 660.89,
+      "bottom": 645.89,
+      "width": 493.28,
+      "fontSize": 10
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "运行安装向导，选择目录；可创建桌面与开始菜单快捷方式。",
+      "x": 51,
+      "top": 639.89,
+      "bottom": 624.89,
+      "width": 493.28,
+      "fontSize": 10
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "免安装版",
+      "x": 51,
+      "top": 580.89,
+      "bottom": 562.89,
+      "width": 493.28,
+      "fontSize": 12
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "Yuqi-Portable-0.9.3-Windows-x64.zip",
+      "x": 51,
+      "top": 555.89,
+      "bottom": 540.89,
+      "width": 493.28,
+      "fontSize": 10
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "先完整解压，再运行其中的“御契.exe”。不要只取出一个 EXE，也不要直接在压缩包内启动。",
+      "x": 51,
+      "top": 534.89,
+      "bottom": 519.89,
+      "width": 493.28,
+      "fontSize": 10
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "图文教程与校验值",
+      "x": 51,
+      "top": 475.89,
+      "bottom": 457.89,
+      "width": 493.28,
+      "fontSize": 12
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "Yuqi-Guide-0.9.3.pdf  ·  SHA256SUMS.txt",
+      "x": 51,
+      "top": 450.89,
+      "bottom": 435.89,
+      "width": 493.28,
+      "fontSize": 10
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "PDF 可离线阅读；SHA256SUMS.txt 用于核对下载文件是否完整。",
+      "x": 51,
+      "top": 429.89,
+      "bottom": 414.89,
+      "width": 493.28,
+      "fontSize": 10
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "升级前先导出资料备份",
+      "x": 64,
+      "top": 381.89,
+      "bottom": 364.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "退出旧版后再安装或解压新版。程序目录和资料目录用途不同，不要为了升级手动清空账号资料。",
+      "x": 64,
+      "top": 361.89,
+      "bottom": 345.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "首次启动先核对本地内容",
+      "x": 64,
+      "top": 333.89,
+      "bottom": 316.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "软件先进入本地使用；检查阵容库和库存，确有短码查询或分享需要时再登录。",
+      "x": 64,
+      "top": 313.89,
+      "bottom": 297.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 274.89,
+      "bottom": 261.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "当前程序未数字签名。若覆盖安装出现 pwsh.exe / Unknown Hard Error，停止覆盖，保留备份后改用完整免安装版；下载文件可用 SHA-256 核对。",
+      "x": 52,
+      "top": 256.89,
+      "bottom": 225.89,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 3,
+      "kind": "text",
+      "text": "<link href=\"https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.9.3\" color=\"#99712d\">打开官方项目的 v0.9.3 Release 附件区</link>",
+      "x": 36,
+      "top": 204.89,
+      "bottom": 187.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "认识首页",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "先选择库存账号，再按副本找到想用的阵容。无需登录游戏，也能浏览本地已解析内容。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 389.67,
+      "bottom": 377.67,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 4,
+      "kind": "screenshot",
+      "name": "01-home",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 402.669051038599,
+      "width": 507.27559055118115,
+      "height": 295.2207127409287,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "切换工作页面",
+      "x": 64,
+      "top": 365.67,
+      "bottom": 348.67,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "左侧依次进入阵容库、阵容码查看、阵容制作器、我的账号、阵容库管理，以及来源与覆盖。",
+      "x": 64,
+      "top": 345.67,
+      "bottom": 329.67,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "确认当前库存",
+      "x": 64,
+      "top": 317.67,
+      "bottom": 300.67,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "右上角账号决定本次差距核对使用哪份库存。这里的库存账号与扫码登录角色互不替代。",
+      "x": 64,
+      "top": 297.67,
+      "bottom": 281.67,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "按用途进入",
+      "x": 64,
+      "top": 269.67,
+      "bottom": 252.67,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "点击日常、御魂、契灵等分类继续缩小范围；“目标阵容”集中显示当前库存账号的目标。",
+      "x": 64,
+      "top": 249.67,
+      "bottom": 233.67,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 212.67,
+      "bottom": 199.67,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 4,
+      "kind": "text",
+      "text": "截图中的“教程库存”、角色与御魂均为合成示例；页面数量随内置资料和个人导入内容变化。",
+      "x": 52,
+      "top": 194.67,
+      "bottom": 179.17,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "查找、筛选与排序",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "先缩小结果，再查看详情或精算，处理大量阵容时更省时间。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 529.95,
+      "bottom": 517.95,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 5,
+      "kind": "screenshot",
+      "name": "02-filter",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 542.9516270394964,
+      "width": 507.27559055118115,
+      "height": 154.9381367400313,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "搜索你记得的信息",
+      "x": 64,
+      "top": 505.95,
+      "bottom": 488.95,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "搜索框支持阵容名称、式神名和阵容码；“包含式神”可以连续添加多个条件。",
+      "x": 64,
+      "top": 485.95,
+      "bottom": 469.95,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "展开“更多筛选”",
+      "x": 64,
+      "top": 457.95,
+      "bottom": 440.95,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "按分类、子类、副本、来源与解析状态筛选。可结合差距条件，查看当前账号更接近完成的阵容。",
+      "x": 64,
+      "top": 437.95,
+      "bottom": 421.95,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "选择排序方式",
+      "x": 64,
+      "top": 409.95,
+      "bottom": 392.95,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "在排序框中选择按账号差距、时间、名称等顺序浏览；条件不合适时点击“重置”。",
+      "x": 64,
+      "top": 389.95,
+      "bottom": 373.95,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 352.95,
+      "bottom": 339.95,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 5,
+      "kind": "text",
+      "text": "尚未解析或要求不完整的阵容，不应当作已满足条件。先检查其状态，再作配装判断。",
+      "x": 52,
+      "top": 334.95,
+      "bottom": 319.45,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "读懂一套阵容",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "阵容详情把成员、技能、御魂与用途放在一起。内容较长时，在详情窗口中向下滚动。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料",
+      "x": 38,
+      "top": 357.62,
+      "bottom": 345.62,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 6,
+      "kind": "screenshot",
+      "name": "03-detail",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 370.6151892303786,
+      "width": 507.27559055118115,
+      "height": 327.2745745491491,
+      "markers": []
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "先看用途和说明",
+      "x": 64,
+      "top": 333.62,
+      "bottom": 316.62,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "核对适用副本、作者备注、解析状态及短码。分类是查找入口，具体打法仍以阵容说明为准。",
+      "x": 64,
+      "top": 313.62,
+      "bottom": 297.62,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "逐位检查要求",
+      "x": 64,
+      "top": 285.62,
+      "bottom": 268.62,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "第一位是阴阳师或英杰，后续为式神。查看等级、技能、自动施法、套装、主属性和数值范围。",
+      "x": 64,
+      "top": 265.62,
+      "bottom": 249.62,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "按需要继续操作",
+      "x": 64,
+      "top": 237.62,
+      "bottom": 220.62,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "使用详情内的复制、管理编辑或制作器入口；只有已取得完整成员配置的阵容才能载入制作器。",
+      "x": 64,
+      "top": 217.62,
+      "bottom": 201.62,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 180.62,
+      "bottom": 167.62,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 6,
+      "kind": "text",
+      "text": "原始配置字段用于核对数据；日常阅读使用技能名称、真实图标和中文要求。图中为详情上半部分。",
+      "x": 52,
+      "top": 162.62,
+      "bottom": 147.12,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "导入平安志库存",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "在“我的账号”导入平安志 JSON，让软件按实际拥有的式神与御魂核对阵容。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 332.55,
+      "bottom": 320.55,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 7,
+      "kind": "screenshot",
+      "name": "04-inventory",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 345.5523099683778,
+      "width": 507.27559055118115,
+      "height": 352.3374538111499,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "选择 JSON 文件",
+      "x": 64,
+      "top": 308.55,
+      "bottom": 291.55,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "点击“导入平安志 JSON”，选择自己导出的库存文件。导入完成后核对账号名称、服务器及数量。",
+      "x": 64,
+      "top": 288.55,
+      "bottom": 272.55,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "留意“增量合并旧库存”",
+      "x": 64,
+      "top": 260.55,
+      "bottom": 243.55,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "此项用于导入时合并资料。库存更新通常应使用新的完整导出；增量资料或不同来源合并后，要核对数量与完整性。",
+      "x": 64,
+      "top": 240.55,
+      "bottom": 208.55,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "检查式神和御魂",
+      "x": 64,
+      "top": 196.55,
+      "bottom": 179.55,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "利用搜索、类型筛选和分页查看内容。若导出只含部分数据，缺少的技能或御魂信息不会自动补成已拥有。",
+      "x": 64,
+      "top": 176.55,
+      "bottom": 160.55,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 139.55,
+      "bottom": 126.55,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 7,
+      "kind": "text",
+      "text": "扫码登录用于查询阵容码和生成官方短码，不会替代平安志库存导入。库存文件包含个人游戏资料，请自行妥善保存。",
+      "x": 52,
+      "top": 121.55,
+      "bottom": 90.55,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "查看库存中的技能",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "技能卡片显示真实名称与图标，并标明技能位置、等级和官方类型词条。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 449.93,
+      "bottom": 437.93,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 8,
+      "kind": "screenshot",
+      "name": "05-inventory-skills",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 462.9261398243208,
+      "width": 507.27559055118115,
+      "height": 234.96362395520694,
+      "markers": [
+        1
+      ]
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "对照每个实际式神",
+      "x": 64,
+      "top": 425.93,
+      "bottom": 408.93,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "同名的多个式神是不同库存实例。查看各自星级、等级、觉醒状态及技能等级，避免把一只当作两只使用。",
+      "x": 64,
+      "top": 405.93,
+      "bottom": 389.93,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "点击技能看详情",
+      "x": 64,
+      "top": 377.93,
+      "bottom": 360.93,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "打开后可查看鬼火消耗、可升级等级与逐级效果；变化技能和官方词条也在详情中展开。",
+      "x": 64,
+      "top": 357.93,
+      "bottom": 341.93,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "区分“没有”与“未知”",
+      "x": 64,
+      "top": 329.93,
+      "bottom": 312.93,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "库存未提供的技能信息不能证明达到阵容要求。建议重新导出完整库存，再进行精算。",
+      "x": 64,
+      "top": 309.93,
+      "bottom": 293.93,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 272.93,
+      "bottom": 259.93,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 8,
+      "kind": "text",
+      "text": "阴阳师、英杰和契灵按全部拥有处理；这不代表默认满等级、满技能或已佩戴任意配置。",
+      "x": 52,
+      "top": 254.93,
+      "bottom": 239.43,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "选择阵容，设为目标",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "目标阵容按库存账号分别保存，适合记录接下来要培养、配装或收集的阵容。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 364.17,
+      "bottom": 352.17,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 9,
+      "kind": "screenshot",
+      "name": "06-targets",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 377.17233787450664,
+      "width": 507.27559055118115,
+      "height": 320.71742590502106,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "先筛选，再勾选",
+      "x": 64,
+      "top": 340.17,
+      "bottom": 323.17,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "逐条勾选，或使用“全选筛选结果”“反选”“全部取消”。全选的范围是当前筛选结果。",
+      "x": 64,
+      "top": 320.17,
+      "bottom": 304.17,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "设为当前账号的目标",
+      "x": 64,
+      "top": 292.17,
+      "bottom": 275.17,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "点击“设为目标”；不再需要时点击“移出目标”。切换库存账号后会看到该账号自己的目标。",
+      "x": 64,
+      "top": 272.17,
+      "bottom": 256.17,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "只精算需要的阵容",
+      "x": 64,
+      "top": 244.17,
+      "bottom": 227.17,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "点击“精算选中项”，完成后对照成员和御魂差距，不必每次都精算整库。",
+      "x": 64,
+      "top": 224.17,
+      "bottom": 208.17,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 187.17,
+      "bottom": 174.17,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 9,
+      "kind": "text",
+      "text": "这里的目标是软件中的培养清单，不会改动游戏内队伍、式神技能或御魂佩戴。",
+      "x": 52,
+      "top": 169.17,
+      "bottom": 153.67,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "按需精算，查看结果",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "精算使用当前库存寻找满足要求的成员与御魂方案。结果受库存完整性和阵容条件影响。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 341.59,
+      "bottom": 329.59,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 10,
+      "kind": "screenshot",
+      "name": "07-result",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 354.5866036558432,
+      "width": 507.27559055118115,
+      "height": 343.3031601236845,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "确认账号与条件",
+      "x": 64,
+      "top": 317.59,
+      "bottom": 300.59,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "先选正确库存，再选择一组阵容。缺少原码解析内容时，应先完成解析。",
+      "x": 64,
+      "top": 297.59,
+      "bottom": 281.59,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "查看进度，按需暂停",
+      "x": 64,
+      "top": 269.59,
+      "bottom": 252.59,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "可精算选中项或全部阵容；长任务可使用“暂停精算”。等待期间可浏览其他页面。",
+      "x": 64,
+      "top": 249.59,
+      "bottom": 233.59,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "按差距继续处理",
+      "x": 64,
+      "top": 221.59,
+      "bottom": 204.59,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "查看缺式神、养成要求、御魂条件和配装结果。未完成、数据不足或未找到方案，不等于游戏内一定无法使用。",
+      "x": 64,
+      "top": 201.59,
+      "bottom": 169.59,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 148.59,
+      "bottom": 135.59,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 10,
+      "kind": "text",
+      "text": "精算是本地核对工具，不模拟所有战斗机制，也不会自动把御魂方案装进游戏。",
+      "x": 52,
+      "top": 130.59,
+      "bottom": 115.09,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "汇总缺口，安排培养",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "“缺口统计”把多套阵容的需求合并展示，帮助判断哪些式神值得优先补齐。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 356.26,
+      "bottom": 344.26,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 11,
+      "kind": "screenshot",
+      "name": "08-gaps",
+      "x": 44.00000000000003,
+      "top": 697.8897637795277,
+      "bottom": 369.2634029441973,
+      "width": 507.2755905511811,
+      "height": 328.6263608353304,
+      "markers": [
+        1,
+        2
+      ]
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "选择统计范围",
+      "x": 64,
+      "top": 332.26,
+      "bottom": 315.26,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "先在阵容库筛选需要的条目，再打开“缺口统计”。弹窗顶部显示打开时的筛选范围。",
+      "x": 64,
+      "top": 312.26,
+      "bottom": 296.26,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "阅读需求排名",
+      "x": 64,
+      "top": 284.26,
+      "bottom": 267.26,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "看哪些式神在多套阵容中反复缺少，再结合自己的常玩副本安排培养。",
+      "x": 64,
+      "top": 264.26,
+      "bottom": 248.26,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "回到具体阵容确认",
+      "x": 64,
+      "top": 236.26,
+      "bottom": 219.26,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "统计用于发现共同需求；重复式神数量、技能等级及御魂仍应回到具体阵容逐项核对。",
+      "x": 64,
+      "top": 216.26,
+      "bottom": 200.26,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 179.26,
+      "bottom": 166.26,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 11,
+      "kind": "text",
+      "text": "未解析或资料不足的条目会影响统计覆盖率。不要把统计范围之外的阵容理解为没有缺口。",
+      "x": 52,
+      "top": 161.26,
+      "bottom": 145.76,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "阵容与库存",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "看清御魂的六个位置",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "御魂视图按位置呈现配置，让套装和二、四、六号位主属性更容易对照。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料",
+      "x": 38,
+      "top": 374.89,
+      "bottom": 362.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 12,
+      "kind": "screenshot",
+      "name": "09-souls",
+      "x": 130.3362079740033,
+      "top": 697.8897637795277,
+      "bottom": 387.8897637795277,
+      "width": 334.6031746031746,
+      "height": 310,
+      "markers": []
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "先核对套装",
+      "x": 64,
+      "top": 350.89,
+      "bottom": 333.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "区分四件套、两件套与额外两件属性要求；“不限套装”不等于可以忽略其他面板条件。",
+      "x": 64,
+      "top": 330.89,
+      "bottom": 314.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "再核对主属性",
+      "x": 64,
+      "top": 302.89,
+      "bottom": 285.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "二、四、六号位可能允许多个主属性。例如六号位可同时允许暴击和暴击伤害。",
+      "x": 64,
+      "top": 282.89,
+      "bottom": 266.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "最后看面板范围",
+      "x": 64,
+      "top": 254.89,
+      "bottom": 237.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "速度、暴击、攻击等条件共同生效。技能、星级、强化等级与配置方式也可能影响最终判断。",
+      "x": 64,
+      "top": 234.89,
+      "bottom": 218.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 197.89,
+      "bottom": 184.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 12,
+      "kind": "text",
+      "text": "图示用于解释位置和要求。请以自己的阵容条件、库存信息与精算结果为准。",
+      "x": 52,
+      "top": 179.89,
+      "bottom": 164.39,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "阵容码与登录",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "导入并解析阵容码",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "“阵容码查看”支持粘贴完整数据、官方短码，以及从包含二维码的图片读取数据。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 361.27,
+      "bottom": 349.27,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 13,
+      "kind": "screenshot",
+      "name": "10-decode",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 374.2675504753471,
+      "width": 507.27559055118115,
+      "height": 323.6222133041806,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "粘贴完整内容",
+      "x": 64,
+      "top": 337.27,
+      "bottom": 320.27,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "保留 #TA# 或 |TA| 前缀，不要截断末尾。完整 #TA# 数据通常可离线解析；官方 |TA| 短码需要联网查询。",
+      "x": 64,
+      "top": 317.27,
+      "bottom": 301.27,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "先检查结果，再保存",
+      "x": 64,
+      "top": 289.27,
+      "bottom": 272.27,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "核对阵容名称、副本、成员及要求，按页面按钮保存到阵容库。只有短码时，先登录可用角色。",
+      "x": 64,
+      "top": 269.27,
+      "bottom": 253.27,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "导入二维码图片",
+      "x": 64,
+      "top": 241.27,
+      "bottom": 224.27,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "选择清晰、完整的二维码图片。只有文字的截图不等同于二维码；读取失败时改用原图或直接粘贴原码。",
+      "x": 64,
+      "top": 221.27,
+      "bottom": 205.27,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 184.27,
+      "bottom": 171.27,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 13,
+      "kind": "text",
+      "text": "完整码或图片里未携带短码时，不能靠本地转换反推出原来的官方短码。新增官方短码需主动联网生成。",
+      "x": 52,
+      "top": 166.27,
+      "bottom": 150.77,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "阵容码与登录",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "进入扫码登录",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "点击左下“登录／切换角色”，阅读页面提示后，再获取登录二维码。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 329.89,
+      "bottom": 317.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 14,
+      "kind": "screenshot",
+      "name": "12-login-panel",
+      "x": 180.4208141435151,
+      "top": 697.8897637795277,
+      "bottom": 342.8897637795277,
+      "width": 234.43396226415095,
+      "height": 355,
+      "markers": [
+        1,
+        2
+      ]
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "阅读并确认登录提示",
+      "x": 64,
+      "top": 305.89,
+      "bottom": 288.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "软件是非官方工具。登录页要求使用可弃用的小号；不能接受提示中的风险时，返回软件继续离线使用。",
+      "x": 64,
+      "top": 285.89,
+      "bottom": 269.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "获取二维码并确认",
+      "x": 64,
+      "top": 257.89,
+      "bottom": 240.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "按页面指引选择登录方式，用对应游戏客户端扫码并确认。二维码过期后重新获取，不重复扫描旧图。",
+      "x": 64,
+      "top": 237.89,
+      "bottom": 221.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "等待角色就绪",
+      "x": 64,
+      "top": 209.89,
+      "bottom": 192.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "扫码成功后，还需取得服务器和角色信息。查询就绪才表示可以继续解析短码。",
+      "x": 64,
+      "top": 189.89,
+      "bottom": 173.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 152.89,
+      "bottom": 139.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 14,
+      "kind": "text",
+      "text": "教程未展示可登录的真实二维码，也未读取个人凭据。扫码账号可以与平安志库存账号不同。",
+      "x": 52,
+      "top": 134.89,
+      "bottom": 119.39,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "阵容码与登录",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "选择服务器与角色",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "登录后默认选择可用列表中等级最低的角色；需要时可手动更换。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 329.89,
+      "bottom": 317.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 15,
+      "kind": "screenshot",
+      "name": "13-roles",
+      "x": 158.2279240309554,
+      "top": 697.8897637795277,
+      "bottom": 342.8897637795277,
+      "width": 278.81974248927037,
+      "height": 355,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "确认服务器",
+      "x": 64,
+      "top": 305.89,
+      "bottom": 288.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "展开服务器与角色设置，核对渠道、服务器及角色归属。列表不完整时按页面入口刷新角色。",
+      "x": 64,
+      "top": 285.89,
+      "bottom": 269.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "选择已创建的角色",
+      "x": 64,
+      "top": 257.89,
+      "bottom": 240.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "没有可用角色时，应先在游戏创建角色。图中的 12 级只是演示数据，并不是查询等级门槛。",
+      "x": 64,
+      "top": 237.89,
+      "bottom": 221.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "等待初始化，再查询",
+      "x": 64,
+      "top": 209.89,
+      "bottom": 192.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "软件会尝试取得阵容助手信息。若仍未开放，可先用该角色在游戏中打开一次阵容助手，再回来重试。",
+      "x": 64,
+      "top": 189.89,
+      "bottom": 173.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 152.89,
+      "bottom": 139.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 15,
+      "kind": "text",
+      "text": "没有确认到适用于所有角色、所有服务器的统一最低等级。以角色实际功能开放状态和返回提示为准。",
+      "x": 52,
+      "top": 134.89,
+      "bottom": 119.39,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "阵容码与登录",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "保存登录与切换账号",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "是否保存登录凭据由登录页面选项决定；保存后可尝试恢复会话，失效时仍需重新扫码。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 349.89,
+      "bottom": 337.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 16,
+      "kind": "screenshot",
+      "name": "14-remembered",
+      "x": 134.03314411279987,
+      "top": 697.8897637795277,
+      "bottom": 362.8897637795277,
+      "width": 327.2093023255814,
+      "height": 335,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "自行选择是否保存",
+      "x": 64,
+      "top": 325.89,
+      "bottom": 308.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "允许保存时，登录凭据仅在本机加密保存。查询、登录及主动分享请求会发送到网易服务。",
+      "x": 64,
+      "top": 305.89,
+      "bottom": 289.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "恢复已保存账号",
+      "x": 64,
+      "top": 277.89,
+      "bottom": 260.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "在已保存账号列表中选择条目，再点击恢复登录。不同账号和角色仍要分别确认查询状态。",
+      "x": 64,
+      "top": 257.89,
+      "bottom": 241.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "移除不再使用的凭据",
+      "x": 64,
+      "top": 229.89,
+      "bottom": 212.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "使用“忘记”入口移除对应已保存登录。退出当前会话与删除已保存凭据是两种不同操作。",
+      "x": 64,
+      "top": 209.89,
+      "bottom": 193.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 172.89,
+      "bottom": 159.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 16,
+      "kind": "text",
+      "text": "普通资料备份不包含登录凭据。换电脑恢复备份后，短码查询和官方分享可能需要重新登录。",
+      "x": 52,
+      "top": 154.89,
+      "bottom": 139.39,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "阵容制作器",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "开始制作一套阵容",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "先在页面上方填写名称、原码副本和说明，再逐位配置成员。也可从已解析阵容载入副本。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 329.89,
+      "bottom": 317.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 17,
+      "kind": "screenshot",
+      "name": "15-builder",
+      "x": 54.54938064144423,
+      "top": 697.8897637795277,
+      "bottom": 342.8897637795277,
+      "width": 486.1768292682927,
+      "height": 355,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "按副本填充固定位置",
+      "x": 64,
+      "top": 305.89,
+      "bottom": 288.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "第一位只能选阴阳师或英杰，后面选择式神。不同副本使用对应的 1+5 或 1+6 位置，不能随意添加多余成员。",
+      "x": 64,
+      "top": 285.89,
+      "bottom": 253.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "调整配装优先级",
+      "x": 64,
+      "top": 241.89,
+      "bottom": 224.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "通过上移、下移或拖动调整式神顺序。第一位保持固定；顺序同时影响“高于后续”的约束范围。",
+      "x": 64,
+      "top": 221.89,
+      "bottom": 205.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "保存草稿或阵容",
+      "x": 64,
+      "top": 193.89,
+      "bottom": 176.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "草稿方便下次续作；“保存到阵容库”会校验当前内容并保存阵容。导出前必须选择游戏原码副本。",
+      "x": 64,
+      "top": 173.89,
+      "bottom": 157.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 136.89,
+      "bottom": 123.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 17,
+      "kind": "text",
+      "text": "本教程配置仅演示界面，不是实战推荐。“按顺序配速”设置的是游戏原生速度先后关系。",
+      "x": 52,
+      "top": 118.89,
+      "bottom": 103.39,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "阵容制作器",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "阴阳师技能与自动施法",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "阴阳师与英杰使用自己的技能列表，不与式神的技能配置混用。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 329.89,
+      "bottom": 317.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 18,
+      "kind": "screenshot",
+      "name": "16-actor-skills",
+      "x": 69.33390834979551,
+      "top": 697.8897637795277,
+      "bottom": 342.8897637795277,
+      "width": 456.60777385159014,
+      "height": 355,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "选择两项携带技能",
+      "x": 64,
+      "top": 305.89,
+      "bottom": 288.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "从该角色允许携带的技能中选择。已选技能不能在另一位置重复选择；不同角色的可选内容不同。",
+      "x": 64,
+      "top": 285.89,
+      "bottom": 269.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "按阵容填写技能等级",
+      "x": 64,
+      "top": 257.89,
+      "bottom": 240.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "点击技能图标查看效果、鬼火消耗和冷却。战斗中的技能位置随携带组合确定，不能直接套用资料列表顺序。",
+      "x": 64,
+      "top": 237.89,
+      "bottom": 221.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "设置自动施法",
+      "x": 64,
+      "top": 209.89,
+      "bottom": 192.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "选择智能施法，或锁定列表中可用的一个技能。更换角色、携带技能或形态后，要重新核对自动施法选择。",
+      "x": 64,
+      "top": 189.89,
+      "bottom": 173.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 152.89,
+      "bottom": 139.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 18,
+      "kind": "text",
+      "text": "默认全部拥有阴阳师与英杰，具体等级、携带技能和技能等级仍以这套阵容的设置为准。",
+      "x": 52,
+      "top": 134.89,
+      "bottom": 119.39,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "阵容制作器",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "式神的技能与养成要求",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "每个位置独立设置星级、等级、觉醒状态、技能要求和自动施法，允许同名式神占据不同位置。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 329.89,
+      "bottom": 317.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 19,
+      "kind": "screenshot",
+      "name": "18-shikigami",
+      "x": 115.93384790716951,
+      "top": 697.8897637795277,
+      "bottom": 342.8897637795277,
+      "width": 363.40789473684214,
+      "height": 355,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "先选养成状态",
+      "x": 64,
+      "top": 305.89,
+      "bottom": 288.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "填写等级、星级与觉醒要求；允许留空的项目表示不限制。改变觉醒状态可能改变技能资料与可用配置。",
+      "x": 64,
+      "top": 285.89,
+      "bottom": 269.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "按名称设置技能等级",
+      "x": 64,
+      "top": 257.89,
+      "bottom": 240.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "卡片同时显示第几技能、实际名称和图标。下拉框只列出该技能存在的等级，不能把所有技能都按五级处理。",
+      "x": 64,
+      "top": 237.89,
+      "bottom": 221.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "选择自动施法",
+      "x": 64,
+      "top": 209.89,
+      "bottom": 192.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "可选智能施法或合法的锁定技能。特殊式神的可选技能按角色规则展示，不能直接输入任意技能编号。",
+      "x": 64,
+      "top": 189.89,
+      "bottom": 173.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 152.89,
+      "bottom": 139.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 19,
+      "kind": "text",
+      "text": "“技能等级不限制”与“智能施法”分别控制养成要求和战斗行为，两者不是同一个设置。",
+      "x": 52,
+      "top": 134.89,
+      "bottom": 119.39,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "阵容制作器",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "查看逐级效果与变化技能",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "在制作器、库存或阵容详情点击技能卡片，打开技能说明。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 294.89,
+      "bottom": 282.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 20,
+      "kind": "screenshot",
+      "name": "19-skill-detail",
+      "x": 102.63779527559058,
+      "top": 697.8897637795277,
+      "bottom": 307.8897637795277,
+      "width": 390,
+      "height": 390,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "看名称、位置与消耗",
+      "x": 64,
+      "top": 270.89,
+      "bottom": 253.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "标题标明第几技能，图标旁显示鬼火消耗、最高等级及官方类型词条；有冷却信息时一并展示。",
+      "x": 64,
+      "top": 250.89,
+      "bottom": 234.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "展开等级与形态",
+      "x": 64,
+      "top": 222.89,
+      "bottom": 205.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "点击各等级查看描述。存在觉醒前后形态时可切换；“变化与衍生技能”展示相关技能，点击继续查看。",
+      "x": 64,
+      "top": 202.89,
+      "bottom": 186.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "理解词条的官方含义",
+      "x": 64,
+      "top": 174.89,
+      "bottom": 157.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "在下方阅读控制效果、特殊印记等词条解释。资料显示为衍生技能，不代表它一定能直接携带或锁定。",
+      "x": 64,
+      "top": 154.89,
+      "bottom": 138.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 117.89,
+      "bottom": 104.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 20,
+      "kind": "text",
+      "text": "技能内容来自游戏客户端快照。当前游戏更新可能改变效果；需要兼容资料变化时，请更新软件版本。",
+      "x": 52,
+      "top": 99.89,
+      "bottom": 84.39,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "阵容制作器",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "设置御魂与计算目标",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "式神可选择重新配置御魂，或保留当前御魂。重新配置时再填写套装与属性要求。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 304.89,
+      "bottom": 292.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 21,
+      "kind": "screenshot",
+      "name": "20-equipment",
+      "x": 124.73779527559057,
+      "top": 697.8897637795277,
+      "bottom": 317.8897637795277,
+      "width": 345.8,
+      "height": 380,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "选择套装和养成范围",
+      "x": 64,
+      "top": 280.89,
+      "bottom": 263.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "设置四件套、两件套、御魂星级和强化范围。展开附加区域，可设置额外两件套属性及战斗加成。",
+      "x": 64,
+      "top": 260.89,
+      "bottom": 244.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "填写目标与评分",
+      "x": 64,
+      "top": 232.89,
+      "bottom": 215.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "选择计算目标，或只寻找满足条件的方案。评分应与对应目标配合，不要把面板攻击直接填入评分。",
+      "x": 64,
+      "top": 212.89,
+      "bottom": 196.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "勾选主属性",
+      "x": 64,
+      "top": 184.89,
+      "bottom": 167.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "二、四、六号位支持多选，只展示该位置可用的属性。允许多个选项表示任选其一，不是同时拥有多个主属性。",
+      "x": 64,
+      "top": 164.89,
+      "bottom": 132.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 111.89,
+      "bottom": 98.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 21,
+      "kind": "text",
+      "text": "标为“小数”的战斗加成填 0.15 表示 15%；下一页面板范围中标为“%”的项目填 15 表示 15%。",
+      "x": 52,
+      "top": 93.89,
+      "bottom": 78.39,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "阵容制作器",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "数值范围与原生配速",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "使用下限、上限与“高于后续”描述游戏原码能保存的面板要求。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 358.09,
+      "bottom": 346.09,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 22,
+      "kind": "screenshot",
+      "name": "21-ranges",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 371.08721986674755,
+      "width": 507.27559055118115,
+      "height": 326.80254391278015,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "填写面板范围",
+      "x": 64,
+      "top": 334.09,
+      "bottom": 317.09,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "下限、上限可只填一端，空白表示不限制。图中速度 180 至 210；暴击、暴伤、命中、抵抗按页面的百分数单位填写。",
+      "x": 64,
+      "top": 314.09,
+      "bottom": 282.09,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "设置最高属性",
+      "x": 64,
+      "top": 270.09,
+      "bottom": 253.09,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "勾选“高于后续”，表示本成员该属性要高于其后所有式神。它依赖成员顺序，调整顺序后需再次检查。",
+      "x": 64,
+      "top": 250.09,
+      "bottom": 234.09,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "一键按顺序配速",
+      "x": 64,
+      "top": 222.09,
+      "bottom": 205.09,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "在成员列表点击“按顺序配速”，为前面的式神设置速度高于后续成员的原生要求；可逐人调整。",
+      "x": 64,
+      "top": 202.09,
+      "bottom": 186.09,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 165.09,
+      "bottom": 152.09,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 22,
+      "kind": "text",
+      "text": "本版已移除任意成员差值／倍率关系编辑与计算，例如“A 比 B 快 10”。旧备份即使保留此字段，也不执行该约束。",
+      "x": 52,
+      "top": 147.09,
+      "bottom": 116.09,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "阵容制作器",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "契灵、等级与两个术印位",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "在阴阳师或英杰配置下选择契灵；可选范围随佩戴角色变化。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 292.89,
+      "bottom": 280.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 23,
+      "kind": "screenshot",
+      "name": "17-spirit",
+      "x": 133.25069850139704,
+      "top": 697.8897637795277,
+      "bottom": 305.8897637795277,
+      "width": 328.7741935483871,
+      "height": 392,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "选择可佩戴的契灵",
+      "x": 64,
+      "top": 268.89,
+      "bottom": 251.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "核对契灵说明和适用角色，按阵容设定星级与等级。等级 0 表示不限制，并非默认满级。",
+      "x": 64,
+      "top": 248.89,
+      "bottom": 232.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "查看实际增益",
+      "x": 64,
+      "top": 220.89,
+      "bottom": 203.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "界面按所选星级、等级展示属性和契灵技能。点击技能卡片查看对应说明，不凭空增加未设置的属性。",
+      "x": 64,
+      "top": 200.89,
+      "bottom": 184.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "配置两个术印位置",
+      "x": 64,
+      "top": 172.89,
+      "bottom": 155.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "选择术印及一至三级，两个位置不能重复选择同一术印。可选术印按对应配置组提供。",
+      "x": 64,
+      "top": 152.89,
+      "bottom": 136.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 115.89,
+      "bottom": 102.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 23,
+      "kind": "text",
+      "text": "历史原码含多种术印时会完整保留。只在修改术印配置时按两个编辑位重设；改动其他字段不会顺带丢弃原码术印。",
+      "x": 52,
+      "top": 97.89,
+      "bottom": 66.89,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "阵容制作器",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "导出二维码与官方短码",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "修改后先“生成预览”，再选择导出方式。游戏的扫码导入与文字导入使用不同内容。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料",
+      "x": 38,
+      "top": 522.26,
+      "bottom": 510.26,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 24,
+      "kind": "screenshot",
+      "name": "22-export",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 535.2590059513764,
+      "width": 507.27559055118115,
+      "height": 162.63075782815127,
+      "markers": []
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "二维码：完整数据",
+      "x": 64,
+      "top": 498.26,
+      "bottom": 481.26,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "选择“导出二维码图片”，在游戏阵容助手通过二维码入口识别。二维码承载 #TA# 完整数据，可离线生成。",
+      "x": 64,
+      "top": 478.26,
+      "bottom": 462.26,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "完整码：软件间保存",
+      "x": 64,
+      "top": 450.26,
+      "bottom": 433.26,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "“复制完整数据”得到 #TA#，可用于本软件解析和留存。不要将它粘贴到游戏只接受官方短码的文字入口。",
+      "x": 64,
+      "top": 430.26,
+      "bottom": 414.26,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "短码：主动联网生成",
+      "x": 64,
+      "top": 402.26,
+      "bottom": 385.26,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "登录已有且可查询的角色后点击“生成官方短码”，成功后复制 |TA|… 到游戏文字入口。后续改动阵容必须重新生成。",
+      "x": 64,
+      "top": 382.26,
+      "bottom": 350.26,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 329.26,
+      "bottom": 316.26,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 24,
+      "kind": "text",
+      "text": "旧版生成但缺少合法副本的二维码或短码，需在新版选择正确原码副本后重新生成。不要扫描教程的演示阵容用于实战。",
+      "x": 52,
+      "top": 311.26,
+      "bottom": 280.26,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "管理与备份",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "批量管理阵容库",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "在“阵容库管理”中筛选、排序、多选，再对选中项统一重新解析或删除。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 329.89,
+      "bottom": 317.89,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 25,
+      "kind": "screenshot",
+      "name": "23-management",
+      "x": 45.318175022426004,
+      "top": 697.8897637795277,
+      "bottom": 342.8897637795277,
+      "width": 504.63924050632914,
+      "height": 355,
+      "markers": [
+        2,
+        1,
+        3
+      ]
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "先筛选与排序",
+      "x": 64,
+      "top": 305.89,
+      "bottom": 288.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "按名称、原码、成员或副本搜索，按解析状态筛选，再用时间、名称、来源等排序方式检查记录。",
+      "x": 64,
+      "top": 285.89,
+      "bottom": 269.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "复选或全选筛选结果",
+      "x": 64,
+      "top": 257.89,
+      "bottom": 240.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "勾选需要处理的记录，留意选中数量。批量操作前检查当前筛选范围，避免误选不相关阵容。",
+      "x": 64,
+      "top": 237.89,
+      "bottom": 221.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "重新解析或删除",
+      "x": 64,
+      "top": 209.89,
+      "bottom": 192.89,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "短码重新查询需要登录；本地完整码按内容解析。删除前阅读确认范围；删除内置项可通过复位恢复。",
+      "x": 64,
+      "top": 189.89,
+      "bottom": 173.89,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 152.89,
+      "bottom": 139.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 25,
+      "kind": "text",
+      "text": "批量添加支持逐行原码、TXT／TSV，或从表格复制“阵容码、名称、副本／用途、备注”四列，不直接读取 XLSX。重新解析保留手动副本。",
+      "x": 52,
+      "top": 134.89,
+      "bottom": 103.89,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "管理与备份",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "手动指定多个适用副本",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "原码副本可能填错。管理编辑中的手动分类优先于原码、来源和预设整理规则。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 393.21,
+      "bottom": 381.21,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 26,
+      "kind": "screenshot",
+      "name": "24-manual-stage",
+      "x": 44.00000000000003,
+      "top": 697.8897637795277,
+      "bottom": 406.20629921259854,
+      "width": 507.2755905511811,
+      "height": 291.68346456692916,
+      "markers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "在管理中打开编辑",
+      "x": 64,
+      "top": 369.21,
+      "bottom": 352.21,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "查看已有用途标签。点击标签的 × 可移除该项；至少保留一项，或选择恢复自动分类。",
+      "x": 64,
+      "top": 349.21,
+      "bottom": 333.21,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "搜索并添加多个副本",
+      "x": 64,
+      "top": 321.21,
+      "bottom": 304.21,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "按副本名、首领、层数或分类搜索，点击候选逐项添加。同一套阵容可以出现在多个用途下。",
+      "x": 64,
+      "top": 301.21,
+      "bottom": 285.21,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "保存并识别扩展项",
+      "x": 64,
+      "top": 273.21,
+      "bottom": 256.21,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "游戏原码列表没有的用途会标为“扩展副本”。也可展开自定义路径；保存后重新解析仍保留手动选择。",
+      "x": 64,
+      "top": 253.21,
+      "bottom": 237.21,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 216.21,
+      "bottom": 203.21,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 26,
+      "kind": "text",
+      "text": "扩展副本仅用于软件分类，不会伪造游戏可导入的副本编号。勾选“恢复自动分类”并保存，会清除手动指定。",
+      "x": 52,
+      "top": 198.21,
+      "bottom": 182.71,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "管理与备份",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "备份到底包含什么",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "点击软件左下方“导出备份”，将 JSON 文件保存在你能找回的位置。重要操作前建议另存一份。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "包含",
+      "x": 49,
+      "top": 685.89,
+      "bottom": 669.89,
+      "width": 48,
+      "fontSize": 9
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "阵容及原始解析数据",
+      "x": 104,
+      "top": 686.89,
+      "bottom": 669.89,
+      "width": 443.28,
+      "fontSize": 11
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "自建、导入、内置阵容的本地修改，手动副本分类及相关记录。",
+      "x": 104,
+      "top": 662.89,
+      "bottom": 647.89,
+      "width": 440.28,
+      "fontSize": 10
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "包含",
+      "x": 49,
+      "top": 603.89,
+      "bottom": 587.89,
+      "width": 48,
+      "fontSize": 9
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "预设处理状态",
+      "x": 104,
+      "top": 604.89,
+      "bottom": 587.89,
+      "width": 443.28,
+      "fontSize": 11
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "已删除预设、去重合并记录等状态，用于恢复当前资料结构。",
+      "x": 104,
+      "top": 580.89,
+      "bottom": 565.89,
+      "width": 440.28,
+      "fontSize": 10
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "包含",
+      "x": 49,
+      "top": 521.89,
+      "bottom": 505.89,
+      "width": 48,
+      "fontSize": 9
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "库存账号与原始库存",
+      "x": 104,
+      "top": 522.89,
+      "bottom": 505.89,
+      "width": 443.28,
+      "fontSize": 11
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "库存账号、当前选中账号，以及导入的原始数据。备份含个人游戏资料。",
+      "x": 104,
+      "top": 498.89,
+      "bottom": 483.89,
+      "width": 440.28,
+      "fontSize": 10
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "包含",
+      "x": 49,
+      "top": 439.89,
+      "bottom": 423.89,
+      "width": 48,
+      "fontSize": 9
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "目标与制作草稿",
+      "x": 104,
+      "top": 440.89,
+      "bottom": 423.89,
+      "width": 443.28,
+      "fontSize": 11
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "按账号保存的目标阵容选择，以及已保存的制作器草稿。",
+      "x": 104,
+      "top": 416.89,
+      "bottom": 401.89,
+      "width": 440.28,
+      "fontSize": 10
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "不包含",
+      "x": 49,
+      "top": 357.89,
+      "bottom": 341.89,
+      "width": 48,
+      "fontSize": 9
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "扫码登录凭据",
+      "x": 104,
+      "top": 358.89,
+      "bottom": 341.89,
+      "width": 443.28,
+      "fontSize": 11
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "备份不会把记住的登录会话带到另一台电脑；需要时重新登录。",
+      "x": 104,
+      "top": 334.89,
+      "bottom": 319.89,
+      "width": 440.28,
+      "fontSize": 10
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "不包含",
+      "x": 49,
+      "top": 275.89,
+      "bottom": 259.89,
+      "width": 48,
+      "fontSize": 9
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "程序文件与运行缓存",
+      "x": 104,
+      "top": 276.89,
+      "bottom": 259.89,
+      "width": 443.28,
+      "fontSize": 11
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "备份不是安装包，也不是整台电脑的镜像；精算或临时缓存不用于替代资料。",
+      "x": 104,
+      "top": 252.89,
+      "bottom": 237.89,
+      "width": 440.28,
+      "fontSize": 10
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 191.89,
+      "bottom": 178.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 27,
+      "kind": "text",
+      "text": "导出只是生成备份文件，不会清空本机阵容。恢复时会先显示数量和合并规则，确认后才写入。备份文件不要公开上传。",
+      "x": 52,
+      "top": 173.89,
+      "bottom": 142.89,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "管理与备份",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "恢复备份：合并并取最新",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "点击软件左下方“恢复备份”，选择备份文件并核对预览；确认后才写入。本机独有阵容会保留。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料",
+      "x": 38,
+      "top": 451.3,
+      "bottom": 439.3,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 28,
+      "kind": "screenshot",
+      "name": "25-restore",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 464.29753619507255,
+      "width": 507.27559055118115,
+      "height": 233.59222758445517,
+      "markers": []
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "核对数量和重复项",
+      "x": 64,
+      "top": 427.3,
+      "bottom": 410.3,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "本机、备份和内置预设一起比较；名称、阵容码或 ID 任一相同就归入重复组，包括与预设同码的记录。",
+      "x": 64,
+      "top": 407.3,
+      "bottom": 391.3,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "理解“时间最新”",
+      "x": 64,
+      "top": 379.3,
+      "bottom": 362.3,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "取修改、解析、创建、原始日期中的最新有效时间。无时间排最后；同时间依次优先本机、备份、预设。备份导出时间不参与比较。",
+      "x": 64,
+      "top": 359.3,
+      "bottom": 327.3,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "确认后检查结果",
+      "x": 64,
+      "top": 315.3,
+      "bottom": 298.3,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "库存账号、当前账号和制作草稿采用备份内容；保留下来的账号合并双方目标选择。恢复后可在本次运行中撤销一次。",
+      "x": 64,
+      "top": 295.3,
+      "bottom": 263.3,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 242.3,
+      "bottom": 229.3,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 28,
+      "kind": "text",
+      "text": "继续修改资料后，不能再直接撤销这次恢复。建议导入前先导出本机备份；重复关系会连通成组，不只是逐条两两覆盖。",
+      "x": 52,
+      "top": 224.3,
+      "bottom": 193.3,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "管理与备份",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "复位为全部内置预设",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "这是恢复整库预设的操作，会清除自建、导入及手动修改内容。先看影响数量，再作决定。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 522.07,
+      "bottom": 510.07,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 29,
+      "kind": "screenshot",
+      "name": "26-reset",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 535.070662941326,
+      "width": 507.27559055118115,
+      "height": 162.81910083820168,
+      "markers": [
+        2
+      ]
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "先留一份备份",
+      "x": 64,
+      "top": 498.07,
+      "bottom": 481.07,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "从阵容库管理打开复位弹窗，可先点击“导出备份”。核对当前数量和将被清除的自建／导入数量。",
+      "x": 64,
+      "top": 478.07,
+      "bottom": 462.07,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "等待五秒确认",
+      "x": 64,
+      "top": 450.07,
+      "bottom": 433.07,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "倒计时期间按钮不可点击。倒计时结束后，只有点击“确认复位全部阵容”才执行；取消则不改动。",
+      "x": 64,
+      "top": 430.07,
+      "bottom": 414.07,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "检查复位结果",
+      "x": 64,
+      "top": 402.07,
+      "bottom": 385.07,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "恢复全部内置阵容，撤销预设修改与删除；清除所有自建／导入阵容、目标选择及制作草稿。",
+      "x": 64,
+      "top": 382.07,
+      "bottom": 366.07,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 345.07,
+      "bottom": 332.07,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 29,
+      "kind": "text",
+      "text": "库存账号和登录凭据会保留。复位不会保留自建或导入阵容，也不是只恢复被删除的几个预设。",
+      "x": 52,
+      "top": 327.07,
+      "bottom": 311.57,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "管理与备份",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "检查官方资料与来源",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "在“来源与覆盖”查看内置资料日期、素材来源、覆盖情况及官方资料更新状态。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "0.9.3 真实界面 · 合成演示资料 · 数字标出相关操作区",
+      "x": 38,
+      "top": 346.1,
+      "bottom": 334.1,
+      "width": 519.28,
+      "fontSize": 8
+    },
+    {
+      "page": 30,
+      "kind": "screenshot",
+      "name": "27-updates",
+      "x": 44,
+      "top": 697.8897637795277,
+      "bottom": 359.1037504995759,
+      "width": 507.27559055118115,
+      "height": 338.7860132799518,
+      "markers": [
+        2,
+        1
+      ]
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "查看当前资料日期",
+      "x": 64,
+      "top": 322.1,
+      "bottom": 305.1,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "先确认使用哪一批资料，遇到新式神、新技能或游戏改动时，不要默认离线资料已经同步。",
+      "x": 64,
+      "top": 302.1,
+      "bottom": 286.1,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "按需要更新官方资料",
+      "x": 64,
+      "top": 274.1,
+      "bottom": 257.1,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "页面入口可检查官方名单、属性、图片和公告等资料。网络失败时查看提示，稍后再试。",
+      "x": 64,
+      "top": 254.1,
+      "bottom": 238.1,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "技能与协议随软件更新",
+      "x": 64,
+      "top": 226.1,
+      "bottom": 209.1,
+      "width": 495.28,
+      "fontSize": 11
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "阵容原码规则、客户端技能和契灵配置来自随软件提供的资料。仅点击官方资料更新，不代表这些配置也全部更新。",
+      "x": 64,
+      "top": 206.1,
+      "bottom": 174.1,
+      "width": 495.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "留意",
+      "x": 52,
+      "top": 153.1,
+      "bottom": 140.1,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 30,
+      "kind": "text",
+      "text": "技能、术印和相关图标取自 2026-09-12 客户端快照及对应补丁。真实效果以当前游戏为准。",
+      "x": 52,
+      "top": 135.1,
+      "bottom": 119.6,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "排错与版本说明",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "遇到问题时这样处理",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "先保留原码和错误原文，再按现象处理；不要连续改动多个条件后再猜原因。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "游戏文字入口“识别失败”",
+      "x": 36,
+      "top": 697.89,
+      "bottom": 680.89,
+      "width": 523.28,
+      "fontSize": 10.8
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "若粘贴的是 #TA#，改用二维码入口；文字入口使用成功生成的 |TA| 官方短码。",
+      "x": 36,
+      "top": 677.89,
+      "bottom": 661.89,
+      "width": 523.28,
+      "fontSize": 10.3
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "“阵容码设置有误，暂不支持导入”",
+      "x": 36,
+      "top": 649.89,
+      "bottom": 632.89,
+      "width": 523.28,
+      "fontSize": 10.8
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "用新版制作器重新选择游戏原码副本，检查成员位置、技能与范围后生成新二维码／短码。旧分享不会随本地修改自动更新。",
+      "x": 36,
+      "top": 629.89,
+      "bottom": 597.89,
+      "width": 523.28,
+      "fontSize": 10.3
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "登录了，仍不能查询阵容",
+      "x": 36,
+      "top": 585.89,
+      "bottom": 568.89,
+      "width": 523.28,
+      "fontSize": 10.8
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "确认服务器、角色和查询就绪状态。尝试用该角色在游戏打开一次阵容助手，再回软件重试；没有角色则先在游戏创建。",
+      "x": 36,
+      "top": 565.89,
+      "bottom": 533.89,
+      "width": 523.28,
+      "fontSize": 10.3
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "31279：分享已过期或无法读取",
+      "x": 36,
+      "top": 521.89,
+      "bottom": 504.89,
+      "width": 523.28,
+      "fontSize": 10.8
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "向来源取得仍有效的新码。过期短码不能仅靠本地转换恢复其内容。",
+      "x": 36,
+      "top": 501.89,
+      "bottom": 485.89,
+      "width": 523.28,
+      "fontSize": 10.3
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "90011、网络错误或临时失败",
+      "x": 36,
+      "top": 473.89,
+      "bottom": 456.89,
+      "width": 523.28,
+      "fontSize": 10.8
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "等待后重试，检查网络及会话是否过期；批量处理可暂停。一次失败不应立即删除整套阵容。",
+      "x": 36,
+      "top": 453.89,
+      "bottom": 437.89,
+      "width": 523.28,
+      "fontSize": 10.3
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "二维码图片读取失败",
+      "x": 36,
+      "top": 425.89,
+      "bottom": 408.89,
+      "width": 523.28,
+      "fontSize": 10.8
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "换清晰原图，保留完整边框，避免压缩、遮挡与截断；也可直接粘贴原码。",
+      "x": 36,
+      "top": 405.89,
+      "bottom": 389.89,
+      "width": 523.28,
+      "fontSize": 10.3
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "阵容很多，操作变慢",
+      "x": 36,
+      "top": 377.89,
+      "bottom": 360.89,
+      "width": 523.28,
+      "fontSize": 10.8
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "先筛选并精算选中项，暂停暂不需要的批量任务。异常持续时保留复现步骤、阵容数量和错误信息。",
+      "x": 36,
+      "top": 357.89,
+      "bottom": 341.89,
+      "width": 523.28,
+      "fontSize": 10.3
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "提示保存失败或数据异常",
+      "x": 36,
+      "top": 329.89,
+      "bottom": 312.89,
+      "width": 523.28,
+      "fontSize": 10.8
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "不要把未成功保存当作已经落盘；先导出能读取的资料，检查磁盘空间和目录权限，再通过备份预览恢复。",
+      "x": 36,
+      "top": 309.89,
+      "bottom": 293.89,
+      "width": 523.28,
+      "fontSize": 10.3
+    },
+    {
+      "page": 31,
+      "kind": "text",
+      "text": "反馈时附：软件版本、操作步骤、错误原文及可公开的阵容码。不要发送登录二维码、令牌或未经脱敏的库存备份。",
+      "x": 36,
+      "top": 281.89,
+      "bottom": 266.89,
+      "width": 523.28,
+      "fontSize": 9.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "排错与版本说明",
+      "x": 67,
+      "top": 810.89,
+      "bottom": 797.89,
+      "width": 492.28,
+      "fontSize": 9
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "本版范围与验证说明",
+      "x": 36,
+      "top": 776.89,
+      "bottom": 745.89,
+      "width": 523.28,
+      "fontSize": 23
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "教程对应御契 0.9.3 公开测试版。界面截图由正式页面渲染，使用隔离目录与合成数据。",
+      "x": 36,
+      "top": 734.89,
+      "bottom": 717.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "已经完成的本地验证",
+      "x": 36,
+      "top": 697.89,
+      "bottom": 676.89,
+      "width": 523.28,
+      "fontSize": 14
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "• 244 项 Node、55 项 Python 检查通过；另有 23 项制作器、37 项通用界面检查及综合页面回归。",
+      "x": 36,
+      "top": 664.89,
+      "bottom": 647.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "• 328 条内置真实解析结果通过规则校验，重编码后成员配置保持一致。",
+      "x": 36,
+      "top": 636.89,
+      "bottom": 619.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "• 资料含 1,036 个技能、4,954 条等级记录、1,026 张真实技能图标；2,952 张本地图片通过摘要、解码和尺寸检查。",
+      "x": 36,
+      "top": 608.89,
+      "bottom": 574.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "• 3,000 条阵容与 5,000 个合成式神的连续查询保存测试中可持续切页；计时器最大间隔约 52.3 毫秒。该数值仅代表此测试环境。",
+      "x": 36,
+      "top": 563.89,
+      "bottom": 529.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "• 安装包解包后的程序与免安装版逐文件核验；隔离启动取得 158 个服务器及登录二维码，未进行手机扫码。",
+      "x": 36,
+      "top": 518.89,
+      "bottom": 501.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "仍需实机补验",
+      "x": 36,
+      "top": 487.89,
+      "bottom": 466.89,
+      "width": 523.28,
+      "fontSize": 14
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "首次进入阵容助手的角色能否自动初始化、所有渠道服／官服／iOS／安卓组合，以及生成内容在当前游戏中的实际导入结果，尚未全部验证。静态规则和本机编解码通过，不等于这些实机环节已经通过。",
+      "x": 36,
+      "top": 456.89,
+      "bottom": 422.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "安装、覆盖升级和卸载全过程也未在真实安装环境中重做；本轮交付验证采用独立解包启动，不覆盖现有安装。",
+      "x": 36,
+      "top": 408.89,
+      "bottom": 391.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "资料说明",
+      "x": 52,
+      "top": 361.89,
+      "bottom": 348.89,
+      "width": 491.28,
+      "fontSize": 9
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "技能与相关素材来自本机游戏客户端快照；软件本地保留素材来源与校验信息。教程中的游戏图标来自对应对象，未用生成图替代。",
+      "x": 52,
+      "top": 343.89,
+      "bottom": 312.89,
+      "width": 491.28,
+      "fontSize": 10
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "<link href=\"https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.9.3\" color=\"#99712d\">下载 v0.9.3 程序、PDF 与 SHA256SUMS.txt</link>",
+      "x": 36,
+      "top": 289.89,
+      "bottom": 272.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    },
+    {
+      "page": 32,
+      "kind": "text",
+      "text": "<link href=\"https://github.com/tORHANSxd/onmyoji-lineup-atlas/issues\" color=\"#99712d\">打开项目问题反馈页面</link>",
+      "x": 36,
+      "top": 262.89,
+      "bottom": 245.89,
+      "width": 523.28,
+      "fontSize": 10.5
+    }
+  ],
+  "textCharacters": 11202,
+  "fonts": {
+    "/Helvetica": false,
+    "/AAAAAA+MicrosoftYaHei-0": true,
+    "/AAAAAB+MicrosoftYaHei-0": true,
+    "/AAAAAC+MicrosoftYaHei-0": true,
+    "/AAAAAA+MicrosoftYaHei-Bold-0": true,
+    "/AAAAAB+MicrosoftYaHei-Bold-0": true
+  },
+  "glyphBoundsPassed": true,
+  "renderedPages": 32,
+  "contactSheets": [
+    "tmp\\pdfs\\guide-v093\\contact-01.jpg",
+    "tmp\\pdfs\\guide-v093\\contact-02.jpg",
+    "tmp\\pdfs\\guide-v093\\contact-03.jpg",
+    "tmp\\pdfs\\guide-v093\\contact-04.jpg"
+  ],
+  "internalLinks": 33,
+  "externalLinks": 4,
+  "bookmarks": 32,
+  "linksPassed": true,
+  "visualReviewScope": "All 32 rendered pages reviewed in contact sheets; installation, skills, spirit marks, equipment, export, backup and reset pages additionally inspected at full size."
+}

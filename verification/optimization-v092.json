@@ -1,0 +1,104 @@
+{
+  "version": "0.9.2",
+  "completedAt": "2026-09-22T15:46:33.303Z",
+  "scope": [
+    "批量解析增量保存、后台编码与二维码处理、JSON 文本跨桌面隔离桥",
+    "复用分类与库存索引，分片计算，合并页面刷新和搜索",
+    "阵容助手功能开关和首次 get_info 初始化",
+    "游戏导出检查原生副本、成员和御魂 ID；用户缺少副本的二维码回归",
+    "周年配色保留，去除活动海报与宣传装饰"
+  ],
+  "userSample": {
+    "fixture": "tests/fixtures/ta-missing-stage.png",
+    "cause": "二维码与完整 #TA# 均缺少 select_stage_id；客户端有效性检查拒绝导入",
+    "oldCodes": "旧二维码及官方短码不会自动改变，选择游戏原生副本后需重新生成"
+  },
+  "tests": {
+    "node": {
+      "passed": 235,
+      "failed": 0,
+      "report": "verification/node-v092.log"
+    },
+    "python": {
+      "passed": 54,
+      "failed": 0,
+      "report": "verification/python-all-v092.log"
+    },
+    "ui": {
+      "passed": 37,
+      "failed": 0,
+      "report": "verification/optimization-ui-v092.json"
+    },
+    "creator": {
+      "passed": 20,
+      "failed": 0,
+      "report": "verification/creator-ui-v092.json"
+    },
+    "revision": {
+      "layouts": 20,
+      "syntheticBatchSuccess": 146,
+      "syntheticBatchExpired": 9,
+      "consoleErrors": [],
+      "report": "verification/revision-ui-v092.json"
+    },
+    "review": "独立核验发现提交后注销确认、二维码取消回包与后台错误类型三项问题；均已修复并加入回归测试"
+  },
+  "performance": {
+    "lineups": 3000,
+    "heroes": 5000,
+    "batchCompleted": 20,
+    "batchElapsedMs": 10298.10000000149,
+    "viewSwitches": 57,
+    "maxTimerGapMs": 53.900000005960464,
+    "p95TimerGapMs": 11,
+    "deltaWrites": 20,
+    "qrCancellation": true,
+    "method": "真实 Electron 页面、preload、后台文件保存与二维码线程；查询使用合成回包，无账号或真实网络",
+    "reports": [
+      "verification/performance-hotspots-v092.json",
+      "verification/performance-ui-v092.json"
+    ]
+  },
+  "packaging": {
+    "sourceChecks": 1176,
+    "forbiddenFiles": [],
+    "payloadFiles": 208,
+    "allPayloadFilesMatch": true,
+    "packagedStartupSmoke": "passed",
+    "loginServers": 158,
+    "loginQRReady": true,
+    "phoneAuthenticated": false,
+    "portable": {
+      "version": "0.9.2",
+      "files": 208,
+      "crcValidated": true,
+      "allFilesMatch": true,
+      "method": "ZIP path set, CRC on all entries and SHA256 against win-unpacked"
+    },
+    "existingInstallationPreserved": true,
+    "install": "not-run-existing-installation",
+    "reinstall": "not-run-existing-installation",
+    "uninstall": "not-run-existing-installation"
+  },
+  "artifacts": [
+    {
+      "file": "release/Yuqi-Setup-0.9.2-Windows-x64.exe",
+      "bytes": 291998167,
+      "sha256": "5d328c9538514f7484728fc0cb85bfe160de05190324fba16cec779984402d26"
+    },
+    {
+      "file": "release/Yuqi-Portable-0.9.2-Windows-x64.zip",
+      "bytes": 350133358,
+      "sha256": "dab4e174746812603fede1d07f329e47e717e7bf538205441691168cdbf58fed"
+    }
+  ],
+  "gitArchived": false,
+  "githubReleasePublished": false,
+  "pendingRealDeviceTests": [
+    "从未打开阵容助手的角色首次查询",
+    "不同等级和功能开关状态的角色",
+    "官服安卓、iOS 与各渠道实际扫码",
+    "新生成二维码和官方短码在游戏内导入"
+  ],
+  "levelGateEvidence": "客户端路径读取功能开关 988，未找到统一数字等级阈值；不能据此排除服务端条件"
+}

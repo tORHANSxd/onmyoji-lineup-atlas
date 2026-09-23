@@ -1,0 +1,78 @@
+'use strict';
+// Real production views with isolated, explicitly synthetic tutorial data.
+const {app,BrowserWindow,ipcMain}=require('electron');
+const fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
+const C=require('../app/core.js'),G=require('../app/game-config.js'),codec=require('../desktop/ta-codec.cjs'),QR=require('qrcode');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'docs/images/guide-v093'),profile=path.join(root,'user-data/documentation/guide-v093');
+app.setPath('userData',profile);app.disableHardwareAcceleration();
+let win,stored,status,guideCode;const errors=[],shots=[];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)),ui=s=>win.webContents.executeJavaScript(s);
+async function until(s){for(let i=0;i<500;i++){if(await ui(s))return;await sleep(25);}throw Error('Not ready: '+s);}
+async function shot(name,selector='main',anchors=[],maxHeight=800,focus=selector){
+ await ui(`document.querySelector(${JSON.stringify(focus)}).scrollIntoView({block:${selector==='.soul-ring'?"'center'":"'start'"}});document.getElementById('toast').classList.remove('show')`);
+ await ui(`Promise.all([...document.querySelectorAll('img')].filter(i=>{const r=i.getBoundingClientRect();return r.width&&r.top<innerHeight&&r.bottom>0}).map(async i=>{i.loading='eager';try{await i.decode()}catch{}}))`);
+ await sleep(120);win.webContents.invalidate();await sleep(350);await win.webContents.capturePage();await sleep(80);
+ const rect=await ui(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();const x=Math.max(0,Math.floor(r.x)),y=Math.max(0,Math.floor(r.y));return {x,y,width:Math.min(innerWidth-x,Math.ceil(r.width)),height:Math.min(innerHeight-y,${maxHeight},Math.ceil(r.height))}})()`);
+ const marks=await ui(`${JSON.stringify(anchors)}.map((selector,i)=>{const e=document.querySelector(selector),r=e?.getBoundingClientRect();return r?{number:i+1,selector,x:r.x-${rect.x},y:r.y-${rect.y},width:r.width,height:r.height}:null}).filter(m=>m&&m.width>0&&m.height>0&&m.x<${rect.width}&&m.y<${rect.height}&&m.x+m.width>0&&m.y+m.height>0)`);
+ await fs.writeFile(path.join(out,name+'.png'),(await win.webContents.capturePage(rect)).toPNG());
+ shots.push({name,file:'docs/images/guide-v093/'+name+'.png',width:rect.width,height:rect.height,anchors:marks});console.log('captured',name);
+}
+async function main(){
+ await app.whenReady();await fs.mkdir(out,{recursive:true});await fs.mkdir(profile,{recursive:true});
+ const data=JSON.parse(await fs.readFile(path.join(root,'data/bundle.json'),'utf8'));data.officialUpdate={autoUpdate:false};
+ const hconf=[G.defaultMember(data.gameConfig,10),...[554,201,202,203,608].map(id=>G.defaultMember(data.gameConfig,id))];
+ hconf[0].level=40;hconf[0].skills=[[1009,3],[1011,5]];hconf[0].ai_skill=3;hconf[0].qiling_info={id:100,star:6,lv:20,mark_gid:1,marks:[1,1,1,2,2]};
+ hconf[1].skills=[[5541,5],[5542,1],[5543,5]];hconf[1].ai_skill=5;hconf[1].equip_info.suit=[[300010,4]];hconf[1].equip_info.limit={spd:[180,210],critical_rate:[100,-1]};hconf[1].highest_limit=['spd'];
+ hconf[1].equip_info.main_attr={'1':['spd'],'3':['atk_per'],'5':['critical_rate','critical_pow']};
+ const native={title:'教程示例 · 技能与配装',desc:'仅演示软件配置，不作实战推荐。请按自己的阵容需求修改。',select_stage_id:1001001,hconf};
+ G.validate(data.gameConfig,native);guideCode=codec.encodeLineupData(native);
+ const l={...C.adaptTA(codec.decodeInput(guideCode),data),id:'guide-lineup',title:native.title,sourceKind:'user',updatedAt:'2026-09-23T01:00:00Z',notes:native.desc};
+ const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'教程库存',serverId:'10014',shortId:'tutorial',serverName:'两情相悦'},heroes:Object.fromEntries([554,201,202,203,608].map((id,i)=>['guide-hero-'+i,{heroId:id,level:40,star:6,awake:1,skinfo:(data.gameConfig.heroes[id].skills||[]).map(s=>[s,1])}])),hero_equips:Array.from({length:30},(_,i)=>({id:'guide-soul-'+i,slot:i%6+1,setId:'招财猫',quality:6,level:15,mainAttrType:['attack_flat','speed','defense_flat','attack_rate','hp_flat','crit_rate'][i%6],mainAttrValue:[486,57,104,.55,2052,.55][i%6],subAttributes:[]}))};
+ const account=C.parseAccount(raw);stored={schemaVersion:1,lineups:[l],accounts:[account],activeAccount:account.id,targetLineups:{[account.id]:['guide-lineup']},deletedPresetIds:[]};
+ const roles=[{avatar_id:'guide-low',server_id:'10014',name:'教程角色 · 低等级',level:12},{avatar_id:'guide-high',server_id:'10014',name:'教程角色 · 高等级',level:60}];
+ status={authenticated:false,query_ready:false,busy:false,stage:'idle',risk_accepted:false,servers:[{id:'10014',name:'两情相悦',category:'网易双平台',available:true,roles,roles_known:true}],selected_server:'10014',selected_avatar:'',remembered_accounts:[]};
+ const local=(name,fn)=>{ipcMain.handle(name,(_e,...a)=>fn(...a));if(['load-data','load-state'].includes(name))ipcMain.handle(name+'-json',async()=>JSON.stringify(await fn()));if(['save-state','save-parsed-state'].includes(name))ipcMain.handle(name+'-json',(_e,s)=>fn(JSON.parse(s)));};
+ local('load-data',()=>data);local('load-state',()=>stored);local('parse-json',s=>JSON.parse(s));local('save-parsed-delta',()=>({needsSnapshot:true}));
+ for(const n of ['save-state','save-parsed-state'])local(n,s=>{stored=structuredClone(s);return {saved:true}});
+ local('ta-status',()=>status);local('ta-action',(_a,p)=>{if(_a==='risk')status.risk_accepted=p.accepted;return status});local('ta-logout',()=>{status={...status,authenticated:false,query_ready:false};return status});
+ local('ta-query',()=>{throw Error('教程示例不会连接游戏服务器')});local('ta-share',()=>{throw Error('教程示例不会创建官方分享')});local('decode',s=>codec.decodeInput(s));local('find-short-code',()=>null);
+ local('build-lineup',async n=>{G.validate(data.gameConfig,n);codec.validateGameLineup(n,data);const code=codec.encodeLineupData(n);return {code,payload:codec.decodeInput(code),image:await QR.toDataURL(code,{margin:4,scale:7})}});
+ local('copy-code',()=>({copied:true}));local('export-json',()=>true);local('export-json-text',()=>true);local('export-qr',()=>true);local('import-files',()=>[]);
+ for(const n of ['official-status','official-auto','official-refresh','official-cancel'])local(n,()=>({autoUpdate:false}));
+ win=new BrowserWindow({width:1440,height:1030,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
+ win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message)});
+ await win.loadFile(path.join(root,'app/index.html'));await until('!!DATA&&document.getElementById("loading").hidden');await ui('TALogin.ready()');
+ await shot('01-home','body',['nav','#active-account','#category-browser'],820);
+ await ui('document.querySelector(".extra-filters").open=true');await shot('02-filter','.filter-panel',['#search','#dungeon','#lineup-sort'],500);
+ await ui('showLineup(lineups().find(l=>l.id==="guide-lineup"))');await shot('03-detail','#detail-dialog',['.readable-member','.protocol-fields'],800);await ui('document.getElementById("detail-dialog").close()');
+ await ui('selectView("accounts")');await shot('04-inventory','#view-accounts',['#import-accounts','#merge-import','#account-search'],780);
+ await shot('05-inventory-skills','#account-heroes',['.owned-hero'],620);
+ await ui('selectView("library");document.getElementById("search").value="教程示例";renderLibrary();document.querySelector(".extra-filters").open=false;document.getElementById("select-filtered").click()');await shot('06-targets','#view-library',['#select-filtered','#target-add','#match-selected'],710,'.result-heading');
+ await ui('startMatch(["guide-lineup"])');await until('matchResults["guide-lineup"]?.completed');await shot('07-result','#view-library',['#match-progress','.lineup-card','#gap-statistics'],760,'.result-heading');
+ await ui('openGapStatistics()');await until('!!document.querySelector("#gap-statistics-body .gap-ranking")');await shot('08-gaps','#gap-dialog',['#gap-statistics-scope','#gap-statistics-body'],760);await ui('document.getElementById("gap-dialog").close()');
+ await ui('showLineup(lineups().find(l=>l.id==="guide-lineup"))');await shot('09-souls','.soul-ring',[],560);await ui('document.getElementById("detail-dialog").close()');
+ await ui('selectView("decode");document.getElementById("code-input").value='+JSON.stringify(guideCode)+';codeRevision++;localDecode()');await shot('10-decode','#view-decode',['#code-input','#remote-decode','#import-qr'],770);
+ await ui('document.getElementById("open-login").click()');await shot('11-login-risk','.login-risk',['#ta-risk-accept','#ta-risk-back'],650);
+ await ui('taLogin.action("risk",{accepted:true})');await shot('12-login-panel','#ta-login-panel',['#ta-qr','#ta-query-tip'],770);
+ await ui('libraryParser?.cancel();libraryBusy=true');
+ status={...status,authenticated:true,query_ready:true,selected_avatar:'guide-low',stage:'roles_ready',current_account:'a'.repeat(64),remembered_accounts:[{id:'a'.repeat(64),label:'教程账号（示例）'}]};
+ win.webContents.send('ta-status-changed',status);await sleep(100);await ui('libraryParser?.cancel();document.getElementById("ta-server-settings").open=true');await shot('13-roles','#ta-server-settings',['#ta-server','#ta-role','#ta-refresh-roles'],700);
+ await shot('14-remembered','#ta-login-panel',['#ta-saved-account','#ta-resume','#ta-forget'],430);
+ status={...status,authenticated:false,query_ready:false,selected_avatar:''};win.webContents.send('ta-status-changed',status);await ui('document.getElementById("ta-enter").click();libraryBusy=false;selectView("builder");builderDraft={title:'+JSON.stringify(native.title)+',desc:'+JSON.stringify(native.desc)+',stageId:1001001,members:'+JSON.stringify(hconf)+'.map((h,i)=>({key:crypto.randomUUID(),kind:i?"shikigami":"onmyoji",h}))};builderMember=builderDraft.members[0].key;builderVersion++;renderBuilder()');
+ await shot('15-builder','.builder-workspace',['#builder-members','[data-builder-add]','#builder-speed-chain'],820);
+ await shot('16-actor-skills','.builder-skills',['[data-builder-equipped="0"]','[data-builder-equipped="1"]','[data-builder-field="ai_skill"]'],800);
+ await shot('17-spirit','.builder-spirit',['[data-builder-spirit]','[data-builder-spirit-level]','[data-builder-mark="0"]'],900);
+ await ui('builderMember=builderDraft.members[1].key;renderBuilderMembers();renderBuilderEditor()');await shot('18-shikigami','#builder-editor',['[data-builder-field="level"]','[data-builder-skill="5542"]','[data-builder-field="ai_skill"]'],760);
+ await ui('openSkill(554,5542,1,1)');await shot('19-skill-detail','#skill-dialog',['.skill-title','#skill-dialog .related-skills','#skill-dialog .skill-terms'],850);await ui('document.getElementById("skill-dialog").close()');
+ await shot('20-equipment','.builder-equipment',['[data-builder-suit="4"]','[data-builder-field="criteria"]','.builder-main-stats'],800);
+ await shot('21-ranges','.builder-limits',['[data-builder-min="spd"]','[data-builder-max="spd"]','[data-builder-highest="spd"]'],480);
+ await ui('buildBuilderPreview()');await shot('22-export','#builder-preview',['#builder-qr','#builder-copy','#builder-share'],800);
+ await ui('selectView("manage");document.getElementById("manage-select-all").click()');await shot('23-management','#view-manage',['#manage-select-all','#manage-sort','#manage-reparse-selected'],790);
+ await ui('editLineup("guide-lineup")');await shot('24-manual-stage','.path-editor',['#edit-path-selected','#edit-path-search','#edit-path-options'],750);await ui('document.getElementById("detail-dialog").close()');
+ await ui('pendingBackup={backup:structuredClone(STATE),exportedAt:"2026-09-23T01:00:00Z",revision:sessionRevision};previewBackupRestore()');await shot('25-restore','#detail-dialog',['.restore-preview','#confirm-restore-backup','#cancel-restore-backup'],790);await ui('document.getElementById("detail-dialog").close()');
+ await ui('previewLibraryReset()');assert.equal(await ui('document.getElementById("confirm-library-reset").disabled'),true);await shot('26-reset','#detail-dialog',['#confirm-library-reset'],750);await ui('document.getElementById("detail-dialog").close()');
+ await ui('selectView("audit")');await shot('27-updates','#view-audit',['#official-refresh','#official-date'],750);
+ const report={version:require('../package.json').version,synthetic:true,realRenderer:true,noPrivateProfileRead:true,noGameConnection:true,shots,errors};
+ await fs.writeFile(path.join(out,'manifest.json'),JSON.stringify(report,null,2)+'\n');assert.deepEqual(errors,[]);console.log(JSON.stringify({screenshots:shots.length,errors}));app.exit(0);
+}
+main().catch(e=>{console.error(e);app.exit(1)});

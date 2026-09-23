@@ -8,6 +8,53 @@ function fixture(two=true){const souls={};for(let slot=1;slot<=6;slot++)for(let 
 const member=(index,sid,c=config())=>({index,kind:'shikigami',shikigamiId:sid,name:sid,awakening:1,skills:[],config:c});
 const lineup=members=>({code:'|TA|test',decodeState:'decoded-local',requirementsComplete:true,members});
 function finish(l,a){const it=E.search(l,a,roster,D.effects);let step;do{step=it.next();}while(!step.done);return step.value;}
+
+test('旧备份的增强关系保留为资料，不再影响官方配装结果',()=>{
+ const l=lineup([member(0,'1'),member(1,'2')]),expected=finish(l,fixture());
+ l.relations=[{left:1,right:0,leftStat:'speed',rightStat:'speed',op:'>=',ratio:1,offset:700}];
+ assert.deepEqual(finish(l,fixture()).proof.vector,expected.proof.vector);
+ assert.equal(finish(l,fixture()).proof.state,'optimal');
+});
+
+test('恒定目标证明必须计入不同实例的觉醒固有加成',()=>{
+ const a=fixture(false);a.heroes={a:{...hero('a','1'),awake:0},b:hero('b','1')};
+ for(const q of Object.values(a.souls))q.stats={speed:1};
+ const r=[{id:'1',gameRules:{awakeBonus:{speed:10}},assets:{baseAttrs40:{0:plain,1:{...plain,speed:110}}}}];
+ const it=E.search(lineup([{...member(0,'1'),awakening:null}]),a,r,D.effects);let step;
+ do{step=it.next();}while(!step.done);
+ assert.equal(step.value.proof.state,'optimal');assert.deepEqual(step.value.proof.vector,[116]);assert.equal(step.value.assignment[0].heroId,'b');
+});
+test('无目标或全队目标恒定时，完整可行解即证明最优而不遍历同分空间',()=>{
+ for(const metricId of [null,7]){
+  const a=fixture(false);a.souls={};
+  for(let slot=1;slot<=6;slot++)for(let j=0;j<6;j++){const id=slot+'-'+j;a.souls[id]={id,slot,set:'招财猫',level:15,star:6,mainStat:'attack',stats:{speed:1,attack:j*7**slot},unknown:[]};}
+  const r=finish(lineup([member(0,'1',config({metricId}))]),a);
+  assert.equal(r.proof.state,'optimal');assert.deepEqual(r.proof.vector,[metricId==null?0:106]);
+  assert.ok(r.proof.nodes<100,'恒定目标不应展开数万条同分分支');
+ }
+});
+test('库存准备之前先交还控制权，共享准备不混用其他库存',()=>{
+ const a=fixture(),l=lineup([member(0,'1')]),shared={},first=E.search(l,a,roster,D.effects,shared),second=E.search(l,a,roster,D.effects,shared);
+ assert.equal(first.next().value.proof.phase,'preparing');
+ function end(it){let s;do{s=it.next();}while(!s.done);return s.value;}
+ const x=end(first),y=end(second);assert.deepEqual(x.assignment,y.assignment);
+ const b=fixture(false);b.souls={};assert.equal(end(E.search(l,b,roster,D.effects,shared)).proof.state,'infeasible');
+});
+
+test('诊断样本之外的唯一御魂方案仍进入完整精算',()=>{
+ const a=fixture(false);a.souls={};
+ for(let slot=1;slot<=6;slot++)for(let j=0;j<33;j++){const id=slot+'-'+j;a.souls[id]={id,slot,set:'招财猫',level:15,star:6,mainStat:'attack',stats:{speed:j},unknown:[]};}
+ const r=finish(lineup([member(0,'1',config({ranges:[{stat:'speed',min:292}]}))]),a);
+ assert.equal(r.proof.state,'optimal');assert.deepEqual(r.proof.vector,[292]);assert.ok(r.assignment[0].soulIds.every(id=>id.endsWith('-32')));
+});
+
+test('精确搜索不会继承诊断阶段的三个式神实例限制',()=>{
+ const a=fixture(false);for(const q of Object.values(a.souls))q.stats={speed:1};a.heroes={};
+ for(let i=0;i<4;i++)a.heroes['h'+i]={...hero('h'+i,'1'),attrs:[10000,i===3?100:90,.5,.1,500,1000,0,0].map(x=>[x,0,0,0])};
+ const r=[{...roster[0],gameRules:{baseHit:0,baseResist:0,awakeBonus:{}}}],it=E.search(lineup([member(0,'1',config({ranges:[{stat:'speed',min:106}]}))]),a,r,D.effects);let step;
+ do{step=it.next();}while(!step.done);
+ assert.equal(step.value.proof.state,'optimal');assert.equal(step.value.assignment[0].heroId,'h3');
+});
 function brute(l,a){
  const options=l.members.map(m=>{const h=Object.values(a.heroes).find(h=>h.shikigamiId===m.shikigamiId),base=C.baseFromRoster(h,roster),out=[];function walk(slot,items){if(slot===7){const p=C.panel(base,items,D.effects,m.config.extraAttributes);if(!C.equipmentGaps(items,m.config,D.effects).length&&!C.panelGaps(p.values,m.config).length)out.push({ids:items.map(q=>q.id),value:C.score(p.values,m.config.metricId)});return;}for(const q of Object.values(a.souls).filter(q=>q.slot===slot))walk(slot+1,[...items,q]);}walk(1,[]);return out;});
  let best=null;function join(i,used,v){if(i===options.length){if(!best||v.some((x,j)=>x>best[j]&&v.slice(0,j).every((y,k)=>y===best[k])))best=v;return;}for(const b of options[i])if(b.ids.every(id=>!used.has(id)))join(i+1,new Set([...used,...b.ids]),[...v,b.value]);}join(0,new Set(),[]);return best;

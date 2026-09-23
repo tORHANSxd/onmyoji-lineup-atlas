@@ -1,0 +1,34 @@
+{
+  "lineups": 3000,
+  "heroes": 5000,
+  "batch": {
+    "elapsedMs": 10298.10000000149,
+    "ticks": 1020,
+    "maxGapMs": 53.900000005960464,
+    "p95GapMs": 11,
+    "switches": 57,
+    "report": {
+      "phase": "complete",
+      "total": 20,
+      "completed": 20,
+      "succeeded": 20,
+      "failed": 0,
+      "current": "",
+      "error": "",
+      "failures": [],
+      "startedAt": 1790091169111,
+      "currentStartedAt": 1790091178892,
+      "elapsedMs": 10286
+    }
+  },
+  "qr": {
+    "elapsedMs": 1830.5,
+    "ticks": 182,
+    "count": 0
+  },
+  "cancellation": true,
+  "fullWrites": 2,
+  "deltaWrites": 20,
+  "errors": [],
+  "method": "真实 Electron 页面、preload、后台文件保存与二维码线程；查询使用合成回包，无账号或真实网络"
+}

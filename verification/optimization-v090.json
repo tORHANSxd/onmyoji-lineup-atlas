@@ -1,0 +1,89 @@
+{
+  "version": "0.9.0",
+  "recordedAt": "2026-09-22T13:21:17.910Z",
+  "releasePublished": false,
+  "gitArchive": false,
+  "tests": {
+    "node": {
+      "passed": 218,
+      "failed": 0,
+      "log": "verification/node-v090.log"
+    },
+    "python": {
+      "passed": 52,
+      "failed": 0,
+      "log": "verification/python-v090.log"
+    },
+    "creatorUI": {
+      "passed": 20,
+      "failed": 0,
+      "report": "verification/creator-ui-v090.json"
+    },
+    "optimizationUI": {
+      "passed": 33,
+      "failed": 0,
+      "report": "verification/optimization-ui-v090.json"
+    },
+    "comprehensiveUI": {
+      "passed": true,
+      "layouts": 20,
+      "report": "verification/revision-ui-v090.json"
+    }
+  },
+  "library": {
+    "reviewed": 373,
+    "semanticPathChanges": 67,
+    "extendedDungeonPaths": 72,
+    "completePayloads": 328,
+    "pendingPayloads": 45,
+    "needsClassificationReview": 1,
+    "source": "data/lineup-classification.json"
+  },
+  "publicQR": {
+    "samples": 3,
+    "source": "https://www.taptap.cn/moment/847990995868976163?group_id=71",
+    "fixture": "tests/fixtures/public-qr-samples.json",
+    "shortKeyMapping": "not-verified-with-official-service"
+  },
+  "packaging": {
+    "sourceAndRuntimeChecks": 1172,
+    "allHashesMatch": true,
+    "forbiddenFiles": 0,
+    "setupPayloadFiles": 208,
+    "portableFiles": 208,
+    "startupSmoke": "passed",
+    "serverListCount": 158,
+    "qrReady": true,
+    "existingInstallationPreserved": true,
+    "actualInstallationTested": false,
+    "compressionLevel": 5
+  },
+  "artifacts": [
+    {
+      "name": "Yuqi-Setup-0.9.0-Windows-x64.exe",
+      "path": "E:/workspace/AI_project/阴阳师阵容/release/Yuqi-Setup-0.9.0-Windows-x64.exe",
+      "bytes": 291975293,
+      "sha256": "74f579014ebdd587f6b9ea20a39e961fa87c19395a1e93708d6a9531274a66a5"
+    },
+    {
+      "name": "Yuqi-Portable-0.9.0-Windows-x64.zip",
+      "path": "E:/workspace/AI_project/阴阳师阵容/release/Yuqi-Portable-0.9.0-Windows-x64.zip",
+      "bytes": 350124520,
+      "sha256": "19455c3ea6f68247a50ba80f4d8c5d0fa2724d55aef17f10acb9efbe21ed37b8"
+    }
+  ],
+  "pendingRealDeviceChecks": [
+    "官服安卓 / iOS、哔哩哔哩及其他渠道实际扫码字段和已有角色进入",
+    "无角色账号提示与最低等级角色自动选择",
+    "手机授权记住 / 不记住及重新启动续登",
+    "官方创建短码真实回包及内容关联",
+    "生成的完整码和二维码在真实游戏内导入",
+    "45 条预设补齐完整解析，1 条用途证据待核对"
+  ],
+  "limitations": [
+    "不声明所有渠道身份均已适配成功；缺少可信 FULL_UID 时明确提示",
+    "长码不包含原分享键，不能离线反推出原短码",
+    "失效、删除、拒绝以及未来版本的原码不保证解析",
+    "现有安装未被覆盖，实际安装 / 覆盖 / 卸载未测试"
+  ]
+}

@@ -102,11 +102,11 @@ function findBuilds(hero,config,account,roster,effects,options={}){
   if(!base)return {status:'unknown',reasons:['缺少此实例可核验的基础面板；需要完整 attrs 或对应官方属性'],builds:[],suggestions:[]};
   if(unknown.length)return {status:'unknown',reasons:unknown,builds:[],suggestions:[]};
   const objective={heroId:hero.shikigamiId,baseAttack:base.attack};
-  let cache=null;if(options.cache){cache=options.cache.get(account.souls);if(!cache){cache=new Map();options.cache.set(account.souls,cache);}}
-  const cacheKey=cache&&JSON.stringify([base,objective,config,effects,account.completeness,account.merged]);
+  let cache=null;if(options.cache&&options.inventory==null){cache=options.cache.get(account.souls);if(!cache){cache=new Map();options.cache.set(account.souls,cache);}}
+  const cacheKey=cache&&JSON.stringify([base,objective,config,effects,account.completeness,account.merged,account.presets,options.limit,options.width,options.perSet,options.approximateInventory]);
   if(cacheKey&&cache.has(cacheKey)){const saved=cache.get(cacheKey);return {...saved,builds:saved.builds.map(b=>({...b,heroId:hero.instanceId})),closest:saved.closest?{...saved.closest,heroId:hero.instanceId}:null};}
   const inventory=options.inventory||Object.values(account.souls),known=inventory.filter(q=>!q.unknown.length);
-  const absence=account.completeness==='complete'&&!account.merged&&!inventory.some(q=>q.unknown.length)?'missing':'unknown';
+  const absence=!options.approximateInventory&&account.completeness==='complete'&&!account.merged&&!inventory.some(q=>q.unknown.length)?'missing':'unknown';
   const level=config.levelRange||[config.maxLevelOnly?15:0,15];
   const legal=q=>(!config.sixStarOnly||q.star===6)&&(!config.allowedStars?.length||config.allowedStars.includes(q.star))&&q.level>=level[0]&&q.level<=level[1]&&(!config.mainStats?.[q.slot]?.length||config.mainStats[q.slot].includes(q.mainStat));
   const slots=[1,2,3,4,5,6],groups=slots.map(s=>known.filter(q=>q.slot===s&&legal(q))),relaxed=groups.map((g,i)=>g.length?g:known.filter(q=>q.slot===i+1));
@@ -122,7 +122,8 @@ function findBuilds(hero,config,account,roster,effects,options={}){
       if(q.length===6&&!gaps.length){const key=result.soulIds.join(',');if(!seen.has(key)){seen.add(key);allBuilds.push(result);}}}
     return result;
   };
-  for(const preset of account.presets||[]){const ids=Array.isArray(preset)?preset[1]:null;if(!Array.isArray(ids)||ids.length!==6)continue;const q=ids.map(id=>account.souls[id]);if(q.every(s=>s&&!s.unknown.length)&&new Set(q.map(x=>x.slot)).size===6){assess(q);checked++;}}
+  const inventoryIds=options.inventory?new Set(inventory.map(q=>q.id)):null;
+  for(const preset of account.presets||[]){const ids=Array.isArray(preset)?preset[1]:null;if(!Array.isArray(ids)||ids.length!==6||inventoryIds&&ids.some(id=>!inventoryIds.has(id)))continue;const q=ids.map(id=>account.souls[id]);if(q.every(s=>s&&!s.unknown.length)&&new Set(q.map(x=>x.slot)).size===6){assess(q);checked++;}}
   const product=relaxed.reduce((p,g)=>p*g.length,1),limit=options.limit??16000;let exhaustive=product<=limit;
   if(product===0){assess(relaxed.filter(g=>g.length).map(g=>g[0]));}
   else if(exhaustive){const q=[];function visit(n){if(n===6){assess(q);checked++;return;}for(const soul of relaxed[n]){q.push(soul);visit(n+1);q.pop();}}visit(0);}
@@ -149,11 +150,17 @@ function heroGaps(member,hero){
   const gaps=[];
   if(member.awakening!=null&&hero.awake!==member.awakening)gaps.push({kind:'awake',weight:15,text:member.awakening?'此实例尚未觉醒':'需要另备未觉醒实例'});
   if(member.levelMode!=='recommended')for(const [k,label] of [['level','等级'],['star','星级']])if(member[k]&&hero[k]<member[k])gaps.push({kind:k,weight:(member[k]-hero[k])*(k==='star'?5:1),text:`${label} ${hero[k]}，要求 ≥${member[k]}`});
-  for(const s of member.skills||[]){const actual=hero.skills.find(h=>h.id===s.id)?.level||0;if(s.exact?actual!==s.level:actual<s.level)gaps.push({kind:'skill',skill:s.id,actual,target:s.level,weight:Math.max(1,Math.abs(s.level-actual))*8,text:`技能 ${s.id} 当前${actual?actual+'级':'未拥有'}，要求${s.exact?'=':'≥'}${s.level}级${s.exact&&actual>s.level?'；需要另一符合等级的实例':''}`});}
+  for(const s of member.skills||[]){const actual=hero.skills.find(h=>h.id===s.id)?.level||0;if(s.exact?actual!==s.level:actual<s.level)gaps.push({kind:'skill',skill:s.id,actual,target:s.level,weight:Math.max(1,Math.abs(s.level-actual))*8,text:`${s.name||s.slotLabel||'所需技能'} 当前${actual?actual+'级':'未拥有'}，要求${s.exact?'=':'≥'}${s.level}级${s.exact&&actual>s.level?'；需要另一符合等级的实例':''}`});}
   return gaps;
 }
+const heroIndexes=new WeakMap();
+function heroIndex(account,refresh=false){
+ let index=heroIndexes.get(account.heroes);if(index&&!refresh)return index;
+ index=new Map();for(const h of Object.values(account.heroes)){if(!index.has(h.shikigamiId))index.set(h.shikigamiId,[]);index.get(h.shikigamiId).push(h);}
+ heroIndexes.set(account.heroes,index);return index;
+}
 function memberCandidates(member,account){
-  const all=Object.values(account.heroes).filter(h=>h.shikigamiId===member.shikigamiId);
+  const all=(heroIndex(account).get(member.shikigamiId)||[]);
   if(!all.length)return {status:'missing',reason:'缺少式神',heroes:[],nearest:null,gaps:[{kind:'hero',weight:100,text:'缺少此式神实例'}]};
   const ranked=all.map(h=>({hero:h,gaps:heroGaps(member,h)})).sort((a,b)=>a.gaps.reduce((n,g)=>n+g.weight,0)-b.gaps.reduce((n,g)=>n+g.weight,0)||b.hero.level-a.hero.level||b.hero.star-a.hero.star);
   const heroes=ranked.filter(r=>!r.gaps.length).map(r=>r.hero),near=ranked[0];
@@ -168,18 +175,19 @@ function shikigamiRequirementsComplete(lineup){
     lineup.members.filter(m=>m.kind==='shikigami'&&m.occupied!==false).every(m=>!m.config?.protocolUncertainties?.length);
 }
 function matchLineup(lineup,account,roster,effects,options={}){
+  heroIndex(account,true);
   if(!lineup.members?.some(m=>m.occupied!==false))return {status:'unknown',label:'待解析',distance:null,reasons:['阵容码尚未获得成员数据'],members:[],checks:[]};
   const members=[],unknown=[],checks=[],required={},roles=lineup.members.filter(m=>m.occupied!==false),search={...options,cache:options.cache||new Map(),inventory:options.inventory||Object.values(account.souls)};
   let forcedMissing=false;
   for(const m of roles.filter(m=>m.kind==='shikigami'&&!m.borrowed))required[m.shikigamiId]=(required[m.shikigamiId]||0)+1;
-  for(const [sid,n] of Object.entries(required)){const have=Object.values(account.heroes).filter(h=>h.shikigamiId===sid).length;if(n>have){forcedMissing=account.completeness==='complete'&&!account.merged;checks.push(`${roster.find(r=>r.id===sid)?.name||sid}需要${n}个不同实例，导出有${have}个`);}}
+  for(const [sid,n] of Object.entries(required)){const have=(heroIndex(account).get(sid)?.length||0);if(n>have){forcedMissing=account.completeness==='complete'&&!account.merged;checks.push(`${roster.find(r=>r.id===sid)?.name||sid}需要${n}个不同实例，导出有${have}个`);}}
   for(const m of roles){
     if(m.kind==='onmyoji'){
       members.push({index:m.index,name:m.name,status:'display-only',reasons:[],builds:[],distance:0});continue;
     }
     if(m.borrowed||!m.shikigamiId){const reason=m.borrowed?'需要借用协战，需确认可借式神及配置':'成员身份未核实';unknown.push(reason);members.push({index:m.index,name:m.name,status:'unknown',reasons:[reason],builds:[],distance:0});continue;}
     const owned=memberCandidates(m,account),heroes=owned.heroes.length?owned.heroes:owned.nearest?[owned.nearest]:[],tested=[];
-    for(const hero of heroes)tested.push(findBuilds(hero,m.config,account,roster,effects,search));
+    for(const hero of heroes.slice(0,options.diagnosticHeroLimit??heroes.length))tested.push(findBuilds(hero,m.config,account,roster,effects,search));
     const builds=owned.status==='found'?tested.flatMap(t=>t.builds):[],closest=tested.map(t=>t.closest).filter(Boolean).sort((a,b)=>a.distance-b.distance)[0]||null;
     const absence=account.completeness==='complete'&&!account.merged?'missing':'unknown';
     const status=owned.status==='missing'?absence:builds.length?'found':tested.length&&tested.every(t=>t.status==='missing')?'missing':'unknown';
@@ -214,5 +222,5 @@ function matchLineup(lineup,account,roster,effects,options={}){
   return {status,label:status==='available'?'配置可组成':missing?'存在缺口':ready?'式神御魂就绪 · 仍需核对':'需核对',ready,distance:Math.round(distance*100)/100,checks,reasons:unique([...(forcedMissing?checks.filter(c=>c.includes('个不同实例')):[]),...members.filter(m=>m.status==='missing').map(m=>`${m.name}：${m.reasons.join('；')}`),...unknown]),members,assignment};
 }
 function compareMatches(a,b){if(a?.status==='available'&&b?.status!=='available')return -1;if(b?.status==='available'&&a?.status!=='available')return 1;return (a?.distance??Infinity)-(b?.distance??Infinity)||(a?.checks?.length||0)-(b?.checks?.length||0);}
-return {findBuilds,memberCandidates,matchLineup,compareMatches,shikigamiRequirementsComplete,panelGaps,equipmentGaps,suggestions,configUnknown,soulEligible,formatStat:fmt,suitMatches:(q,c,e)=>!suitGaps(q,c,e).length};
+return {heroIndex,findBuilds,memberCandidates,matchLineup,compareMatches,shikigamiRequirementsComplete,panelGaps,equipmentGaps,suggestions,configUnknown,soulEligible,formatStat:fmt,suitMatches:(q,c,e)=>!suitGaps(q,c,e).length};
 });

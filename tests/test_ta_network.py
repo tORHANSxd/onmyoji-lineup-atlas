@@ -56,6 +56,35 @@ def qr_login_info():
             'mpay_user': {'id': 'test-user', 'token': 'fresh-test-token', 'login_channel': 'netease'}}
 
 class NetworkTests(unittest.TestCase):
+    def test_assistant_initializes_once_before_queries_and_honors_feature_switch(self):
+        client = gate()
+        client.avatar_id = b'v' * 12
+        client.rpc = Mock()
+        client.wait_events = Mock(return_value=iter([
+            ('lineup_assisant_logic_get_info_cb', {'info': {'my_lineup_num': 0}})]))
+        client.ensure_lineup_assistant()
+        client.ensure_lineup_assistant()
+        client.rpc.assert_called_once_with('lineup_assisant_logic.get_info', {}, entity_id=client.avatar_id)
+        client.assistant_ready = False
+        client.function_switch = {'988': False}
+        with self.assertRaisesRegex(net.AssistantUnavailable, '未开放'):
+            client.ensure_lineup_assistant()
+        client.function_switch = {}
+        client.wait_events = Mock(return_value=iter([]))
+        with self.assertRaisesRegex(net.AssistantUnavailable, '初始化'):
+            client.ensure_lineup_assistant()
+        self.assertFalse(client.assistant_ready)
+
+    def test_assistant_callback_must_belong_to_selected_avatar(self):
+        client = gate()
+        client.avatar_id = b'v' * 12
+        msg = client.message('EntityMessage', id=b'x' * 12, parameters=msgpack.packb({'info': {}}))
+        msg.method.md5 = hashlib.md5(b'lineup_assisant_logic_get_info_cb').digest()
+        client.receive = Mock(return_value=('entity_message', msg))
+        self.assertEqual(client.next_event()[1], {})
+        msg.id = client.avatar_id
+        self.assertEqual(client.next_event(), ('lineup_assisant_logic_get_info_cb', {'info': {}}))
+
     def test_pc_qr_uses_verified_common_sdk_version(self):
         with patch.object(net, 'http_get', return_value={}) as request:
             net.MpayQR()._get('/api/qrcode/create_login')
@@ -159,7 +188,7 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(info['session'], 'fresh-test-token')
         self.assertIn('sessionid=fresh-test-token', info['sauth_str'])
         self.assertIn('signed_test_field=server-issued', info['sauth_str'])
-        self.assertIn('realname={"test":"unchanged"}', info['sauth_str'])
+        self.assertEqual(dict(urllib.parse.parse_qsl(info['sauth_str']))['realname'], '{"test":"unchanged"}')
         self.assertNotIn('old-phone-token', info['sauth_str'])
         self.assertNotIn('old-phone-uid', info['sauth_str'])
 
@@ -252,7 +281,8 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(len(rows), 158)
         self.assertEqual(sum(r['available'] for r in rows), 1)
         self.assertEqual(next(r for r in rows if r['id'] == '99999')['category_id'], 0)
-        self.assertEqual(sum(r['category_id'] == 4 for r in rows), 114)
+        self.assertEqual(sum(r['category_id'] == 4 for r in rows), 4)
+        self.assertEqual(sum(r['category_id'] == 6 for r in rows), 110)
 
     def test_mpay_remembered_login_uses_get_and_preserves_optional_qr_context(self):
         saved = {'mpay_device_id': 'test-device', 'mpay_user': {'id': 'test-user', 'token': 'old',
@@ -272,3 +302,65 @@ class NetworkTests(unittest.TestCase):
         client._request.return_value = {'user': {'id': 'another-user', 'token': 'wrong'}}
         with self.assertRaises(Exception):
             client.resume(saved)
+
+    def test_channel_session_remains_opaque_and_never_replaces_mpay_token(self):
+        login = qr_login_info()
+        login['mpay_user'].update(login_channel='bilibili_sdk', token=urllib.parse.quote_plus(base64.b64encode(b'opaque&a=b+c').decode()))
+        login['full_uid'] = 'sdk-issued-test-identity'
+        original = login['mpay_user']['token']
+        self.assertEqual(net.sdk_session(login), 'opaque&a=b+c')
+        self.assertEqual(net.sdk_full_uid(login), 'sdk-issued-test-identity')
+        self.assertEqual(net.role_query_uid(login), 'test-user@ad.bilibili_sdk.win.163.com')
+        self.assertEqual(login['mpay_user']['token'], original)
+        connection = gate()
+        connection.rpc = Mock()
+        connection.wait_events = Mock(return_value=iter([('on_login_result', {'ec':0})]))
+        connection.login_by_qr(login, '15021')
+        account_info = connection.rpc.call_args.args[1]['account_info']
+        self.assertEqual(account_info['session'], 'opaque&a=b+c')
+        self.assertEqual(dict(urllib.parse.parse_qsl(account_info['sauth_str']))['sessionid'], 'opaque&a=b+c')
+        self.assertEqual(account_info['auth_type'], 'native')
+        del login['full_uid']
+        with self.assertRaisesRegex(net.ProtocolError, '账号标识'):
+            net.sdk_full_uid(login)
+        login['mpay_user']['token'] = '!invalid'
+        with self.assertRaises(net.ProtocolError):
+            net.sdk_session(login)
+
+    def test_native_channel_visibility_and_existing_role_override(self):
+        login = qr_login_info()
+        for channel, platform, expected in [('netease', 1, [1,2,5,6,7]), ('bilibili_sdk', 1, [3,4,5,6,7]), ('huawei', 1, [3,5,6,7]), ('netease', 2, [1,2,4,5,6,7])]:
+            login['src_client_type'] = platform
+            login['mpay_user']['login_channel'] = channel
+            self.assertEqual([t for t in range(1,8) if net.server_compatible({'id':'7','source_type':t},login)], expected)
+        login['mpay_user']['login_channel'] = 'huawei'
+        self.assertTrue(net.server_compatible({'id':'7','source_type':1},login,[{'server_id':'7','from_channel':'huawei'}]))
+
+    def test_share_callback_is_decoded_only_for_selected_avatar(self):
+        client = gate()
+        client.account_id, client.avatar_id = b'a'*12, b'b'*12
+        name = 'lineup_assisant_logic_save_and_share_lineup_data_cb'
+        proto = client.message('EntityMessage', id=b'a'*12, parameters=msgpack.packb({'err':0,'share_key':'test'}))
+        proto.method.md5 = hashlib.md5(name.encode()).digest()
+        client.receive = Mock(return_value=('entity_message',proto))
+        self.assertEqual(client.next_event()[1], {})
+        proto.id = b'b'*12
+        self.assertEqual(client.next_event()[1]['share_key'],'test')
+        client.rpc = Mock()
+        client.wait_events = Mock(return_value=iter([(name,{'err':0,'share_key':'test','lineup_data':'dGVzdA=='})]))
+        self.assertEqual(client.share_lineup('dGVzdA==')['share_key'],'test')
+        client.rpc.assert_called_once_with('lineup_assisant_logic.save_and_share_lineup_data', {'lineup_data':'dGVzdA=='}, entity_id=b'b'*12)
+
+    def test_share_waits_past_callback_for_another_entity(self):
+        client = gate()
+        client.account_id, client.avatar_id = b'a'*12, b'b'*12
+        name = 'lineup_assisant_logic_save_and_share_lineup_data_cb'
+        messages = []
+        for recipient in (b'a'*12, b'b'*12):
+            proto = client.message('EntityMessage', id=recipient, parameters=msgpack.packb({'err': 0, 'share_key': 'correct-key', 'lineup_data': 'dGVzdA=='}))
+            proto.method.md5 = hashlib.md5(name.encode()).digest()
+            messages.append(('entity_message', proto))
+        client.receive = Mock(side_effect=messages)
+        client.rpc = Mock()
+        self.assertEqual(client.share_lineup('dGVzdA==')['share_key'], 'correct-key')
+        self.assertEqual(client.receive.call_count, 2)

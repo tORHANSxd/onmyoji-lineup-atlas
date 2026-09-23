@@ -125,4 +125,65 @@ function decodeInput(input,options={}){
     return {ok:true,format:'ta-payload',code:code||(text.startsWith('#TA#')?text:'#TA#'+text),data,kinds};
   }catch(error){const message=String(error.message).slice(0,500);return {ok:false,state:'invalid-payload',error:message,failure:{kind:'decode-error',label:'本地解码失败',retryable:true,message}};}
 }
-module.exports={decodeInput,decodeLineupData,unpackHconf,extractShareKey,lookupRequest,isOnmyoji};
+function encodeLineupData(input){
+ if(!input||typeof input!=='object'||!Array.isArray(input.hconf)||!input.hconf.length||input.hconf.length>30)throw Error('请添加 1 至 30 位阵容成员');
+ const {encode}=require('@msgpack/msgpack');
+ const int=(n,min,max,label)=>{if(!Number.isSafeInteger(n)||n<min||n>max)throw Error(label+'不合法');return n;};
+ const number=(n,label)=>{if(typeof n!=='number'||!Number.isFinite(n)||Math.abs(n)>1e9)throw Error(label+'必须为有限数值');return n;};
+ const attr=(list,keys,label)=>array(list,label).map(k=>{const i=keys.indexOf(k);if(i<0)throw Error(label+'不受游戏码支持：'+k);return i;});
+ const option=(obj,key,fn)=>obj[key]==null?null:fn(obj[key]);
+ const onmyojiIds=new Set([10,11,12,13,15,16]);
+ const packEquip=e=>{
+  if(!e||typeof e!=='object')throw Error('御魂要求格式错误');
+  const flag=(value,lo,hi,label)=>{if(JSON.stringify(value)===JSON.stringify(lo))return 0;if(JSON.stringify(value)===JSON.stringify(hi))return 1;throw Error(label+'无法保存为游戏原码');};
+  const two=option(e,'two_suit',v=>attr(v,ATTRS,'两件属性'));
+  let count=(two?.length||0)*2;
+  const suit=option(e,'suit',v=>{const groups=[[],[]];for(const row of array(v,'御魂套装')){const [id,n]=array(row,'御魂套装',2);int(id,300001,399999,'御魂 ID');if(![2,4,6].includes(n))throw Error('御魂套装件数必须为 2、4 或 6');count+=n;if(n>=4)groups[0].push(id-300000);if(n===2||n===6)groups[1].push(id-300000);}return groups;});
+  if(count>6)throw Error('套装与两件属性合计超过六个御魂位置');
+  const limit=option(e,'limit',v=>{for(const key of Object.keys(v))if(!LIMITS.includes(key))throw Error('不支持的游戏属性：'+key);return LIMITS.map(k=>{if(v[k]==null)return 0;if(k==='ExtraAttr'){for(const key of Object.keys(v[k]))if(!EXTRAS.includes(key))throw Error('不支持的额外属性');return EXTRAS.map(key=>v[k][key]==null?0:number(v[k][key],'额外属性'));}const [min,max]=array(v[k],'属性范围',2).map(n=>n==null?-1:number(n,'属性范围'));if(min< -1||max< -1)throw Error('属性范围只能使用非负数或 -1 表示不限');if(min>=0&&max>=0&&min>max)throw Error('属性下限不能超过上限');return [min,max];});});
+  const main=option(e,'main_attr',v=>{if(Object.keys(v).some(k=>!['1','3','5'].includes(k)))throw Error('只可指定二四六号位主属性');return ['1','3','5'].map(k=>attr(v[k]||[],ATTRS,'主属性'));});
+  return [option(e,'yuhun_lv',v=>flag(v,[0,15],[15,15],'御魂强化范围')),option(e,'yuhun_star',v=>flag(v,[1,2,3,4,5,6],[6],'御魂星级')),option(e,'criteria',v=>int(v,1,12,'计算指标')),two,suit,limit,main];
+ };
+ const phconf=input.hconf.map(h=>{
+  const hero=int(h.hero_id,1,999999,'成员 ID'),yys=onmyojiIds.has(hero);
+  const skills=option(h,'skills',list=>{
+   const rows=array(list,'技能').map(s=>{const [id,lv]=array(s,'技能',2);return [int(id,1,9999999,'技能 ID'),int(lv,1,10,'技能等级')];});
+   if(new Set(rows.map(s=>s[0])).size!==rows.length)throw Error('技能重复');
+   if(yys)return rows.map(([id,lv])=>[id-hero*100,lv]);
+   const first=[0,0,0],extra=[];for(const [id,lv]of rows){const index=id-hero*10;if(index>=1&&index<=3)first[index-1]=lv;else extra.push([index,lv]);}return first.concat(extra);
+  });
+  const common=[hero,option(h,'star',v=>int(v,2,yys?2:6,'星级')),option(h,'level',v=>int(v,1,yys?60:40,'等级')),option(h,'awake',v=>int(v,0,1,'觉醒')),skills];
+  if(yys){const q=option(h,'qiling_info',v=>[option(v,'id',x=>int(x,1,9999999,'契灵')),option(v,'star',x=>int(x,1,6,'契灵星级')),option(v,'lv',x=>int(x,0,60,'契灵等级')),option(v,'mark_gid',x=>int(x,1,99999,'术印组')),option(v,'marks',x=>array(x,'术印').map(n=>int(n,1,999999,'术印')-(int(v.mark_gid,1,99999,'术印组')-1)*8))]);return [...common,q,option(h,'ai_skill',v=>int(v,0,999999,'技能设置'))];}
+  return [...common,option(h,'equip_info',packEquip),option(h,'not_calc_flag',v=>int(v,0,7,'计算设置')),option(h,'highest_limit',v=>attr(v,LIMITS.slice(0,8),'最高属性')),option(h,'ai_skill',v=>int(v,0,999999,'技能设置')),option(h,'use_score',v=>number(v,'评分参数'))];
+ });
+ const fields=[[1,3],[2,phconf]];
+ for(const [key,id,max]of [['desc',3,5000],['title',4,200]])if(input[key]!=null){if(typeof input[key]!=='string'||input[key].length>max)throw Error('阵容名称或说明过长');fields.push([id,input[key]]);}
+ if(input.select_stage_id!=null)fields.push([6,int(input.select_stage_id,1,2147483647,'副本 ID')]);
+ // Encode top-level numeric keys explicitly: JS object keys become strings.
+ const packed=Buffer.concat([Buffer.from([0x80|fields.length]),...fields.flatMap(([k,v])=>[Buffer.from(encode(k)),Buffer.from(encode(v))])]);
+ return '#TA#'+zlib.deflateSync(packed).toString('base64');
+}
+
+// Mirrors TAHelper.check_team_info_valid. Decoding alone only checks the wire format.
+function validateGameLineup(input,catalog){
+ const stages=new Set((catalog?.stageCatalog?.scenes||[]).map(s=>Number(s.gameSceneId)));
+ if(!Number.isSafeInteger(input?.select_stage_id)||!stages.has(input.select_stage_id))throw Error('请选择游戏原码副本后再导出；扩展副本仅用于软件内分类');
+ const heroes=new Set([...(catalog.roster||[]).map(r=>Number(r.id)),...(catalog.actors||[]).map(a=>a.gameId)]);
+ if(!Array.isArray(input.hconf)||!input.hconf.length)throw Error('请至少添加一位成员');
+ for(const h of input.hconf){
+  if(!heroes.has(h?.hero_id))throw Error('成员 ID 未收录，无法生成游戏可用的阵容码');
+  for(const row of h.equip_info?.suit||[])if(!Object.hasOwn(catalog.suits||{},row[0]))throw Error('御魂 ID 未收录，无法生成游戏可用的阵容码');
+ }
+ return input;
+}
+
+function verifyShareResponse(code,response){
+ if(typeof code!=='string'||!code.startsWith('#TA#'))throw Error('分享内容必须是有效的完整阵容码');
+ if(response?.err!==0||typeof response?.lineup_data!=='string')throw Error('官方未返回完整分享内容');
+ const shortCode='|TA|'+response.share_key;extractShareKey(shortCode);
+ if(response.code!=null&&response.code!==shortCode)throw Error('官方短码与响应不一致');
+ const expected=encodeLineupData(decodeLineupData(code)),actual=encodeLineupData(decodeLineupData(response.lineup_data));
+ if(expected!==actual)throw Error('官方分享返回与本次制作内容不一致，未关联短码');
+ return shortCode;
+}
+module.exports={validateGameLineup,verifyShareResponse,decodeInput,decodeLineupData,unpackHconf,extractShareKey,lookupRequest,isOnmyoji,encodeLineupData};

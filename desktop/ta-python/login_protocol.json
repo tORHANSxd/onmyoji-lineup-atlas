@@ -165,7 +165,8 @@
     "update_guild_info_cb",
     "yuyue_chat_add_black_list",
     "yuyue_chat_reg_ng_push",
-    "yuyue_chat_remove_black_list"
+    "yuyue_chat_remove_black_list",
+    "lineup_assisant_logic_save_and_share_lineup_data_cb"
   ],
   "static_rpc_md5": "26e06c503fcb242d890aa82cf2740a62",
   "role_query_client_key": "lr6aa45fpn6irihb",

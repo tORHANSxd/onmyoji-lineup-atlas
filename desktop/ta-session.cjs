@@ -3,13 +3,14 @@ const {spawn}=require('node:child_process');
 const fs=require('node:fs');
 const {validCredentials,accountId}=require('./ta-credentials.cjs');
 
-const idle=()=>({stage:'idle',message:'点击加载服务器后扫码登录',error:'',busy:false,authenticated:false,servers:[],roles_loaded:false,selected_server:'',selected_avatar:'',qr_image:''});
+const idle=()=>({stage:'idle',message:'点击加载服务器后扫码登录',error:'',busy:false,authenticated:false,query_ready:false,servers:[],roles_loaded:false,selected_server:'',selected_avatar:'',qr_image:''});
 function validateAction(action,params={}){
- if(!['init','qr','select','roles','query'].includes(action)||!params||typeof params!=='object'||Array.isArray(params))throw new Error('查询操作无效');
- const keys=Object.keys(params),allowed=action==='select'?['server_id','avatar_id']:action==='query'?['code']:[];
+ if(!['init','qr','select','roles','query','share'].includes(action)||!params||typeof params!=='object'||Array.isArray(params))throw new Error('查询操作无效');
+ const keys=Object.keys(params),allowed=action==='select'?['server_id','avatar_id']:['query','share'].includes(action)?['code']:[];
  if(keys.some(k=>!allowed.includes(k)))throw new Error('查询参数无效');
  if(action==='select'&&(!/^\d{1,10}$/.test(params.server_id)||typeof params.server_id!=='string'||typeof(params.avatar_id??'')!=='string'||(params.avatar_id?.length??0)>100))throw new Error('服务器或角色选择无效');
  if(action==='query'&&(typeof params.code!=='string'||!/^\|TA\|[^\s|\x00-\x1f\x7f\u200b-\u200d\u2060\ufeff]{1,4096}$/.test(params.code)))throw new Error('请输入一条完整的 |TA| 文字码');
+ if(action==='share'&&(typeof params.code!=='string'||params.code.length>131072||!/^#TA#[A-Za-z0-9+/]+={0,2}$/.test(params.code)))throw new Error('请输入有效的制作器游戏码');
  return params;
 }
 
@@ -67,7 +68,7 @@ class TASession{
   this.start();
   const id=++this.sequence;
   return new Promise((resolve,reject)=>{
-   const timer=setTimeout(()=>this.fail('登录模块未在时限内响应；已断开失效连接，请重新扫码'),action==='query'?165000:90000);timer.unref?.();
+   const timer=setTimeout(()=>this.fail('登录模块未在时限内响应；已断开失效连接，请重新扫码'),['query','share'].includes(action)?165000:90000);timer.unref?.();
    this.pending.set(id,{resolve,reject,timer});
    try{this.child.stdin.write(JSON.stringify({id,action,params})+'\n');}catch{this.fail('登录连接已中断，请重新扫码');}
   });

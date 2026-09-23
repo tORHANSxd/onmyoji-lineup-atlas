@@ -1,0 +1,40 @@
+{
+  "recordedAt": "2026-09-22T15:14:37.347Z",
+  "baselineVersion": "0.9.1",
+  "node": "v24.19.0",
+  "method": "相同 VM 加载器、相同合成输入，五次中位数；不含网络等待。缓存场景每次只替换一条阵容。",
+  "rows": [
+    {
+      "count": 373,
+      "baseline": {
+        "changedOneRowMs": 128.93,
+        "coldClassifyMs": 124.79
+      },
+      "current": {
+        "changedOneRowMs": 0.38,
+        "coldClassifyMs": 9.05
+      },
+      "snapshotMiB": 4.09,
+      "fullStringifyMs": 30.64,
+      "singleDeltaBytes": 12208
+    },
+    {
+      "count": 3000,
+      "baseline": {
+        "changedOneRowMs": 1005.49,
+        "coldClassifyMs": 991.79
+      },
+      "current": {
+        "changedOneRowMs": 1.47,
+        "coldClassifyMs": 78.88
+      },
+      "snapshotMiB": 32.93,
+      "fullStringifyMs": 257.5,
+      "singleDeltaBytes": 12208
+    }
+  ],
+  "inventory5000": {
+    "baselineMs": 3693.51,
+    "currentMs": 75.05
+  }
+}

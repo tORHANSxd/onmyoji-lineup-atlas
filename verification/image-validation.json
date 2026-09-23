@@ -1,6 +1,6 @@
 {
-  "checked": 936,
+  "checked": 2952,
   "errors": [],
-  "nativeCardsVerified": 0,
+  "skillIcons": 1026,
   "method": "SHA-256, Pillow verify and full decode, dimensions, local path containment; not individual visual identity review"
 }

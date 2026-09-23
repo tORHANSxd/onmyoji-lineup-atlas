@@ -7,16 +7,16 @@ const path=require('node:path');
 const os=require('node:os');
 const vm=require('node:vm');
 const {pathToFileURL}=require('node:url');
-async function harness(fetcher=async()=>new Response('{}'),{signedIn=true,fsProxy,remembered=false}={}){
- const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'atlas-ipc-test-')),handlers={};let external=[],ready,ta;const copied=[];const loaded=new Promise(resolve=>ready=resolve);
+async function harness(fetcher=async()=>new Response('{}'),{signedIn=true,fsProxy,backgroundHook,remembered=false}={}){
+ const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'atlas-ipc-test-')),handlers={};let external=[],ready,ta,background;const copied=[];const loaded=new Promise(resolve=>ready=resolve);
  class Window{constructor(){this.webContents={setWindowOpenHandler(fn){this.open=fn;},on(){},send(){}};}isDestroyed(){return false;}loadURL(){ready();}}
  const protocols={};const electron={app:{getPath:()=>tmp,setPath(){},whenReady:()=>Promise.resolve(),on(){}},BrowserWindow:Window,ipcMain:{handle:(name,fn)=>handlers[name]=fn},dialog:{showSaveDialog:async()=>({canceled:false,filePath:path.join(tmp,'backup.json')})},shell:{openExternal:u=>external.push(u)},session:{defaultSession:{setPermissionRequestHandler(){}}},protocol:{registerSchemesAsPrivileged(){},handle:(name,handler)=>protocols[name]=handler},net:{fetch:u=>u},nativeImage:{},clipboard:{writeText:async code=>copied.push(code)}};
  const dirname=path.resolve('desktop');
- vm.runInNewContext(fs.readFileSync('desktop/main.cjs','utf8'),{require:n=>n==='electron'?electron:n==='node:fs/promises'&&fsProxy?fsProxy:n==='./ta-query-queue.cjs'?{TAQueryQueue:class extends require('../desktop/ta-query-queue.cjs').TAQueryQueue{constructor(options){super({...options,intervalMs:0,cooldownMs:0,retryDelays:[0,0]});}}}:n==='./ta-session.cjs'?{TASession:class extends require('../desktop/ta-session.cjs').TASession{constructor(options){super(options);ta=this;if(remembered){this.credentials.data.activeId='a'.repeat(64);this.startupResumes=0;this.resume=async()=>this.startupResumes++;}}}}:require(n.startsWith('.')?path.join(dirname,n):n),__dirname:dirname,process:{argv:[],env:{}},fetch:fetcher,AbortSignal,Buffer,console,setTimeout:()=>0,setInterval:()=>({unref(){}}),URL,Response},{filename:'desktop/main.cjs'});
+ vm.runInNewContext(fs.readFileSync('desktop/main.cjs','utf8'),{require:n=>n==='electron'?electron:n==='node:fs/promises'&&fsProxy?fsProxy:n==='./background.cjs'?{Background:class extends require('../desktop/background.cjs').Background{constructor(options){super(options);background=this;}async run(action,payload){const result=await super.run(action,payload);if(backgroundHook)await backgroundHook(action,payload,result);return result;}}}:n==='./ta-query-queue.cjs'?{TAQueryQueue:class extends require('../desktop/ta-query-queue.cjs').TAQueryQueue{constructor(options){super({...options,intervalMs:0,cooldownMs:0,retryDelays:[0,0]});}}}:n==='./ta-session.cjs'?{TASession:class extends require('../desktop/ta-session.cjs').TASession{constructor(options){super(options);ta=this;if(remembered){this.credentials.data.activeId='a'.repeat(64);this.startupResumes=0;this.resume=async()=>this.startupResumes++;}}}}:require(n.startsWith('.')?path.join(dirname,n):n),__dirname:dirname,process:{argv:[],env:{}},fetch:fetcher,AbortSignal,Buffer,console,setTimeout:()=>0,setInterval:()=>({unref(){}}),URL,Response},{filename:'desktop/main.cjs'});
  await loaded;
  const event={senderFrame:{url:pathToFileURL(path.resolve('app/index.html')).href}};
  const signIn=()=>{const accepted=handlers['ta-action'](event,'risk',{accepted:true});ta.state={...ta.state,authenticated:true};ta.emit();return accepted;};if(signedIn)await signIn();
- return {handlers,event,tmp,protocols,copied,ta,signIn,dialog:electron.dialog,clipboard:electron.clipboard,cleanup:()=>{assert.ok(tmp.startsWith(path.join(os.tmpdir(),'atlas-ipc-test-')));fs.rmSync(tmp,{recursive:true,force:true});}};
+ return {handlers,event,tmp,protocols,copied,ta,signIn,dialog:electron.dialog,clipboard:electron.clipboard,cleanup:()=>{background?.close();assert.ok(tmp.startsWith(path.join(os.tmpdir(),'atlas-ipc-test-')));fs.rmSync(tmp,{recursive:true,force:true});}};
 }
 test('Windows实际原子写入支持覆盖与并发保存顺序',async()=>{const h=await harness();try{assert.equal(await h.handlers['load-state'](h.event),null);await h.handlers['save-state'](h.event,{schemaVersion:1,notes:'初次中文保存'});await Promise.all([h.handlers['save-state'](h.event,{revision:2}),h.handlers['save-state'](h.event,{revision:3})]);const loaded=await h.handlers['load-state'](h.event);assert.equal(loaded.revision,3);assert.equal(fs.existsSync(path.join(h.tmp,'library-v1.json.tmp')),false);await h.handlers['export-json'](h.event,{name:'backup.json',data:loaded});assert.equal(JSON.parse(fs.readFileSync(path.join(h.tmp,'backup.json'))).revision,3);}finally{h.cleanup();}});
 test('IPC拒绝外部页面读取和写入本地状态',async()=>{const h=await harness();try{await assert.rejects(h.handlers['load-state']({senderFrame:{url:'https://example.com'}}),/不受信任/);await assert.rejects(h.handlers['save-state']({senderFrame:{url:'file:///other.html'}},{}),/不受信任/);}finally{h.cleanup();}});
@@ -42,19 +42,19 @@ test('切换已有角色后丢弃旧角色的在途结果',async()=>{
   while(!finish)await new Promise(r=>setTimeout(r,2));h.ta.state={...h.ta.state,selected_avatar:'new-role'};h.ta.emit();finish({code,share_key:code.slice(4),err:31279});await rejected;
  }finally{h.cleanup();}
 });
-test('离线可读写本地库、复制及读取图片；解析仍必须登录',async()=>{
+test('完整码离线解析，短码查询与联网解析保存仍须登录',async()=>{
  const h=await harness(undefined,{signedIn:false});try{
   let queries=0;h.ta.request=async()=>queries++;
   await h.handlers['save-state'](h.event,{accounts:[{id:'offline'}]});assert.equal((await h.handlers['load-state'](h.event)).accounts[0].id,'offline');
   assert.ok((await h.handlers['load-data'](h.event)).lineups.length);assert.equal((await h.handlers['copy-code'](h.event,'|TA|offline')).copied,true);
-  for(const [name,args]of Object.entries({decode:['#TA#x'],'ta-query':['|TA|'+'a'.repeat(32)],'save-parsed-state':[{}]}))await assert.rejects(h.handlers[name](h.event,...args),/请先扫码登录/);
+  for(const [name,args]of Object.entries({'ta-query':['|TA|'+'a'.repeat(32)],'save-parsed-state':[{}]}))await assert.rejects(h.handlers[name](h.event,...args),/请先扫码登录/);
   assert.equal(queries,0);assert.equal(typeof h.protocols['atlas-asset']({url:'atlas-asset://cache/'+'a'.repeat(64)+'.png'}),'string');
  }finally{h.cleanup();}
 });
 test('本地快照不提供登录权限，注销后库仍可访问',async()=>{
  const h=await harness(undefined,{signedIn:false});try{
   await h.handlers['save-state'](h.event,{authenticated:true,accounts:[{id:'synthetic'}]});assert.equal((await h.handlers['ta-status'](h.event)).authenticated,false);
-  h.signIn();await h.handlers['ta-logout'](h.event);assert.equal((await h.handlers['load-state'](h.event)).accounts.length,1);await assert.rejects(h.handlers.decode(h.event,'#TA#x'),/请先扫码登录/);
+  h.signIn();await h.handlers['ta-logout'](h.event);assert.equal((await h.handlers['load-state'](h.event)).accounts.length,1);assert.equal((await h.handlers.decode(h.event,'#TA#x')).ok,false);await assert.rejects(h.handlers['ta-query'](h.event,'|TA|x'),/请先扫码登录/);
  }finally{h.cleanup();}
 });
 test('注销阻止旧解析结果落盘，但不撤销用户的离线导出',async()=>{
@@ -66,7 +66,7 @@ test('注销阻止旧解析结果落盘，但不撤销用户的离线导出',asy
 });
 test('临时文件写入中注销会丢弃旧快照，新会话读取等待写入队列',async()=>{
  const real=require('node:fs/promises');let release,entered,slow=false;const pending=new Promise(resolve=>entered=resolve);
- const h=await harness(undefined,{fsProxy:{...real,writeFile:async(...args)=>{await real.writeFile(...args);if(slow&&String(args[0]).endsWith('library-v1.json.tmp')){entered();await new Promise(resolve=>release=resolve);}}}});
+ const h=await harness(undefined,{backgroundHook:async action=>{if(slow&&action==='prepare-state'){entered();await new Promise(resolve=>release=resolve);}}});
  try{
   await h.handlers['save-state'](h.event,{revision:'confirmed'});slow=true;
   const saving=h.handlers['save-parsed-state'](h.event,{revision:'obsolete'});await pending;
@@ -120,4 +120,24 @@ test('未确认风险也能忘记本机账号，已有认证状态不能绕过�
   h.ta.state.authenticated=true;
   await assert.rejects(h.handlers['ta-query'](h.event,'|TA|'+'a'.repeat(32)),/免责声明/);
  }finally{h.cleanup();}
+});
+
+test('官方短码成功后缓存故障仍返回可复制结果且不会重发分享',async()=>{
+ const h=await harness();try{
+  const codec=require('../desktop/ta-codec.cjs'),G=require('../app/game-config.js'),D=require('../data/bundle.json'),stage=D.stageCatalog.scenes[0].gameSceneId,code=codec.encodeLineupData({title:'缓存故障测试',select_stage_id:stage,hconf:G.slots(D.gameConfig,stage).map(kind=>G.defaultMember(D.gameConfig,kind==='onmyoji'?10:201))});let calls=0;
+  h.ta.request=async(action,params)=>{calls++;assert.equal(action,'share');assert.equal(params.code,code);return {err:0,share_key:'verified-key',lineup_data:code.slice(4)};};
+  fs.writeFileSync(path.join(h.tmp,'ta-responses'),'block-cache-directory');
+  const result=await h.handlers['ta-share'](h.event,code);
+  assert.equal(result.code,'|TA|verified-key');assert.equal(result.cacheSaved,false);assert.match(result.warning,/保存失败/);assert.equal(calls,1);
+ }finally{h.cleanup();}
+});
+
+test('a committed parse save is acknowledged even when logout races its rename',async()=>{
+ const real=require('node:fs/promises');let entered,release,hold=false;const ready=new Promise(r=>entered=r);
+ const h=await harness(undefined,{fsProxy:{...real,rename:async(...args)=>{await real.rename(...args);if(hold&&String(args[1]).endsWith('library-v1.json')){entered();await new Promise(r=>release=r);}}}});
+ try{await h.handlers['save-state'](h.event,{lineups:[]});hold=true;const save=h.handlers['save-parsed-delta'](h.event,{upserts:[{id:'committed'}],removeIds:[]});await ready;await h.handlers['ta-logout'](h.event);release();assert.equal((await save).saved,true);assert.equal((await h.handlers['load-state'](h.event)).lineups[0].id,'committed');}finally{release?.();h.cleanup();}
+});
+
+test('text snapshot IPC preserves JSON and requires the same login boundary',async()=>{
+ const h=await harness();try{const snapshot={schemaVersion:1,lineups:[{id:'a',title:'中文快照'}],accounts:[]};await h.handlers['save-state-json'](h.event,JSON.stringify(snapshot));assert.deepEqual(JSON.parse(await h.handlers['load-state-json'](h.event)),snapshot);assert.ok(JSON.parse(await h.handlers['load-data-json'](h.event)).lineups.length);await assert.rejects(h.handlers['save-state-json'](h.event,'{broken'));assert.deepEqual(JSON.parse(await h.handlers['load-state-json'](h.event)),snapshot);await h.handlers['ta-logout'](h.event);await assert.rejects(h.handlers['save-parsed-state-json'](h.event,JSON.stringify(snapshot)),/扫码/);await h.handlers['export-json-text'](h.event,{name:'backup.json',text:JSON.stringify(snapshot)});assert.deepEqual(JSON.parse(fs.readFileSync(path.join(h.tmp,'backup.json'))),snapshot);}finally{h.cleanup();}
 });

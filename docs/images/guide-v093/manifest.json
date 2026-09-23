@@ -1,0 +1,769 @@
+{
+  "version": "0.9.3",
+  "synthetic": true,
+  "realRenderer": true,
+  "noPrivateProfileRead": true,
+  "noGameConnection": true,
+  "shots": [
+    {
+      "name": "01-home",
+      "file": "docs/images/guide-v093/01-home.png",
+      "width": 1409,
+      "height": 820,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "nav",
+          "x": 17,
+          "y": 216.34375,
+          "width": 187,
+          "height": 324
+        },
+        {
+          "number": 2,
+          "selector": "#active-account",
+          "x": 958.84375,
+          "y": 52.140625,
+          "width": 190,
+          "height": 40
+        },
+        {
+          "number": 3,
+          "selector": "#category-browser",
+          "x": 254,
+          "y": 365.125,
+          "width": 1123,
+          "height": 124.390625
+        }
+      ]
+    },
+    {
+      "name": "02-filter",
+      "file": "docs/images/guide-v093/02-filter.png",
+      "width": 1123,
+      "height": 343,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#search",
+          "x": 57.84375,
+          "y": 16.984375,
+          "width": 707.15625,
+          "height": 42.75
+        },
+        {
+          "number": 2,
+          "selector": "#dungeon",
+          "x": 497.703125,
+          "y": 148.265625,
+          "width": 606.296875,
+          "height": 43.4375
+        },
+        {
+          "number": 3,
+          "selector": "#lineup-sort",
+          "x": 750.328125,
+          "y": 229.5,
+          "width": 353.65625,
+          "height": 40
+        }
+      ]
+    },
+    {
+      "name": "03-detail",
+      "file": "docs/images/guide-v093/03-detail.png",
+      "width": 1240,
+      "height": 800,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": ".readable-member",
+          "x": 25.5,
+          "y": 374.90625,
+          "width": 1175,
+          "height": 973.1875
+        }
+      ]
+    },
+    {
+      "name": "04-inventory",
+      "file": "docs/images/guide-v093/04-inventory.png",
+      "width": 1123,
+      "height": 780,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#import-accounts",
+          "x": 835.4375,
+          "y": 53.625,
+          "width": 144.5625,
+          "height": 45.09375
+        },
+        {
+          "number": 2,
+          "selector": "#merge-import",
+          "x": 992,
+          "y": 67.15625,
+          "width": 16,
+          "height": 18
+        },
+        {
+          "number": 3,
+          "selector": "#account-search",
+          "x": 613,
+          "y": 494.5,
+          "width": 190,
+          "height": 43.4375
+        }
+      ]
+    },
+    {
+      "name": "05-inventory-skills",
+      "file": "docs/images/guide-v093/05-inventory-skills.png",
+      "width": 1073,
+      "height": 497,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": ".owned-hero",
+          "x": 0,
+          "y": 0.546875,
+          "width": 259.25,
+          "height": 242.46875
+        }
+      ]
+    },
+    {
+      "name": "06-targets",
+      "file": "docs/images/guide-v093/06-targets.png",
+      "width": 1123,
+      "height": 710,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#select-filtered",
+          "x": 15,
+          "y": 411.765625,
+          "width": 16,
+          "height": 16
+        },
+        {
+          "number": 2,
+          "selector": "#target-add",
+          "x": 885,
+          "y": 402.765625,
+          "width": 66,
+          "height": 34
+        },
+        {
+          "number": 3,
+          "selector": "#match-selected",
+          "x": 1031,
+          "y": 402.765625,
+          "width": 77,
+          "height": 34
+        }
+      ]
+    },
+    {
+      "name": "07-result",
+      "file": "docs/images/guide-v093/07-result.png",
+      "width": 1123,
+      "height": 760,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#match-progress",
+          "x": 0,
+          "y": 327.765625,
+          "width": 1123,
+          "height": 48.75
+        },
+        {
+          "number": 2,
+          "selector": ".lineup-card",
+          "x": 0,
+          "y": 467.515625,
+          "width": 553.5,
+          "height": 356.1875
+        },
+        {
+          "number": 3,
+          "selector": "#gap-statistics",
+          "x": 927,
+          "y": 270.96875,
+          "width": 82,
+          "height": 41.796875
+        }
+      ]
+    },
+    {
+      "name": "08-gaps",
+      "file": "docs/images/guide-v093/08-gaps.png",
+      "width": 920,
+      "height": 596,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#gap-statistics-scope",
+          "x": 25.5,
+          "y": 66.203125,
+          "width": 165.125,
+          "height": 18.6875
+        },
+        {
+          "number": 2,
+          "selector": "#gap-statistics-body",
+          "x": 25.5,
+          "y": 292.859375,
+          "width": 870,
+          "height": 270.515625
+        }
+      ]
+    },
+    {
+      "name": "09-souls",
+      "file": "docs/images/guide-v093/09-souls.png",
+      "width": 340,
+      "height": 315,
+      "anchors": []
+    },
+    {
+      "name": "10-decode",
+      "file": "docs/images/guide-v093/10-decode.png",
+      "width": 1138,
+      "height": 726,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#code-input",
+          "x": 25,
+          "y": 101.625,
+          "width": 507,
+          "height": 138.953125
+        },
+        {
+          "number": 2,
+          "selector": "#remote-decode",
+          "x": 123,
+          "y": 511.28125,
+          "width": 62,
+          "height": 45.09375
+        },
+        {
+          "number": 3,
+          "selector": "#import-qr",
+          "x": 25,
+          "y": 570.375,
+          "width": 104,
+          "height": 45.09375
+        }
+      ]
+    },
+    {
+      "name": "11-login-risk",
+      "file": "docs/images/guide-v093/11-login-risk.png",
+      "width": 1100,
+      "height": 379,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#ta-risk-accept",
+          "x": 46.5,
+          "y": 290.84375,
+          "width": 20,
+          "height": 20
+        },
+        {
+          "number": 2,
+          "selector": "#ta-risk-back",
+          "x": 983.5,
+          "y": 23,
+          "width": 90,
+          "height": 45.09375
+        }
+      ]
+    },
+    {
+      "name": "12-login-panel",
+      "file": "docs/images/guide-v093/12-login-panel.png",
+      "width": 420,
+      "height": 636,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#ta-qr",
+          "x": 27.5,
+          "y": 504.953125,
+          "width": 179,
+          "height": 41.796875
+        },
+        {
+          "number": 2,
+          "selector": "#ta-query-tip",
+          "x": 27.5,
+          "y": 250.171875,
+          "width": 366,
+          "height": 46.78125
+        }
+      ]
+    },
+    {
+      "name": "13-roles",
+      "file": "docs/images/guide-v093/13-roles.png",
+      "width": 366,
+      "height": 466,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#ta-server",
+          "x": 0.5,
+          "y": 254.96875,
+          "width": 366,
+          "height": 40
+        },
+        {
+          "number": 2,
+          "selector": "#ta-role",
+          "x": 0.5,
+          "y": 370.5625,
+          "width": 366,
+          "height": 40
+        },
+        {
+          "number": 3,
+          "selector": "#ta-refresh-roles",
+          "x": 188.5,
+          "y": 424.5625,
+          "width": 178,
+          "height": 41.796875
+        }
+      ]
+    },
+    {
+      "name": "14-remembered",
+      "file": "docs/images/guide-v093/14-remembered.png",
+      "width": 420,
+      "height": 430,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#ta-saved-account",
+          "x": 27.5,
+          "y": 106.984375,
+          "width": 366,
+          "height": 40
+        },
+        {
+          "number": 2,
+          "selector": "#ta-resume",
+          "x": 27.5,
+          "y": 160.984375,
+          "width": 179,
+          "height": 41.796875
+        },
+        {
+          "number": 3,
+          "selector": "#ta-forget",
+          "x": 216.5,
+          "y": 160.984375,
+          "width": 177,
+          "height": 41.796875
+        }
+      ]
+    },
+    {
+      "name": "15-builder",
+      "file": "docs/images/guide-v093/15-builder.png",
+      "width": 1123,
+      "height": 820,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#builder-members",
+          "x": 19,
+          "y": 124.734375,
+          "width": 287.65625,
+          "height": 734
+        },
+        {
+          "number": 2,
+          "selector": "[data-builder-add]",
+          "x": 19,
+          "y": 65.640625,
+          "width": 90,
+          "height": 45.09375
+        },
+        {
+          "number": 3,
+          "selector": "#builder-speed-chain",
+          "x": 117,
+          "y": 65.640625,
+          "width": 104,
+          "height": 45.09375
+        }
+      ]
+    },
+    {
+      "name": "16-actor-skills",
+      "file": "docs/images/guide-v093/16-actor-skills.png",
+      "width": 728,
+      "height": 566,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "[data-builder-equipped=\"0\"]",
+          "x": 13.65625,
+          "y": 156.59375,
+          "width": 330.671875,
+          "height": 40
+        },
+        {
+          "number": 2,
+          "selector": "[data-builder-equipped=\"1\"]",
+          "x": 384.328125,
+          "y": 156.59375,
+          "width": 330.671875,
+          "height": 40
+        },
+        {
+          "number": 3,
+          "selector": "[data-builder-field=\"ai_skill\"]",
+          "x": 0.65625,
+          "y": 526.109375,
+          "width": 440,
+          "height": 40
+        }
+      ]
+    },
+    {
+      "name": "17-spirit",
+      "file": "docs/images/guide-v093/17-spirit.png",
+      "width": 728,
+      "height": 868,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "[data-builder-spirit]",
+          "x": 52.65625,
+          "y": 102.546875,
+          "width": 85,
+          "height": 40
+        },
+        {
+          "number": 2,
+          "selector": "[data-builder-spirit-level]",
+          "x": 213.140625,
+          "y": 200.984375,
+          "width": 102.484375,
+          "height": 43.4375
+        },
+        {
+          "number": 3,
+          "selector": "[data-builder-mark=\"0\"]",
+          "x": 13.65625,
+          "y": 595.25,
+          "width": 330.671875,
+          "height": 40
+        }
+      ]
+    },
+    {
+      "name": "18-shikigami",
+      "file": "docs/images/guide-v093/18-shikigami.png",
+      "width": 778,
+      "height": 760,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "[data-builder-field=\"level\"]",
+          "x": 25.65625,
+          "y": 163.921875,
+          "width": 234.4375,
+          "height": 43.4375
+        },
+        {
+          "number": 2,
+          "selector": "[data-builder-skill=\"5542\"]",
+          "x": 285.765625,
+          "y": 509.78125,
+          "width": 207.109375,
+          "height": 40
+        },
+        {
+          "number": 3,
+          "selector": "[data-builder-field=\"ai_skill\"]",
+          "x": 25.65625,
+          "y": 604.21875,
+          "width": 440,
+          "height": 40
+        }
+      ]
+    },
+    {
+      "name": "19-skill-detail",
+      "file": "docs/images/guide-v093/19-skill-detail.png",
+      "width": 850,
+      "height": 850,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": ".skill-title",
+          "x": 25.5,
+          "y": 21.25,
+          "width": 204.125,
+          "height": 120.578125
+        },
+        {
+          "number": 2,
+          "selector": "#skill-dialog .related-skills",
+          "x": 25.5,
+          "y": 479.046875,
+          "width": 785,
+          "height": 124.1875
+        },
+        {
+          "number": 3,
+          "selector": "#skill-dialog .skill-terms",
+          "x": 25.5,
+          "y": 669.28125,
+          "width": 785,
+          "height": 532.796875
+        }
+      ]
+    },
+    {
+      "name": "20-equipment",
+      "file": "docs/images/guide-v093/20-equipment.png",
+      "width": 728,
+      "height": 800,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "[data-builder-suit=\"4\"]",
+          "x": 0.65625,
+          "y": 79.75,
+          "width": 357.671875,
+          "height": 40
+        },
+        {
+          "number": 2,
+          "selector": "[data-builder-field=\"criteria\"]",
+          "x": 370.328125,
+          "y": 182.40625,
+          "width": 357.671875,
+          "height": 45.21875
+        },
+        {
+          "number": 3,
+          "selector": ".builder-main-stats",
+          "x": 0.65625,
+          "y": 395.109375,
+          "width": 727.34375,
+          "height": 163.78125
+        }
+      ]
+    },
+    {
+      "name": "21-ranges",
+      "file": "docs/images/guide-v093/21-ranges.png",
+      "width": 728,
+      "height": 469,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "[data-builder-min=\"spd\"]",
+          "x": 152.125,
+          "y": 50.859375,
+          "width": 220.75,
+          "height": 40
+        },
+        {
+          "number": 2,
+          "selector": "[data-builder-max=\"spd\"]",
+          "x": 384.875,
+          "y": 50.859375,
+          "width": 220.75,
+          "height": 40
+        },
+        {
+          "number": 3,
+          "selector": "[data-builder-highest=\"spd\"]",
+          "x": 661.8125,
+          "y": 50.859375,
+          "width": 16,
+          "height": 16
+        }
+      ]
+    },
+    {
+      "name": "22-export",
+      "file": "docs/images/guide-v093/22-export.png",
+      "width": 1073,
+      "height": 344,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#builder-qr",
+          "x": 0,
+          "y": 64.046875,
+          "width": 280,
+          "height": 280
+        },
+        {
+          "number": 2,
+          "selector": "#builder-copy",
+          "x": 304,
+          "y": 276.4375,
+          "width": 118,
+          "height": 45.09375
+        },
+        {
+          "number": 3,
+          "selector": "#builder-share",
+          "x": 570,
+          "y": 276.4375,
+          "width": 118,
+          "height": 45.09375
+        }
+      ]
+    },
+    {
+      "name": "23-management",
+      "file": "docs/images/guide-v093/23-management.png",
+      "width": 1123,
+      "height": 790,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#manage-select-all",
+          "x": 44,
+          "y": 388.640625,
+          "width": 78,
+          "height": 18
+        },
+        {
+          "number": 2,
+          "selector": "#manage-sort",
+          "x": 51,
+          "y": 284.84375,
+          "width": 124,
+          "height": 40
+        },
+        {
+          "number": 3,
+          "selector": "#manage-reparse-selected",
+          "x": 746.765625,
+          "y": 380.8125,
+          "width": 132,
+          "height": 45.09375
+        }
+      ]
+    },
+    {
+      "name": "24-manual-stage",
+      "file": "docs/images/guide-v093/24-manual-stage.png",
+      "width": 800,
+      "height": 460,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#edit-path-selected",
+          "x": 0,
+          "y": 83.234375,
+          "width": 800,
+          "height": 41.796875
+        },
+        {
+          "number": 2,
+          "selector": "#edit-path-search",
+          "x": 0,
+          "y": 165.46875,
+          "width": 800,
+          "height": 43.4375
+        },
+        {
+          "number": 3,
+          "selector": "#edit-path-options",
+          "x": 0,
+          "y": 224.90625,
+          "width": 800,
+          "height": 220
+        }
+      ]
+    },
+    {
+      "name": "25-restore",
+      "file": "docs/images/guide-v093/25-restore.png",
+      "width": 1240,
+      "height": 571,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": ".restore-preview",
+          "x": 25.5,
+          "y": 202.09375,
+          "width": 1190,
+          "height": 133.3125
+        },
+        {
+          "number": 2,
+          "selector": "#confirm-restore-backup",
+          "x": 25.5,
+          "y": 500.46875,
+          "width": 132,
+          "height": 45.09375
+        },
+        {
+          "number": 3,
+          "selector": "#cancel-restore-backup",
+          "x": 165.5,
+          "y": 500.46875,
+          "width": 62,
+          "height": 45.09375
+        }
+      ]
+    },
+    {
+      "name": "26-reset",
+      "file": "docs/images/guide-v093/26-reset.png",
+      "width": 1240,
+      "height": 398,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#confirm-library-reset",
+          "x": 137.5,
+          "y": 326.6875,
+          "width": 112.859375,
+          "height": 46.390625
+        }
+      ]
+    },
+    {
+      "name": "27-updates",
+      "file": "docs/images/guide-v093/27-updates.png",
+      "width": 1123,
+      "height": 750,
+      "anchors": [
+        {
+          "number": 1,
+          "selector": "#official-refresh",
+          "x": 1008,
+          "y": 28.75,
+          "width": 90,
+          "height": 45.09375
+        },
+        {
+          "number": 2,
+          "selector": "#official-date",
+          "x": 25,
+          "y": 139.421875,
+          "width": 1073,
+          "height": 23.390625
+        }
+      ]
+    }
+  ],
+  "errors": []
+}
