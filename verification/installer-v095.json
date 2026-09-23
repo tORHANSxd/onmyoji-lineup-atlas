@@ -1,0 +1,39 @@
+{
+  "version": "0.9.5",
+  "method": "Final NSIS outer archive and embedded app-64.7z extraction, all-file hash comparison and packaged startup smoke",
+  "install": "not-run-existing-installation",
+  "reinstall": "not-run-existing-installation",
+  "uninstall": "not-run-existing-installation",
+  "personalAccountFilesRead": false,
+  "completed": true,
+  "payloadFiles": 208,
+  "allPayloadFilesMatch": true,
+  "executableProduct": "御契",
+  "packagedStartupSmoke": "passed",
+  "startupFlow": {
+    "title": "御契 · 阴阳师阵容助手",
+    "mode": "offline-startup-explicit-login",
+    "offline": true,
+    "dataLoaded": true,
+    "noAutomaticQR": true,
+    "accounts": 1,
+    "lineups": 374,
+    "blockedOperations": [
+      "query",
+      "parsedSave"
+    ],
+    "localReads": true,
+    "separateLogin": true,
+    "riskNoticeVisible": true,
+    "riskBlocksQR": true,
+    "loginModule": {
+      "servers": 158,
+      "authenticated": false,
+      "qrReady": true
+    },
+    "returnOffline": true,
+    "loginModuleLoggedOut": true
+  },
+  "syntheticDataUnchanged": true,
+  "existingInstallationPreserved": true
+}

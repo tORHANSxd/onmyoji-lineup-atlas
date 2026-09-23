@@ -63,7 +63,19 @@ async function main(){
   await ui('STATE.lineups=[{...DATA.lineups[0],lastParseError:"服务器未返回该阵容（代码 31279）"}];selectView("library");renderParseFailures();document.querySelector("#parse-failures details").open=true;');await until('!!document.querySelector("#parse-failures tbody details")');await ui('window.qaFailure=document.querySelector("#parse-failures tbody details");qaFailure.open=true;window.qaButton=document.querySelector("#parse-failures [data-edit-lineup]");qaButton.focus();renderParseProgress()');
   assert.equal(await ui('qaFailure.isConnected&&qaFailure.open&&document.activeElement===qaButton'),true);
  });
- await check('恢复备份先预览，保存失败不覆盖，成功后可撤销',async()=>{
+  await check('旧弹窗的延迟关闭事件不清空已重新打开的备份预览',async()=>{
+   const before=await ui('JSON.stringify(STATE)'),backup={...blank(),format:'onmyoji-atlas-backup'};
+   try{
+    await ui('importMode="backup";handleFiles('+file(backup)+')');
+    await ui('new Promise(resolve=>{const dialog=document.getElementById("detail-dialog");dialog.addEventListener("close",()=>resolve(),{once:true});dialog.close();previewBackupRestore();})');
+    assert.equal(await ui('document.getElementById("detail-dialog").open'),true);
+    assert.equal(await ui('!!pendingBackup'),true,'旧 close 事件不能取消新预览');
+    assert.equal(await ui('JSON.stringify(STATE)'),before);
+   }finally{
+    await ui('new Promise(resolve=>{const dialog=document.getElementById("detail-dialog");if(!dialog.open)return resolve();dialog.addEventListener("close",()=>resolve(),{once:true});dialog.close();})');
+   }
+  });
+  await check('恢复备份先预览，保存失败不覆盖，成功后可撤销',async()=>{
   const before=await ui('JSON.stringify(STATE)');const backup={...blank(),format:'onmyoji-atlas-backup',exportedAt:'2026-09-22T00:00:00Z'};
   await ui('importMode="backup";handleFiles('+file(backup)+')');
   assert.equal(await ui('JSON.stringify(STATE)')===before,true,'状态应保持一致');
@@ -169,7 +181,7 @@ async function main(){
   await ui('importMode="accounts";handleFiles('+files+')');assert.equal(JSON.stringify(stored),before);
   assert.match(await ui('document.getElementById("toast").textContent'),/导入失败/);
  });
- await check('旧缓存重启重新解析原始库存，备份再恢复不丢新版数据',async()=>{
+  await check('旧缓存重启重新解析原始库存，备份再恢复不丢新版数据',async()=>{
   delete stored.accounts[0].snapshot;delete stored.accounts[0].coverage;stored.accounts[0].warnings=[];
   await win.loadFile(path.join(root,'app/index.html'));await until('!!DATA && document.getElementById("loading").hidden');
   assert.equal(await ui('STATE.accounts[0].snapshot.stackedHeroes'),17);assert.equal(await ui('STATE.accounts[0].warnings.length'),1);
@@ -177,8 +189,32 @@ async function main(){
   await ui('importMode="backup";handleFiles('+file(backup)+')');await ui('applyBackupRestore()');
   assert.equal(stored.accounts[0].raw.storyTasks.length,2);assert.equal(stored.accounts[0].snapshot.sections.realmCards,1);
   await ui('selectView("accounts");document.getElementById("account-snapshot-extra").open=true');win.setContentSize(720,960);
-  assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);await ui('document.getElementById("toast").classList.remove("show");document.getElementById("account-snapshot-extra").scrollIntoView({block:"start",behavior:"instant"})');await capture('snapshot-v094-narrow');win.setContentSize(1440,960);
- });
+   assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);await ui('document.getElementById("toast").classList.remove("show");document.getElementById("account-snapshot-extra").scrollIntoView({block:"start",behavior:"instant"})');await capture('snapshot-v094-narrow');win.setContentSize(1440,960);
+  });
+  const desktopRaw={...raw,format:'yys-desktop-cache-v1',heroCount:1,inventoryCount:1,retainedCount:1,excludedCount:0,souls:[{id:'desktop-first',slot:1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:25,subAttributes:[{type:'crit_rate',value:.03}],equippedState:null}],equipPresets:[['合成桌面预设',['desktop-first']]]};
+  delete desktopRaw.hero_equips;
+  await check('桌面缓存快照经后台导入后显示实际式神、御魂和预设',async()=>{
+   await ui('importMode="accounts";document.getElementById("merge-import").checked=false;handleFiles('+file(desktopRaw)+')');
+   assert.equal(stored.accounts[0].raw.format,'yys-desktop-cache-v1');assert.equal(stored.accounts[0].souls['desktop-first'].stats.attack,25);
+   assert.equal(Object.hasOwn(stored.accounts[0].raw,'hero_equips'),false);
+   await ui('selectView("accounts");window.scrollTo(0,0)');
+   assert.deepEqual(await ui('[...document.querySelectorAll("#account-summary .overview strong")].map(e=>e.textContent)'),['1','1','1','1']);
+   assert.match(await ui('document.getElementById("account-summary").textContent'),/御魂：完整/);await capture('snapshot-desktop-cache');
+  });
+  await check('桌面与旧版库存交叉合并，导出备份、重启和恢复均保留旧御魂',async()=>{
+   await ui('document.getElementById("merge-import").checked=true;importMode="accounts";handleFiles('+file(raw)+')');
+   assert.equal(stored.accounts[0].raw.format,'mumu-snapshot-v1');assert.equal(stored.accounts[0].raw.hero_equips.length,1);
+   assert.equal(Object.hasOwn(stored.accounts[0].raw,'souls'),false);
+   const latest={...desktopRaw,souls:[{...desktopRaw.souls[0],id:'desktop-second',mainAttrValue:40}]};
+   await ui('importMode="accounts";handleFiles('+file(latest)+')');
+   assert.equal(stored.accounts[0].raw.souls.length,2);assert.equal(Object.hasOwn(stored.accounts[0].raw,'hero_equips'),false);
+   assert.equal(await ui('exportBackup()'),true);const backup=structuredClone(exported);
+   await win.loadFile(path.join(root,'app/index.html'));await until('!!DATA && document.getElementById("loading").hidden');
+   assert.equal(await ui('Object.keys(STATE.accounts[0].souls).length'),2);
+   await ui('importMode="backup";handleFiles('+file(backup)+')');await ui('applyBackupRestore()');
+   assert.equal(stored.accounts[0].souls['desktop-first'].stats.attack,25);assert.equal(stored.accounts[0].souls['desktop-second'].stats.attack,40);
+   assert.equal(stored.accounts[0].merged,true);assert.equal(stored.accounts[0].raw.souls.length,2);
+  });
  if(process.argv.includes('--visual')){
   await ui('STATE='+JSON.stringify(blank())+';backupUndo=null;document.getElementById("undo-restore").hidden=true;document.getElementById("toast").classList.remove("show");document.getElementById("code-input").value="";updateCode();updateAccountSelect();fillFilters();selectView("library")');
   for(const width of [1440,900,720]){
@@ -198,7 +234,7 @@ async function main(){
  }
  const report={version:require('../package.json').version,results,errors,synthetic:true,method:'生产 Electron 页面、预加载脚本与合成 IPC；失败注入、慢保存竞态、1440/900/720 像素及 200% 缩放。真实手机扫码与网易服务未在本轮实测。'};
  await fs.writeFile(path.join(profile,'report.json'),JSON.stringify(report,null,2));
- await fs.mkdir(path.join(root,'verification'),{recursive:true});await fs.writeFile(path.join(root,'verification','optimization-ui-v'+report.version.replaceAll('.','')+'.json'),JSON.stringify(report,null,2)+'\n');
+  await fs.mkdir(path.join(root,'verification'),{recursive:true});await fs.writeFile(process.env.YUQI_UI_REPORT||path.join(root,'verification','optimization-ui-v'+report.version.replaceAll('.','')+'.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({passed:results.filter(r=>r.passed).length,failed:results.filter(r=>!r.passed),profile,errors},null,2));
  app.exit(results.every(r=>r.passed)&&errors.length===0?0:1);
 }

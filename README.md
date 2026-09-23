@@ -2,11 +2,11 @@
 
 Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式神与御魂库存，核对配置差距，也能制作阵容并生成二维码或官方短码。
 
-**Windows x64 · v0.9.4 公开测试版 · 无需另装 Node.js 或 Python**
+**Windows x64 · v0.9.5 公开测试版 · 无需另装 Node.js 或 Python**
 
 提供安装版、免安装版和 **32 页 PDF 图文教程**。当前版本沿用 v0.9.3 教程，含 26 张界面截图、操作标注与可点击目录。升级前请先导出备份；免安装版需完整解压后运行。
 
-[下载安装包](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.4/Yuqi-Setup-0.9.4-Windows-x64.exe) · [下载免安装版](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.4/Yuqi-Portable-0.9.4-Windows-x64.zip) · [PDF 图文教程（v0.9.3）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.4/Yuqi-Guide-0.9.3.pdf) · [当前版本说明](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.9.4)
+[下载安装包](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.5/Yuqi-Setup-0.9.5-Windows-x64.exe) · [下载免安装版](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.5/Yuqi-Portable-0.9.5-Windows-x64.zip) · [PDF 图文教程（v0.9.3）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.5/Yuqi-Guide-0.9.3.pdf) · [当前版本说明](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/tag/v0.9.5)
 
 ## 主要功能
 
@@ -29,7 +29,7 @@ Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式
 1. **下载安装**：运行安装包并按向导操作；或将免安装 ZIP **完整解压**，运行其中的 `御契.exe`。不要只复制单个 EXE。GitHub 的 `Source code` 是源码，普通使用者不必下载。
 2. **先浏览阵容**：启动后直接进入阵容库，按分类逐级进入，或展开「更多筛选」搜索具体副本；没有结果时可点「清空筛选，查看全部」。
 3. **需要查询文字短码时登录**：进入「登录 / 切换角色」，先阅读醒目的免责声明，并勾选确认使用可弃用的小号、自行承担账号风险，再用阴阳师手游扫码。软件默认选中等级最低的可用角色，也可在「服务器与角色」中切换；无角色时请先在游戏中创建，再点「刷新角色列表」。手机允许保存后可免扫码续用；每次启动仍需先确认风险，再点「登录此账号」。
-4. **导入自己的库存**：进入「我的账号」，导入平安志 `mumu-snapshot-v1` JSON，在右上角选择要核对的账号。首次或更新完整库存时，通常不勾选「增量合并旧库存」。在「其他采集数据与范围」中可查看新版快照的资源、堆叠素材、碎片、结界卡和任务等记录数量，以及未采集的项目。增量合并会保留未重新采集的扩展记录并标明旧快照时间；完整替换以新文件为准。
+4. **导入自己的库存**：进入「我的账号」，导入平安志 JSON（支持 `mumu-snapshot-v1` 和 `yys-desktop-cache-v1`），在右上角选择要核对的账号。首次或更新完整库存时，通常不勾选「增量合并旧库存」。在「其他采集数据与范围」中可查看新版快照的资源、堆叠素材、碎片、结界卡和任务等记录数量，以及未采集的项目。增量合并会保留未重新采集的扩展记录并标明旧快照时间；完整替换以新文件为准。
 5. **精算与查看差距**：导入库存后不会自动精算全部阵容。勾选需要的阵容后精算，或点击「精算全部阵容」；可加入「目标阵容」方便下次查看。「缺口统计」会自动精算当前筛选结果，支持暂停、继续。进入详情核对配置，再按下方说明选择游戏导入方式。
 6. **定期备份**：通过「阵容库管理」整理记录；升级、大批删除或换电脑前，点击左下角「导出备份」。恢复时先核对账号、阵容数量和重复项保留版本，再确认恢复；本机独有阵容会保留，库存账号采用备份内容。成功后页面顶部提供撤销入口，继续修改资料后不能直接撤销。
 
@@ -57,7 +57,7 @@ Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式
 
 ### 图文教程
 
-[下载 32 页 PDF 图文教程（v0.9.3）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.4/Yuqi-Guide-0.9.3.pdf)，可离线阅读，支持目录跳转与页面书签。
+[下载 32 页 PDF 图文教程（v0.9.3）](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.5/Yuqi-Guide-0.9.3.pdf)，可离线阅读，支持目录跳转与页面书签。
 
 | 想完成的操作 | 教程页码 |
 | --- | --- |
@@ -81,7 +81,7 @@ Windows 上的本地阵容管理工具：按副本找阵容，导入自己的式
 
 各版本更新内容仅记录在 [Release 页面](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases)。
 
-Release 附有 [SHA256SUMS.txt](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.4/SHA256SUMS.txt)，可核对安装包和免安装版；随附 PDF 的校验值一同提供。指南截图使用演示数据，不含真实账号或登录凭据。
+Release 附有 [SHA256SUMS.txt](https://github.com/tORHANSxd/onmyoji-lineup-atlas/releases/download/v0.9.5/SHA256SUMS.txt)，可核对安装包和免安装版；随附 PDF 的校验值一同提供。指南截图使用演示数据，不含真实账号或登录凭据。
 
 ## 开发
 
@@ -96,7 +96,7 @@ npm run dist
 
 开发需要 Node.js、Python 和 Windows 构建工具。以上命令在项目根目录运行，构建命令不自动发布 Release。
 
-当前版本的导入、计算、备份和界面验证见 [验收记录](verification/RESULTS-v0.9.4.md)。真实库存验证只提交不含身份与实例 ID 的统计结果；回归测试使用合成数据。
+当前版本的导入、计算、备份和界面验证见 [验收记录](verification/RESULTS-v0.9.5.md)。真实库存验证只提交不含身份与实例 ID 的统计结果；回归测试使用合成数据。
 
 正式登录模块已取得 158 个服务器与登录二维码，**未进行手机扫码**。首次角色自动初始化、全部官服／渠道服／iOS／安卓授权组合，以及当前游戏内的实际导入仍需实机补验；登录与角色选择的其他回归使用协议和合成状态。静态规则、合成状态和本机编解码通过，不等同于实机验证通过。
 

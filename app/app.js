@@ -610,7 +610,11 @@ function editorValues(){return JSON.stringify([...$('dialog-body').querySelector
 function closeDetail(){if(libraryBusy)return;if(manageEditing&&$('edit-code')&&editorValues()!==manageEditBaseline){$('dialog-feedback').hidden=false;$('dialog-feedback').innerHTML='<span>修改尚未保存，关闭会丢弃这些编辑。</span><button id="discard-edit" class="danger">放弃修改</button><button id="keep-edit" class="secondary">继续编辑</button>';$('keep-edit').focus();return;}$('detail-dialog').close();}
 $('close-dialog').onclick=closeDetail;$('detail-dialog').onclick=e=>{if(e.target===$('detail-dialog'))closeDetail();};
 $('detail-dialog').addEventListener('cancel',e=>{e.preventDefault();closeDetail();});
-$('detail-dialog').addEventListener('close',()=>{manageEditing=null;manageEditBaseline='';pendingBackup=null;});
+$('detail-dialog').addEventListener('close',()=>{
+ // close 事件可能在弹窗重新打开后才到达，此时应保留新预览或编辑状态。
+ if($('detail-dialog').open)return;
+ manageEditing=null;manageEditBaseline='';pendingBackup=null;
+});
 document.addEventListener('click',e=>{if(e.target.id==='discard-edit')$('detail-dialog').close();if(e.target.id==='keep-edit'){$('dialog-feedback').hidden=true;$('edit-title')?.focus();}if(e.target.id==='confirm-restore-backup')applyBackupRestore();if(e.target.id==='cancel-restore-backup')$('detail-dialog').close();if(e.target.id==='undo-restore')undoBackupRestore();if(e.target.id==='load-retry')appBoot=boot(sessionRevision);if(e.target.id==='export-recovery')$('export-backup').click();if(e.target.id==='reset-empty-filters')$('clear-filters').click();});
 for(const id of ['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'])$(id).addEventListener(['search','dungeon'].includes(id)?'input':'change',()=>{if(id==='category')$('subcategory').value='';if(['category','subcategory'].includes(id))$('dungeon').value='';page=1;if(['search','dungeon'].includes(id))deferInput('library',()=>{if(view==='library'){if(id==='dungeon')renderDungeonOptions();renderLibrary();}});else{fillFilters();renderLibrary();}});
 function addMemberFilter(){const r=DATA.roster.find(r=>r.name===$('member-filter').value.trim());if(!r)return;if(!selectedMembers.includes(r.id))selectedMembers.push(r.id);$('member-filter').value='';renderSelected();page=1;renderLibrary();}

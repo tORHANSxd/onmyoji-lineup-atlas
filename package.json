@@ -1,6 +1,6 @@
 {
   "name": "onmyoji-lineup-atlas",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "御契 · 阴阳师阵容助手：阵容库管理、游戏原图与御魂全局精算",
   "private": true,
   "main": "desktop/main.cjs",

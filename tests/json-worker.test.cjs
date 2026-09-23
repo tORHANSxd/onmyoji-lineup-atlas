@@ -23,3 +23,20 @@ test('旧账号重启与备份恢复都从 raw 重建新字段，保留合并与
  assert.equal(run('restore-accounts',[a]).value[0].raw.storyTasks.length,2);
  assert.equal(run('load-state','null').value,null);assert.ok(run('load-state','broken').error);
 });
+test('桌面缓存格式通过后台导入、备份恢复和启动重建，损坏列表不被静默接受',()=>{
+ const input=raw();input.format='yys-desktop-cache-v1';delete input.hero_equips;delete input.scope;
+ input.heroes={example:{heroId:1,level:40,star:6,awake:1,skinfo:[[101,5]]}};
+ input.souls=[{id:'desktop-soul',slot:1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:12,subAttributes:[{type:'crit_rate',value:.03}],equippedState:null}];
+ const run=worker(),parsed=run('parse-account',{name:'桌面合成库存',text:'\uFEFF'+JSON.stringify(input)});
+ assert.equal(parsed.error,undefined);assert.equal(parsed.value.souls['desktop-soul'].stats.attack,12);assert.equal(parsed.value.heroes.example.skills[0].level,5);
+ const cached={...parsed.value,heroes:{},souls:{},server:'已补全区服'},state={schemaVersion:1,accounts:[cached],lineups:[]};
+ const results=[run('restore-accounts',[cached]),run('load-state',JSON.stringify(state)),run('restore-state',structuredClone(state))];
+ for(const [index,result] of results.entries()){
+  assert.equal(result.error,undefined);const account=index===0?result.value[0]:result.value.accounts[0];
+  assert.equal(account.souls['desktop-soul'].stats.attack,12);assert.equal(account.souls['desktop-soul'].stats.crit,.03);
+  assert.equal(account.heroes.example.skills[0].level,5);assert.deepEqual(account.raw,input);
+  if(index>0)assert.equal(account.server,'已补全区服');
+ }
+ input.souls[0].mainAttrValue='invalid';const invalid=run('parse-account',{text:JSON.stringify(input)});
+ assert.match(invalid.error,/御魂/);assert.equal(invalid.value,undefined);
+});

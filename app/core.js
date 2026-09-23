@@ -183,9 +183,11 @@ function inventoryComplete(account,kind){
  if(account.completeness!=='complete'||account.merged)return false;
  return (kind?[kind]:['heroes','souls']).every(key=>account.coverage?.[key]!==false);
 }
+function snapshotSoulKey(raw){return raw?.format==='mumu-snapshot-v1'?'hero_equips':raw?.format==='yys-desktop-cache-v1'?'souls':null;}
 function parseAccount(raw,fileName='账号'){
-  if(!object(raw)||raw.format!=='mumu-snapshot-v1'||!object(raw.heroes)||!Array.isArray(raw.hero_equips)||!object(raw.player))throw new Error('仅支持已核验的平安志 mumu-snapshot-v1 JSON；未导入任何数据');
-  if(Object.keys(raw.heroes).length>100000||raw.hero_equips.length>100000)throw new Error('账号数据规模超出100000条限制');
+  const soulKey=snapshotSoulKey(raw),soulRows=soulKey?raw[soulKey]:null;
+  if(!object(raw)||!soulKey||!object(raw.heroes)||!Array.isArray(soulRows)||!object(raw.player))throw new Error('仅支持已核验的平安志 JSON（mumu-snapshot-v1 或 yys-desktop-cache-v1）；未导入任何数据');
+  if(Object.keys(raw.heroes).length>100000||soulRows.length>100000)throw new Error('账号数据规模超出100000条限制');
   const heroes=Object.create(null); let warnings=[];
   for(const [key,h] of Object.entries(raw.heroes)){
     if(!/^[a-zA-Z0-9_-]{1,80}$/.test(key)||!object(h)||!id(h.heroId)||!finite(h.level)||!finite(h.star)||![0,1].includes(h.awake))throw new Error('式神实例数据格式不正确');
@@ -195,7 +197,7 @@ function parseAccount(raw,fileName='账号'){
     heroes[key]={instanceId:key,shikigamiId:id(h.heroId),level:h.level,star:h.star,awake:h.awake,locked:typeof h.lock==='boolean'?h.lock:null,skills,attrs:h.attrs,raw:h};
   }
   const souls=Object.create(null);
-  for(const q of raw.hero_equips){
+  for(const q of soulRows){
     if(!object(q)||typeof q.id!=='string'||!/^[a-zA-Z0-9_-]{1,80}$/.test(q.id)||!Number.isInteger(q.slot)||q.slot<1||q.slot>6||!finite(q.level)||!finite(q.quality)||!finite(q.mainAttrValue)||!Array.isArray(q.subAttributes)||typeof q.setId!=='string')throw new Error('御魂字段损坏，账号未保存');
     if(Object.hasOwn(souls,q.id)||['__proto__','constructor','prototype'].includes(q.id))throw new Error('御魂实例ID重复或无效');
     let stats={};const unknown=[];
@@ -208,7 +210,7 @@ function parseAccount(raw,fileName='账号'){
     coverage[key]=false;warnings.push(snapshot.scope[key]===false?`本次未采集${label}，不能据此判断缺少`:`${label}采集范围不明确，请重新导出`);
    }
   }
-  for(const [key,kind,count,label] of [['heroCount','heroes',Object.keys(heroes).length,'式神'],['retainedCount','souls',raw.hero_equips.length,'御魂保留'],['inventoryCount','souls',raw.hero_equips.length+(Number.isSafeInteger(raw.excludedCount)?raw.excludedCount:0),'御魂总']]){
+  for(const [key,kind,count,label] of [['heroCount','heroes',Object.keys(heroes).length,'式神'],['retainedCount','souls',soulRows.length,'御魂保留'],['inventoryCount','souls',soulRows.length+(Number.isSafeInteger(raw.excludedCount)?raw.excludedCount:0),'御魂总']]){
    if(raw[key]!==undefined&&raw[key]!==count){coverage[kind]=false;warnings.push(`声明的${label}数量与实际记录数不一致`);}
   }
   for(const [key,kind,label] of [['excludedHeroCount','heroes','式神'],['excludedCount','souls','御魂']]){
@@ -223,8 +225,10 @@ function parseAccount(raw,fileName='账号'){
   return {id:accountKey,name:p.name||fileName,server:p.serverName||String(p.serverId),capturedAt:raw.capturedAt,heroes,souls,presets:Array.isArray(raw.equipPresets)?raw.equipPresets:[],warnings:[...new Set(warnings)],completeness:raw.completeness,coverage,snapshot,onmyoji:[],onmyojiStatus:'export-missing',raw};
 }
 function mergeAccount(old,incoming){
- if(!old)return incoming;if(old.id!==incoming.id)throw new Error('不能合并不同账号');
- const heroes={...old.heroes,...incoming.heroes},souls={...old.souls,...incoming.souls},raw={...old.raw,...incoming.raw,heroes:Object.fromEntries(Object.entries(heroes).map(([k,h])=>[k,h.raw])),hero_equips:Object.values(souls).map(q=>q.raw),heroCount:Object.keys(heroes).length};
+  if(!old)return incoming;if(old.id!==incoming.id)throw new Error('不能合并不同账号');
+  const heroes={...old.heroes,...incoming.heroes},souls={...old.souls,...incoming.souls},soulKey=snapshotSoulKey(incoming.raw),raw={...old.raw,...incoming.raw,heroes:Object.fromEntries(Object.entries(heroes).map(([k,h])=>[k,h.raw])),[soulKey]:Object.values(souls).map(q=>q.raw),heroCount:Object.keys(heroes).length};
+  // Keep the incoming format's canonical list so reloads cannot pick stale rows.
+  delete raw[soulKey==='souls'?'hero_equips':'souls'];
  const scopes={currency:'items',heroesBagEntries:'heroes',heroesBagCount:'heroes',realmCards:'realmCards',guild:'guild',taskRecords:'taskRecords'},retainedSections={};
  for(const key of [...Object.keys(SNAPSHOT_SECTIONS),'heroesBagCount']){
   if(Object.hasOwn(old.raw,key)&&(!Object.hasOwn(incoming.raw,key)||incoming.raw.scope?.[scopes[key]]===false)){

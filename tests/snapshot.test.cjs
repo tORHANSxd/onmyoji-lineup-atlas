@@ -14,6 +14,7 @@ const snapshot=(extra={})=>({
  heroBookShards:[[1,8,0,1]],realmCards:[['synthetic-card',3,6,[1,2]]],storyTasks:[[101,[0,1]]],heroStoryProgress:{1:[1,0,0]},
  taskRecords:{},guild:{level:8,members:[{id:'synthetic-member'}]},warnings:['导出器提供的提醒'],diagnostics:[],...extra
 });
+const desktopSnapshot=(raw=snapshot())=>{const {hero_equips,scope,...rest}=raw;return {...rest,format:'yys-desktop-cache-v1',souls:hero_equips};};
 const roster=[{id:'1',name:'合成式神',gameRules:{baseHit:0,baseResist:0,awakeBonus:{}},assets:{baseAttrs40:{1:{attack:100,defense:100,maxHp:1000,speed:100,critRate:.1,critPower:.5,debuffEnhance:0,debuffResist:0}}}}];
 const lineup={code:'|TA|synthetic',decodeState:'decoded-local',requirementsComplete:true,members:[{index:1,kind:'shikigami',shikigamiId:'1',name:'合成式神',awakening:1,skills:[],config:{suitRequirements:[],suitSelectionComplete:true,mainStats:{},ranges:[],scope:'all',metricId:null}}]};
 const effects=[{name:'防御加成',stat:'defensePercent',value:.3,suitNames:['招财猫']}];
@@ -85,3 +86,60 @@ test('增量导入旧版或未采集集合时保留旧扩展数据；明确采�
  assert.deepEqual(empty.raw.currency,{});assert.deepEqual(empty.raw.storyTasks,[]);assert.deepEqual(empty.raw.realmCards,[]);
  assert.equal(empty.retainedSections.currency,undefined);
 });
+
+test('桌面缓存快照保留技能、五条副属性、空预设和全部原始扩展数据',()=>{
+ const raw=desktopSnapshot();raw.player={...raw.player,shortId:7,serverName:null,platform:null,playerMeta:null};
+ raw.souls[0].initialSubstatCount=null;
+ raw.souls[0].subAttributes=[{type:'crit_rate',value:.03},{type:'speed',value:4},{type:'attack_rate',value:.07},{type:'hp_flat',value:120},{type:'crit_damage',value:.08,fixedAttribute:true,enhancementCount:null}];
+ raw.equipPresets.push(['空预设',[]],['五件预设',raw.souls.slice(0,5).map(q=>q.id)]);
+ raw.storyTasks.push([101,[1,0]]);raw.heroStoryProgress={1:[['synthetic-story',[1,0]]]};
+ raw.guild={members:[Array.from({length:19},(_,i)=>i)]};raw.futureSection={untouched:[1,2,3]};
+ const before=JSON.stringify(raw),a=C.parseAccount(raw),restored=C.restoreAccount(JSON.parse(JSON.stringify(a)));
+ assert.equal(a.id,'1:7');assert.equal(a.server,'1');assert.equal(Object.keys(a.heroes).length,1);assert.equal(Object.keys(a.souls).length,6);
+ assert.equal(a.heroes.example.locked,true);assert.deepEqual(a.heroes.example.skills,[{id:101,level:1},{id:103,level:5},{id:102,level:3}]);
+ assert.deepEqual(a.souls['soul-0'].stats,{attack:10,crit:.03,speed:4,attackPercent:.07,hp:120,critDamage:.08});
+ assert.equal(a.souls['soul-0'].unknown.length,0);assert.equal(a.souls['soul-0'].equippedState,null);
+ assert.deepEqual(a.presets,raw.equipPresets);assert.equal(a.snapshot.sections.storyTasks,2);assert.equal(a.snapshot.stackedHeroes,11);
+ assert.deepEqual(a.coverage,{heroes:true,souls:true});assert.equal(C.inventoryComplete(a),true);assert.deepEqual(a.warnings,['导出器提供的提醒']);
+ assert.equal(restored.raw.format,'yys-desktop-cache-v1');assert.deepEqual(restored.raw,raw);assert.equal(Object.hasOwn(restored.raw,'hero_equips'),false);
+ assert.deepEqual(restored.souls,a.souls);assert.equal(JSON.stringify(raw),before);
+});
+
+test('按已知格式读取对应御魂列表，不猜测缺失字段或混用另一个列表',()=>{
+ const modern=desktopSnapshot(),legacy=snapshot();
+ modern.hero_equips=[{id:'ignored-legacy'}];legacy.souls=[{id:'ignored-desktop'}];
+ assert.equal(Object.keys(C.parseAccount(modern).souls).length,6);assert.equal(Object.keys(C.parseAccount(legacy).souls).length,6);
+ assert.throws(()=>C.parseAccount({...modern,souls:undefined}),/平安志/);
+ assert.throws(()=>C.parseAccount({...legacy,hero_equips:undefined}),/平安志/);
+ assert.throws(()=>C.parseAccount({...modern,format:'unverified-export'}),/平安志/);
+ const empty=desktopSnapshot();empty.souls=[];empty.hero_equips=snapshot().hero_equips;empty.inventoryCount=empty.retainedCount=0;
+ assert.equal(Object.keys(C.parseAccount(empty).souls).length,0);assert.equal(C.inventoryComplete(C.parseAccount(empty)),true);
+});
+
+test('桌面缓存快照继续拒绝损坏、重复及超限库存，并按实际采集范围判断完整性',()=>{
+ const duplicate=desktopSnapshot();duplicate.souls.push(duplicate.souls[0]);assert.throws(()=>C.parseAccount(duplicate),/重复/);
+ const malformed=desktopSnapshot();malformed.souls[0].mainAttrValue='invalid';assert.throws(()=>C.parseAccount(malformed),/御魂/);
+ const skills=desktopSnapshot();skills.heroes.example.skinfo=[[101,'invalid']];assert.throws(()=>C.parseAccount(skills),/技能/);
+ const oversized=desktopSnapshot();oversized.souls=Array(100001).fill(oversized.souls[0]);assert.throws(()=>C.parseAccount(oversized),/100000/);
+ for(const patch of [{retainedCount:7},{inventoryCount:7},{excludedCount:1},{scope:{heroes:true,souls:false}}]){
+  const a=C.parseAccount({...desktopSnapshot(),...patch});assert.equal(C.inventoryComplete(a,'souls'),false);assert.equal(C.inventoryComplete(a,'heroes'),true);
+ }
+});
+
+for(const oldFormat of ['mumu-snapshot-v1','yys-desktop-cache-v1'])for(const nextFormat of ['mumu-snapshot-v1','yys-desktop-cache-v1']){
+ test(`库存跨格式合并及恢复：${oldFormat} → ${nextFormat}`,()=>{
+  const older=oldFormat==='mumu-snapshot-v1'?snapshot():desktopSnapshot(),latest=nextFormat==='mumu-snapshot-v1'?snapshot():desktopSnapshot();
+  const oldKey=oldFormat==='mumu-snapshot-v1'?'hero_equips':'souls',nextKey=nextFormat==='mumu-snapshot-v1'?'hero_equips':'souls';
+  older.heroes.older={...older.heroes.example};older.heroCount=2;
+  older[oldKey].push({...older[oldKey][0],id:'older-only'});older.inventoryCount=older.retainedCount=7;
+  latest[nextKey][0].mainAttrValue=25;latest.heroes.example.level=39;latest.capturedAt='2026-09-24T00:00:00Z';
+  const before=JSON.stringify([older,latest]),merged=C.mergeAccount(C.parseAccount(older),C.parseAccount(latest));
+  const restored=C.restoreAccount(JSON.parse(JSON.stringify(merged)));
+  assert.equal(merged.raw.format,nextFormat);assert.equal(merged.raw[nextKey].length,7);
+  assert.equal(Object.hasOwn(merged.raw,nextKey==='souls'?'hero_equips':'souls'),false);
+  assert.equal(Object.keys(restored.souls).length,7);assert.equal(restored.souls['older-only'].stats.attack,10);assert.equal(restored.souls['soul-0'].stats.attack,25);
+  assert.equal(Object.keys(restored.heroes).length,2);assert.equal(restored.heroes.example.level,39);assert.equal(restored.heroes.older.level,40);
+  assert.deepEqual({...restored.souls},{...merged.souls});assert.equal(restored.merged,true);assert.equal(C.inventoryComplete(restored),false);
+  assert.equal(JSON.stringify([older,latest]),before);
+ });
+}

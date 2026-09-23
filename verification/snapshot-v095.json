@@ -1,0 +1,123 @@
+{
+  "version": "0.9.5",
+  "method": "Explicitly supplied local snapshots; every hero, skill, soul stat, base attribute and raw backup round-trip checked. No live game operations.",
+  "personalIdentifiersIncluded": false,
+  "samples": [
+    {
+      "sample": 1,
+      "format": "yys-desktop-cache-v1",
+      "bytes": 6036348,
+      "heroes": 3232,
+      "souls": 3893,
+      "presets": 350,
+      "baseAttrsChecked": 3230,
+      "sections": {
+        "currency": 21,
+        "heroesBagEntries": 46,
+        "heroBookShards": 140,
+        "realmCards": 516,
+        "storyTasks": 1003,
+        "heroStoryProgress": 284,
+        "taskRecords": 0,
+        "guild": 1,
+        "diagnostics": 13
+      },
+      "stackedHeroes": 5401,
+      "coverage": {
+        "heroes": true,
+        "souls": true
+      },
+      "sourceWarnings": 1,
+      "elapsedMs": 395,
+      "allValuesChecked": true,
+      "rawRoundTrip": true
+    },
+    {
+      "sample": 2,
+      "format": "mumu-snapshot-v1",
+      "bytes": 3902111,
+      "heroes": 2574,
+      "souls": 1883,
+      "presets": 176,
+      "baseAttrsChecked": 2573,
+      "sections": {
+        "currency": 21,
+        "heroesBagEntries": 30,
+        "heroBookShards": 140,
+        "realmCards": 91,
+        "storyTasks": 1003,
+        "heroStoryProgress": 284,
+        "taskRecords": 0,
+        "guild": 1,
+        "diagnostics": 0
+      },
+      "stackedHeroes": 3978,
+      "coverage": {
+        "heroes": true,
+        "souls": true
+      },
+      "sourceWarnings": 1,
+      "elapsedMs": 213,
+      "allValuesChecked": true,
+      "rawRoundTrip": true
+    },
+    {
+      "sample": 3,
+      "format": "mumu-snapshot-v1",
+      "bytes": 4936053,
+      "heroes": 4163,
+      "souls": 1590,
+      "presets": 140,
+      "baseAttrsChecked": 4162,
+      "sections": {
+        "currency": 21,
+        "heroesBagEntries": 0,
+        "heroBookShards": 140,
+        "realmCards": 59,
+        "storyTasks": 1003,
+        "heroStoryProgress": 284,
+        "taskRecords": 0,
+        "guild": 1,
+        "diagnostics": 0
+      },
+      "stackedHeroes": 0,
+      "coverage": {
+        "heroes": true,
+        "souls": true
+      },
+      "sourceWarnings": 1,
+      "elapsedMs": 295,
+      "allValuesChecked": true,
+      "rawRoundTrip": true
+    },
+    {
+      "sample": 4,
+      "format": "mumu-snapshot-v1",
+      "bytes": 1151114,
+      "heroes": 431,
+      "souls": 784,
+      "presets": 40,
+      "baseAttrsChecked": 430,
+      "sections": {
+        "currency": 21,
+        "heroesBagEntries": 0,
+        "heroBookShards": 140,
+        "realmCards": 13,
+        "storyTasks": 1003,
+        "heroStoryProgress": 284,
+        "taskRecords": 0,
+        "guild": 1,
+        "diagnostics": 0
+      },
+      "stackedHeroes": 0,
+      "coverage": {
+        "heroes": true,
+        "souls": true
+      },
+      "sourceWarnings": 1,
+      "elapsedMs": 57,
+      "allValuesChecked": true,
+      "rawRoundTrip": true
+    }
+  ]
+}
