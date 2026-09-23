@@ -103,10 +103,10 @@ function findBuilds(hero,config,account,roster,effects,options={}){
   if(unknown.length)return {status:'unknown',reasons:unknown,builds:[],suggestions:[]};
   const objective={heroId:hero.shikigamiId,baseAttack:base.attack};
   let cache=null;if(options.cache&&options.inventory==null){cache=options.cache.get(account.souls);if(!cache){cache=new Map();options.cache.set(account.souls,cache);}}
-  const cacheKey=cache&&JSON.stringify([base,objective,config,effects,account.completeness,account.merged,account.presets,options.limit,options.width,options.perSet,options.approximateInventory]);
+  const cacheKey=cache&&JSON.stringify([base,objective,config,effects,C.inventoryComplete(account,'souls'),account.presets,options.limit,options.width,options.perSet,options.approximateInventory]);
   if(cacheKey&&cache.has(cacheKey)){const saved=cache.get(cacheKey);return {...saved,builds:saved.builds.map(b=>({...b,heroId:hero.instanceId})),closest:saved.closest?{...saved.closest,heroId:hero.instanceId}:null};}
   const inventory=options.inventory||Object.values(account.souls),known=inventory.filter(q=>!q.unknown.length);
-  const absence=!options.approximateInventory&&account.completeness==='complete'&&!account.merged&&!inventory.some(q=>q.unknown.length)?'missing':'unknown';
+  const absence=!options.approximateInventory&&C.inventoryComplete(account,'souls')&&!inventory.some(q=>q.unknown.length)?'missing':'unknown';
   const level=config.levelRange||[config.maxLevelOnly?15:0,15];
   const legal=q=>(!config.sixStarOnly||q.star===6)&&(!config.allowedStars?.length||config.allowedStars.includes(q.star))&&q.level>=level[0]&&q.level<=level[1]&&(!config.mainStats?.[q.slot]?.length||config.mainStats[q.slot].includes(q.mainStat));
   const slots=[1,2,3,4,5,6],groups=slots.map(s=>known.filter(q=>q.slot===s&&legal(q))),relaxed=groups.map((g,i)=>g.length?g:known.filter(q=>q.slot===i+1));
@@ -180,7 +180,7 @@ function matchLineup(lineup,account,roster,effects,options={}){
   const members=[],unknown=[],checks=[],required={},roles=lineup.members.filter(m=>m.occupied!==false),search={...options,cache:options.cache||new Map(),inventory:options.inventory||Object.values(account.souls)};
   let forcedMissing=false;
   for(const m of roles.filter(m=>m.kind==='shikigami'&&!m.borrowed))required[m.shikigamiId]=(required[m.shikigamiId]||0)+1;
-  for(const [sid,n] of Object.entries(required)){const have=(heroIndex(account).get(sid)?.length||0);if(n>have){forcedMissing=account.completeness==='complete'&&!account.merged;checks.push(`${roster.find(r=>r.id===sid)?.name||sid}需要${n}个不同实例，导出有${have}个`);}}
+  for(const [sid,n] of Object.entries(required)){const have=(heroIndex(account).get(sid)?.length||0);if(n>have){forcedMissing=C.inventoryComplete(account,'heroes');checks.push(`${roster.find(r=>r.id===sid)?.name||sid}需要${n}个不同实例，导出有${have}个`);}}
   for(const m of roles){
     if(m.kind==='onmyoji'){
       members.push({index:m.index,name:m.name,status:'display-only',reasons:[],builds:[],distance:0});continue;
@@ -189,7 +189,7 @@ function matchLineup(lineup,account,roster,effects,options={}){
     const owned=memberCandidates(m,account),heroes=owned.heroes.length?owned.heroes:owned.nearest?[owned.nearest]:[],tested=[];
     for(const hero of heroes.slice(0,options.diagnosticHeroLimit??heroes.length))tested.push(findBuilds(hero,m.config,account,roster,effects,search));
     const builds=owned.status==='found'?tested.flatMap(t=>t.builds):[],closest=tested.map(t=>t.closest).filter(Boolean).sort((a,b)=>a.distance-b.distance)[0]||null;
-    const absence=account.completeness==='complete'&&!account.merged?'missing':'unknown';
+    const absence=C.inventoryComplete(account,'heroes')?'missing':'unknown';
     const status=owned.status==='missing'?absence:builds.length?'found':tested.length&&tested.every(t=>t.status==='missing')?'missing':'unknown';
     const reasons=unique([...(owned.reason?[owned.reason]:[]),...tested.flatMap(t=>t.reasons)]);
     if(status==='unknown')unknown.push(`${m.name}御魂尚未证实`);
@@ -214,7 +214,7 @@ function matchLineup(lineup,account,roster,effects,options={}){
   if(!shikigamiRequirementsComplete(lineup))unknown.push('来源要求尚不完整，需核对原文与补充说明');
   if(!roles.some(m=>m.kind==='shikigami'))unknown.push('原码尚未解析出完整的式神要求');
   if(account.merged)unknown.push('增量合并可能保留旧资产，需确认仍在仓库');
-  if(account.completeness!=='complete')unknown.push('账号导出不完整');
+  if(!C.inventoryComplete(account))unknown.push('账号导出范围不完整或含有合并旧库存');
   if(checks.length)unknown.push('还有原码中的式神自动技能或实例数量待核对');
   const missing=forcedMissing||members.some(m=>m.status==='missing'),ready=!!assignment?.length&&members.filter(m=>roles.find(r=>r.index===m.index)?.kind==='shikigami').every(m=>m.status==='found');
   const status=missing?'missing':unknown.length?'unknown':'available';

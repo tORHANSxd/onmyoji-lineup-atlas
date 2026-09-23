@@ -20,6 +20,18 @@ async function harness(fetcher=async()=>new Response('{}'),{signedIn=true,fsProx
 }
 test('Windows实际原子写入支持覆盖与并发保存顺序',async()=>{const h=await harness();try{assert.equal(await h.handlers['load-state'](h.event),null);await h.handlers['save-state'](h.event,{schemaVersion:1,notes:'初次中文保存'});await Promise.all([h.handlers['save-state'](h.event,{revision:2}),h.handlers['save-state'](h.event,{revision:3})]);const loaded=await h.handlers['load-state'](h.event);assert.equal(loaded.revision,3);assert.equal(fs.existsSync(path.join(h.tmp,'library-v1.json.tmp')),false);await h.handlers['export-json'](h.event,{name:'backup.json',data:loaded});assert.equal(JSON.parse(fs.readFileSync(path.join(h.tmp,'backup.json'))).revision,3);}finally{h.cleanup();}});
 test('IPC拒绝外部页面读取和写入本地状态',async()=>{const h=await harness();try{await assert.rejects(h.handlers['load-state']({senderFrame:{url:'https://example.com'}}),/不受信任/);await assert.rejects(h.handlers['save-state']({senderFrame:{url:'file:///other.html'}},{}),/不受信任/);}finally{h.cleanup();}});
+test('库存增量保存使用真实 IPC 与原子文件事务，保留阵容并拒绝夹带修改',async()=>{
+ const h=await harness();try{
+  const fields={schemaVersion:1,accounts:[{id:'synthetic-account'}],activeAccount:'synthetic-account',targetLineups:{'synthetic-account':['synthetic-lineup']}};
+  assert.equal((await h.handlers['save-state-fields-json'](h.event,JSON.stringify(fields))).needsSnapshot,true);
+  await h.handlers['save-state'](h.event,{schemaVersion:1,accounts:[],lineups:[{id:'synthetic-lineup',title:'保留阵容'}]});
+  await h.handlers['save-state-fields-json'](h.event,JSON.stringify(fields));
+  const saved=await h.handlers['load-state'](h.event);assert.deepEqual(saved.accounts,fields.accounts);assert.deepEqual(saved.targetLineups,fields.targetLineups);assert.equal(saved.lineups[0].title,'保留阵容');
+  await assert.rejects(h.handlers['save-state-fields-json'](h.event,JSON.stringify({...fields,lineups:[]})),/参数/);
+  await assert.rejects(h.handlers['save-state-fields-json']({senderFrame:{url:'https://example.com'}},JSON.stringify(fields)),/不受信任/);
+  assert.deepEqual(await h.handlers['load-state'](h.event),saved);
+ }finally{h.cleanup();}
+});
 test('本地页片段导航不破坏保存权限',async()=>{const h=await harness();try{const e={senderFrame:{url:h.event.senderFrame.url+'#library'}};await h.handlers['save-state'](e,{revision:1});assert.equal((await h.handlers['load-state'](e)).revision,1);}finally{h.cleanup();}});
 test('桌面本地解析与分享键分流均不请求第三方',async()=>{let count=0;const h=await harness(async()=>{count++;throw new Error('No outbound requests permitted');});try{const pending=await h.handlers.decode(h.event,'|TA|opaque-key');assert.equal(pending.state,'lookup-required');const v=require('./fixtures/ta-vectors.json')[0],decoded=await h.handlers.decode(h.event,'#TA#'+v.payload);assert.equal(decoded.ok,true);assert.deepEqual(decoded.data,v.expected);assert.equal(count,0);}finally{h.cleanup();}});
 test('非法输入拒绝，外部页不能解析或触发更新',async()=>{const h=await harness();try{assert.equal((await h.handlers.decode(h.event,'bad')).ok,false);const external={senderFrame:{url:'https://example.com'}};await assert.rejects(h.handlers.decode(external,'#TA#abc'),/不受信任/);await assert.rejects(h.handlers['official-refresh'](external,{}),/不受信任/);await assert.rejects(h.handlers['official-auto'](external,true),/不受信任/);}finally{h.cleanup();}});

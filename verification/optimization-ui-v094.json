@@ -1,0 +1,168 @@
+{
+  "version": "0.9.4",
+  "results": [
+    {
+      "name": "账号导入失败保持原账号和原库存",
+      "passed": true
+    },
+    {
+      "name": "结构化阵容保存失败保持原库",
+      "passed": true
+    },
+    {
+      "name": "导出失败有可见反馈并且不会误报成功",
+      "passed": true
+    },
+    {
+      "name": "解析回包不覆盖正在编辑的草稿，换码不串元数据",
+      "passed": true
+    },
+    {
+      "name": "编辑保存失败恢复解析器并保留编辑内容",
+      "passed": true
+    },
+    {
+      "name": "进度刷新保留失败明细和键盘焦点",
+      "passed": true
+    },
+    {
+      "name": "恢复备份先预览，保存失败不覆盖，成功后可撤销",
+      "passed": true
+    },
+    {
+      "name": "损坏数据库仍可恢复备份并继续使用",
+      "passed": true
+    },
+    {
+      "name": "解析提交后取消，已落盘的数据仍与内存同步",
+      "passed": true
+    },
+    {
+      "name": "恢复确认排队期间数据变化，取消覆盖并更新预览",
+      "passed": true
+    },
+    {
+      "name": "撤销恢复排队期间的新编辑不能被覆盖",
+      "passed": true
+    },
+    {
+      "name": "恢复确认前预设更新会重算预览，不应用旧结果",
+      "passed": true
+    },
+    {
+      "name": "恢复写盘期间预设更新，已落盘的恢复仍可撤销至原库存",
+      "passed": true
+    },
+    {
+      "name": "保存 A 时切换编辑 B，不切回 A 也不丢 B 草稿",
+      "passed": true
+    },
+    {
+      "name": "导出整理最新阵容与预设，保持当前阵容库不变",
+      "passed": true
+    },
+    {
+      "name": "真实备份入口合并本机独有阵容，按最新时间处理同名同码同 ID 和预设冲突",
+      "passed": true
+    },
+    {
+      "name": "新版库存经真实文件入口导入，扩展集合与提醒可见且安全转义",
+      "passed": true
+    },
+    {
+      "name": "新版批量导入含损坏文件时，整批不覆盖已有库存",
+      "passed": true
+    },
+    {
+      "name": "旧缓存重启重新解析原始库存，备份再恢复不丢新版数据",
+      "passed": true
+    },
+    {
+      "name": "library 1440 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "decode 1440 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "accounts 1440 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "manage 1440 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "audit 1440 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "library 900 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "decode 900 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "accounts 900 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "manage 900 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "audit 900 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "library 720 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "decode 720 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "accounts 720 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "manage 720 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "audit 720 无横向溢出",
+      "passed": true
+    },
+    {
+      "name": "无角色界面明确创建指引",
+      "passed": true
+    },
+    {
+      "name": "library 200%缩放",
+      "passed": true
+    },
+    {
+      "name": "accounts 200%缩放",
+      "passed": true
+    },
+    {
+      "name": "decode 200%缩放",
+      "passed": true
+    },
+    {
+      "name": "manage 200%缩放",
+      "passed": true
+    },
+    {
+      "name": "audit 200%缩放",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "synthetic": true,
+  "method": "生产 Electron 页面、预加载脚本与合成 IPC；失败注入、慢保存竞态、1440/900/720 像素及 200% 缩放。真实手机扫码与网易服务未在本轮实测。"
+}

@@ -94,11 +94,11 @@ app.whenReady().then(async () => {
   let saveQueue=Promise.resolve();
   handleLocal('load-state',async check=>{await saveQueue;check();return background.run('load-state');});
   handleLocal('load-state-json',async check=>{await saveQueue;check();return background.run('load-state-json');});
-  const saveState=async(check,state,delta,json)=>{
+  const saveState=async(check,state,delta,json,fieldsJson)=>{
     const current=saveQueue.then(async()=>{
       check();
       try{
-        const prepared=await background.run('prepare-state',{state,delta,json});check();
+        const prepared=await background.run('prepare-state',{state,delta,json,fieldsJson});check();
         if(prepared.needsSnapshot)return prepared;
         // Recheck this exact login/role after writing and before publishing.
         await fs.rename(prepared.file,statePath());
@@ -109,6 +109,7 @@ app.whenReady().then(async () => {
   };
   const saveJSONState=(check,json)=>{if(typeof json!=='string'||Buffer.byteLength(json)>100*1024*1024)throw Error('本地数据超过100 MiB限制');return saveState(check,undefined,undefined,json);};
   handleLocal('save-state-json',saveJSONState);
+  handleLocal('save-state-fields-json',(check,json)=>{if(typeof json!=='string'||Buffer.byteLength(json)>100*1024*1024)throw Error('本地数据超过100 MiB限制');return saveState(check,undefined,undefined,undefined,json);});
   handleSignedIn('save-parsed-state-json',saveJSONState,{commits:true});
   handleLocal('save-state',saveState);
   handleSignedIn('save-parsed-state',saveState,{commits:true});

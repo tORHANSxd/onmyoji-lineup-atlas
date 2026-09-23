@@ -16,6 +16,15 @@ test('background snapshots and deltas preserve accounts and publish atomically',
   assert.deepEqual(JSON.parse(await fs.readFile(file)),old);
   await fs.rename(next.file,file);await worker.run('commit-state');
   const saved=await worker.run('load-state');assert.deepEqual(saved.accounts,old.accounts);assert.deepEqual(saved.targetLineups,old.targetLineups);assert.equal(saved.lineups[0].title,'新');
+  const {lineups,...fields}=saved;fields.accounts=[{id:'new-account',raw:{storyTasks:[[1,[0,1]],[1,[1,0]]]}}];fields.activeAccount='new-account';
+  const accountSave=await worker.run('prepare-state',{fieldsJson:JSON.stringify(fields)});
+  assert.deepEqual(JSON.parse(await fs.readFile(file)),saved,'prepare must not publish');
+  await worker.run('discard-state');assert.deepEqual(await worker.run('load-state'),saved,'cancel must retain all fields');
+  const accountCommit=await worker.run('prepare-state',{fieldsJson:JSON.stringify(fields)});
+  await fs.rename(accountCommit.file,file);await worker.run('commit-state');
+  assert.deepEqual((await worker.run('load-state')).lineups,lineups);assert.deepEqual((await worker.run('load-state')).accounts,fields.accounts);
+  await assert.rejects(worker.run('prepare-state',{fieldsJson:JSON.stringify({...fields,lineups:[]})}),/参数/);
+  const restored=await worker.run('prepare-state',{state:saved});await fs.rename(restored.file,file);await worker.run('commit-state');
   await worker.run('prepare-state',{delta:{upserts:[],removeIds:['a']}});
   await worker.run('discard-state');assert.deepEqual(await worker.run('load-state'),saved);assert.deepEqual(JSON.parse(await fs.readFile(file)),saved);
  }finally{await worker.close();await fs.rm(file,{force:true});await fs.rm(file+'.tmp',{force:true});await fs.rmdir(root);}

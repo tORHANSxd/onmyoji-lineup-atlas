@@ -1,0 +1,66 @@
+{
+  "lineups": 3000,
+  "heroes": 5000,
+  "batch": {
+    "elapsedMs": 10236.40000000596,
+    "ticks": 1013,
+    "maxGapMs": 59,
+    "p95GapMs": 11,
+    "switches": 56,
+    "report": {
+      "phase": "complete",
+      "total": 20,
+      "completed": 20,
+      "succeeded": 20,
+      "failed": 0,
+      "current": "",
+      "error": "",
+      "failures": [],
+      "startedAt": 1790155896951,
+      "currentStartedAt": 1790155906686,
+      "elapsedMs": 10233
+    }
+  },
+  "qr": {
+    "elapsedMs": 2018.6000000089407,
+    "ticks": 201,
+    "count": 0
+  },
+  "importRun": {
+    "elapsedMs": 1209,
+    "ticks": 114,
+    "maxGapMs": 26.799999997019768,
+    "heroes": 5000,
+    "timings": [
+      {
+        "action": "parse-account",
+        "syncMs": 0.29999999701976776
+      },
+      {
+        "action": "parse-account",
+        "totalMs": 39.099999994039536
+      },
+      {
+        "action": "stringify",
+        "syncMs": 7.200000002980232
+      },
+      {
+        "action": "stringify",
+        "totalMs": 67.20000000298023
+      },
+      {
+        "action": "stringify",
+        "syncMs": 7.9000000059604645
+      },
+      {
+        "action": "stringify",
+        "totalMs": 71.6000000089407
+      }
+    ]
+  },
+  "cancellation": true,
+  "fullWrites": 0,
+  "deltaWrites": 20,
+  "errors": [],
+  "method": "真实 Electron 页面、preload、后台文件保存、库存导入与二维码线程；查询使用合成回包，无账号或真实网络"
+}

@@ -14,6 +14,7 @@ async function main(){
  const local=(name,fn)=>{ipcMain.handle(name,(_e,...args)=>fn(...args));if(name==='export-json')ipcMain.handle('export-json-text',(_e,p)=>fn({name:p.name,data:JSON.parse(p.text)}));if(['load-data','load-state'].includes(name))ipcMain.handle(name+'-json',async(_e,...args)=>JSON.stringify(await fn(...args)));if(['save-state','save-parsed-state'].includes(name))ipcMain.handle(name+'-json',(_e,text)=>fn(JSON.parse(text)));};
  const save=async(state,delta)=>{const p=await bg.run('prepare-state',{state,delta});if(p.needsSnapshot)return p;await fs.rename(p.file,file);return bg.run('commit-state');};
  local('load-data',()=>data);local('load-state',()=>bg.run('load-state'));local('save-state',s=>{fullWrites++;return save(s);});local('save-parsed-state',s=>{fullWrites++;return save(s);});local('save-parsed-delta',d=>{deltaWrites++;return save(undefined,d);});
+ local('save-state-fields-json',async fieldsJson=>{const p=await bg.run('prepare-state',{fieldsJson});if(p.needsSnapshot)return p;await fs.rename(p.file,file);return bg.run('commit-state');});
  local('parse-json',s=>bg.run('parse-json',s));local('decode',input=>bg.run('decode',{input}));
  local('ta-status',()=>({authenticated:true,query_ready:true,risk_accepted:true,busy:false,selected_server:'10014',selected_avatar:'test',servers:[{id:'10014',name:'测试',available:true,roles:[{avatar_id:'test',name:'测试'}]}]}));
  const payload=require('../tests/fixtures/ta-vectors.json').find(v=>v.name==='apk_sample_v3').payload;
@@ -31,10 +32,19 @@ async function main(){
  console.log('batch complete',JSON.stringify(batch));assert.equal(batch.report.succeeded,20);assert.equal(deltaWrites,20);assert.ok(batch.switches>1);assert.ok(batch.ticks>20);assert.ok(batch.maxGapMs<250,JSON.stringify(batch));
  const qr=await ui(`(async()=>{const canvas=new OffscreenCanvas(1200,6000);const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,1200,6000);const bitmap=canvas.transferToImageBitmap();let ticks=0;const t=setInterval(()=>ticks++,10),at=performance.now();const result=await scanQRImage(bitmap,()=>true);clearInterval(t);return {elapsedMs:performance.now()-at,ticks,count:result.codes.length};})()`);
  assert.ok(qr.ticks>10);assert.equal(qr.count,0);
+ const importRun=await ui(`(async()=>{
+  const timings=[],originalJSON=jsonTask;
+  jsonTask=(action,value)=>{const at=performance.now(),pending=originalJSON(action,value);timings.push({action,syncMs:performance.now()-at});return pending.then(result=>{timings.push({action,totalMs:performance.now()-at});return result;});};
+  const gaps=[];let last=performance.now();const timer=setInterval(()=>{const now=performance.now();gaps.push(now-last);last=now;},10),at=performance.now();
+  importMode='accounts';await handleFiles([new File([${JSON.stringify(JSON.stringify(raw))}],'synthetic-inventory.json',{type:'application/json'})]);await stateWrites;clearInterval(timer);
+  jsonTask=originalJSON;return {elapsedMs:performance.now()-at,ticks:gaps.length,maxGapMs:Math.max(...gaps),heroes:Object.keys(account().heroes).length,timings};
+ })()`);
+ console.log('import',JSON.stringify(importRun));
+ assert.equal(importRun.heroes,5000);assert.ok(importRun.ticks>2);assert.ok(importRun.maxGapMs<250,JSON.stringify(importRun));
  const cancel=await ui(`(async()=>{let active=true;const canvas=new OffscreenCanvas(1200,6000);canvas.getContext('2d');const bitmap=canvas.transferToImageBitmap();setTimeout(()=>active=false,10);return scanQRImage(bitmap,()=>active);})()`);assert.equal(cancel.cancelled,true);
  await ui('selectView("library")');await sleep(200);await fs.writeFile(path.join(profile,'library.png'),(await win.webContents.capturePage()).toPNG());
  const persisted=JSON.parse(await fs.readFile(file));assert.equal(persisted.lineups.length,3000);assert.equal(Object.keys(persisted.accounts[0].heroes).length,5000);assert.deepEqual(errors,[]);
- const report={lineups:3000,heroes:5000,batch,qr,cancellation:true,fullWrites,deltaWrites,errors,method:'真实 Electron 页面、preload、后台文件保存与二维码线程；查询使用合成回包，无账号或真实网络'};
+ const report={lineups:3000,heroes:5000,batch,qr,importRun,cancellation:true,fullWrites,deltaWrites,errors,method:'真实 Electron 页面、preload、后台文件保存、库存导入与二维码线程；查询使用合成回包，无账号或真实网络'};
  await fs.writeFile(path.join(root,'verification/performance-ui-v'+version+'.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));await bg.close();app.exit(0);
 }
 main().catch(async e=>{console.error(String(e.stack||e),JSON.stringify(errors));await bg?.close();app.exit(1);});

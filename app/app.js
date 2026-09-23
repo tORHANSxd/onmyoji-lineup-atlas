@@ -24,7 +24,7 @@ function jsonTask(action,value){
  return new Promise((resolve,reject)=>{const job=new Worker('json-worker.js');job.onmessage=({data})=>{job.terminate();data.error?reject(Error(data.error)):resolve(data.value);};job.onerror=e=>{job.terminate();reject(Error(e.message));};try{job.postMessage({action,value});}catch(error){job.terminate();reject(error);}});
 }
 const readDesktopData=async()=>atlas.loadDataText?jsonTask('parse',await atlas.loadDataText()):atlas.loadData();
-const readDesktopState=async()=>atlas.loadStateText?jsonTask('parse',await atlas.loadStateText()):atlas.loadState();
+const readDesktopState=async()=>atlas.loadStateText?jsonTask('load-state',await atlas.loadStateText()):jsonTask('restore-state',await atlas.loadState());
 const sameSession=revision=>revision===sessionRevision;
 let stateWrites=Promise.resolve(),dataRevision=0,parsedSnapshotReady=false;
 function invalidatePendingImports(){dataRevision++;clearTimeout(codeTimer);codeRevision++;}
@@ -37,6 +37,11 @@ function commitState(change,revision=sessionRevision,parseGuard=null,expectedSta
      const parsed=parseGuard&&window.TALogin?.status().authenticated;
      const onlyLineups=Object.keys({...STATE,...next}).every(k=>k==='lineups'||STATE[k]===next[k]);
      let saved;
+     if(!parseGuard&&atlas.saveStateFieldsText&&STATE.accounts!==next.accounts&&STATE.lineups===next.lineups){
+      const {lineups:unchanged,...fields}=next,text=await jsonTask('stringify',fields);
+      if(!sameSession(revision)||changeGuard&&!changeGuard())return false;
+      saved=await atlas.saveStateFieldsText(text);if(saved?.saved)parsedSnapshotReady=true;
+     }
      if(parsed&&parsedSnapshotReady&&onlyLineups&&atlas.saveParsedDelta){
       const old=new Map(STATE.lineups.map(l=>[l.id,l])),ids=new Set(next.lineups.map(l=>l.id));
       saved=await atlas.saveParsedDelta({upserts:next.lineups.filter(l=>old.get(l.id)!==l),removeIds:STATE.lineups.filter(l=>!ids.has(l.id)).map(l=>l.id)});
@@ -228,16 +233,31 @@ function protocolDetails(m){
 }
 
 let accountInventoryCache=null;
+function snapshotDetails(a){
+ const snapshot=a.snapshot;if(!snapshot)return '';
+ const scopeNames={heroes:'式神',souls:'御魂',items:'物品',realmCards:'结界卡',guild:'阴阳寮',taskRecords:'任务记录'};
+ const ranges=Object.entries(snapshot.scope).filter(([key])=>scopeNames[key]).map(([key,value])=>`${scopeNames[key]}：${value===true?'已采集':value===false?'未采集':'范围不明确'}`).join('；');
+ const sectionScopes={currency:'items',heroesBagEntries:'heroes',realmCards:'realmCards',guild:'guild',taskRecords:'taskRecords'};
+ const rows=Object.entries(C.SNAPSHOT_SECTIONS).map(([key,label])=>{
+  const count=snapshot.sections[key],notCollected=snapshot.scope[sectionScopes[key]]===false;
+  const content=count==null?'未提供或格式待核对':`${count} 条${key==='heroesBagEntries'&&snapshot.stackedHeroes!=null?' · 合计 '+snapshot.stackedHeroes+' 个':''}`;
+  const retained=Object.hasOwn(a.retainedSections||{},key)?` · 沿用 ${a.retainedSections[key]||'时间未知'} 的旧记录`:'';
+  return `<tr><th>${esc(label)}</th><td>${esc(content)}</td><td>${notCollected?'本次未采集':count==null?'—':'已保留原始记录'}${esc(retained)}</td></tr>`;
+ }).join('');
+ return `<details class="inventory-notes" id="account-snapshot-extra"><summary>其他采集数据与范围</summary>${ranges?`<p>${esc(ranges)}</p>`:''}<p>资源、素材、碎片、结界卡、传记、任务及阴阳寮数据随库存和备份完整保留。堆叠素材单独计数，不扩充为可上阵实例；未采集与数量为零分别显示。</p><div class="scroll-table"><table><thead><tr><th>内容</th><th>记录数量</th><th>采集状态</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+}
 function renderAccounts(recommendations=true){if(view!=='accounts')return;if(recommendations)renderRecommendations();
  const a=account();$('account-pagination').hidden=!a;
  if(!a){$('account-summary').innerHTML='';$('account-heroes').innerHTML='<p class="muted">导入平安志 JSON 后选择账号。</p>';$('account-souls').innerHTML='';return;}
+ const expanded=accountInventoryCache?.account.id===a.id?[...$('account-summary').querySelectorAll('details[open]')].map(el=>el.id):[];
  if(accountInventoryCache?.account!==a){const heroes=Object.values(a.heroes).sort((a,b)=>b.level-a.level||Number(b.shikigamiId)-Number(a.shikigamiId)||a.instanceId.localeCompare(b.instanceId)),souls=Object.values(a.souls),suitCounts=new Map();for(const s of souls){const count=suitCounts.get(s.set)||{total:0,maxed:0};count.total++;if(s.star===6&&s.level===15)count.maxed++;suitCounts.set(s.set,count);}accountInventoryCache={account:a,heroes,souls,suitCounts};}
  const {heroes,souls,suitCounts}=accountInventoryCache;
- $('account-summary').innerHTML=`<div class="overview"><div><strong>${heroes.length}</strong><span>角色实例（含素材）</span></div><div><strong>${new Set(heroes.map(h=>h.shikigamiId)).size}</strong><span>角色类型</span></div><div><strong>${souls.length}</strong><span>御魂</span></div><div><strong>${a.presets.length}</strong><span>御魂预设</span></div></div><details class="inventory-notes"><summary>库存信息${a.warnings.length?' · '+a.warnings.length+' 项提醒':''}</summary><p>采集时间：${esc(a.capturedAt)}。当前穿戴归属未提供，配装使用全仓库库存。</p>${a.warnings.map(w=>'<p>'+esc(w)+'</p>').join('')}</details>`;
+ $('account-summary').innerHTML=`<div class="overview"><div><strong>${heroes.length}</strong><span>角色实例（含素材）</span></div><div><strong>${new Set(heroes.map(h=>h.shikigamiId)).size}</strong><span>角色类型</span></div><div><strong>${souls.length}</strong><span>御魂</span></div><div><strong>${a.presets.length}</strong><span>御魂预设</span></div></div><details class="inventory-notes" id="account-inventory-notes"><summary>库存信息${a.warnings.length?' · '+a.warnings.length+' 项提醒':''}</summary><p>采集时间：${esc(a.capturedAt)}。${Number.isFinite(a.raw?.player?.level)?'账号等级：'+esc(a.raw.player.level)+'。':''}式神：${C.inventoryComplete(a,'heroes')?'完整':'待核对'}；御魂：${C.inventoryComplete(a,'souls')?'完整':'待核对'}。当前穿戴归属未提供，配装使用全仓库库存。</p>${a.warnings.slice(0,30).map(w=>'<p>'+esc(w)+'</p>').join('')}${a.warnings.length>30?'<p>其余提醒保留在原始导出与备份中。</p>':''}</details>${snapshotDetails(a)}`;
+ for(const id of expanded)if(id&&$(id))$(id).open=true;
  const q=$('account-search').value.trim(),kind=$('account-kind').value;
  const filtered=heroes.filter(h=>{const r=rosterById(h.shikigamiId);return `${r?.name||''} ${h.shikigamiId}`.includes(q)&&(!kind||(kind==='material'?r?.isMaterial:!r?.isMaterial));});
  const slice=C.paginate(filtered,accountPage,$('account-page-size').value);accountPage=slice.page;
- $('account-heroes').innerHTML=slice.items.map(h=>{const r=rosterById(h.shikigamiId);return `<div class="owned-hero"><div class="portrait">${thumb({name:r?.name,shikigamiId:h.shikigamiId,awakening:h.awake})}</div><div><strong>${esc(r?.name||'未收录角色 '+h.shikigamiId)}</strong><p>${h.level}级 · ${h.star}星 · ${r?.isMaterial?'培养素材':h.awake?'已觉醒':'未觉醒'}</p><div class="owned-skills">${memberSkillCards({shikigamiId:h.shikigamiId,awakening:h.awake,skills:h.skills},true)}</div></div></div>`;}).join('')||'<p class="muted">没有符合筛选的角色。</p>';
+ $('account-heroes').innerHTML=slice.items.map(h=>{const r=rosterById(h.shikigamiId);return `<div class="owned-hero"><div class="portrait">${thumb({name:r?.name,shikigamiId:h.shikigamiId,awakening:h.awake})}</div><div><strong>${esc(r?.name||'未收录角色 '+h.shikigamiId)}</strong><p>${h.level}级 · ${h.star}星 · ${r?.isMaterial?'培养素材':h.awake?'已觉醒':'未觉醒'}${h.locked?' · 已锁定':''}</p><div class="owned-skills">${memberSkillCards({shikigamiId:h.shikigamiId,awakening:h.awake,skills:h.skills},true)}</div></div></div>`;}).join('')||'<p class="muted">没有符合筛选的角色。</p>';
  $('account-page-indicator').textContent=`第 ${slice.page} / ${slice.pages} 页 · 显示 ${slice.start}–${slice.end} / ${slice.total} 个实例`;
  $('account-previous-page').disabled=slice.page===1;$('account-next-page').disabled=slice.page===slice.pages;
  $('account-souls').innerHTML=`<details><summary>御魂仓库摘要</summary><p>六星满级 ${souls.filter(s=>s.star===6&&s.level===15).length} 件；未识别属性 ${souls.filter(s=>s.unknown.length).length} 件。</p><div class="scroll-table"><table><thead><tr><th>套装</th><th>库存</th><th>六星满级</th></tr></thead><tbody>${[...suitCounts.keys()].sort().map(set=>`<tr><td class="inventory-suit">${gameImage(soulAsset(set))}<span>${esc(set)}</span></td><td>${suitCounts.get(set).total}</td><td>${suitCounts.get(set).maxed}</td></tr>`).join('')}</tbody></table></div></details>`;
@@ -521,15 +541,15 @@ function validateLineup(l){if(!C.hasLineupCode(l))throw new Error('阵容必须�
 async function handleFiles(files){
  const revision=sessionRevision,generation=dataRevision,active=()=>sameSession(revision)&&generation===dataRevision,mode=importMode,merge=$('merge-import').checked;if(!files.length)return;if(libraryBusy||bulkBusy)return toast('正在保存资料，请稍候再导入');
  try{
-  const parsed=[];for(const f of files){if(f.size>50*1024*1024)throw new Error('单个文件不能超过50 MiB');const text=await f.text();if(!active())return;parsed.push({name:f.name,json:await jsonTask('parse',text.replace(/^\uFEFF/,''))});}
+  const parsed=[];for(const f of files){if(f.size>50*1024*1024)throw new Error('单个文件不能超过50 MiB');const text=await f.text();if(!active())return;parsed.push({name:f.name,json:await jsonTask(mode==='accounts'?'parse-account':'parse',mode==='accounts'?{text,name:f.name}:text.replace(/^\uFEFF/,''))});if(!active())return;}
   if(mode==='accounts'){
-   const accounts=parsed.map(p=>C.parseAccount(p.json,p.name));
+   const accounts=parsed.map(p=>p.json);
    if(await commitState(state=>{let rows=[...state.accounts];for(const a of accounts){const old=rows.find(x=>x.id===a.id),updated=merge?C.mergeAccount(old,a):a;rows=[...rows.filter(x=>x.id!==a.id),updated];}return {...state,accounts:rows,activeAccount:accounts.at(-1).id};},revision,null,null,active)){
     resetMatchContext();matchResults={};accountPage=1;resolveServerNames();updateAccountSelect();renderAccounts();refreshAvailability();toast(`已保存 ${accounts.length} 份账号；重启后自动载入`);
    }
   }else if(mode==='backup'){
    const b=parsed[0].json;if(b?.format!=='onmyoji-atlas-backup'||b.schemaVersion!==1||!Array.isArray(b.accounts)||!Array.isArray(b.lineups))throw new Error('不支持的备份格式');
-   const accounts=b.accounts.map(C.restoreAccount),ls=b.lineups.filter(C.hasLineupCode).map(validateLineup);
+   const accounts=await jsonTask('restore-accounts',b.accounts),ls=b.lineups.filter(C.hasLineupCode).map(validateLineup);if(!active())return;
    const backup={schemaVersion:1,accounts,lineups:ls,deletedPresetIds:C.deletedPresetIds(b.deletedPresetIds),lineupReplacements:C.lineupReplacements(b.lineupReplacements),targetLineups:b.targetLineups,builderDraft:b.builderDraft||null,activeAccount:accounts.some(a=>a.id===b.activeAccount)?b.activeAccount:accounts[0]?.id||''};
    pendingBackup={backup,removed:b.lineups.length-ls.length,exportedAt:b.exportedAt,revision};previewBackupRestore();
   }else{

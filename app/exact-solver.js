@@ -27,7 +27,7 @@ function* solve(lineup,account,roster,effects,context){
  const roles=(lineup.members||[]).filter(m=>m.occupied!==false&&m.kind==='shikigami').sort((a,b)=>a.index-b.index);
  const inventory=context.inventory,unknown=[];let nodes=0,pruned=0,best=null,bestVector=null,checkpoint=Date.now();
  if(!roles.length||!C.hasParsedContent(lineup))unknown.push('原码尚未解析出完整的式神要求');
- if(account.completeness!=='complete'||account.merged)unknown.push('需要完整替换导出的库存，才能证明全局最优或无解');
+ if(!C.inventoryComplete(account))unknown.push('需要完整采集式神和御魂并替换导入，才能证明全局最优或无解');
  const relevant=inventory.filter(q=>roles.some(m=>C.soulEligible(q,m.config)));
  if(relevant.some(q=>q.unknown?.length||!effects.some(e=>e.suitNames.includes(q.set))||Object.values(q.stats).some(v=>!Number.isFinite(v)||v<0)))unknown.push('符合配装筛选的御魂含未识别属性或套装，无法确定结果');
  if(effects.some(e=>!Number.isFinite(e.value)||e.value<0))unknown.push('套装加成数据未完整核实');
@@ -165,7 +165,7 @@ function heroAvailability(roles,account,{reuseIndex=false}={}){
  for(const m of roles)required.set(m.shikigamiId,(required.get(m.shikigamiId)||0)+1);
  for(const [id,rows] of C.heroIndex(account))owned.set(id,rows.length);
  const coverage=[...required].reduce((n,[id,count])=>n+Math.min(count,owned.get(id)||0),0);
- const unknown=account.completeness!=='complete'||account.merged||!roles.length||roles.some(m=>m.borrowed||!m.shikigamiId);
+ const unknown=!C.inventoryComplete(account,'heroes')||!roles.length||roles.some(m=>m.borrowed||!m.shikigamiId);
  const deficits=unknown?[]:[...required].map(([id,count])=>{const rows=roles.filter(m=>m.shikigamiId===id),have=owned.get(id)||0,ready=roles.filter((m,i)=>m.shikigamiId===id&&matched.has(i)).length;return {id,name:rows[0].name,shortage:Math.max(0,count-have),training:Math.min(count,have)-ready,required:count,owned:have};}).filter(d=>d.shortage||d.training);
  return {state:unknown?'unknown':matched.size===roles.length?'ready':'missing',shortage:unknown?null:roles.length-coverage,training:unknown?null:coverage-matched.size,missing:roles.filter((m,i)=>!matched.has(i)),deficits};
 }
@@ -181,7 +181,7 @@ function inspectHeroes(lineup,account,options){
  return {availability,assessment:{heroes,souls:'uncomputed',heroShortage:heroes==='unknown'?null:availability.shortage,heroTraining:heroes==='unknown'?null:availability.training,heroDeficits:heroes==='unknown'?[]:availability.deficits}};
 }
 function soulShortages(roles,account,effects,inventory=Object.values(account.souls)){
- if(account.completeness!=='complete'||account.merged)return [];
+ if(!C.inventoryComplete(account,'souls'))return [];
  const knownSets=new Set(effects.flatMap(e=>e.suitNames)),requests=new Map(),deficits=new Map();
  const add=(name,text)=>{if(!deficits.has(name))deficits.set(name,{name,reasons:[]});deficits.get(name).reasons.push(text);};
  for(const m of roles){

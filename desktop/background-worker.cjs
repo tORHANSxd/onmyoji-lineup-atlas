@@ -36,6 +36,12 @@ async function run(action,p){
  case 'prepare-state':{
   if(prepared)throw Error('上一次保存尚未完成');
   let next=p.json!=null?JSON.parse(p.json):p.state;
+  if(p.fieldsJson!=null){
+   const fields=JSON.parse(p.fieldsJson);
+   if(!fields||fields.schemaVersion!==1||!Array.isArray(fields.accounts)||Object.hasOwn(fields,'lineups'))throw Error('库存保存参数无效');
+   const old=await load();if(!old||!Array.isArray(old.lineups))return {needsSnapshot:true};
+   next={...fields,lineups:old.lineups};
+  }
   if(p.delta){
    const old=await load();if(!old)return {needsSnapshot:true};
    if(!Array.isArray(p.delta.upserts)||!Array.isArray(p.delta.removeIds))throw Error('解析保存参数无效');

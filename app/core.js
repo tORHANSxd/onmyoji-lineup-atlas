@@ -157,6 +157,32 @@ function adaptInspection(payload,roster=[]){
   warnings.push('服务类型未提供技能与觉醒要求；身份不明的阴阳师保持未指定。');
   return {title:d.teamName||'未命名阵容',gameSceneId:d.gameSceneId,members,warnings,raw:d,requirementsComplete:false,decodeState:'decoded'};
 }
+const SNAPSHOT_SECTIONS={currency:'资源余额',heroesBagEntries:'堆叠素材',heroBookShards:'式神碎片',realmCards:'结界卡',storyTasks:'剧情任务',heroStoryProgress:'式神传记',taskRecords:'任务记录',guild:'阴阳寮',diagnostics:'采集诊断'};
+function snapshotInfo(raw,warnings){
+ const scope=object(raw.scope)?raw.scope:{},sections={};
+ if(raw.scope!=null&&!object(raw.scope))warnings.push('采集范围格式异常，请重新导出库存');
+ for(const [key,label] of Object.entries(SNAPSHOT_SECTIONS)){
+  const value=raw[key],valid=['currency','heroStoryProgress','taskRecords','guild'].includes(key)?object(value):Array.isArray(value);
+  sections[key]=value==null||!valid?null:key==='guild'?1:Object.keys(value).length;
+  if(value!=null&&!valid)warnings.push(`${label}格式未识别，原始数据已保留`);
+ }
+ let stackedHeroes=null;
+ if(Array.isArray(raw.heroesBagEntries)){
+  if(raw.heroesBagEntries.every(row=>Array.isArray(row)&&row.length===2&&typeof row[0]==='string'&&Number.isSafeInteger(row[1])&&row[1]>=0)){
+   const total=raw.heroesBagEntries.reduce((n,row)=>n+row[1],0);
+   if(Number.isSafeInteger(total))stackedHeroes=total;
+  }
+  if(stackedHeroes==null)warnings.push('堆叠素材数量异常，原始记录已保留');
+  else if(raw.heroesBagCount!=null&&raw.heroesBagCount!==stackedHeroes)warnings.push('声明的堆叠素材数量与实际合计不一致');
+ }
+ // Tuple columns whose contract is not known stay untouched in raw. In
+ // particular, repeated story task keys must not be collapsed into a map.
+ return {version:1,scope,sections,stackedHeroes};
+}
+function inventoryComplete(account,kind){
+ if(account.completeness!=='complete'||account.merged)return false;
+ return (kind?[kind]:['heroes','souls']).every(key=>account.coverage?.[key]!==false);
+}
 function parseAccount(raw,fileName='账号'){
   if(!object(raw)||raw.format!=='mumu-snapshot-v1'||!object(raw.heroes)||!Array.isArray(raw.hero_equips)||!object(raw.player))throw new Error('仅支持已核验的平安志 mumu-snapshot-v1 JSON；未导入任何数据');
   if(Object.keys(raw.heroes).length>100000||raw.hero_equips.length>100000)throw new Error('账号数据规模超出100000条限制');
@@ -166,7 +192,7 @@ function parseAccount(raw,fileName='账号'){
     if(['__proto__','constructor','prototype'].includes(key))throw new Error('不合法的实例ID');
     if(!Array.isArray(h.skinfo)||h.skinfo.some(s=>!Array.isArray(s)||s.length!==2||!Number.isInteger(s[0])||!Number.isInteger(s[1])))throw new Error('技能记录损坏，未导入账号');
     const skills=h.skinfo.map(s=>({id:s[0],level:s[1]}));
-    heroes[key]={instanceId:key,shikigamiId:id(h.heroId),level:h.level,star:h.star,awake:h.awake,skills,attrs:h.attrs,raw:h};
+    heroes[key]={instanceId:key,shikigamiId:id(h.heroId),level:h.level,star:h.star,awake:h.awake,locked:typeof h.lock==='boolean'?h.lock:null,skills,attrs:h.attrs,raw:h};
   }
   const souls=Object.create(null);
   for(const q of raw.hero_equips){
@@ -176,16 +202,39 @@ function parseAccount(raw,fileName='账号'){
     for(const a of [{type:q.mainAttrType,value:q.mainAttrValue},...q.subAttributes]){const k=STAT_TYPES[a.type];if(!k||!finite(a.value))unknown.push(a.type);else stats[k]=(stats[k]||0)+a.value;}
     souls[q.id]={id:q.id,slot:q.slot,set:q.setId==='涅槃之火'?'涅槃火':q.setId,level:q.level,star:q.quality,mainStat:STAT_TYPES[q.mainAttrType]||q.mainAttrType,stats,unknown,equippedState:q.equippedState,raw:q};
   }
-  if(raw.heroCount!==undefined&&raw.heroCount!==Object.keys(heroes).length)warnings.push('声明的式神数量与实际记录数不一致');
+  const snapshot=snapshotInfo(raw,warnings),coverage={heroes:raw.completeness==='complete',souls:raw.completeness==='complete'};
+  for(const [key,label] of [['heroes','式神'],['souls','御魂']]){
+   if(raw.scope!=null&&(!object(raw.scope)||Object.hasOwn(snapshot.scope,key)&&snapshot.scope[key]!==true)){
+    coverage[key]=false;warnings.push(snapshot.scope[key]===false?`本次未采集${label}，不能据此判断缺少`:`${label}采集范围不明确，请重新导出`);
+   }
+  }
+  for(const [key,kind,count,label] of [['heroCount','heroes',Object.keys(heroes).length,'式神'],['retainedCount','souls',raw.hero_equips.length,'御魂保留'],['inventoryCount','souls',raw.hero_equips.length+(Number.isSafeInteger(raw.excludedCount)?raw.excludedCount:0),'御魂总']]){
+   if(raw[key]!==undefined&&raw[key]!==count){coverage[kind]=false;warnings.push(`声明的${label}数量与实际记录数不一致`);}
+  }
+  for(const [key,kind,label] of [['excludedHeroCount','heroes','式神'],['excludedCount','souls','御魂']]){
+   if(raw[key]!=null&&raw[key]!==0){coverage[kind]=false;warnings.push(`${label}存在排除记录或排除数量异常，只能核对已导出的库存`);}
+  }
   if(raw.completeness!=='complete')warnings.push('导出文件标记为不完整');
   if(Object.values(souls).some(s=>s.unknown.length))warnings.push('存在未知御魂属性，相关御魂不参与计算');
+  if(Array.isArray(raw.warnings))warnings.push(...raw.warnings.filter(w=>typeof w==='string'&&w.trim()));
   const p=raw.player;
   const accountKey=p.serverId!=null&&p.shortId!=null?`${p.serverId}:${p.shortId}`:null;
   if(!accountKey)throw new Error('缺少区服ID或账号短ID，无法安全归并');
-  return {id:accountKey,name:p.name||fileName,server:p.serverName||String(p.serverId),capturedAt:raw.capturedAt,heroes,souls,presets:Array.isArray(raw.equipPresets)?raw.equipPresets:[],warnings,completeness:raw.completeness,onmyoji:[],onmyojiStatus:'export-missing',raw};
+  return {id:accountKey,name:p.name||fileName,server:p.serverName||String(p.serverId),capturedAt:raw.capturedAt,heroes,souls,presets:Array.isArray(raw.equipPresets)?raw.equipPresets:[],warnings:[...new Set(warnings)],completeness:raw.completeness,coverage,snapshot,onmyoji:[],onmyojiStatus:'export-missing',raw};
 }
-function mergeAccount(old,incoming){if(!old)return incoming;if(old.id!==incoming.id)throw new Error('不能合并不同账号');const heroes={...old.heroes,...incoming.heroes},souls={...old.souls,...incoming.souls};return {...incoming,heroes,souls,raw:{...incoming.raw,heroes:Object.fromEntries(Object.entries(heroes).map(([k,h])=>[k,h.raw])),hero_equips:Object.values(souls).map(q=>q.raw),heroCount:Object.keys(heroes).length},presets:incoming.presets,merged:true,previousCapturedAt:old.capturedAt,warnings:[...incoming.warnings,'按实例ID覆盖并保留未再次导入的旧记录；已删除资产可能仍存在，请用完整快照替换清理。']};}
-function restoreAccount(saved){const a=parseAccount(saved.raw,saved.name);if(saved.merged){a.merged=true;a.previousCapturedAt=saved.previousCapturedAt;a.warnings.push('此备份包含增量合并的旧记录，请确认资产仍在仓库。');}return a;}
+function mergeAccount(old,incoming){
+ if(!old)return incoming;if(old.id!==incoming.id)throw new Error('不能合并不同账号');
+ const heroes={...old.heroes,...incoming.heroes},souls={...old.souls,...incoming.souls},raw={...old.raw,...incoming.raw,heroes:Object.fromEntries(Object.entries(heroes).map(([k,h])=>[k,h.raw])),hero_equips:Object.values(souls).map(q=>q.raw),heroCount:Object.keys(heroes).length};
+ const scopes={currency:'items',heroesBagEntries:'heroes',heroesBagCount:'heroes',realmCards:'realmCards',guild:'guild',taskRecords:'taskRecords'},retainedSections={};
+ for(const key of [...Object.keys(SNAPSHOT_SECTIONS),'heroesBagCount']){
+  if(Object.hasOwn(old.raw,key)&&(!Object.hasOwn(incoming.raw,key)||incoming.raw.scope?.[scopes[key]]===false)){
+   raw[key]=old.raw[key];retainedSections[key]=old.retainedSections?.[key]||old.capturedAt||null;
+  }
+ }
+ const warnings=[...incoming.warnings,'按实例ID覆盖并保留未再次导入的旧记录；已删除资产可能仍存在，请用完整快照替换清理。'];
+ return {...incoming,heroes,souls,raw,snapshot:snapshotInfo(raw,warnings),retainedSections,presets:incoming.presets,merged:true,previousCapturedAt:old.capturedAt,warnings};
+}
+function restoreAccount(saved){const a=parseAccount(saved.raw,saved.name);if(saved.merged){a.merged=true;a.previousCapturedAt=saved.previousCapturedAt;a.retainedSections=object(saved.retainedSections)?Object.fromEntries(Object.entries(saved.retainedSections).filter(([key,time])=>(Object.hasOwn(SNAPSHOT_SECTIONS,key)||key==='heroesBagCount')&&(time==null||typeof time==='string'))):{};a.warnings.push('此备份包含增量合并的旧记录，请确认资产仍在仓库。');}return a;}
 function validateLineup(l){
   if(!object(l)||typeof l.title!=='string'||!Array.isArray(l.members)||l.members.length>30)throw new Error('阵容JSON缺少 title / members 或成员过多');
   const members=l.members.map((m,i)=>{
@@ -256,7 +305,7 @@ function checkPanel(p,c,objective){
   return missing;
 }
 
-const api={STAT_NAMES,STAT_TYPES,METRICS,inspectCode,codeProvenance,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,deletedPresetIds,lineupReplacements,lineupTimestamp,reconcileLibrary,libraryLineups,removeLibraryLineups,normalizeTargets,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,objectiveFormula,checkPanel};
+const api={STAT_NAMES,STAT_TYPES,METRICS,SNAPSHOT_SECTIONS,inventoryComplete,inspectCode,codeProvenance,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,deletedPresetIds,lineupReplacements,lineupTimestamp,reconcileLibrary,libraryLineups,removeLibraryLineups,normalizeTargets,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,objectiveFormula,checkPanel};
 const solver=typeof module==='object'&&module.exports?require('./solver.js'):globalThis.AtlasSolver;
 return Object.assign(api,solver(api));
 });
