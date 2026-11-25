@@ -30,7 +30,7 @@ test('复跑取消后释放正在运行的任务，未连接资料仍保留离�
  await next;
 });
 
-test('随机翻转先覆盖战斗中的不同调用位置，再试同位置的另一方向',()=>{
+test('随机翻转优先覆盖每波及不同调用位置，再试同位置的其他方向',()=>{
  const row=(offset,inCombat,before)=>({method:'random',site:['formula.py','randomDecision',17,offset],
   inCombat,comparisons:[['lt',0.5,before]]});
  const draws=[row(10,false,false),row(11,true,false),row(11,true,true),row(11,true,true),row(12,true,false),row(10,true,false)];
@@ -41,7 +41,8 @@ test('随机翻转先覆盖战斗中的不同调用位置，再试同位置的�
  const more=Array.from({length:11},(_,i)=>row(i,i>=2,false));
  assert.deepEqual(planRandomTrials({draws:more,reversibleDraws:more.map((_,i)=>i+1)}).targets.map(x=>x.index),[3,4,5,6,7,8,9,10]);
  const stages=[{...row(17,true,false),site:['battleengine/BattleEngine.py','BattleEngine.eggs',4153,17]},
-  {...row(9,true,false),wave:1},{...row(9,true,false),wave:2},{...row(13,true,false),wave:1}];
- assert.deepEqual(planRandomTrials({draws:stages,reversibleDraws:[1,2,3,4]}).targets.map(x=>x.index),[2,4,3,1]);
+  {...row(9,true,false),wave:1},{...row(9,true,false),wave:2},{...row(13,true,false),wave:1},
+  {...row(9,true,true),wave:1},{...row(13,true,false),wave:2},{...row(9,true,false),wave:3}];
+ assert.deepEqual(planRandomTrials({draws:stages,reversibleDraws:[1,2,3,4,5,6,7]}).targets.map(x=>x.index),[2,6,7,4,3,5,1]);
  assert.throws(()=>planRandomTrials({draws,reversibleDraws:[99]}),/无效的原版随机分支/);
 });

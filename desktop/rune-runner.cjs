@@ -79,11 +79,23 @@ function planRandomTrials(audit){
  // In 0.0.816 these two methods schedule opening SFX or a renderer scene flag.
  const priority=d=>d.inCombat&&!(d.file==='battleengine/BattleEngine.py'&&['BattleEngine.eggs','BattleEngine.new_eggs'].includes(d.method));
  const groups=[...bySite.values()].map(variants=>[...variants.values()]);
- const targets=[];
+ const targets=[],used=new Set();
+ const add=target=>{targets.push(target);used.add(target.index);};
  for(const preferred of [true,false]){
   const choices=groups.map(g=>g.filter(d=>priority(d)===preferred)).filter(g=>g.length);
+  if(preferred){
+   const coveredSites=new Set();
+   for(const wave of [1,2,3]){
+    const sites=choices.filter(group=>group.some(d=>d.wave===wave));
+    const site=sites.find(group=>!coveredSites.has(group))||sites[0];
+    if(site){add(site.find(d=>d.wave===wave));coveredSites.add(site);}
+   }
+  }
   for(let depth=0;targets.length<MAX_BRANCH_TRIALS&&choices.some(g=>g.length>depth);depth++){
-   for(const group of choices)if(group[depth]&&targets.length<MAX_BRANCH_TRIALS)targets.push(group[depth]);
+   for(const group of choices){
+    const target=group[depth];
+    if(target&&!used.has(target.index)&&targets.length<MAX_BRANCH_TRIALS)add(target);
+   }
   }
  }
  return {sites:groups.length,eligible:audit.reversibleDraws.length,targets};

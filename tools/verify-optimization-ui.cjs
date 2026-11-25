@@ -404,8 +404,8 @@ async function main(){
    await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random] summary").click()');
    assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random][open]").textContent'),/可达随机分支仍待验证.*75 次概率判断.*9 次可以翻转.*12 次其他随机调用/s);
    const result={seed:0,eligible:9,sites:3,planned:2,baseline:{bouts:8,engineSeconds:20},trials:[
-    {index:4,method:'randomAttack',line:84,comparison:'lt',threshold:.5,before:true,completed:true,outcome:'win',wavesCleared:3,bouts:6,engineSeconds:18},
-    {index:9,method:'randomBuff',line:19,comparison:'lt',threshold:.4,before:false,completed:true,outcome:'loss',wavesCleared:2,bouts:9,engineSeconds:24},
+    {index:4,method:'randomAttack',line:84,wave:1,comparison:'lt',threshold:.5,before:true,completed:true,outcome:'win',wavesCleared:3,bouts:6,engineSeconds:18},
+    {index:9,method:'randomBuff',line:19,wave:3,comparison:'lt',threshold:.4,before:false,completed:true,outcome:'loss',wavesCleared:2,bouts:9,engineSeconds:24},
    ]};
    const startAudit=()=>ui('document.querySelector("[data-stock-audit]").click()');
    mockRandom=(_plan,seed,progress)=>{
@@ -425,6 +425,7 @@ async function main(){
    await startAudit();
    await until('document.querySelector("[data-stock-section$=random][open]").textContent.includes("已结束 2/2")');
    assert.match(await ui('document.querySelector("[data-stock-section$=random][open]").textContent'),/1 次通关，1 次未通关.*第 9 次 · 未通关 · 2 波/s);
+   assert.match(await ui('document.querySelector("[data-stock-section$=random][open]").textContent'),/第 1、3 波已有判断完成测试/);
    await ui('document.querySelector("[data-stock-section$=random][open]").scrollIntoView({block:"start",behavior:"instant"})');
    await capture('dungeon-stock-random-trials');
    stopRandom=null;mockRandom=null;

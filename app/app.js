@@ -287,6 +287,7 @@ function randomAuditMarkup({running,cancelled,error,result}={}){
  const settled=trials.filter(t=>t.completed&&['win','loss'].includes(t.outcome));
  const wins=settled.filter(t=>t.outcome==='win'&&t.wavesCleared===3).length;
  const losses=settled.length-wins;
+ const waves=[...new Set(settled.map(t=>t.wave).filter(Boolean))].sort();
  const status=cancelled?'已停止':running?'正在测试':'已结束';
  const coverage=`种子 ${seed} · ${status} ${trials.length}/${planned} 次 · ${wins} 次通关，${losses} 次未通关`;
  const signs={lt:'<',le:'≤',gt:'>',ge:'≥'};
@@ -299,7 +300,8 @@ function randomAuditMarkup({running,cancelled,error,result}={}){
   return `<li><strong>第 ${trial.index} 次 · ${esc(change)}</strong>${difference?`<span>${difference}</span>`:''}<span>${esc(prob)}</span><span>${esc(source)}</span></li>`;
  }).join('');
  return `<p class="caption" role="status">${coverage}</p><p class="caption">基准 ${baseline.bouts} 回合 · ${baseline.engineSeconds.toFixed(2)} 秒。
- ${eligible?`从 ${sites} 处、${eligible} 次可翻转判断中选取 ${planned} 次。`:'本次基准没有可翻转的判断。'}${trials.length>settled.length?` ${trials.length-settled.length} 次未取得可核对的结算。`:''}</p>
+ ${eligible?`从 ${sites} 处、${eligible} 次可翻转判断中选取 ${planned} 次。`:'本次基准没有可翻转的判断。'}
+ ${waves.length?`第 ${waves.join('、')} 波已有判断完成测试。`:''}${trials.length>settled.length?` ${trials.length-settled.length} 次未取得可核对的结算。`:''}</p>
  ${error?`<p class="caption">${esc(error)}</p>`:''}${rows?`<ul class="dungeon-stock-builds">${rows}</ul>`:''}
  <p class="caption">每次只翻转一个判断。全随机分支和实机计时仍待验证。</p>`;
 }
