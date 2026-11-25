@@ -2,7 +2,7 @@
 
 御契桌面版在「阵容库 → 全客户端副本与规则」按需读取本地资料。打包前将生成的目录放在 `data/dungeon-catalog`，即可随桌面版打开。运行时也可以在这个面板选择已有的副本资料目录。
 
-「按关卡查找」从同版的资料表列出 31,098 条关卡、战斗模式及玩法参数配置，包括通用 PvE、御魂、觉醒、秘闻、探索、地域鬼王、契灵、六道之门、阴阳寮和历次活动。可按名称、玩法及关卡或编组 ID 搜索。关卡详情连到编组、场景、活动时间、首领及规则文本，点击敌人可核对属性、免疫与该等级的技能说明。原始字段及来源 SHA-256 可展开查看，也可跳转到原表或关联关卡。
+「按关卡查找」从同版的资料表列出 31,221 条关卡、战斗模式及玩法参数配置，包括通用 PvE、御魂、觉醒、秘闻、探索、地域鬼王、契灵、六道之门、阴阳寮和历次活动。可按名称、玩法及关卡或编组 ID 搜索。关卡详情连到编组、场景、活动时间、首领及规则文本，点击敌人可核对属性、免疫与该等级的技能说明。原始字段及来源 SHA-256 可展开查看，也可跳转到原表或关联关卡。
 
 派生索引和原表分别校验。本版有 92,303 条可解析引用。另有 14 个通用 PvE 关卡指向缺失的敌方编组，ID 为 18 至 26、11111、11112、20110、20719 和 20831，均未出现在 2.8.87 基础 APK 或 `0.0.816` 资源的 `BattleMonstersInfo`。详情保留原编号和缺失提示。索引包含历史、副本变体和内部配置，区服实际开放仍以游戏内状态为准。「查资料表」可继续检索全部原表。旧目录没有派生索引时，面板直接打开资料表。
 
@@ -18,13 +18,26 @@
 
 `PanelCombat.refreshCombatTipsBtn` 以 `pve_data_flag` 查询 `normal_battle_tips.rule_key`。`PanelCombat.onBtnCombatTips` 读取 `dungeon_challenge_series.fbtips`，并可在战斗条件满足时替换此键。`CommonTipPanel` 先查 `system_rule_dsc`，再查 `tipsInfoData_cn`。御契按此顺序关联了 13 条通用战斗提示与 514 条秘闻默认提示，其中 327 条秘闻提示来自第二张表。该表由 `com/data/pdata/tipsInfoData_cn.py` 的字面量映射提取，原模块 marshal SHA-256 为 `1f3218f2809e2604c87e14a012b81716ebfc74762d0a5a0d5a5c96026140bf28`。界面展示去掉色标后的正文，同时保留完整原字段。
 
-从 `SceneManager._initMapSrc` 提取了 630 条初始场景注册，从 `team_helper` 加载的组队脚本提取了 304 条组队类型到战斗模式的直接注册，其中 303 条含直接返回的战斗引擎名。客户端随后可用组队和独立玩法逻辑改写场景。164 个战斗模式默认配置有对应的组队入口。`act_team_battle` 中 11 条活动配置均能从组队类型追到引擎和同版默认规则。
+从 `SceneManager._initMapSrc` 提取了 630 条初始场景注册，其中 145 个模式对应的 133 个场景直接声明 `EngineClassName`。例如通用 PvE（3）声明 `MonstarGuanKaEngine`，觉醒（29）声明 `AwakeFbEngine`，阴阳寮首领退治模式（306）声明 `GuildBossEngine`。可按引擎名搜索并展开查看场景脚本与校验值。123 个有直接声明且无模式默认表记录的模式已加入关卡搜索。客户端本地开场可走组队注册、特殊副本或场景自身入口，远程战斗还取决于服务器数据。
+
+从 `team_helper` 加载的组队脚本提取了 304 条组队类型到战斗模式的直接注册，其中 303 条含直接返回的战斗引擎名。164 个战斗模式默认配置有对应的组队入口。`act_team_battle` 中 11 条活动配置均能从组队类型追到引擎和同版默认规则。
 
 例如将魂试炼从组队类型 3507 进入模式 2507，注册引擎为 `FakeGod7GeneralSoulBattleEngine`，默认时限 180 秒，配置开启共享敌方生命和组队伤害显示。逢魔演武从 8237 进入 8238，注册引擎为 `FengMoEquipBattleEngine`，默认时限 300 秒，支援式神列表为 `[70]`。`NormalActivityEngine` 读取这些模式默认值，其 `getHaltBattleTime` 优先使用关卡中大于 0 的 `battleTime`。目录显示模式默认参数。独立引擎改写的条件需沿各自代码路径核对。
 
 京畿净化可按金币、经验、御魂和觉醒查到 2,240 条原版战斗参数，详情展示棋盘编号、数值和权重。`DynamicConfigData` 分别注册四张 `journey_normalbattle_*` 参数表，御契保留各表的独立编号。普通战斗的 `SeaDailyFightPanel.init_ui` 通过当前棋格查询独立的 `DATA_JOURNEY_NORMAL_BATTLE`，再用该记录的 `battle_id` 查询体力和首领预览。本地快照未找到该面板所读的 `journey_normalbattle` 表，普通战斗的实际入场编组仍待核对。`DynamicConfigData` 的 marshal SHA-256 为 `69cc6063aba5d4fc5d797f2e9ab59b3a0af2bca22fb57515d6eb1140f8744baf`。
 
 五场首领挑战按 `SeaChallengeFightPanel.refreshUIByIdx` 的 `journey_hardbattle.battle_id` 查到通用 PvE 关卡、体力消耗、敌方波次和站位，并按 `on_tips` 展示 `defence_hard_battle` 原文。七人岬·扇对应关卡和编组 731001，体力消耗为 3，原表配置一波，站位 ID 为 716。原版面板模块的 marshal SHA-256 为 `addbb7d5bfe460f719d1c0e928f8b88b752969697dcd74be5d4a4af913c5b4c7`。
+
+### 通用 PvE 库存离线复跑
+
+`tools/verify-pve-stage.py` 按 `MonsterGuanKaScene` 声明的 `MonstarGuanKaEngine` 跑模式 3 的本地单人战斗。按 `pve_stage_data.shishentotal` 核对上阵人数，并在原版选角阶段确认每个式神、实际穿戴和自动施法设置。输入沿用 `onmyoji`、`members` 和可选 `spirit` 的库存配装结构。脚本拒绝缺少敌方编组、剧情固定阵容和替换或禁用阴阳师的关卡。独立玩法入口需要另行核对其实际引擎与入场条件。
+
+```powershell
+$env:PYTHONHASHSEED = '0'
+& $YuqiPython tools/verify-pve-stage.py --runtime <本地运行时JSON> --team <库存配装JSON> --suit-index <御魂套装JSON> --stage 3345301 --seed 0 --output <战报JSON>
+```
+
+资源 `0.0.816` 下，用真实库存验证了五式神的礁石（3345301）和三式神的 31811 配置。两场在模式 3 的种子 0 均清完原表的一波。礁石的引擎全程为 21.78 秒，开战至结算为 10.68 秒，动作重叠估算为 4.15 秒，独立进程重跑得到同一回放校验值。31811 的开战至结算为 12.78 秒，有 5 项模型动作待核对。战报使用 20 毫秒固定步长和原版回放记录，可核对结算、敌方生命和模型计时。探索入口的组队规则、实机耗时和全随机分支仍待验证。
 
 ## 御魂神罚规则核对
 

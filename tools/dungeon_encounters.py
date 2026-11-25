@@ -254,7 +254,7 @@ def encounter_index(source, load_rows):
 
     candidates = [
         name for name, row in manifests.items()
-        if name in ROOTS or name in JOURNEY_BATTLE_VARIANTS
+        if name in ROOTS or name in JOURNEY_BATTLE_VARIANTS or name == "battle_mode_routes"
         or set(row["fields"]).intersection((*BATTLE_ID_FIELDS, "monsterWaves"))
     ]
     entries, unresolved = [], 0
@@ -280,10 +280,14 @@ def encounter_index(source, load_rows):
                 linked for field in generic_edges
                 if (linked := relation("pve_stage_data", row.get(field), "通用 PvE 关卡", False))
             ] if not entrance else []
-            if not root and not entrance and not linked_battles and not row.get("monsterWaves"):
+            scene_route = table_name == "battle_mode_routes" and row.get("scene_engine") \
+                and numeric_key(key) not in table("normal_battle_config")
+            if not root and not entrance and not scene_route and not linked_battles and not row.get("monsterWaves"):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
+            if scene_route:
+                entry_kind = "初始场景引擎"
             title = name(row)
             if variant:
                 board = numeric_key(row.get("board_index"))
@@ -302,7 +306,10 @@ def encounter_index(source, load_rows):
             if table_name == "normal_battle_config":
                 symbol = next((table(ref["table"])[numeric_key(ref["key"])][1].get("mode_symbol")
                                for ref in references if ref["table"] in {"battle_mode_routes", "battle_team_routes"}), None)
-                title = "战斗模式 " + str(key) + (" · " + symbol if symbol else "")
+                scene = table("battle_mode_routes").get(numeric_key(row.get("battleMode")), (None, {}))[1]
+                title = " · ".join(filter(None, (f"战斗模式 {key}", symbol, scene.get("scene_engine"))))
+            if scene_route:
+                title = " · ".join((f"战斗模式 {key}", row["mode_symbol"], row["scene_engine"]))
             if not title and linked_battles:
                 _, battle = table("pve_stage_data")[numeric_key(linked_battles[0]["key"])]
                 title = name(battle)

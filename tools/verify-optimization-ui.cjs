@@ -172,6 +172,19 @@ async function main(){
   await capture('client-journey-challenge');
   await ui('$("client-dungeons").open=false');
  });
+ if(catalog?.index.encounters&&catalog.entries.get('battle_mode_routes')?.fields.includes('scene_engine'))await check('可从战斗模式查找场景声明引擎和原脚本来源',async()=>{
+  await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
+  await ui('qaEncounterInput("battle","MODE_PVE MonstarGuanKaEngine")');
+  await until('$("client-dungeons-encounter-detail").textContent.includes("MonsterGuanKaScene.py")');
+  const pve=await ui('$("client-dungeons-encounter-detail").textContent');
+  assert.match(pve,/战斗模式 3 · MODE_PVE · MonstarGuanKaEngine.*场景声明引擎MonstarGuanKaEngine.*scenemembers\/MonsterGuanKaScene\.py.*6d10449fa0d389ec0e7d53591abc3d97e049d1ebad146095996bf14369b6a802/s);
+  await ui('qaEncounterInput("battle","MODE_AWAKE_FB AwakeFbEngine")');
+  await until('$("client-dungeons-encounter-detail").textContent.includes("AwakeFbScene.py")');
+  assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/场景声明引擎AwakeFbEngine.*可选用其他引擎或场景/s);
+  await ui('$("client-dungeons").scrollIntoView({block:"start",behavior:"instant"})');
+  await capture('client-awake-scene-engine');
+  await ui('$("client-dungeons").open=false');
+ });
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
  const file=json=>'[{name:"synthetic.json",size:1024,text:async()=>'+JSON.stringify(JSON.stringify(json))+'}]';
  await check('账号导入失败保持原账号和原库存',async()=>{

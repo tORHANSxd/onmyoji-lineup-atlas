@@ -1,0 +1,225 @@
+"""Replay selected inventory through the client's default single-player MODE_PVE engine."""
+
+import argparse
+import faulthandler
+import json
+import math
+import os
+from pathlib import Path
+import struct
+import sys
+from tempfile import TemporaryDirectory
+import time
+
+
+def replay(args, runtime, work):
+    from game_resources import sha256
+    from rune_floor_host import prepare_runtime
+    from rune_replay import monster_waves, project_playback, read_models
+    from rune_team import battle_spirit, selected_team
+    from unicorn.x86_const import UC_X86_REG_XMM0
+
+    team_bytes, suit_bytes = args.team.read_bytes(), args.suit_index.read_bytes()
+    plan = json.loads(team_bytes)
+    actor, fighters, inventory, choices = selected_team(plan, json.loads(suit_bytes))
+    modules, host, evidence = prepare_runtime(runtime, work)
+    native_api = host.oracle.api
+
+    def host_api(name, arguments):
+        if name != "acosf":
+            return native_api(name, arguments)
+        register = host.oracle.uc.reg_read(UC_X86_REG_XMM0) & 0xffffffff
+        value, = struct.unpack("<f", struct.pack("<I", register))
+        angle = math.acos(value) if -1 <= value <= 1 else math.nan
+        bits, = struct.unpack("<I", struct.pack("<f", angle))
+        host.oracle.uc.reg_write(UC_X86_REG_XMM0, bits)
+        return 0
+
+    host.oracle.api = host_api
+    from battleengine.BattleCommon import BattleAvatar
+    from battleengine.BattleController import LocalBattleController
+    from battleengine.BattleRecorder import BattleRecorderRune
+    from battleengine.battle_tools.RandomRecord import RandomRecord
+    from battleengine.engine.MonstarGuanKaEngine import MonstarGuanKaEngine, const
+    from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA
+
+    stage_id = str(args.stage)
+    stage = DATA_PVE_STAGE_DATA.data.get(stage_id)
+    if stage is None:
+        raise ValueError(f"Unknown native PvE stage {stage_id}")
+    group_id = stage.get("groupid")
+    group = BattleMonstersInfo.data.get(group_id)
+    if not group or not group.get("MonstersInfos"):
+        raise ValueError(f"Stage {stage_id} has no usable original enemy formation ({group_id})")
+    if any(stage.get(field) for field in ("no_yys", "replace_yysid", "isplot", "sl_file")):
+        raise ValueError(f"Stage {stage_id} uses a scripted or restricted roster")
+    if stage.get("shishentotal") != len(fighters):
+        raise ValueError(f"Stage {stage_id} requires exactly {stage.get('shishentotal')} shikigami")
+    if any(hero["heroId"] not in DATA_HERO.data for hero in (actor, *fighters.values())):
+        raise ValueError("Unknown inventory character")
+
+    player = {"heroes": {**fighters, "selected-onmyoji": actor}, "yysid": actor["heroId"]}
+    spirit = plan.get("spirit")
+    if spirit is not None:
+        from AttrCalc import HunlingAttrCalc
+        from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
+
+        spirit = battle_spirit(spirit, HunlingAttrCalc)
+        template = DATA_HUNLING_BASE.data.get(spirit["id"], {})
+        if (actor["heroId"] not in template.get("heroIdList", ())
+                or (spirit["id"], spirit["star"]) not in DATA_HUNLING_ATTR.data
+                or any(mark not in DATA_HUNLING_MARK.data for mark in spirit["marks"])):
+            raise ValueError("The spirit configuration does not match the runtime")
+        player["hunling_info"] = {spirit["uid"]: spirit}
+        player["yys_hunling"] = {str(actor["heroId"]): spirit["uid"]}
+    avatar = BattleAvatar()
+    avatar.init_from_dict(player)
+    avatar.inventory.update(inventory)
+    avatar.defaultHeros = list(fighters)
+
+    engine = MonstarGuanKaEngine({"pve_data_flag": stage_id})
+    if engine.isDramaGuanKa or not engine.selectHeroEnabled:
+        raise ValueError(f"Stage {stage_id} requires the original story roster")
+    engine.battleMode = const.BattleMode.MODE_PVE
+    engine.engineLocation = const.BattleLocation.LOCAL_SERVER
+    engine.seed = args.seed
+    generator = engine.random
+    random_record = RandomRecord(generator)
+    for method in ("seed", "getstate", "setstate"):
+        setattr(random_record, method, getattr(generator, method))
+    engine._random = random_record
+    controller = LocalBattleController(const.CampFlag.CAMP1, avatar)
+    controller.battleEngine = engine
+    controller.sceneLoaded = True
+    engine.addBattlePlayer(avatar)
+    engine.controllers.append(controller)
+    engine.op_init_flag = True
+    init_engine_state = engine.init_engine_state
+    battle_ended, create_entity = engine.doBattleEnded, engine.onEntityCreated
+    winner, entity_models = None, {}
+
+    def init_record_clock():
+        init_engine_state()
+        engine.engine_state = const.EngineState.RECORD_MODE
+
+    def observe_end(camp):
+        nonlocal winner
+        battle_ended(camp)
+        winner = camp
+
+    def observe_created(entity):
+        create_entity(entity)
+        model = getattr(entity, "modelName", None)
+        if isinstance(model, str):
+            filename = model.replace("\\", "/").replace("/", "_").replace(".gim", ".json")
+            uid = str(entity.uid)
+            if entity_models.setdefault(uid, filename) != filename:
+                entity_models[uid] = None
+
+    engine.init_engine_state = init_record_clock
+    engine.doBattleEnded = observe_end
+    engine.onEntityCreated = observe_created
+    engine._time, engine.delta_time = 1000.0, .020
+    engine.init()
+    if (engine.seed != args.seed or engine.random is not random_record or engine.monstergroup != group_id
+            or engine.monsterWaveCount != len(group["MonstersInfos"])):
+        raise RuntimeError("The original engine initialized a different battle")
+    recorder = BattleRecorderRune(engine, controller)
+    engine.battleRecorder = recorder
+    engine.op_init(controller, actor["heroId"], list(fighters), [])
+    engine.battleState = const.BattleState.BS_LOADING
+    engine.op_sceneLoaded(controller)
+
+    deadline, start = time.monotonic() + 75, engine.now_time()
+    selection_checked = False
+    equipped_spirit = None
+    while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
+        engine.update()
+        if host.oracle.unsupported:
+            raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
+        if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk:
+            continue
+        pending = dict(choices)
+        for entity in engine.heroEntities.values():
+            if entity.ownerController is not controller:
+                continue
+            hero = entity.HeroComp.heroData
+            alias = hero.heroUid
+            if alias not in pending:
+                continue
+            setting = pending.pop(alias)
+            if setting:
+                engine.op_setAutoSkill(controller, entity.uid, setting)
+                if controller.autoSkill.get(entity.uid) != setting:
+                    raise RuntimeError("The original engine did not apply the selected automatic skill")
+            if sorted(uid for uid in hero.equips if uid) != sorted(fighters.get(alias, actor)["equips"]):
+                raise RuntimeError("The original engine changed the selected equipment")
+            if alias == "selected-onmyoji" and spirit:
+                attached = entity.get_hunlingData()
+                if not attached or attached.uuid != spirit["uid"]:
+                    raise RuntimeError("The original engine did not select the requested spirit")
+                equipped_spirit = {"id": attached.id, "star": attached.star, "level": attached.lv}
+        if pending:
+            raise RuntimeError("The original engine did not create every selected character")
+        engine.op_setAuto(controller, True)
+        engine.op_selectHeroOk(controller)
+        selection_checked = controller.selectHeroOk
+    if not selection_checked:
+        raise RuntimeError("The original engine did not accept the selected roster")
+
+    record = "".join(recorder.data_list).encode("utf-8")
+    outcome = {const.CampFlag.CAMP1: "win", const.CampFlag.CAMP2: "loss"}.get(winner, "unknown")
+    completed = engine.battleState == const.BattleState.BS_OVER and outcome != "unknown"
+    module = "battleengine.engine.MonstarGuanKaEngine"
+    report = {**evidence, "route": "mode-pve-default-solo", "stageId": args.stage, "groupId": group_id,
+              "engineClass": type(engine).__name__, "engineSHA256": modules.rows[module]["marshalSHA256"],
+              "battleMode": engine.battleMode, "sceneId": engine.combineSceneInfoId, "seed": engine.seed,
+              "fixedStepMs": 20, "teamSHA256": sha256(team_bytes), "suitIndexSHA256": sha256(suit_bytes),
+              "recordSHA256": sha256(record), "recordLines": len(record.splitlines()),
+              "completed": completed, "outcome": outcome if completed else "unknown", "waveCount": engine.monsterWaveCount,
+              "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,
+              "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
+    try:
+        report["monsterHealth"] = monster_waves(record)["waves"]
+    except (KeyError, IndexError, TypeError, ValueError):
+        report["monsterHealth"] = None
+    try:
+        model_root = work / "src/model_info"
+        manifest = {file.name: sha256(file.read_bytes()) for file in model_root.glob("*.json")}
+        projection = project_playback(record, entity_models, read_models(model_root, manifest))
+        report["animationPlayback"] = {key: projection[key] for key in (
+            "combatElapsedMs", "combatOverlapMs", "overlapMs", "interruptedClips")}
+        report["animationPlayback"]["unresolved"] = len(projection["unresolved"])
+    except (OSError, KeyError, IndexError, TypeError, ValueError):
+        report["animationPlayback"] = None
+    return report
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    for flag in ("runtime", "team", "suit-index", "output"):
+        parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
+    parser.add_argument("--stage", required=True, type=int)
+    parser.add_argument("--seed", required=True, type=int)
+    args = parser.parse_args()
+    if args.stage <= 0 or not 0 <= args.seed < 10000:
+        parser.error("--stage must be positive and --seed must be between 0 and 9999")
+    runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
+    sys.path[:0] = [str(Path(__file__).resolve().parent), runtime["gameTools"]]
+    faulthandler.dump_traceback_later(95, exit=True)
+    with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:
+        previous = Path.cwd()
+        work = Path(directory).resolve()
+        try:
+            os.chdir(work)
+            report = replay(args, runtime, work)
+        finally:
+            os.chdir(previous)
+    args.output.write_text(json.dumps(report, allow_nan=False), encoding="utf-8")
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0 if report["completed"] else 2)
+
+
+if __name__ == "__main__":
+    main()

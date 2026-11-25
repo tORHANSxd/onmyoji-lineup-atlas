@@ -72,6 +72,7 @@
     team_type: '组队类型 ID', team_symbol: '组队类型常量',
     battleMode: '战斗模式 ID', mode_symbol: '战斗模式常量',
     map_path: '注册场景资源', scene_class: '场景类', engine_class: '战斗引擎类', route_module: '组队注册脚本',
+    scene_engine: '场景声明引擎',
     can_single_fight: '允许单人', show_left_time: '显示剩余时间', show_wave_count: '显示波次',
     show_current_score: '显示当前积分',
     rule: '玩法规则', boss_rule: '首领机制', attack_tip: '战斗提示', challenge_time: '挑战时限',
@@ -324,7 +325,13 @@
       block.append(node('p', '关卡时限和独立引擎可覆盖模式默认参数。', 'caption'));
     }
     if (table === 'battle_mode_routes') {
-      block.append(node('p', '客户端初始化场景表时的注册项。组队与玩法逻辑可改写场景。', 'caption'));
+      block.append(node('p', '客户端初始注册。组队、远程战斗和独立玩法入口可选用其他引擎或场景。', 'caption'));
+      if (row?.scene_module && row.scene_marshal_sha256) {
+        const details = document.createElement('details');
+        details.append(node('summary','查看场景脚本来源'), node('p', row.scene_module, 'caption'),
+          node('code', row.scene_marshal_sha256));
+        block.append(details);
+      }
     }
     const rule = table === 'system_rule_dsc' ? row?.rule_dsc : table === 'tipsInfoData_cn' ? row : null;
     if (typeof rule === 'string' && rule.trim()) {

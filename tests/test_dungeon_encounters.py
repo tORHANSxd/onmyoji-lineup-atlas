@@ -1,12 +1,48 @@
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from dungeon_encounters import encounter_index
+from dungeon_battle_routes import bind_scene_engines
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_scene_engine_keeps_direct_source_and_omits_conditional_declarations(self):
+        scenes = {"SimpleScene": 'EngineClassName = "ExampleEngine"',
+                  "GuardedScene": 'if some_condition:\n        EngineClassName = "OtherEngine"'}
+        rows = {i: {"scene_class": scene} for i, scene in enumerate(scenes, 1)}
+        modules = {
+            f"scenemembers/{scene}.py": (compile(f"class {scene}:\n    {body}\n", f"{scene}.py", "exec"),
+                                         {"marshalSHA256": "c" * 64})
+            for scene, body in scenes.items()
+        }
+        bind_scene_engines(rows, modules, SimpleNamespace(code=lambda original: original))
+        self.assertEqual(rows[1], {"scene_class": "SimpleScene", "scene_engine": "ExampleEngine",
+                                   "scene_module": "scenemembers/SimpleScene.py", "scene_marshal_sha256": "c" * 64})
+        self.assertEqual(rows[2], {"scene_class": "GuardedScene"})
+
+    def test_scene_engines_are_searchable_with_or_without_mode_defaults(self):
+        tables = {
+            "battle_mode_routes": [[3, {"battleMode": 3, "mode_symbol": "MODE_PVE", "scene_engine": "MonstarGuanKaEngine"}],
+                                   [6, {"battleMode": 6, "mode_symbol": "MODE_OTHER", "scene_engine": "OtherEngine"}],
+                                   [7, {"battleMode": 7, "mode_symbol": "NON_BATTLE_SCENE"}]],
+            "normal_battle_config": [[6, {"battleMode": 6, "halt_time": 180}]],
+        }
+        manifests = [
+            {"name": name, "status": "decoded", "family": "battle",
+             "fields": list({field for _, row in rows for field in row})}
+            for name, rows in tables.items()
+        ]
+        data = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        rows = data["entries"]
+        self.assertEqual([(row["table"], row["key"], row["title"]) for row in rows],
+                         [("battle_mode_routes", 3, "战斗模式 3 · MODE_PVE · MonstarGuanKaEngine"),
+                          ("normal_battle_config", 6, "战斗模式 6 · MODE_OTHER · OtherEngine")])
+        self.assertEqual(rows[1]["refs"], [{"table": "battle_mode_routes", "key": 6,
+                                            "label": "客户端初始场景注册", "found": True}])
+
     def test_journey_variants_keep_resource_namespaces_and_bosses_keep_the_original_links(self):
         tables = {
             "journey_normalbattle_jinbi": [[2, {"battle_id": 18, "board_index": 4}]],

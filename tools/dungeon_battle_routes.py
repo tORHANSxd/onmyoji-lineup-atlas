@@ -8,10 +8,13 @@ CONSTANTS = "com/const.py"
 SCENES = "SceneManager.py"
 TEAMS = "module/team_types/team_helper.py"
 TEAM_BASE = "module/team_types/team_type_base.py"
+SCENE_MODULE_PREFIX = "scenemembers/"
 
 
 def is_route_script(module):
-    return module in {CONSTANTS, SCENES, TEAMS} or module.startswith("module/team_types/team_type_")
+    return module in {CONSTANTS, SCENES, TEAMS} or module.startswith(
+        ("module/team_types/team_type_", SCENE_MODULE_PREFIX)
+    )
 
 
 def child(code, name):
@@ -57,6 +60,29 @@ def initial_scene_routes(code, modes):
         rows[mode] = {"battleMode": mode, "mode_symbol": symbol,
                       "map_path": entry[3].argval, "scene_class": entry[4].argval}
     return rows
+
+
+def bind_scene_engines(rows, modules, decoder):
+    by_scene = {}
+    for row in rows.values():
+        scene = row["scene_class"]
+        if scene not in by_scene:
+            path = SCENE_MODULE_PREFIX + scene + ".py"
+            by_scene[scene] = {}
+            if path in modules:
+                original, source = modules[path]
+                cls = child(decoder.code(original), scene)
+                ops = instructions(cls)
+                declarations = [value for value, target in zip(ops, ops[1:])
+                                if target.argval == "EngineClassName" and target.opname == "STORE_NAME"]
+                if len(declarations) == 1:
+                    value = declarations[0]
+                    guarded = any(op.offset < value.offset < op.argval for op in ops
+                                  if op.opcode in dis.hasjrel or op.opcode in dis.hasjabs)
+                    if not guarded and value.opname == "LOAD_CONST" and isinstance(value.argval, str) and value.argval.isidentifier():
+                        by_scene[scene] = {"scene_engine": value.argval, "scene_module": path,
+                                           "scene_marshal_sha256": source["marshalSHA256"]}
+        row.update(by_scene[scene])
 
 
 def team_routes(modules, decoder, modes, team_ids, registry):
@@ -109,6 +135,7 @@ def extract_routes(modules, decoder):
     if not modes or not teams:
         raise ValueError("The client battle and team mode constants were not found")
     initial = initial_scene_routes(decoder.code(modules[SCENES][0]), modes)
+    bind_scene_engines(initial, modules, decoder)
     registered = team_routes(modules, decoder, modes, teams, decoder.code(modules[TEAMS][0]))
     if not initial or not registered:
         raise ValueError("The client scene and team registries were not found")
