@@ -229,6 +229,16 @@ def run(args):
     engine.addBattlePlayer(avatar)
     engine.controllers.append(controller)
     engine.op_init_flag = True
+    if args.fixed_step_ms is not None:
+        init_engine_state = engine.init_engine_state
+
+        def init_record_clock():
+            init_engine_state()
+            engine.engine_state = const.EngineState.RECORD_MODE
+
+        engine.init_engine_state = init_record_clock
+        engine._time = 1000.0
+        engine.delta_time = args.fixed_step_ms / 1000
     engine.init()
     if engine.seed != args.seed or engine.random is not random_record:
         raise RuntimeError("The original engine changed the requested random seed or recorder")
@@ -237,11 +247,14 @@ def run(args):
     engine.op_sceneLoaded(controller)
 
     deadline = time.monotonic() + args.timeout
+    first_tick_time = engine.now_time()
+    ticks = 0
     phases = [engine.battleState]
     selected_settings = []
     equipped_spirit = None
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
+        ticks += 1
         if host.oracle.unsupported:
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
         if phases[-1] != engine.battleState:
@@ -278,7 +291,8 @@ def run(args):
                 raise RuntimeError("The original engine did not create every selected team member")
             engine.op_setAuto(controller, True)
             engine.op_selectHeroOk(controller)
-        time.sleep(.02)
+        if args.fixed_step_ms is None:
+            time.sleep(.02)
 
     completed = engine.battleState == const.BattleState.BS_OVER
     record = getattr(engine.battleRecorder, "data_list", ())
@@ -293,6 +307,9 @@ def run(args):
         "outcome": "win" if winner == const.CampFlag.CAMP1 else "loss" if winner == const.CampFlag.CAMP2 else "unknown",
         "selectedSettings": selected_settings,
         "equippedSpirit": equipped_spirit,
+        "clock": {"mode": "client-record-step" if args.fixed_step_ms is not None else "host-wall",
+                  "stepMs": args.fixed_step_ms, "ticks": ticks,
+                  "elapsedEngineSeconds": round(engine.now_time() - first_tick_time, 6)},
         "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,
         "remainingPlayers": len(engine.heroEntities), "remainingEnemies": len(engine.monsterEntities),
         "randomCalls": len(random_record.history), "engineRandomCounter": engine.random_count,
@@ -323,12 +340,15 @@ if __name__ == "__main__":
     parser.add_argument("--team", type=Path, help="Explicit selected roster and soul rows (see DUNGEON_CATALOG.md)")
     parser.add_argument("--suit-index", type=Path, help="Override the repository's suit ID to name mapping")
     parser.add_argument("--seed", type=int, default=0, help="Explicit random seed for one offline replay")
+    parser.add_argument("--fixed-step-ms", type=int, help="Use the original recording clock with a fixed time step")
     parser.add_argument("--timeout", type=int, default=75)
     args = parser.parse_args()
     if args.timeout < 1:
         parser.error("--timeout must be positive")
     if not 0 <= args.seed < 2 ** 32:
         parser.error("--seed must be in the 32-bit unsigned range")
+    if args.fixed_step_ms is not None and not 1 <= args.fixed_step_ms <= 80:
+        parser.error("--fixed-step-ms must be between 1 and 80")
     sys.path[:0] = [str(Path(__file__).resolve().parent), str(args.game_tools.resolve())]
     args.opcode_proof = args.opcode_proof.resolve()
     faulthandler.dump_traceback_later(args.timeout + 60, exit=True)
