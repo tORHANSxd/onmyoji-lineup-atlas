@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),crypto=require('node:crypto');
 const D=require('../data/bundle.json'),C=require('../app/categories.js');
-test('默认使用686条APK关卡映射，不让旧标题覆盖已解析关卡',()=>{
- assert.equal(D.stageCatalog.scenes.length,686);const l=C.resolve({gameSceneId:1001000,title:'周常逢魔旧标题',category:'周常',dungeon:'彼世逢魔'},D);assert.equal(l.category,'御魂');assert.equal(l.subcategory,'八岐大蛇');assert.equal(l.dungeon,'八岐大蛇·虚无');assert.match(l.classificationSource,/APK/);assert.deepEqual(l.dungeons,[l.dungeon]);
+test('默认使用715条客户端关卡映射，不让旧标题覆盖已解析关卡',()=>{
+ assert.equal(D.stageCatalog.scenes.length,715);const l=C.resolve({gameSceneId:1001000,title:'周常逢魔旧标题',category:'周常',dungeon:'彼世逢魔'},D);assert.equal(l.category,'御魂');assert.equal(l.subcategory,'八岐大蛇');assert.equal(l.dungeon,'八岐大蛇·虚无');assert.match(l.classificationSource,/APK/);assert.deepEqual(l.dungeons,[l.dungeon]);
  for(const row of D.lineups)assert.ok(C.resolve(row,D).classificationPaths.length>=1);
 });
 test('Excel用途覆盖原码场景默认值，同码跨副本可找且路径不能交叉拼接',()=>{

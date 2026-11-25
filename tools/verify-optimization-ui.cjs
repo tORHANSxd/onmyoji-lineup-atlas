@@ -179,7 +179,23 @@ async function main(){
   const before=JSON.stringify(stored),valid={...raw,player:{...raw.player,shortId:'another-synthetic'}},invalid={...raw,heroes:{broken:{heroId:608}}};
   const files='['+file(valid).slice(1,-1)+','+file(invalid).slice(1,-1)+']';
   await ui('importMode="accounts";handleFiles('+files+')');assert.equal(JSON.stringify(stored),before);
-  assert.match(await ui('document.getElementById("toast").textContent'),/导入失败/);
+  assert.match(await ui('document.getElementById("account-import-error").textContent'),/导入失败.*synthetic\.json/);
+ });
+ await check('魂王按原码筛选，排除其他副本的勾选项',async()=>{
+  await ui('selectView("library");document.getElementById("dungeon-workbench").open=true;renderDungeonRules()');
+  assert.equal(await ui('selectedDungeon().id'),102);
+  assert.equal(await ui('document.querySelectorAll(".dungeon-wave").length'),3);
+  assert.equal(await ui('document.querySelectorAll(".dungeon-wave li").length'),9);
+  assert.match(await ui('document.getElementById("dungeon-rules-details").textContent'),/0\.0\.816.*大蛇神/);
+  await ui('document.getElementById("dungeon-show-lineups").click()');
+  assert.equal(await ui('filteredLineups().length>0&&filteredLineups().every(l=>Number(l.gameSceneId)===1001001)'),true);
+  await ui('const row=filteredLineups().find(C.hasParsedContent);selectedLineups.add(row.id);renderSelection();document.getElementById("dungeon-workbench").scrollIntoView({block:"start"})');
+  assert.equal(await ui('document.getElementById("dungeon-match-selected").disabled'),false);
+  await capture('dungeon-soul-12');
+  await ui('document.getElementById("dungeon-match-selected").click()');
+  await until('matchJobIds.size===0');
+  assert.match(await ui('document.getElementById("dungeon-match-status").textContent'),/已核对 1 个/);
+  await ui('document.getElementById("dungeon-workbench").open=false;document.getElementById("clear-filters").click()');
  });
   await check('旧缓存重启重新解析原始库存，备份再恢复不丢新版数据',async()=>{
   delete stored.accounts[0].snapshot;delete stored.accounts[0].coverage;stored.accounts[0].warnings=[];

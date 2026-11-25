@@ -157,12 +157,24 @@ function adaptInspection(payload,roster=[]){
   warnings.push('服务类型未提供技能与觉醒要求；身份不明的阴阳师保持未指定。');
   return {title:d.teamName||'未命名阵容',gameSceneId:d.gameSceneId,members,warnings,raw:d,requirementsComplete:false,decodeState:'decoded'};
 }
-const SNAPSHOT_SECTIONS={currency:'资源余额',heroesBagEntries:'堆叠素材',heroBookShards:'式神碎片',realmCards:'结界卡',storyTasks:'剧情任务',heroStoryProgress:'式神传记',taskRecords:'任务记录',guild:'阴阳寮',diagnostics:'采集诊断'};
+const SNAPSHOT_SECTIONS={
+ currency:'资源余额',heroesBagEntries:'堆叠素材',heroBookShards:'式神碎片',
+ heroShardBinding:'碎片绑定',hunlings:'契灵',realmCards:'结界卡',
+ storyTasks:'剧情任务',heroStoryProgress:'式神传记',taskRecords:'任务记录',
+ guild:'阴阳寮',collections:'收藏',accountComparison:'账号概况',diagnostics:'采集诊断'
+};
+const SNAPSHOT_SCOPES={
+ currency:'items',heroesBagEntries:'heroes',heroesBagCount:'heroes',
+ realmCards:'realmCards',guild:'guild',taskRecords:'taskRecords'
+};
+const SNAPSHOT_OBJECT_SECTIONS=new Set([
+ 'currency','heroShardBinding','heroStoryProgress','taskRecords','guild','collections','accountComparison'
+]);
 function snapshotInfo(raw,warnings){
  const scope=object(raw.scope)?raw.scope:{},sections={};
  if(raw.scope!=null&&!object(raw.scope))warnings.push('采集范围格式异常，请重新导出库存');
  for(const [key,label] of Object.entries(SNAPSHOT_SECTIONS)){
-  const value=raw[key],valid=['currency','heroStoryProgress','taskRecords','guild'].includes(key)?object(value):Array.isArray(value);
+  const value=raw[key],valid=SNAPSHOT_OBJECT_SECTIONS.has(key)?object(value):Array.isArray(value);
   sections[key]=value==null||!valid?null:key==='guild'?1:Object.keys(value).length;
   if(value!=null&&!valid)warnings.push(`${label}格式未识别，原始数据已保留`);
  }
@@ -177,7 +189,14 @@ function snapshotInfo(raw,warnings){
  }
  // Tuple columns whose contract is not known stay untouched in raw. In
  // particular, repeated story task keys must not be collapsed into a map.
- return {version:1,scope,sections,stackedHeroes};
+ const spirits=Array.isArray(raw.hunlings)?raw.hunlings.filter(row=>
+  object(row)&&Number.isSafeInteger(row.id)&&row.id>0
+  &&Number.isSafeInteger(row.star)&&row.star>=1&&row.star<=6
+  &&Number.isSafeInteger(row.lv)&&row.lv>=0
+  &&Array.isArray(row.marks)&&row.marks.every(mark=>Number.isSafeInteger(mark)&&mark>0)
+ ).map(({id,lv,star,marks})=>({id,lv,star,marks})):null;
+ if(spirits&&spirits.length!==raw.hunlings.length)warnings.push('部分契灵格式待核对，原始记录已保留');
+ return {version:1,scope,sections,stackedHeroes,spirits};
 }
 function inventoryComplete(account,kind){
  if(account.completeness!=='complete'||account.merged)return false;
@@ -201,8 +220,8 @@ function parseAccount(raw,fileName='账号'){
     if(!object(q)||typeof q.id!=='string'||!/^[a-zA-Z0-9_-]{1,80}$/.test(q.id)||!Number.isInteger(q.slot)||q.slot<1||q.slot>6||!finite(q.level)||!finite(q.quality)||!finite(q.mainAttrValue)||!Array.isArray(q.subAttributes)||typeof q.setId!=='string')throw new Error('御魂字段损坏，账号未保存');
     if(Object.hasOwn(souls,q.id)||['__proto__','constructor','prototype'].includes(q.id))throw new Error('御魂实例ID重复或无效');
     let stats={};const unknown=[];
-    for(const a of [{type:q.mainAttrType,value:q.mainAttrValue},...q.subAttributes]){const k=STAT_TYPES[a.type];if(!k||!finite(a.value))unknown.push(a.type);else stats[k]=(stats[k]||0)+a.value;}
-    souls[q.id]={id:q.id,slot:q.slot,set:q.setId==='涅槃之火'?'涅槃火':q.setId,level:q.level,star:q.quality,mainStat:STAT_TYPES[q.mainAttrType]||q.mainAttrType,stats,unknown,equippedState:q.equippedState,raw:q};
+    for(const a of [{type:q.mainAttrType,value:q.mainAttrValue},...q.subAttributes]){const type=object(a)&&typeof a.type==='string'?a.type:'无效属性';const k=Object.hasOwn(STAT_TYPES,type)?STAT_TYPES[type]:null;if(!k||!finite(a.value))unknown.push(type);else stats[k]=(stats[k]||0)+a.value;}
+    souls[q.id]={id:q.id,slot:q.slot,set:q.setId==='涅槃之火'?'涅槃火':q.setId,level:q.level,star:q.quality,mainStat:Object.hasOwn(STAT_TYPES,q.mainAttrType)?STAT_TYPES[q.mainAttrType]:q.mainAttrType,stats,unknown,equippedState:q.equippedState,raw:q};
   }
   const snapshot=snapshotInfo(raw,warnings),coverage={heroes:raw.completeness==='complete',souls:raw.completeness==='complete'};
   for(const [key,label] of [['heroes','式神'],['souls','御魂']]){
@@ -229,9 +248,9 @@ function mergeAccount(old,incoming){
   const heroes={...old.heroes,...incoming.heroes},souls={...old.souls,...incoming.souls},soulKey=snapshotSoulKey(incoming.raw),raw={...old.raw,...incoming.raw,heroes:Object.fromEntries(Object.entries(heroes).map(([k,h])=>[k,h.raw])),[soulKey]:Object.values(souls).map(q=>q.raw),heroCount:Object.keys(heroes).length};
   // Keep the incoming format's canonical list so reloads cannot pick stale rows.
   delete raw[soulKey==='souls'?'hero_equips':'souls'];
- const scopes={currency:'items',heroesBagEntries:'heroes',heroesBagCount:'heroes',realmCards:'realmCards',guild:'guild',taskRecords:'taskRecords'},retainedSections={};
+ const retainedSections={};
  for(const key of [...Object.keys(SNAPSHOT_SECTIONS),'heroesBagCount']){
-  if(Object.hasOwn(old.raw,key)&&(!Object.hasOwn(incoming.raw,key)||incoming.raw.scope?.[scopes[key]]===false)){
+  if(Object.hasOwn(old.raw,key)&&(!Object.hasOwn(incoming.raw,key)||incoming.raw.scope?.[SNAPSHOT_SCOPES[key]]===false)){
    raw[key]=old.raw[key];retainedSections[key]=old.retainedSections?.[key]||old.capturedAt||null;
   }
  }
@@ -309,7 +328,7 @@ function checkPanel(p,c,objective){
   return missing;
 }
 
-const api={STAT_NAMES,STAT_TYPES,METRICS,SNAPSHOT_SECTIONS,inventoryComplete,inspectCode,codeProvenance,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,deletedPresetIds,lineupReplacements,lineupTimestamp,reconcileLibrary,libraryLineups,removeLibraryLineups,normalizeTargets,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,objectiveFormula,checkPanel};
+const api={STAT_NAMES,STAT_TYPES,METRICS,SNAPSHOT_SECTIONS,SNAPSHOT_SCOPES,inventoryComplete,inspectCode,codeProvenance,normalizeCode,hasLineupCode,hasParsedContent,paginate,classifyCode,adaptTA,mergeDecodedLineup,deletedPresetIds,lineupReplacements,lineupTimestamp,reconcileLibrary,libraryLineups,removeLibraryLineups,normalizeTargets,adaptInspection,parseAccount,mergeAccount,restoreAccount,validateLineup,baseFromRoster,panel,score,objectiveFormula,checkPanel};
 const solver=typeof module==='object'&&module.exports?require('./solver.js'):globalThis.AtlasSolver;
 return Object.assign(api,solver(api));
 });

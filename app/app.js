@@ -87,6 +87,9 @@ let indexedData=null,assetIndex=null;
 function dataIndex(){if(indexedData!==DATA){indexedData=DATA;assetIndex={roster:new Map(DATA.roster.map(r=>[String(r.id),r])),game:new Map((DATA.gameAssets?.items||[]).map(a=>[a.library+':'+a.id,a])),souls:new Map((DATA.gameAssets?.items||[]).filter(a=>a.library==='yuhun').map(a=>[a.name,a]))};}return assetIndex;}
 function rosterById(id){return DATA?dataIndex().roster.get(String(id)):null;}
 function actorFor(m){return (DATA.actors||[]).find(a=>(m.onmyojiId&&a.gameId!=null&&String(a.gameId)===m.onmyojiId)||a.name===m.name||a.aliases?.includes(m.name));}
+function accountHeroName(h,rosterEntry){
+ return rosterEntry?.name||DATA.gameConfig?.heroNames?.[h.shikigamiId]||'未收录角色 '+h.shikigamiId;
+}
 function resourceFor(m){return m.kind==='onmyoji'?actorFor(m):rosterById(m.shikigamiId);}
 function variant(r,state,kind='art'){if(r?.sourceRegion)state='unawakened';if(state==='awakened'&&r?.assets?.awakeningAvailability==='not_applicable')return null;return r?.assets?.variants?.find(a=>a.family===`${kind==='art'?'art':'portrait'}-${state==='awakened'?'after':'before'}`&&a.status==='downloaded_valid_image');}
 function imagePath(a){if(a&&/^[a-f0-9]{64}\.(png|jpg)$/.test(a.cacheFile))return window.atlas?'atlas-asset://cache/'+a.cacheFile:'/cache/'+a.cacheFile;return a&&/^data\/images\/(?:\d+|actors\/[a-z]+|game\/[a-zA-Z]+)\/[a-z0-9-]+\.(png|jpg)$/.test(a.localPath)?'../'+a.localPath:null;}
@@ -117,6 +120,7 @@ function matchStatus(result){
 function pathSelected(p,category=$('category').value,subcategory=$('subcategory').value,query=$('dungeon').value){return (!category||p.category===category)&&(!subcategory||p.subcategory===subcategory)&&AtlasCategories.searchMatches(p,query);}
 function classificationCaption(l,category=$('category').value,subcategory=$('subcategory').value,query=$('dungeon').value){return AtlasCategories.caption(l.classificationPaths.find(p=>pathSelected(p,category,subcategory,query))||l.classificationPaths[0]);}
 function filteredLineups(){const query=$('search').value.trim().toLowerCase().split(/\s+/).filter(Boolean),category=$('category').value,dungeon=$('dungeon').value,source=$('source-filter').value,status=$('status-filter').value,targets=targetOnly?targetIds():null,users=source==='user'?new Set(STATE.lineups.map(l=>l.id)):null;return lineups().filter(l=>{
+ if(dungeonStageFilter!==null&&Number(l.gameSceneId)!==dungeonStageFilter)return false;
  if(targets&&!targets.has(l.id))return false;
  if(terminalBrowsePath&&dungeon===terminalBrowsePath&&!l.classificationPaths.some(p=>AtlasCategories.caption(p)===terminalBrowsePath))return false;
  if(!l.classificationPaths.some(p=>pathSelected(p,category,$('subcategory').value,dungeon)))return false;
@@ -130,12 +134,67 @@ function filteredLineups(){const query=$('search').value.trim().toLowerCase().sp
  if(!selectedMembers.every(id=>l.members?.some(m=>m.shikigamiId===id)))return false;
   return !query.length||query.every(q=>searchText(l).includes(q));
 });}
+let dungeonRulesSource=null,dungeonStageFilter=null;
+function selectedDungeon(){
+ return DATA?.dungeonRules?.dungeons.find(row=>row.id===Number($('dungeon-rules-select').value));
+}
+function checkedDungeonLineups(dungeon){
+ return dungeon?.gameSceneId?lineups().filter(l=>Number(l.gameSceneId)===dungeon.gameSceneId&&selectedLineups.has(l.id)):[];
+}
+function renderDungeonSelection(){
+ if(!$('dungeon-workbench').open)return;
+ const dungeon=selectedDungeon();
+ const selection=checkedDungeonLineups(dungeon);
+ const checked=selection.filter(C.hasParsedContent),results=checked.map(l=>matchResults[l.id]);
+ const matched=results.filter(r=>r?.completed&&r.ready).length;
+ const finished=results.filter(r=>r?.completed).length;
+ const skipped=selection.length-checked.length;
+ $('dungeon-match-selected').disabled=!account()||!checked.length;
+ $('dungeon-show-lineups').disabled=!dungeon?.gameSceneId;
+ const activeFilter=dungeonStageFilter===dungeon?.gameSceneId?'已按原码副本筛选。':'';
+ $('dungeon-match-status').textContent=activeFilter+(!account()?'先导入并选择库存账号。':
+  `本关已勾选 ${selection.length} 个${skipped?` · ${skipped} 个需解析`:''}${finished?` · 已核对 ${finished} 个，配置达标 ${matched} 个`:''}。`);
+}
+function renderDungeonRules(){
+ const panel=$('dungeon-workbench'),data=DATA?.dungeonRules;
+ panel.hidden=!data?.dungeons?.length;
+ if(panel.hidden||!panel.open)return;
+ const field=$('dungeon-rules-select');
+ if(dungeonRulesSource!==data){
+  const previous=Number(field.value)||102;
+  field.innerHTML=data.dungeons.filter(row=>row.gameSceneId).map(row=>`<option value="${row.id}">${esc(row.name)}</option>`).join('');
+  if([...field.options].some(option=>Number(option.value)===previous))field.value=String(previous);
+  dungeonRulesSource=data;
+ }
+ const dungeon=selectedDungeon();if(!dungeon)return;
+ const details=$('dungeon-rules-details'),key=`${data.source.resourceVersion}:${dungeon.id}`;
+ if(details.dataset.dungeon!==key){
+  details.dataset.dungeon=key;
+  const waves=dungeon.waves.map((wave,index)=>`<section class="dungeon-wave"><h3>第 ${index+1} 波</h3><ul>${wave.map(unit=>
+   `<li><strong>${esc(unit.name||`怪物 ${unit.id}`)}</strong><small>${unit.level} 级 · 槽位 ${unit.position}${unit.attributes?.baseSpeed!=null?` · 基础速度 ${unit.attributes.baseSpeed}`:''}</small><span>${esc(unit.skills?.map(s=>`${s.name||s.id} Lv.${s.level}`).join('、')||'技能待核对')}</span></li>`
+  ).join('')}</ul></section>`).join('');
+  details.innerHTML=`<p class="caption">客户端资源 ${esc(data.source.resourceVersion)} · ${dungeon.stamina} 体力 · ${dungeon.waves.length} 波</p><div class="dungeon-waves">${waves}</div><p class="caption">精算核对原码的库存与面板要求。实战胜率和动画耗时待验证。</p>`;
+ }
+ renderDungeonSelection();
+}
+$('dungeon-workbench').ontoggle=renderDungeonRules;
+$('dungeon-rules-select').onchange=renderDungeonRules;
+$('dungeon-show-lineups').onclick=()=>{
+ const dungeon=selectedDungeon();if(!dungeon?.gameSceneId)return;
+ $('clear-filters').click();
+ dungeonStageFilter=dungeon.gameSceneId;page=1;renderLibrary();
+};
+$('dungeon-match-selected').onclick=()=>{
+ const checked=checkedDungeonLineups(selectedDungeon()).filter(C.hasParsedContent);
+ if(checked.length)startMatch(checked.map(l=>l.id),{reuse:true});
+};
 function renderLibrary(){
+ renderDungeonRules();
  if(view!=='library')return;
  const focused=document.activeElement,focusAttr=[...(focused?.attributes||[])].find(a=>/^data-(select-lineup|detail|copy|reparse|edit-lineup|delete-lineup)$/.test(a.name));
  refreshAvailability();
  const ls=AtlasLibrary.sort(filteredLineups(),$('lineup-sort').value,(a,b)=>C.compareMatches(matchResults[a.id],matchResults[b.id]));
- const signature=JSON.stringify([STATE.activeAccount,targetOnly,selectedMembers,...['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'].map(id=>$(id).value)]);
+ const signature=JSON.stringify([STATE.activeAccount,targetOnly,dungeonStageFilter,selectedMembers,...['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'].map(id=>$(id).value)]);
  if(signature!==selectionFilter){selectedLineups.clear();selectionFilter=signature;}
  const visible=new Set(ls.map(l=>l.id));selectedLineups=new Set([...selectedLineups].filter(id=>visible.has(id)));
 
@@ -188,7 +247,7 @@ function renderDungeonOptions(){
  $('dungeon-options').hidden=false;$('dungeon').setAttribute('aria-expanded','true');$('dungeon').removeAttribute('aria-activedescendant');
 }
 function browseTo(value){
- targetOnly=false;
+ targetOnly=false;dungeonStageFilter=null;
  const parts=value?value.split(' → '):[],path=lineups().flatMap(l=>l.classificationPaths).find(p=>AtlasCategories.caption(p)===value||AtlasCategories.caption(p).startsWith(value+' → '));
  $('category').value=parts[0]||'';$('subcategory').value='';$('dungeon').value='';fillFilters();
  if(parts.length>1&&path){$('subcategory').value=path.subcategory;$('dungeon').value=value;}
@@ -237,14 +296,37 @@ function snapshotDetails(a){
  const snapshot=a.snapshot;if(!snapshot)return '';
  const scopeNames={heroes:'式神',souls:'御魂',items:'物品',realmCards:'结界卡',guild:'阴阳寮',taskRecords:'任务记录'};
  const ranges=Object.entries(snapshot.scope).filter(([key])=>scopeNames[key]).map(([key,value])=>`${scopeNames[key]}：${value===true?'已采集':value===false?'未采集':'范围不明确'}`).join('；');
- const sectionScopes={currency:'items',heroesBagEntries:'heroes',realmCards:'realmCards',guild:'guild',taskRecords:'taskRecords'};
  const rows=Object.entries(C.SNAPSHOT_SECTIONS).map(([key,label])=>{
-  const count=snapshot.sections[key],notCollected=snapshot.scope[sectionScopes[key]]===false;
+  const count=snapshot.sections[key],notCollected=snapshot.scope[C.SNAPSHOT_SCOPES[key]]===false;
   const content=count==null?'未提供或格式待核对':`${count} 条${key==='heroesBagEntries'&&snapshot.stackedHeroes!=null?' · 合计 '+snapshot.stackedHeroes+' 个':''}`;
   const retained=Object.hasOwn(a.retainedSections||{},key)?` · 沿用 ${a.retainedSections[key]||'时间未知'} 的旧记录`:'';
   return `<tr><th>${esc(label)}</th><td>${esc(content)}</td><td>${notCollected?'本次未采集':count==null?'—':'已保留原始记录'}${esc(retained)}</td></tr>`;
  }).join('');
- return `<details class="inventory-notes" id="account-snapshot-extra"><summary>其他采集数据与范围</summary>${ranges?`<p>${esc(ranges)}</p>`:''}<p>资源、素材、碎片、结界卡、传记、任务及阴阳寮数据随库存和备份完整保留。堆叠素材单独计数，不扩充为可上阵实例；未采集与数量为零分别显示。</p><div class="scroll-table"><table><thead><tr><th>内容</th><th>记录数量</th><th>采集状态</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+ return `<details class="inventory-notes" id="account-snapshot-extra"><summary>其他采集数据与范围</summary>${ranges?`<p>${esc(ranges)}</p>`:''}<p>备份保留原始记录。堆叠素材不计入可上阵实例。</p><div class="scroll-table"><table><thead><tr><th>内容</th><th>记录数量</th><th>采集状态</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+}
+const ACCOUNT_CURRENCIES={
+ action_point:'体力',auto_point:'樱饼',broken_amulet:'破碎的符咒',coin:'金币',
+ gold_ofuda:'金御札',honor:'荣誉',jade:'勾玉',
+ mystery_amulet:'神秘的符咒',ofuda:'御札',ar_amulet:'现世符咒'
+};
+const accountNumber=new Intl.NumberFormat('zh-CN');
+function accountAssets(a){
+ const balances=a.snapshot.sections.currency==null?[]:
+  Object.entries(ACCOUNT_CURRENCIES).filter(([key])=>Number.isFinite(a.raw.currency[key]));
+ const spirits=a.snapshot.spirits;
+ const resourceStrip=balances.length?`<details class="inventory-notes" id="account-balances"><summary>资源余额</summary><dl class="account-balances">${balances.map(([key,label])=>
+  `<div><dt>${label}</dt><dd>${accountNumber.format(a.raw.currency[key])}</dd></div>`
+ ).join('')}</dl></details>`:'';
+ const spiritList=spirits?.length?`<details class="inventory-notes" id="account-spirits"><summary>契灵 · ${spirits.length} 个可查看实例</summary><ul class="account-spirits">${spirits.slice(0,120).map(q=>{
+  const asset=gameAsset('hunling',q.id),name=DATA.gameConfig?.spirits?.[q.id]?.name||asset?.name||`未收录契灵 ${q.id}`;
+  const marks=AtlasGame.markLevels(q).map(({id,level})=>{
+   const icon=gameAsset('hunlingMark',id),skillId=DATA.gameConfig?.marks?.[id]?.skillId;
+   const title=AtlasGame.skill(DATA.gameConfig,skillId)?.name||icon?.name||`术印 ${id}`;
+   return `<li>${gameImage(icon)}<span>${esc(title)} · ${level} 级</span></li>`;
+  }).join('');
+  return `<li><div class="account-spirit-heading">${gameImage(asset)}<div><strong>${esc(name)}</strong><p>${q.star} 星 · ${q.lv} 级</p></div></div>${marks?`<ul class="account-spirit-marks">${marks}</ul>`:'<p class="caption">无术印</p>'}</li>`;
+ }).join('')}</ul>${spirits.length>120?'<p class="caption">显示前 120 个，其余保留在账号备份中。</p>':''}</details>`:'';
+ return resourceStrip+spiritList;
 }
 function renderAccounts(recommendations=true){if(view!=='accounts')return;if(recommendations)renderRecommendations();
  const a=account();$('account-pagination').hidden=!a;
@@ -252,12 +334,12 @@ function renderAccounts(recommendations=true){if(view!=='accounts')return;if(rec
  const expanded=accountInventoryCache?.account.id===a.id?[...$('account-summary').querySelectorAll('details[open]')].map(el=>el.id):[];
  if(accountInventoryCache?.account!==a){const heroes=Object.values(a.heroes).sort((a,b)=>b.level-a.level||Number(b.shikigamiId)-Number(a.shikigamiId)||a.instanceId.localeCompare(b.instanceId)),souls=Object.values(a.souls),suitCounts=new Map();for(const s of souls){const count=suitCounts.get(s.set)||{total:0,maxed:0};count.total++;if(s.star===6&&s.level===15)count.maxed++;suitCounts.set(s.set,count);}accountInventoryCache={account:a,heroes,souls,suitCounts};}
  const {heroes,souls,suitCounts}=accountInventoryCache;
- $('account-summary').innerHTML=`<div class="overview"><div><strong>${heroes.length}</strong><span>角色实例（含素材）</span></div><div><strong>${new Set(heroes.map(h=>h.shikigamiId)).size}</strong><span>角色类型</span></div><div><strong>${souls.length}</strong><span>御魂</span></div><div><strong>${a.presets.length}</strong><span>御魂预设</span></div></div><details class="inventory-notes" id="account-inventory-notes"><summary>库存信息${a.warnings.length?' · '+a.warnings.length+' 项提醒':''}</summary><p>采集时间：${esc(a.capturedAt)}。${Number.isFinite(a.raw?.player?.level)?'账号等级：'+esc(a.raw.player.level)+'。':''}式神：${C.inventoryComplete(a,'heroes')?'完整':'待核对'}；御魂：${C.inventoryComplete(a,'souls')?'完整':'待核对'}。当前穿戴归属未提供，配装使用全仓库库存。</p>${a.warnings.slice(0,30).map(w=>'<p>'+esc(w)+'</p>').join('')}${a.warnings.length>30?'<p>其余提醒保留在原始导出与备份中。</p>':''}</details>${snapshotDetails(a)}`;
+ $('account-summary').innerHTML=`<div class="overview"><div><strong>${heroes.length}</strong><span>角色实例（含素材）</span></div><div><strong>${new Set(heroes.map(h=>h.shikigamiId)).size}</strong><span>角色类型</span></div><div><strong>${souls.length}</strong><span>御魂</span></div><div><strong>${a.presets.length}</strong><span>御魂预设</span></div></div><details class="inventory-notes" id="account-inventory-notes"><summary>库存信息${a.warnings.length?' · '+a.warnings.length+' 项提醒':''}</summary><p>采集时间：${esc(a.capturedAt)}。${Number.isFinite(a.raw?.player?.level)?'账号等级：'+esc(a.raw.player.level)+'。':''}式神：${C.inventoryComplete(a,'heroes')?'完整':'待核对'}；御魂：${C.inventoryComplete(a,'souls')?'完整':'待核对'}。当前穿戴归属未提供，配装使用全仓库库存。</p>${a.warnings.slice(0,30).map(w=>'<p>'+esc(w)+'</p>').join('')}${a.warnings.length>30?'<p>其余提醒保留在原始导出与备份中。</p>':''}</details>${accountAssets(a)}${snapshotDetails(a)}`;
  for(const id of expanded)if(id&&$(id))$(id).open=true;
  const q=$('account-search').value.trim(),kind=$('account-kind').value;
- const filtered=heroes.filter(h=>{const r=rosterById(h.shikigamiId);return `${r?.name||''} ${h.shikigamiId}`.includes(q)&&(!kind||(kind==='material'?r?.isMaterial:!r?.isMaterial));});
+ const filtered=heroes.filter(h=>{const r=rosterById(h.shikigamiId);return `${accountHeroName(h,r)} ${h.shikigamiId}`.includes(q)&&(!kind||(kind==='material'?r?.isMaterial:!r?.isMaterial));});
  const slice=C.paginate(filtered,accountPage,$('account-page-size').value);accountPage=slice.page;
- $('account-heroes').innerHTML=slice.items.map(h=>{const r=rosterById(h.shikigamiId);return `<div class="owned-hero"><div class="portrait">${thumb({name:r?.name,shikigamiId:h.shikigamiId,awakening:h.awake})}</div><div><strong>${esc(r?.name||'未收录角色 '+h.shikigamiId)}</strong><p>${h.level}级 · ${h.star}星 · ${r?.isMaterial?'培养素材':h.awake?'已觉醒':'未觉醒'}${h.locked?' · 已锁定':''}</p><div class="owned-skills">${memberSkillCards({shikigamiId:h.shikigamiId,awakening:h.awake,skills:h.skills},true)}</div></div></div>`;}).join('')||'<p class="muted">没有符合筛选的角色。</p>';
+ $('account-heroes').innerHTML=slice.items.map(h=>{const r=rosterById(h.shikigamiId);return `<div class="owned-hero"><div class="portrait">${thumb({name:r?.name,shikigamiId:h.shikigamiId,awakening:h.awake})}</div><div><strong>${esc(accountHeroName(h,r))}</strong><p>${h.level}级 · ${h.star}星 · ${r?.isMaterial?'培养素材':h.awake?'已觉醒':'未觉醒'}${h.locked?' · 已锁定':''}</p><div class="owned-skills">${memberSkillCards({shikigamiId:h.shikigamiId,awakening:h.awake,skills:h.skills},true)}</div></div></div>`;}).join('')||'<p class="muted">没有符合筛选的角色。</p>';
  $('account-page-indicator').textContent=`第 ${slice.page} / ${slice.pages} 页 · 显示 ${slice.start}–${slice.end} / ${slice.total} 个实例`;
  $('account-previous-page').disabled=slice.page===1;$('account-next-page').disabled=slice.page===slice.pages;
  $('account-souls').innerHTML=`<details><summary>御魂仓库摘要</summary><p>六星满级 ${souls.filter(s=>s.star===6&&s.level===15).length} 件；未识别属性 ${souls.filter(s=>s.unknown.length).length} 件。</p><div class="scroll-table"><table><thead><tr><th>套装</th><th>库存</th><th>六星满级</th></tr></thead><tbody>${[...suitCounts.keys()].sort().map(set=>`<tr><td class="inventory-suit">${gameImage(soulAsset(set))}<span>${esc(set)}</span></td><td>${suitCounts.get(set).total}</td><td>${suitCounts.get(set).maxed}</td></tr>`).join('')}</tbody></table></div></details>`;
@@ -455,6 +537,7 @@ function refreshAvailability(){
  };step();
 }
 function renderSelection(ls=filteredLineups()){
+ renderDungeonSelection();
  const count=selectedLineups.size,all=$('select-filtered');all.checked=!!ls.length&&count===ls.length;all.indeterminate=count>0&&count<ls.length;all.disabled=!ls.length;
  $('selection-count').textContent=`已选 ${count} / ${ls.length}`;
  $('select-invert').disabled=!ls.length;$('select-clear').disabled=!count;
@@ -540,12 +623,30 @@ let importMode='accounts';function pickFiles(mode){importMode=mode;$('file-input
 function validateLineup(l){if(!C.hasLineupCode(l))throw new Error('阵容必须包含非空 code（原始阵容码）');const valid=C.validateLineup(l);return {...valid,id:valid.id||'manual-'+crypto.randomUUID(),sourceKind:valid.sourceKind||'manual'};}
 async function handleFiles(files){
  const revision=sessionRevision,generation=dataRevision,active=()=>sameSession(revision)&&generation===dataRevision,mode=importMode,merge=$('merge-import').checked;if(!files.length)return;if(libraryBusy||bulkBusy)return toast('正在保存资料，请稍候再导入');
+ const accountImport=mode==='accounts',button=$('import-accounts'),status=$('account-import-status'),errorBox=$('account-import-error');
+ if(accountImport){
+  if(button.disabled)return;
+  button.disabled=true;
+  errorBox.hidden=true;
+  status.textContent=`正在读取 ${files.length} 份库存文件…`;
+ }
  try{
-  const parsed=[];for(const f of files){if(f.size>50*1024*1024)throw new Error('单个文件不能超过50 MiB');const text=await f.text();if(!active())return;parsed.push({name:f.name,json:await jsonTask(mode==='accounts'?'parse-account':'parse',mode==='accounts'?{text,name:f.name}:text.replace(/^\uFEFF/,''))});if(!active())return;}
+  const parsed=[];
+  for(const f of files){
+   try{
+    if(f.size>50*1024*1024)throw new Error('单个文件不能超过 50 MiB');
+    const text=await f.text();if(!active())return;
+    const json=await jsonTask(accountImport?'parse-account':'parse',accountImport?{text,name:f.name}:text.replace(/^\uFEFF/,''));
+    if(!active())return;
+    parsed.push({name:f.name,json});
+   }catch(error){throw new Error(f.name+' · '+error.message);}
+  }
   if(mode==='accounts'){
    const accounts=parsed.map(p=>p.json);
    if(await commitState(state=>{let rows=[...state.accounts];for(const a of accounts){const old=rows.find(x=>x.id===a.id),updated=merge?C.mergeAccount(old,a):a;rows=[...rows.filter(x=>x.id!==a.id),updated];}return {...state,accounts:rows,activeAccount:accounts.at(-1).id};},revision,null,null,active)){
-    resetMatchContext();matchResults={};accountPage=1;resolveServerNames();updateAccountSelect();renderAccounts();refreshAvailability();toast(`已保存 ${accounts.length} 份账号；重启后自动载入`);
+    resetMatchContext();matchResults={};accountPage=1;resolveServerNames();updateAccountSelect();renderAccounts();refreshAvailability();
+    status.textContent=`已导入 ${accounts.length} 份库存。`;
+    toast(status.textContent);
    }
   }else if(mode==='backup'){
    const b=parsed[0].json;if(b?.format!=='onmyoji-atlas-backup'||b.schemaVersion!==1||!Array.isArray(b.accounts)||!Array.isArray(b.lineups))throw new Error('不支持的备份格式');
@@ -556,7 +657,14 @@ async function handleFiles(files){
    let l=parsed[0].json;if(l?.ok===true)l=validateLineup({...C.adaptInspection(l,DATA.roster),code:l.code,sourceKind:'local-json',id:'local-'+crypto.randomUUID()});else l=validateLineup(l);
    if(await commitState(state=>({...state,lineups:[...state.lineups.filter(x=>x.id!==l.id),l]}),revision,null,null,active)){stopMatch();matchResults={};fillFilters();toast('结构化资料已保存');showLineup(l);}
   }
- }catch(error){if(active())toast('导入失败：'+error.message);}
+ }catch(error){
+  if(active()){
+   if(accountImport){errorBox.textContent='导入失败：'+error.message;errorBox.hidden=false;}
+   else toast('导入失败：'+error.message);
+  }
+ }finally{
+  if(accountImport){button.disabled=false;if(status.textContent.startsWith('正在读取'))status.textContent='';}
+ }
 }
 let pendingBackup=null,backupUndo=null;
 function previewBackupRestore(){
@@ -616,10 +724,10 @@ $('detail-dialog').addEventListener('close',()=>{
  manageEditing=null;manageEditBaseline='';pendingBackup=null;
 });
 document.addEventListener('click',e=>{if(e.target.id==='discard-edit')$('detail-dialog').close();if(e.target.id==='keep-edit'){$('dialog-feedback').hidden=true;$('edit-title')?.focus();}if(e.target.id==='confirm-restore-backup')applyBackupRestore();if(e.target.id==='cancel-restore-backup')$('detail-dialog').close();if(e.target.id==='undo-restore')undoBackupRestore();if(e.target.id==='load-retry')appBoot=boot(sessionRevision);if(e.target.id==='export-recovery')$('export-backup').click();if(e.target.id==='reset-empty-filters')$('clear-filters').click();});
-for(const id of ['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'])$(id).addEventListener(['search','dungeon'].includes(id)?'input':'change',()=>{if(id==='category')$('subcategory').value='';if(['category','subcategory'].includes(id))$('dungeon').value='';page=1;if(['search','dungeon'].includes(id))deferInput('library',()=>{if(view==='library'){if(id==='dungeon')renderDungeonOptions();renderLibrary();}});else{fillFilters();renderLibrary();}});
+for(const id of ['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'])$(id).addEventListener(['search','dungeon'].includes(id)?'input':'change',()=>{if(['category','subcategory','dungeon'].includes(id))dungeonStageFilter=null;if(id==='category')$('subcategory').value='';if(['category','subcategory'].includes(id))$('dungeon').value='';page=1;if(['search','dungeon'].includes(id))deferInput('library',()=>{if(view==='library'){if(id==='dungeon')renderDungeonOptions();renderLibrary();}});else{fillFilters();renderLibrary();}});
 function addMemberFilter(){const r=DATA.roster.find(r=>r.name===$('member-filter').value.trim());if(!r)return;if(!selectedMembers.includes(r.id))selectedMembers.push(r.id);$('member-filter').value='';renderSelected();page=1;renderLibrary();}
 $('member-filter').onchange=addMemberFilter;$('add-member-filter').onclick=addMemberFilter;$('member-filter').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addMemberFilter();}};
-$('clear-filters').onclick=()=>{terminalBrowsePath='';targetOnly=false;for(const id of ['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'])$(id).value='';selectedMembers=[];renderSelected();page=1;fillFilters();hideDungeonOptions();renderLibrary();};
+$('clear-filters').onclick=()=>{terminalBrowsePath='';targetOnly=false;dungeonStageFilter=null;for(const id of ['search','category','subcategory','dungeon','source-filter','status-filter','gap-filter'])$(id).value='';selectedMembers=[];renderSelected();page=1;fillFilters();hideDungeonOptions();renderLibrary();};
 $('previous-page').onclick=()=>{page--;renderLibrary();};$('next-page').onclick=()=>{page++;renderLibrary();};
 $('add-code').onclick=()=>{selectView('decode');$('code-input').focus();};$('code-input').oninput=updateCode;$('save-code').onclick=saveCode;$('remote-decode').onclick=()=>localDecode(true);$('clear-code').onclick=()=>{for(const id of ['code-input','code-title','code-dungeon','code-notes'])$(id).value='';updateCode();};
 for(const id of codeFields)$(id).addEventListener('input',()=>codeDirty.add(id));

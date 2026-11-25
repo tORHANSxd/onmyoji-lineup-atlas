@@ -42,3 +42,32 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 @media(max-width:440px){.sidebar nav{grid-template-columns:repeat(3,minmax(0,1fr))}#builder-members{grid-template-columns:1fr}.builder-training{grid-template-columns:1fr}}
 
 .builder-main-stats input[type=checkbox],.builder-limits input[type=checkbox]{width:16px;min-width:16px;height:16px;min-height:16px;flex:0 0 16px;padding:0;margin:0}.builder-main-stats label{white-space:nowrap;justify-content:flex-start;gap:7px}.builder-limits input[type=checkbox]{display:inline-block}
+
+/* Account inventory */
+#account-import-status,#account-import-error{grid-column:1/-1}
+#account-import-status:empty{display:none}
+#account-import-error{overflow-wrap:anywhere}
+.account-balances,.account-spirits{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;padding:0;margin:12px 0 0;list-style:none}
+.account-balances>div,.account-spirits>li{border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0}
+.account-balances dt,.account-spirit-heading p{color:var(--muted);font-size:12px}
+.account-balances dd{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;margin:4px 0 0}
+.account-spirit-heading,.account-spirit-marks li{display:flex;align-items:center;gap:8px}
+.account-spirit-heading .game-icon,.account-spirit-heading .image-unavailable{width:36px;height:36px;flex:0 0 36px}
+.account-spirit-marks{display:grid;gap:4px;margin:8px 0 0;padding:0;list-style:none;font-size:12px}
+.account-spirit-marks .game-icon,.account-spirit-marks .image-unavailable{width:22px;height:22px;flex:0 0 22px}
+
+/* Dungeon rules */
+.dungeon-workbench{margin:16px 0}
+.dungeon-workbench summary{font-weight:600}
+.dungeon-controls{display:flex;align-items:end;flex-wrap:wrap;gap:10px;margin:12px 0}
+.dungeon-controls label{display:grid;gap:4px}
+.dungeon-controls button{min-height:36px}
+.dungeon-waves{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;margin:12px 0}
+.dungeon-wave{border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0}
+.dungeon-wave h3{margin:0;font-size:14px}
+.dungeon-wave ul{list-style:none;margin:0;padding:0}
+.dungeon-wave li{display:grid;gap:3px;padding:8px 0;border-bottom:1px solid var(--line)}
+.dungeon-wave li:last-child{padding-bottom:0;border-bottom:0}
+.dungeon-wave li strong{font-size:13px}
+.dungeon-wave li small,.dungeon-wave li span{color:var(--muted);font-size:12px;text-wrap:pretty}
+.dungeon-wave li small{font-variant-numeric:tabular-nums}

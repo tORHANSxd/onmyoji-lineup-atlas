@@ -48,6 +48,7 @@ output.gameAssets=await read('data/game-assets.json',{items:[]});
 output.qilingMarks=await read('data/qiling-marks.json',{marks:[]});
 output.gameConfig=await read('data/game-config.json',null);
 output.stageCatalog=await read('data/stages.json',{scenes:[]});
+output.dungeonRules=await read('data/dungeon-rules.json',{dungeons:[]});
 for(const actor of output.actors){const image=output.gameAssets.items.find(a=>a.library==='onmyoji'&&a.name===actor.name);if(image)actor.gameId=Number(image.id);}
 for(const hero of output.roster){const image=output.gameAssets.items.find(a=>a.library==='daruma'&&a.id===hero.id);if(image)hero.assets={...hero.assets,awakeningAvailability:'not_applicable',variants:[{...image,family:'art-before',status:'downloaded_valid_image',verifiedState:'default'}]};}
 const {default:categories}=await import('../app/categories.js');
