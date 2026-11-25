@@ -69,7 +69,19 @@ app.whenReady().then(async () => {
   };
   runeRunner=createRuneRunner(runeRuntime);
   runeFloor=createRuneFloorRunner(runeRuntime);
-  seedEvidence=createSeedEvidenceRunner({...runeRuntime,runner:runeRunner,directory:path.join(app.getPath('userData'),'rune-seed-evidence')});
+  const evidenceDirectory=path.join(app.getPath('userData'),'rune-seed-evidence');
+  const seedRunners=new Map([[101,runeFloor],[102,runeRunner]].map(([dungeonId,runner])=>[dungeonId,
+    createSeedEvidenceRunner({...runeRuntime,dungeonId,runner,directory:evidenceDirectory}),
+  ]));
+  const forDungeon=(dungeonId=102)=>{
+    const audit=seedRunners.get(dungeonId);
+    if(!audit)throw Error('当前副本未接入全种子验收');
+    return audit;
+  };
+  seedEvidence={
+    get running(){return [...seedRunners.values()].some(audit=>audit.running);},
+    stop(){return forDungeon(101).stop()||forDungeon(102).stop();},
+  };
   let nativeReplayInFlight=false;
   const runNativeReplay=async action=>{
     if(nativeReplayInFlight||seedEvidence.running)throw Error('已有原版复跑正在运行');
@@ -93,11 +105,11 @@ app.whenReady().then(async () => {
       if(win&&!win.isDestroyed())win.webContents.send('rune-battle-random-progress',requestId,progress);
     }));
   });
-  handleLocal('rune-battle-seed-evidence',(_check,plan)=>seedEvidence.lookup(plan));
-  handleLocal('rune-battle-verify-seeds',(_check,plan,requestId)=>{
+  handleLocal('rune-battle-seed-evidence',(_check,plan,dungeonId)=>forDungeon(dungeonId).lookup(plan));
+  handleLocal('rune-battle-verify-seeds',(_check,plan,requestId,dungeonId)=>{
     if(!Number.isSafeInteger(requestId)||requestId<1)throw Error('无效的复跑请求');
-    if(nativeReplayInFlight)throw Error('已有原版复跑正在运行');
-    return seedEvidence.run(plan,progress=>{
+    if(nativeReplayInFlight||seedEvidence.running)throw Error('已有原版复跑正在运行');
+    return forDungeon(dungeonId).run(plan,progress=>{
       if(win&&!win.isDestroyed())win.webContents.send('rune-battle-seeds-progress',requestId,progress);
     });
   });

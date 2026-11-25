@@ -148,7 +148,8 @@ def run(args, runtime, work):
 
     replay = "".join(engine.battleRecorder.data_list).encode("utf-8")
     result = {**evidence, "dungeonId": args.dungeon, "fixture": "selected-inventory", "seed": engine.seed,
-              "fixedStepMs": 20, "teamSHA256": sha256(team_bytes), "recordSHA256": sha256(replay),
+              "fixedStepMs": 20, "teamSHA256": sha256(team_bytes), "suitIndexSHA256": sha256(suit_bytes),
+              "recordSHA256": sha256(replay),
               "completed": engine.battleState == const.BattleState.BS_OVER,
               "outcome": "win" if winner == const.CampFlag.CAMP1 else "loss" if winner == const.CampFlag.CAMP2 else "unknown",
               "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,

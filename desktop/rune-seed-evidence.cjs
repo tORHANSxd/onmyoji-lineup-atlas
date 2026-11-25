@@ -4,7 +4,7 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const {createHash,randomUUID}=require('node:crypto');
 const {readConfig}=require('./rune-runner.cjs');
-const {dungeonId,resourceVersion}=require('../app/rune-lineup.js');
+const {dungeonId:soulKing,resourceVersion}=require('../app/rune-lineup.js');
 const {sampleVerdict}=require('../app/rune-candidate.js');
 
 const seedCount=10000;
@@ -25,7 +25,9 @@ async function createOnce(file,value){
  finally{await fs.rm(temp,{force:true});}
 }
 
-async function buildScope({configPath,scriptRoot,suits},plan){
+async function buildScope({configPath,scriptRoot,suits,dungeonId=soulKing},plan){
+ if(dungeonId!==101&&dungeonId!==soulKing)throw Error('当前副本未接入全种子验收');
+ const isSorrow=dungeonId===101;
  const config=await readConfig(configPath);
  const indexBytes=await fs.readFile(config.scriptIndex);
  const index=JSON.parse(indexBytes);
@@ -43,9 +45,11 @@ async function buildScope({configPath,scriptRoot,suits},plan){
    .map(name=>['proof/'+name,path.join(config.opcodeProof,name)])),
   ...Object.fromEntries(['game_resources.py','original_battle.py','original_host.py','original_modules.py','native_oracle.py']
    .map(name=>['host/'+name,path.join(config.gameTools,name)])),
-  ...Object.fromEntries(['verify-rune-runtime.py','extract-dungeon-catalog.py','rune_team.py','rune_replay.py','rune_random.py']
+  ...Object.fromEntries([...(isSorrow?['verify-rune-floor.py','rune_floor_host.py']:['verify-rune-runtime.py']),
+   'extract-dungeon-catalog.py','rune_team.py','rune_replay.py','rune_random.py']
    .map(name=>['tools/'+name,path.join(scriptRoot,name)])),
   runner:path.join(__dirname,'rune-runner.cjs'),
+  ...(isSorrow?{floorRunner:path.join(__dirname,'rune-floor-runner.cjs')}:{ }),
  };
  const inputSHA256=Object.fromEntries(await Promise.all(Object.entries(evidenceFiles).map(async ([name,file])=>[name,await digest(file)])));
  return {schema:1,route:'local-solo-rune',dungeonId,resourceVersion,stepMs:20,seedCount,
@@ -141,7 +145,7 @@ function createSeedEvidenceRunner({directory,runner,...runtime}){
    return records?evidenceSummary(scope,records):null;
   },
   run(plan,onProgress){
-   if(job)throw Error('已有魂王全种子验收正在运行');
+   if(job)throw Error('已有全种子验收正在运行');
    const cancel=new AbortController();
    const pending=input(plan).then(args=>scanSeeds({...args,runners:[runner],plan,signal:cancel.signal,onProgress})).finally(()=>{job=null;});
    job={cancel,pending};

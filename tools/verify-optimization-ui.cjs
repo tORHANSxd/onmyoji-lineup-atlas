@@ -62,8 +62,8 @@ async function main(){
   const progress=update=>win.webContents.send('rune-battle-random-progress',id,update);
   return mockRandom?mockRandom(plan,seed,progress):rune?.verifyRandom(plan,seed,progress);
  });
- local('rune-battle-seed-evidence',plan=>savedEvidence?.(plan)??null);
- local('rune-battle-verify-seeds',(plan,id)=>mockSeeds(plan,update=>win.webContents.send('rune-battle-seeds-progress',id,update)));
+ local('rune-battle-seed-evidence',(plan,dungeonId)=>savedEvidence?.(plan,dungeonId)??null);
+ local('rune-battle-verify-seeds',(plan,id,dungeonId)=>mockSeeds(plan,update=>win.webContents.send('rune-battle-seeds-progress',id,update),dungeonId));
  local('rune-battle-stop',()=>stopSeeds?stopSeeds():stopRandom?stopRandom():runeFloor?.stop()||rune?.stop());
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
  win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
@@ -453,7 +453,7 @@ async function main(){
      const auditedPlan=replayPlan;
      let matchTiming=false;
      mockBattle=(plan,options)=>{
-      assert.deepEqual(plan,auditedPlan);assert.deepEqual(options,{seed:13,fixedStep:true});
+      assert.deepEqual(plan,auditedPlan);assert.deepEqual(options,{seed:13,fixedStep:true,dungeonId:102});
       return matchTiming?waveReport:{...waveReport,engineSeconds:26};
      };
      await inspect();
@@ -497,8 +497,8 @@ async function main(){
   await until('!$("dungeon-match-selected").disabled&&$("dungeon-match-selected").textContent.includes("复跑")');
   await ui('$("dungeon-match-selected").click()');
   await until('dungeonBattle?.dungeonId===101&&dungeonBattle.rows[0].state==="finished"&&!dungeonBattle.running',110000);
-  assert.match(await ui('$("dungeon-battle-results").textContent'),/悲鸣复跑验收.*本次复跑(通关|失败).*列出的离线种子/s);
-  assert.equal(await ui('!document.querySelector("[data-battle-full]")'),true);
+  assert.match(await ui('$("dungeon-battle-results").textContent'),/悲鸣复跑验收.*本次复跑(通关|失败).*当前版本的常规单人本地入口/s);
+  assert.equal(await ui('!!document.querySelector("[data-battle-full]")'),await ui('dungeonBattle.rows[0].verdict==="pass"'));
   assert.equal(await ui('$("dungeon-search-stock").hidden'),await ui('dungeonBattle.rows[0].verdict!=="loss"'));
   assert.ok(floorCalls.length);
   assert.deepEqual(floorCalls,commonSeeds.slice(0,Math.min(floorCalls.length,6)).map(seed=>({dungeonId:101,seed,fixedStep:true})));
@@ -654,7 +654,8 @@ async function main(){
     winningPlan??=key;
     if(key===winningPlan)sorrowSamples.push(options.seed);
     const win=key===winningPlan;
-    return {seed:options.seed,engineSeconds:22,completed:true,outcome:win?'win':'loss',wavesCleared:win?3:2,bouts:7};
+    return {seed:options.seed,engineSeconds:22,completed:true,outcome:win?'win':'loss',wavesCleared:win?3:2,bouts:7,
+     monsterHealth:[{wave:1,cleared:true,startMs:400,endMs:3500,monsters:[]}]};
    };
    await ui(`stopMatch();STATE={...STATE,lineups:[...STATE.lineups,${JSON.stringify(sorrow)}]};$('dungeon-rules-select').value='101';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-sorrow-stock');renderSelection()`);
    assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
@@ -664,7 +665,16 @@ async function main(){
    await ui('$("dungeon-search-stock").click()');
    await until('dungeonStock?.dungeonId===101&&!dungeonStock.running',20000);
    assert.deepEqual(sorrowSamples,commonSeeds.slice(0,6));
-   assert.equal(await ui('document.querySelector("[data-stock-full]")'),null);
+   const auditRow=seedEvidence({wins:74,stopped:true,slowest:{seed:13,engineSeconds:22,combatMs:null}});
+   mockSeeds=(plan,progress,dungeonId)=>{
+    assert.equal(dungeonId,101);assert.equal(JSON.stringify(plan),winningPlan);
+    progress({...auditRow,stopped:false,wins:73});
+    return new Promise(resolve=>{stopSeeds=()=>{stopSeeds=null;resolve(auditRow);};});
+   };
+   await ui('document.querySelector("[data-stock-full]").click()');
+   await until('!!document.querySelector(".dungeon-full-seeds progress[value=\\"73\\"]")');
+   await ui('$("dungeon-stop-battle").click()');
+   await until('$("dungeon-stock-list").textContent.includes("已暂停全种子验收") && !dungeonStock.activeFullSeedAudit');
    await ui('document.querySelector("[data-stock-preview]").click()');
    await until('document.querySelector(".rune-code-preview img")?.naturalWidth>0');
    assert.match(await ui('$("detail-dialog").textContent'),/魂土.*离线采样通过/s);
@@ -674,6 +684,7 @@ async function main(){
    const savedSorrow=stored.lineups.find(l=>l.code===sorrowCode);
    assert.equal(savedSorrow.gameSceneId,1001002);
    assert.equal(savedSorrow.runeReceipts[0].dungeonId,101);
+   savedEvidence=(plan,dungeonId)=>dungeonId===101&&JSON.stringify(plan)===winningPlan?auditRow:null;
    await ui('$("detail-dialog").close()');
    await win.loadFile(path.join(root,'app/index.html'));
    await until('!!DATA && $("loading").hidden');
@@ -683,12 +694,17 @@ async function main(){
    await until('dungeonBattle?.rows[0]?.state==="finished"&&!dungeonBattle.running');
    assert.equal(JSON.stringify(replayPlan),winningPlan);
    assert.match(await ui('$("dungeon-battle-results").textContent'),/按已保存配装.*已通过 6 个采样种子/s);
+   assert.match(await ui('$("dungeon-battle-results").textContent'),/已保存全种子验收进度.*74 \/ 10,000 已通过/s);
+   await ui('document.querySelector("[data-battle-wave-report]").click()');
+   await until('!dungeonBattle.activeSeedAudit');
+   assert.equal(floorCalls.at(-1).seed,13);
+   assert.match(await ui('$("dungeon-battle-results").textContent'),/种子 13.*第 1 波.*3\.10 秒/s);
    await capture('dungeon-soul-11-saved-candidate');
-  }finally{mockBattle=null;mockRandom=null;stopRandom=null;mockSeeds=null;savedEvidence=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
+  }finally{mockBattle=null;mockRandom=null;stopRandom=null;stopSeeds=null;mockSeeds=null;savedEvidence=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
  });
  await check('全种子通过结果显示单人本地范围和最慢一场',async()=>{
   const complete=JSON.stringify(seedEvidence({status:'all-local-seeds-passed',wins:10000}));
-  const markup=await ui(`fullSeedAuditMarkup({samples:AtlasRuneSearch.sampleSeeds.map(seed=>({seed,completed:true,outcome:'win',wavesCleared:3,engineSeconds:13})),fullSeedAudit:{progress:${complete}}},'data-full-seeds-fixture',false)`);
+  const markup=await ui(`fullSeedAuditMarkup({samples:AtlasRuneSearch.sampleSeeds.map(seed=>({seed,completed:true,outcome:'win',wavesCleared:3,engineSeconds:13})),fullSeedAudit:{progress:${complete}}},'data-full-seeds-fixture',false,null,{id:102})`);
   assert.match(markup,/常规单人本地入口的 10,000 个种子全部通过.*最慢种子 13.*引擎全程 25\.50 秒.*开战至结算 14\.40 秒/s);
   assert.doesNotMatch(markup,/data-full-seeds-fixture|<progress/);
  });

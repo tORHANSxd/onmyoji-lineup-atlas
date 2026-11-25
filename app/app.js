@@ -240,7 +240,7 @@ async function verifyDungeonSeeds(job,row,selector){
  }
 }
 function fullSeedAuditMarkup(row,action,busy,detailAction,dungeon){
- if(!AtlasRuneCandidate.passed(row.samples)||!window.runeBattle?.verifySeeds)return '';
+ if(!AtlasRuneCandidate.passed(row.samples,dungeon.id)||!window.runeBattle?.verifySeeds)return '';
  const audit=row.fullSeedAudit,progress=audit?.progress;
  const loss=progress?.loss;
  const complete=fullSeedPassed(row);
@@ -272,10 +272,10 @@ function fullSeedAuditMarkup(row,action,busy,detailAction,dungeon){
 }
 const fullSeedPassed=row=>row.fullSeedAudit?.progress?.status==='all-local-seeds-passed';
 const failedSeedAudit=row=>row?.seedAudit?.verdict==='loss'||row?.fullSeedAudit?.progress?.status==='seed-loss';
-async function restoreFullSeedAudit(row,active){
+async function restoreFullSeedAudit(row,dungeonId,active){
  if(!window.runeBattle.seedEvidence)return;
  try{
-  const progress=await window.runeBattle.seedEvidence(row.plan);
+  const progress=await window.runeBattle.seedEvidence(row.plan,dungeonId);
   if(active()&&progress)row.fullSeedAudit={progress};
  }catch(error){if(active())row.fullSeedAudit={error:runeError(error)};}
 }
@@ -289,7 +289,7 @@ async function verifyFullDungeonSeeds(job,row,selector){
  const update=progress=>{if(current()){audit.progress=progress;renderDungeonSelection();}};
  const unsubscribe=window.runeBattle.onSeedsProgress((id,progress)=>{if(id===requestId&&!audit.cancelled)update(progress);});
  renderDungeonSelection();$('dungeon-stop-battle').focus();
- try{update(await window.runeBattle.verifySeeds(row.plan,requestId));}
+ try{update(await window.runeBattle.verifySeeds(row.plan,requestId,job.dungeonId));}
  catch(error){if(current()&&!audit.cancelled)audit.error=runeError(error);}
  finally{
   const restoreFocus=document.activeElement===$('dungeon-stop-battle');
@@ -308,7 +308,7 @@ async function replayFullSeedDetails(job,row,selector){
  const current=()=>usesDungeonInventory(job)&&(dungeonBattle===job||dungeonStock===job);
  renderDungeonSelection();$('dungeon-stop-battle').focus();
  try{
-  const report=await window.runeBattle.run(row.plan,{seed:recorded.seed,fixedStep:true});
+  const report=await window.runeBattle.run(row.plan,{seed:recorded.seed,fixedStep:true,dungeonId:job.dungeonId});
   if(!current()||detail.cancelled)return;
   const compatible=AtlasRuneCandidate.sampleVerdict(report,recorded.seed)===(progress.loss?'loss':'pass')&&
    report.engineSeconds===recorded.engineSeconds&&report.wavesCleared===(progress.loss?.wavesCleared??3)&&
@@ -363,8 +363,8 @@ function renderDungeonBattle(dungeon){
    ${samples.length?`<details data-battle-samples="${esc(lineup.id)}" ${open.has(lineup.id)?'open':''}><summary>查看种子战报</summary>
    ${conditions?.length?`<p class="caption">${esc(conditions.join(' '))}</p>`:''}<ul class="dungeon-stock-samples">${sampleBattleMarkup(samples)}</ul></details>`:''}
    ${seedAuditMarkup(row,`data-battle-extra="${esc(lineup.id)}"`,`data-battle-samples="${esc(lineup.id+'-extra')}"${open.has(lineup.id+'-extra')?' open':''}`,busy)}
-   ${isSoulKing(dungeon.id)?fullSeedAuditMarkup(row,`data-battle-full="${esc(lineup.id)}"`,busy,`data-battle-wave-report="${esc(lineup.id)}"`,dungeon):''}</li>`;
- }).join('')}</ul><p class="caption">${isSoulKing(dungeon.id)?'全种子验收仅覆盖当前版本的常规单人本地入口和当前配装。':'当前结果覆盖列出的离线种子。'}实机动画耗时仍待验证。</p>`;
+   ${fullSeedAuditMarkup(row,`data-battle-full="${esc(lineup.id)}"`,busy,`data-battle-wave-report="${esc(lineup.id)}"`,dungeon)}</li>`;
+ }).join('')}</ul><p class="caption">全种子验收覆盖当前版本的常规单人本地入口和当前配装。实机动画耗时仍待验证。</p>`;
  if(focused!==undefined)body.querySelector(`[data-battle-samples="${CSS.escape(focused)}"] summary`)?.focus();
 }
 function stopDungeonBattle(clear=false){
@@ -402,7 +402,7 @@ async function advanceDungeonBattle(){
      row.state='running';row.conditions=conditions;row.detail=row.savedPlan?'按已保存配装':row.savedNote;
      row.plan=plan;row.teamKey=AtlasRuneSearch.teamKey(plan);row.seedAudit=planSeedAudits(job).get(row.teamKey);renderDungeonSelection();
      row.verdict=await sampleDungeonTeam(plan,row,active,dungeonSampleSeeds(job.dungeonId),job.dungeonId);
-     if(active()&&row.verdict==='pass'&&isSoulKing(job.dungeonId))await restoreFullSeedAudit(row,active);
+     if(active()&&row.verdict==='pass')await restoreFullSeedAudit(row,job.dungeonId,active);
      if(active()&&row.verdict==='unknown')row.detail=[row.detail,'复跑结算待核对，可重试'].filter(Boolean).join(' · ');
     }
    }catch(error){if(active()){row.verdict='unknown';row.detail=[row.detail||row.savedNote,runeError(error)].filter(Boolean).join(' · ');}}
@@ -530,7 +530,7 @@ function renderDungeonStock(dungeon){
     ${stockPasses(row)&&row.samples.some(s=>s.randomObservations?.alternatives>0)?`<button class="secondary" type="button" data-stock-audit="${row.index}" ${busy?'disabled':''}>${row.randomAudit?.running?'正在测试随机判断':row.randomAudit?'重新测试随机判断':'测试随机判断'}</button>`:''}
     ${randomAuditMarkup(row.randomAudit)}</details>`:''}
    ${seedAuditMarkup(row,`data-stock-extra="${row.index}"`,section('extra'),busy)}
-   ${isSoulKing(dungeon.id)?fullSeedAuditMarkup(row,`data-stock-full="${row.index}"`,busy,`data-stock-wave-report="${row.index}"`,dungeon):''}
+   ${fullSeedAuditMarkup(row,`data-stock-full="${row.index}"`,busy,`data-stock-wave-report="${row.index}"`,dungeon)}
    ${!stockPasses(row)?'':row.output?`<button class="secondary" type="button" data-stock-preview="${row.index}" ${busy?'disabled':''}>查看阵容码和保存</button>`:
      row.encoding?'<p class="caption">正在生成阵容码…</p>':row.codeError?`<p class="caption">${esc(row.codeError)}</p><button class="secondary" type="button" data-stock-encode="${row.index}">重试生成阵容码</button>`:''}</li>`;
  }).join('');
@@ -664,7 +664,7 @@ async function searchDungeonStock(){
    row.state='running';renderDungeonSelection();
    try{
     const verdict=await sampleDungeonTeam(row.plan,row,active,dungeonSampleSeeds(job.dungeonId),job.dungeonId);
-    if(active()&&verdict==='pass'&&isSoulKing(job.dungeonId))await restoreFullSeedAudit(row,active);
+    if(active()&&verdict==='pass')await restoreFullSeedAudit(row,job.dungeonId,active);
     if(active()&&verdict==='pass')await encodeStockCandidate(job,row);
    }catch(error){if(active())row.error=runeError(error);}
    if(active())row.state='finished';

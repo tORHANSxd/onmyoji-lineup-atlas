@@ -23,12 +23,25 @@ function runPython(python,argv,dir,signal){
 function createRuneFloorRunner({configPath,scriptRoot,suits}){
  const entry=path.join(scriptRoot,'verify-rune-floor.py');
  let current=null;
- return {
+ const runner={
   async available(){
    try{await Promise.all([entry,path.join(scriptRoot,'rune_floor_host.py')].map(file=>fs.access(file)));return true;}
    catch{return false;}
   },
-  async run(plan,{dungeonId,seed,fixedStep}){
+  async run(plan,options){
+   const {result}=await runReport(plan,options);
+   return result;
+  },
+  async runSeedEvidence(plan,seed){
+   const {result,report}=await runReport(plan,{dungeonId:101,seed,fixedStep:true});
+   const {completed,outcome,wavesCleared,bouts,engineSeconds}=result;
+   const {nativeSHA256,scriptIndexSHA256,teamSHA256,suitIndexSHA256,recordSHA256}=report;
+   return {seed,completed,outcome,wavesCleared,bouts,engineSeconds,combatMs:result.animationPlayback?.combatElapsedMs??null,
+    nativeSHA256,scriptIndexSHA256,teamSHA256,suitIndexSHA256,recordSHA256};
+  },
+  stop(){current?.cancel.abort();return current?.done;},
+ };
+ async function runReport(plan,{dungeonId,seed,fixedStep}){
    if(current)throw Error('已有原版复跑正在运行');
    if(dungeonId!==101||!Number.isSafeInteger(seed)||seed<0||seed>=10000||fixedStep!==true||
       !plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length!==5)throw Error('无效的悲鸣复跑请求');
@@ -42,7 +55,8 @@ function createRuneFloorRunner({configPath,scriptRoot,suits}){
     cancel.signal.throwIfAborted();
     dir=await fs.mkdtemp(path.join(os.tmpdir(),'yuqi-rune-floor-'));
     const team=path.join(dir,'team.json'),suitIndex=path.join(dir,'suits.json'),output=path.join(dir,'battle.json');
-    await Promise.all([fs.writeFile(team,input,'utf8'),fs.writeFile(suitIndex,JSON.stringify(suits),'utf8')]);
+    const suitInput=JSON.stringify(suits);
+    await Promise.all([fs.writeFile(team,input,'utf8'),fs.writeFile(suitIndex,suitInput,'utf8')]);
     const argv=['-X','utf8',entry,'--runtime',path.resolve(configPath),'--dungeon',String(dungeonId),'--seed',String(seed),
      '--team',team,'--suit-index',suitIndex,'--output',output];
     const deadline=AbortSignal.timeout(100000);
@@ -51,7 +65,7 @@ function createRuneFloorRunner({configPath,scriptRoot,suits}){
     if(code!==0)throw Error('悲鸣原版引擎运行异常，请核对本机资料和阵容');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     if(report.resourceVersion!==resourceVersion||report.dungeonId!==dungeonId||report.fixture!=='selected-inventory'||
-       report.fixedStepMs!==20||report.seed!==seed||report.teamSHA256!==sha256(input)||
+       report.fixedStepMs!==20||report.seed!==seed||report.teamSHA256!==sha256(input)||report.suitIndexSHA256!==sha256(suitInput)||
        typeof report.completed!=='boolean'||!['win','loss','unknown'].includes(report.outcome)||
        (report.completed&&(!/^[a-f0-9]{64}$/.test(report.recordSHA256)||report.recordSHA256===emptyReplay))||
        !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>3||
@@ -59,7 +73,7 @@ function createRuneFloorRunner({configPath,scriptRoot,suits}){
      throw Error('悲鸣原版复跑没有返回可核验的结算');
     }
     const {completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback}=report;
-    return {seed,completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback};
+    return {report,result:{seed,completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback}};
    }catch(error){
     if(cancel.signal.aborted)throw Error('悲鸣复跑已停止');
     if(error.name==='AbortError')throw Error('悲鸣原版复跑超时');
@@ -68,9 +82,8 @@ function createRuneFloorRunner({configPath,scriptRoot,suits}){
     try{if(dir)await fs.rm(dir,{recursive:true,force:true,maxRetries:2});}
     finally{current=null;release();}
    }
-  },
-  stop(){current?.cancel.abort();return current?.done;},
- };
+ }
+ return runner;
 }
 
 module.exports={createRuneFloorRunner};
