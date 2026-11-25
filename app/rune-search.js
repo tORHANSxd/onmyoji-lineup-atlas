@@ -34,8 +34,8 @@ const strategies=[
  {name:'持续供火与续航',roles:['opener','finisher','orbs','healer','debuff']},
 ];
 const limit=6;
-// The last two seeds exposed long reachable fights in the first full-domain audit.
-const sampleSeeds=Object.freeze([0,1,2,3,7,42,2016,7698]);
+// Check the observed losing seed before the two long fights found in the full-domain audit.
+const sampleSeeds=Object.freeze([0,1,2,3,7,42,8929,2016,7698]);
 const extraSeeds=Object.freeze(Array.from({length:24},(_,seed)=>seed).filter(seed=>!sampleSeeds.includes(seed)));
 
 function actor(game){

@@ -53,7 +53,7 @@ test('魂王有可用群疗式神时优先试能抵消低生命惩罚的配搭',
  assert.match(first.title,/^群疗/);
  assert.ok(first.heroIds.includes(238));
  assert.equal(first.plan.members[first.heroIds.indexOf(238)].aiSkill,3);
- assert.deepEqual(sampleSeeds,[0,1,2,3,7,42,2016,7698]);
+ assert.deepEqual(sampleSeeds,[0,1,2,3,7,42,8929,2016,7698]);
 });
 
 test('不足五名可用式神时不补造角色和配装',()=>{
@@ -71,7 +71,8 @@ test('只有同种子的有效结算可以判为通关或落败',()=>{
   assert.equal(R.sampleVerdict(report,0),'unknown');
  }
  assert.equal(R.passed(sampleSeeds.map(seed=>({...win,seed}))),true);
- assert.equal(R.passed(sampleSeeds.slice(0,-2).map(seed=>({...win,seed}))),false);
+ assert.equal(R.passed(sampleSeeds.filter(seed=>seed!==8929).map(seed=>({...win,seed}))),false);
+ assert.equal(R.passed(sampleSeeds.map(seed=>({...win,seed,...(seed===8929?{outcome:'loss',wavesCleared:1}:{})}))),false);
  assert.equal(R.passed([win]),false);
 });
 
