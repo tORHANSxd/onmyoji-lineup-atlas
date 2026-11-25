@@ -44,5 +44,8 @@ test('随机翻转优先覆盖每波及不同调用位置，再试同位置的�
   {...row(9,true,false),wave:1},{...row(9,true,false),wave:2},{...row(13,true,false),wave:1},
   {...row(9,true,true),wave:1},{...row(13,true,false),wave:2},{...row(9,true,false),wave:3}];
  assert.deepEqual(planRandomTrials({draws:stages,reversibleDraws:[1,2,3,4,5,6,7]}).targets.map(x=>x.index),[2,6,7,4,3,5,1]);
+ assert.deepEqual(planRandomTrials({draws:stages,reversibleDraws:[1,2,3,4,5,6,7]},{afterIndex:4,afterWave:1}).targets.map(x=>x.index),[6,7]);
+ const visual={...stages[0],wave:3};
+ assert.deepEqual(planRandomTrials({draws:[...stages,visual],reversibleDraws:[8,7,6]},{afterIndex:4,afterWave:1}).targets.map(x=>x.index),[6,7]);
  assert.throws(()=>planRandomTrials({draws,reversibleDraws:[99]}),/无效的原版随机分支/);
 });

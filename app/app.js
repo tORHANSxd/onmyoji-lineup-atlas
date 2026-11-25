@@ -297,13 +297,14 @@ function randomAuditMarkup({running,cancelled,error,result}={}){
   const prob=`随机值 ${signs[trial.comparison]} ${trial.threshold}，${trial.before?'成立改为不成立':'不成立改为成立'}`;
   const difference=trial.completed&&trial.outcome==='win'&&trial.wavesCleared===3?describeRandomDifference(trial,baseline):'';
   const source=[trial.wave?`第 ${trial.wave} 波`:'',trial.method,`第 ${trial.line} 行`].filter(Boolean).join(' · ');
-  return `<li><strong>第 ${trial.index} 次 · ${esc(change)}</strong>${difference?`<span>${difference}</span>`:''}<span>${esc(prob)}</span><span>${esc(source)}</span></li>`;
+  const label=trial.indices?.length>1?`联合测试 ${trial.indices.join(' → ')}`:`第 ${trial.index} 次`;
+  return `<li><strong>${esc(label)} · ${esc(change)}</strong>${difference?`<span>${difference}</span>`:''}<span>${esc(prob)}</span><span>${esc(source)}</span></li>`;
  }).join('');
  return `<p class="caption" role="status">${coverage}</p><p class="caption">基准 ${baseline.bouts} 回合 · ${baseline.engineSeconds.toFixed(2)} 秒。
- ${eligible?`从 ${sites} 处、${eligible} 次可翻转判断中选取 ${planned} 次。`:'本次基准没有可翻转的判断。'}
+ ${eligible?`基准有 ${sites} 处、${eligible} 次可翻转判断。`:'本次基准没有可翻转的判断。'}
  ${waves.length?`第 ${waves.join('、')} 波已有判断完成测试。`:''}${trials.length>settled.length?` ${trials.length-settled.length} 次未取得可核对的结算。`:''}</p>
  ${error?`<p class="caption">${esc(error)}</p>`:''}${rows?`<ul class="dungeon-stock-builds">${rows}</ul>`:''}
- <p class="caption">每次只翻转一个判断。全随机分支和实机计时仍待验证。</p>`;
+ <p class="caption">先逐次翻转，再沿已有变化的复跑测试后续波次。原生种子的可达性和实机计时仍待验证。</p>`;
 }
 
 function describeRandomDifference(trial,baseline){

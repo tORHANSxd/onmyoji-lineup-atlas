@@ -449,12 +449,16 @@ async function main(){
    assert.match(await ui('document.querySelector("[data-stock-section$=random][open]").textContent'),/已停止 1\/2.*减少 2 回合.*快 2\.00 秒/s);
    assert.equal(await ui('document.activeElement.dataset.stockAudit'),'0');
    mockRandom=(_plan,seed,progress)=>{
-    assert.equal(seed,0);progress({...result,trials:[]});return result;
+    assert.equal(seed,0);progress({...result,trials:[]});
+    return {...result,planned:3,trials:[...result.trials,
+     {...result.trials[0],index:11,indices:[4,11],wave:2,bouts:10,engineSeconds:22}]};
    };
    await startAudit();
-   await until('document.querySelector("[data-stock-section$=random][open]").textContent.includes("已结束 2/2")');
-   assert.match(await ui('document.querySelector("[data-stock-section$=random][open]").textContent'),/1 次通关，1 次未通关.*第 9 次 · 未通关 · 2 波/s);
-   assert.match(await ui('document.querySelector("[data-stock-section$=random][open]").textContent'),/第 1、3 波已有判断完成测试/);
+   await until('document.querySelector("[data-stock-section$=random][open]").textContent.includes("已结束 3/3")');
+   const results=await ui('document.querySelector("[data-stock-section$=random][open]").textContent');
+   assert.match(results,/2 次通关，1 次未通关.*第 9 次 · 未通关 · 2 波/s);
+   assert.match(results,/第 1、2、3 波已有判断完成测试/);
+   assert.match(results,/联合测试 4 → 11 · 通关 · 3 波 · 10 回合 · 22\.00 秒/);
    await ui('document.querySelector("[data-stock-section$=random][open]").scrollIntoView({block:"start",behavior:"instant"})');
    await capture('dungeon-stock-random-trials');
    stopRandom=null;mockRandom=null;

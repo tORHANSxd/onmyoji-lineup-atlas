@@ -371,8 +371,8 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=0, help="Explicit random seed for one offline replay")
     parser.add_argument("--fixed-step-ms", type=int, help="Use the original recording clock with a fixed time step")
     parser.add_argument("--audit-random", action="store_true", help="Record direct comparisons on engine random draws")
-    parser.add_argument("--random-reference", type=Path, help="Unmodified report from --audit-random")
-    parser.add_argument("--flip-random", type=int, help="Flip one 1-based random draw from the reference report")
+    parser.add_argument("--random-reference", type=Path, help="Report from the same seeded replay, including a prior alternate path")
+    parser.add_argument("--flip-random", type=int, help="Flip one 1-based random draw after any earlier interventions")
     parser.add_argument("--timeout", type=int, default=75)
     args = parser.parse_args()
     if args.timeout < 1:

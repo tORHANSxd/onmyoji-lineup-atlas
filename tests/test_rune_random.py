@@ -42,6 +42,26 @@ class RandomAuditTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "diverged before"):
             compare(changed, 0.9)
 
+    def test_extends_the_reached_path_and_checks_prior_native_values(self):
+        def replay(reference=None, index=None):
+            audit = RandomAudit(random.Random(0), "test", reference, index)
+            first = compare(audit, 0.5)
+            second = compare(audit, 0.4) if first else None
+            return first, second, audit.report()
+
+        _, _, baseline = replay()
+        self.assertEqual(baseline["reversibleDraws"], [1])
+        first, second, alternate = replay(baseline, 1)
+        self.assertEqual((first, second), (True, False))
+        first, second, combined = replay(alternate, 2)
+        self.assertEqual((first, second), (True, True))
+        self.assertEqual([row["index"] for row in combined["interventions"]], [1, 2])
+        with self.assertRaisesRegex(ValueError, "after the last intervention"):
+            replay(alternate, 1)
+        alternate["interventions"][0]["originalValue"] = 0.8
+        with self.assertRaisesRegex(ValueError, "native random draw diverged"):
+            replay(alternate, 2)
+
     def test_known_grid_edges_and_multiple_observed_comparisons(self):
         self.assertIsNone(alternative({"method": "uniform", "comparisons": []}))
         self.assertIsNone(alternative({"method": "random", "comparisons": [["lt", 1, True]]}))
