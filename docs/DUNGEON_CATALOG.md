@@ -47,6 +47,12 @@ $env:PYTHONHASHSEED = '0'
 
 `python tools/rune_replay.py tmp/rune-runtime.json --output tmp/rune-animation.json` 可按报告中的 SHA-256 重新校验回放和模型，再计算这些窗口。
 
+### 追踪原版引擎随机调用
+
+命令可加 `--seed` 复跑一个明确的 32 位种子。工具使用客户端自带的 `battleengine.battle_tools.RandomRecord` 捕获战斗引擎随机实例的调用位置和返回值，记录在 `randomTrace`。`randomCalls` 对应这段记录的长度，`engineRandomCounter` 则保留引擎原有计数。
+
+同一份带真实契灵的配置以种子 0 和 1 复跑，原有计数两次均为 0，原版记录器分别捕获到 183 次和 164 次调用。两次分别在第 3 和第 4 回合落败。此记录只覆盖战斗引擎的随机实例，模块直接使用的全局随机数和所有可达分支仍需单独验证。
+
 ### 复跑选定库存
 
 在上面的命令末尾加 `--team tmp/selected-team.json`，即可将选定库存交给原版引擎。文件的 `onmyoji` 是明确指定的阴阳师配置，包含 `heroId`、`level`、`star`、`awake` 与 `skinfo`。`members` 数组里每项包含 `instanceId`、平安志原始式神 `hero` 和选定御魂记录数组 `souls`。可以少于五名式神，或保留空余御魂位置。每件御魂和每个式神实例至多使用一次，同一只式神的御魂槽位不能重复。

@@ -158,6 +158,7 @@ def run(args):
 
     from battleengine.BattleCommon import BattleAvatar
     from battleengine.BattleController import LocalBattleController
+    from battleengine.battle_tools.RandomRecord import RandomRecord
     from battleengine.engine.RuneFbEngine import RuneFbEngine, const
 
     def fixture_hero(hero_id, uid, level):
@@ -191,7 +192,12 @@ def run(args):
         actor = fixture_hero(10, "fixture-qingming", 60)
         avatar.init_from_dict({"heroes_gamble": {**fighters, "fixture-qingming": actor}, "yysid": 10})
     avatar.defaultHeros = list(fighters)
-    engine = RuneFbEngine({"fbId": 102, "seed": 0})
+    engine = RuneFbEngine({"fbId": 102, "seed": args.seed})
+    variant_rng = engine.random
+    random_record = RandomRecord(variant_rng)
+    for method in ("seed", "getstate", "setstate"):
+        setattr(random_record, method, getattr(variant_rng, method))
+    engine._random = random_record
     winner = None
     battle_ended = engine.doBattleEnded
 
@@ -216,7 +222,7 @@ def run(args):
     engine.onEntityCreated = observe_created
     engine.battleMode = const.BattleMode.MODE_RUNE_FB
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
-    engine.seed = 0
+    engine.seed = args.seed
     controller = LocalBattleController(const.CampFlag.CAMP1, avatar)
     controller.battleEngine = engine
     controller.sceneLoaded = True
@@ -224,6 +230,8 @@ def run(args):
     engine.controllers.append(controller)
     engine.op_init_flag = True
     engine.init()
+    if engine.seed != args.seed or engine.random is not random_record:
+        raise RuntimeError("The original engine changed the requested random seed or recorder")
     engine.op_init(controller, actor["heroId"], list(fighters), [])
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
@@ -283,7 +291,9 @@ def run(args):
         "equippedSpirit": equipped_spirit,
         "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,
         "remainingPlayers": len(engine.heroEntities), "remainingEnemies": len(engine.monsterEntities),
-        "randomCalls": engine.random_count, "recordLines": len(replay.splitlines()), "recordSHA256": sha256(replay),
+        "randomCalls": len(random_record.history), "engineRandomCounter": engine.random_count,
+        "randomTrace": {"scope": "battle-engine-random-instance", "history": random_record.history},
+        "recordLines": len(replay.splitlines()), "recordSHA256": sha256(replay),
         "clientRenderingMeasured": False, "allRandomBranchesVerified": False,
         "staticTableAdapter": "decoded-client-bindict", "modelSHA256": model_hashes,
         "entityModels": entity_models,
@@ -308,10 +318,13 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--team", type=Path, help="Explicit selected roster and soul rows (see DUNGEON_CATALOG.md)")
     parser.add_argument("--suit-index", type=Path, help="Override the repository's suit ID to name mapping")
+    parser.add_argument("--seed", type=int, default=0, help="Explicit random seed for one offline replay")
     parser.add_argument("--timeout", type=int, default=75)
     args = parser.parse_args()
     if args.timeout < 1:
         parser.error("--timeout must be positive")
+    if not 0 <= args.seed < 2 ** 32:
+        parser.error("--seed must be in the 32-bit unsigned range")
     sys.path[:0] = [str(Path(__file__).resolve().parent), str(args.game_tools.resolve())]
     args.opcode_proof = args.opcode_proof.resolve()
     faulthandler.dump_traceback_later(args.timeout + 60, exit=True)
