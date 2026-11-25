@@ -427,6 +427,27 @@ async function main(){
      assert.match(await ui('$("dungeon-battle-results").textContent'),/已暂停全种子验收.*74 \/ 10,000.*继续全种子验收/s);
      assert.equal(await ui('document.activeElement.dataset.battleFull'),'qa-rune-e2e');
      stopSeeds=null;mockSeeds=null;
+     const waveReport={seed:13,completed:true,outcome:'win',wavesCleared:3,bouts:6,engineSeconds:25.5,
+      animationPlayback:{combatElapsedMs:14400,combatOverlapMs:3200,overlapMs:5000,unresolved:0,interruptedClips:0},
+      monsterHealth:[{wave:2,cleared:true,startMs:2200,endMs:9300,monsters:[
+       {id:4741297,position:4,initialHp:198501,lowestHp:0,lastHp:0,regainedHp:7100,zeroToAlive:1}
+      ]}]};
+     const inspect=()=>ui('document.querySelector("[data-battle-wave-report]").click()');
+     const auditedPlan=replayPlan;
+     let matchTiming=false;
+     mockBattle=(plan,options)=>{
+      assert.deepEqual(plan,auditedPlan);assert.deepEqual(options,{seed:13,fixedStep:true});
+      return matchTiming?waveReport:{...waveReport,engineSeconds:26};
+     };
+     await inspect();
+     await until('$("dungeon-battle-results").textContent.includes("本次复跑与已保存结算不一致")');
+     assert.equal(await ui('!!document.querySelector(".dungeon-wave-report")'),false);
+     matchTiming=true;await inspect();
+     await until('!!document.querySelector(".dungeon-wave-report")');
+     assert.match(await ui('document.querySelector(".dungeon-wave-report").textContent'),/种子 13.*第 2 波.*敌方进场至清场 7\.10 秒.*生命回升 7,100.*回到正值 1 次/s);
+     assert.equal(await ui('dungeonBattle.rows[0].fullSeedAudit.progress.wins'),74);
+     await ui('document.querySelector(".dungeon-wave-report").scrollIntoView({block:"center",behavior:"instant"})');
+     await capture('dungeon-wave-report');
      let nextOutcome='blocked';
      mockBattle=(_plan,options)=>{
       const {seed,fixedStep}=options;assert.equal(fixedStep,true);seeds.push(seed);
@@ -475,7 +496,7 @@ async function main(){
     wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,
     animationPlayback:{combatElapsedMs:11234,combatOverlapMs:1250,overlapMs:3000,interruptedClips:5,unresolved:2},
     randomObservations:{observed:75,other:12,alternatives:9},monsterHealth:[
-     {wave:2,cleared:win,monsters:[{id:4741297,initialHp:198501,lowestHp:5000,lastHp:win?0:120000,regainedHp:135000,zeroToAlive:0}]}
+     {wave:2,cleared:win,startMs:1300,endMs:4000,monsters:[{id:4741297,initialHp:198501,lowestHp:5000,lastHp:win?0:120000,regainedHp:135000,zeroToAlive:0}]}
     ]};
   };
   try{
@@ -497,7 +518,7 @@ async function main(){
    await ui('document.querySelector(".dungeon-stock-card summary").click()');
    assert.match(await ui('document.querySelector(".dungeon-stock-card details[open]").textContent'),/速度.*暴击.*×/s);
    await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health] summary").click()');
-   assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health][open]").textContent'),/日和坊.*最低 5,000.*生命回升 135,000/s);
+   assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health][open]").textContent'),/敌方进场至清场 2\.70 秒.*日和坊.*最低 5,000.*生命回升 135,000/s);
    await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random] summary").click()');
    assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random][open]").textContent'),/可达随机分支仍待验证.*75 次概率判断.*9 次可以翻转.*12 次其他随机调用/s);
    const result={seed:0,eligible:9,sites:3,planned:2,baseline:{bouts:8,engineSeconds:20},trials:[

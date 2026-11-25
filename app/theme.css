@@ -70,6 +70,7 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-battle-list>li>button{justify-self:start}
 .dungeon-full-seeds{grid-column:1/-1;margin-top:6px}
 .dungeon-full-seeds .caption{margin:4px 0}
+.dungeon-wave-report{border-top:1px solid var(--line);margin-top:8px;padding-top:6px;font-size:12px}
 .dungeon-full-seeds progress{appearance:none;display:block;width:min(100%,22rem);height:8px;margin:8px 0;border:0}
 .dungeon-full-seeds progress::-webkit-progress-bar{background:var(--line);border-radius:4px}
 .dungeon-full-seeds progress::-webkit-progress-value{background:var(--teal);border-radius:4px}
