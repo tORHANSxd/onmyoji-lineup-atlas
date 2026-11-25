@@ -148,7 +148,9 @@ function describeBattle(report){
  if(!report.completed)return '复跑超时，未取得结算';
  const outcome={win:'本次复跑通关',loss:'本次复跑失败',unknown:'胜负待核对'}[report.outcome];
  const time=report.overlapMs==null||report.unresolvedActions?[]:[`动作窗口重叠 ${(report.overlapMs/1000).toFixed(2)} 秒`];
- return [outcome,`通过 ${report.wavesCleared} 波`,`共 ${report.bouts} 回合`,...time].join(' · ');
+ const spirit=report.spirit,template=DATA.gameConfig.spirits?.[spirit?.id];
+ return [outcome,`通过 ${report.wavesCleared} 波`,`共 ${report.bouts} 回合`,...time,
+  ...(spirit?[`已佩戴 ${template?.name||'契灵 '+spirit.id} ${spirit.star} 星 ${spirit.level} 级`]:[])].join(' · ');
 }
 function renderDungeonBattle(dungeon){
  const body=$('dungeon-battle-results'),job=dungeonBattle;

@@ -39,6 +39,11 @@ class ReplayAnimationTests(unittest.TestCase):
             {'atMs': 4, 'entity': '3', 'model': None, 'clips': ['attack']},
         ])
 
-    def test_rejects_out_of_order_frames(self):
+    def test_ignores_unrelated_notes_written_with_an_earlier_timestamp(self):
+        result = sync_windows(replay((10, PLAY, [1, 'attack']), (9, 1128, [])),
+                              {'1': 'model'}, {'model': {'attack': {'len': 5}}})
+        self.assertEqual(result['windows'][0]['endMs'], 15)
+
+    def test_rejects_out_of_order_animation_frames(self):
         with self.assertRaisesRegex(ValueError, 'timestamps'):
-            sync_windows(replay((1, 0, []), (0, 0, [])), {}, {})
+            sync_windows(replay((1, PLAY, [1, 'attack']), (0, PLAY, [1, 'attack'])), {}, {})

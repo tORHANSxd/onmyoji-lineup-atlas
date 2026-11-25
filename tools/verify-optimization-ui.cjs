@@ -34,7 +34,7 @@ async function main(){
  const rune=process.env.ATLAS_RUNE_RUNTIME?createRuneRunner({configPath:process.env.ATLAS_RUNE_RUNTIME,scriptRoot:path.join(root,'tools'),suits:data.suits}):null;
  let runeEnabled=false,replayPlan=null;
  local('rune-battle-status',()=>runeEnabled?(rune?.status()||{available:true,resourceVersion:'0.0.816'}):{available:false});
- local('rune-battle-run',plan=>{replayPlan=plan;return rune?.run(plan)||{completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0};});
+ local('rune-battle-run',plan=>{replayPlan=plan;return rune?.run(plan)||{completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};});
  local('rune-battle-stop',()=>rune?.stop());
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
  win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
@@ -267,10 +267,10 @@ async function main(){
    assert.equal(stored.accounts[0].souls['desktop-first'].stats.attack,25);assert.equal(stored.accounts[0].souls['desktop-second'].stats.attack,40);
    assert.equal(stored.accounts[0].merged,true);assert.equal(stored.accounts[0].raw.souls.length,2);
   });
- await check('勾选魂王阵容后库存精算自动把五位式神和三十件御魂交给复跑',async()=>{
+ await check('勾选魂王阵容后库存精算将五位式神、三十件御魂和契灵交给原版复跑',async()=>{
   const source=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&!l.members[0].qiling&&l.members[0].onmyojiId==='11');
   const lineup={...source,id:'qa-rune-e2e',code:'|TA|qa-rune-e2e',title:'魂王复跑验收',requirementsComplete:true,
-   members:source.members.map(m=>m.kind==='onmyoji'?m:{...m,config:{scope:'all'},aiSkill:0})};
+   members:source.members.map(m=>m.kind==='onmyoji'?{...m,qiling:{id:101,star:5,lv:3,mark_gid:2,marks:[9,9]}}:{...m,config:{scope:'all'},aiSkill:0})};
   const roles=lineup.members.filter(m=>m.kind==='shikigami');
   const heroes=Object.fromEntries(roles.map(m=>[`native-${m.index}`,{
    heroId:Number(m.shikigamiId),level:40,star:6,awake:m.awakening,skinfo:m.skills.map(s=>[s.id,s.level]),
@@ -278,13 +278,16 @@ async function main(){
   }]));
   const hero_equips=roles.flatMap(m=>Array.from({length:6},(_,i)=>({id:`gear-${m.index}-${i}`,slot:i+1,quality:6,level:15,
    setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:40,subAttributes:[]})));
-  const roster={...raw,heroes,hero_equips};
+  const spirit={id:101,star:6,lv:5,shiny:false,marks:[9,9,10]};
+  const roster={...raw,heroes,hero_equips,hunlings:[{...spirit,uid:'qa-spirit',mark_gid:2}]};
   runeEnabled=true;
   await ui(`stopMatch();STATE={...${JSON.stringify(blank())},lineups:[${JSON.stringify(lineup)}],accounts:[C.parseAccount(${JSON.stringify(roster)})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};runeStatus=null;selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-rune-e2e');renderSelection();`);
   await until('!$("dungeon-match-selected").disabled&&$("dungeon-match-selected").textContent.includes("复跑")');
   await ui('$("dungeon-match-selected").click()');
   await until('dungeonBattle?.rows.every(row=>row.state==="finished")',110000);
   assert.match(await ui('$("dungeon-battle-results").textContent'),/本次复跑(失败|通关).*随机分支/s);
+  assert.match(await ui('$("dungeon-battle-results").textContent'),/已佩戴.*6 星 5 级/);
+  assert.deepEqual(replayPlan.spirit,spirit);
   assert.equal(replayPlan.members.length,5);
   assert.equal(new Set(replayPlan.members.flatMap(member=>member.souls.map(soul=>soul.id))).size,30);
   await ui('$("dungeon-workbench").scrollIntoView({block:"start"})');await capture('dungeon-selected-replay');

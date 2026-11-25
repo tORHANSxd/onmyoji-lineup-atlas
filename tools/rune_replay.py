@@ -21,16 +21,20 @@ def sync_windows(record, entity_models, models):
     aliases = defaultdict(dict)
     windows, unresolved = [], []
     counts = Counter()
-    last_timestamp = 0
+    last_action_timestamp = 0
     for line in lines[1:]:
         if not line:
             continue
         timestamp, command, params, *_ = json.loads("[" + line + "]")
-        if type(timestamp) is not int or timestamp < last_timestamp:
-            raise ValueError("Replay timestamps must advance in order")
-        last_timestamp = timestamp
+        if type(timestamp) is not int or timestamp < 0:
+            raise ValueError("Invalid replay timestamp")
         if command not in TRACKED_COMMANDS:
             continue
+        # The client can append other event types with an earlier timestamp.
+        # Remaps and playback requests must still stay in their recorded order.
+        if timestamp < last_action_timestamp:
+            raise ValueError("Replay animation timestamps must advance in order")
+        last_action_timestamp = timestamp
         counts[command] += 1
         if command == APPEND:
             continue

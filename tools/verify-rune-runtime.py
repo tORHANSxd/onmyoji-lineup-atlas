@@ -20,7 +20,7 @@ def run(args):
     from original_battle import RuntimeModules, no_transport
     from original_host import Host
     from rune_replay import read_models, sync_windows
-    from rune_team import selected_team
+    from rune_team import battle_spirit, selected_team
 
     catalog = run_path(str(Path(__file__).with_name("extract-dungeon-catalog.py")))
     client = catalog["open_catalog_client"](args.snapshot.resolve())
@@ -36,13 +36,16 @@ def run(args):
     output = args.output.resolve()
     team_scope = "synthetic-qingming-zhoushen"
     team = None
+    spirit = None
     if args.team:
         if args.suit_index:
             suits = json.loads(args.suit_index.read_text(encoding="utf-8"))
         else:
             bundle_path = Path(__file__).resolve().parent.parent / "data/bundle.json"
             suits = json.loads(bundle_path.read_text(encoding="utf-8"))["suits"]
-        team = selected_team(json.loads(args.team.read_text(encoding="utf-8-sig")), suits)
+        plan = json.loads(args.team.read_text(encoding="utf-8-sig"))
+        team = selected_team(plan, suits)
+        spirit = plan.get("spirit")
         team_scope = "selected-inventory"
     work = output.parent / (output.stem + "-work")
     models = work / "src/model_info"
@@ -168,7 +171,20 @@ def run(args):
         actor, fighters, equipment, auto_skills = team
         if any(hero["heroId"] not in DATA_HERO.data for hero in (actor, *fighters.values())):
             raise ValueError("Unknown hero in this client's resources")
-        avatar.init_from_dict({"heroes": {**fighters, "selected-onmyoji": actor}, "yysid": actor["heroId"]})
+        player = {"heroes": {**fighters, "selected-onmyoji": actor}, "yysid": actor["heroId"]}
+        if spirit is not None:
+            from AttrCalc import HunlingAttrCalc
+            from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
+
+            spirit = battle_spirit(spirit, HunlingAttrCalc)
+            template = DATA_HUNLING_BASE.data.get(spirit["id"], {})
+            if (actor["heroId"] not in template.get("heroIdList", ())
+                    or (spirit["id"], spirit["star"]) not in DATA_HUNLING_ATTR.data
+                    or any(mark not in DATA_HUNLING_MARK.data for mark in spirit["marks"])):
+                raise ValueError("The spirit configuration does not match the battle resources")
+            player["hunling_info"] = {spirit["uid"]: spirit}
+            player["yys_hunling"] = {str(actor["heroId"]): spirit["uid"]}
+        avatar.init_from_dict(player)
         avatar.inventory.update(equipment)
     else:
         fighters = {uid: fixture_hero(408, uid, 40) for uid in ("fixture-a", "fixture-a2")}
@@ -215,6 +231,7 @@ def run(args):
     deadline = time.monotonic() + args.timeout
     phases = [engine.battleState]
     selected_settings = []
+    equipped_spirit = None
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
         if host.oracle.unsupported:
@@ -234,8 +251,17 @@ def run(args):
                     engine.op_setAutoSkill(controller, entity.uid, setting)
                     if controller.autoSkill.get(entity.uid) != setting:
                         raise RuntimeError("The original engine did not apply the selected automatic skill")
+                active_skills = list(entity.SkillMgrComp.skillList)
                 selected_settings.append({"member": alias, "heroId": entity.protoid,
-                                          "skills": list(entity.SkillMgrComp.skillList), "aiSkill": setting})
+                                          "skills": active_skills, "aiSkill": setting})
+                if alias == "selected-onmyoji" and spirit:
+                    attached = entity.get_hunlingData()
+                    if not attached or attached.uuid != spirit["uid"]:
+                        raise RuntimeError("The original engine did not equip the selected spirit")
+                    equipped_spirit = {"id": attached.id, "star": attached.star, "level": attached.lv,
+                                       "shiny": attached.shiny, "attributes": attached.attr,
+                                       "skills": attached.skill_list,
+                                       "ownerSkillIds": [sid for sid, _ in attached.skill_list if sid in active_skills]}
             if pending:
                 raise RuntimeError("The original engine did not create every selected team member")
             engine.op_setAuto(controller, True)
@@ -254,6 +280,7 @@ def run(args):
         "completed": completed, "phases": [names[state] for state in phases],
         "outcome": "win" if winner == const.CampFlag.CAMP1 else "loss" if winner == const.CampFlag.CAMP2 else "unknown",
         "selectedSettings": selected_settings,
+        "equippedSpirit": equipped_spirit,
         "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,
         "remainingPlayers": len(engine.heroEntities), "remainingEnemies": len(engine.monsterEntities),
         "randomCalls": engine.random_count, "recordLines": len(replay.splitlines()), "recordSHA256": sha256(replay),
@@ -263,7 +290,10 @@ def run(args):
         "moduleSHA256": {row["module"]: row["marshalSHA256"] for row in modules.trace},
     }
     if replay:
-        report["animationSync"] = sync_windows(replay, entity_models, read_models(models, model_hashes))
+        try:
+            report["animationSync"] = sync_windows(replay, entity_models, read_models(models, model_hashes))
+        except (OSError, ValueError) as error:
+            report["animationSyncError"] = str(error)
     write_json(output, report)
     print(json.dumps({key: report[key] for key in ("completed", "phases", "wavesCleared", "bouts", "recordLines")}))
     return 0 if completed else 1

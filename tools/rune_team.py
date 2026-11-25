@@ -1,5 +1,6 @@
 """Translate selected Pinganzhi inventory rows for the original battle engine."""
 
+from collections import Counter
 from math import isfinite
 from types import SimpleNamespace
 
@@ -101,3 +102,19 @@ def auto_setting(row):
     if not integer(setting, 0, 11) and not integer(setting, 33831, 33844):
         raise ValueError("Unknown automatic skill selection")
     return setting
+
+
+def battle_spirit(row, calculate):
+    marks = row.get("marks")
+    if (not integer(row.get("id"), 1, 999999) or not integer(row.get("star"), 1, 6)
+            or not integer(row.get("lv"), 0, 100) or type(row.get("shiny")) is not bool
+            or not isinstance(marks, list) or len(marks) > 6
+            or any(not integer(mark, 1, 999999) for mark in marks)):
+        raise ValueError("Unrecognized owned spirit data")
+    calc = calculate(row)
+    # Same projection as the original client get_battle_souls. The ownership
+    # alias keeps the exported account UUID out of offline reports and replays.
+    skills = [[sid, count] for sid, count in Counter(calc.markSkills).items()]
+    skills.append([calc.talentSkill, calc.talentSkillLv])
+    return {"uid": "selected-spirit", "id": row["id"], "star": row["star"],
+            "lv": max(1, row["lv"]), "shiny": row["shiny"], "marks": marks, "skill_list": skills}

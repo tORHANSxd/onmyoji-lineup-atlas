@@ -1,10 +1,11 @@
 import copy
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from rune_team import selected_team
+from rune_team import battle_spirit, selected_team
 
 
 def plan():
@@ -17,6 +18,18 @@ def plan():
 
 
 class SelectedTeamTests(unittest.TestCase):
+    def test_battle_spirit_uses_native_spell_ids_and_an_alias(self):
+        owned = {'id': 104, 'star': 6, 'lv': 0, 'shiny': True, 'marks': [36, 38, 36], 'uid': 'account-uid'}
+
+        def calculate(row):
+            self.assertEqual(row, owned)
+            return SimpleNamespace(markSkills=[77835, 77837, 77835], talentSkill=77004, talentSkillLv=1)
+
+        self.assertEqual(battle_spirit(owned, calculate), {
+            'uid': 'selected-spirit', 'id': 104, 'star': 6, 'lv': 1, 'shiny': True,
+            'marks': [36, 38, 36], 'skill_list': [[77835, 2], [77837, 1], [77004, 1]],
+        })
+
     def test_preserves_reported_stats_and_uses_local_aliases(self):
         raw = plan()
         raw['members'][0]['aiSkill'] = 11

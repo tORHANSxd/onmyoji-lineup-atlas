@@ -34,9 +34,11 @@ function summary(report){
   typeof report.completed!=='boolean'||!['win','loss','unknown'].includes(report.outcome)||
   !Number.isSafeInteger(report.wavesCleared)||!Number.isSafeInteger(report.bouts))throw Error('客户端复跑没有返回可识别的结算');
  const sync=report.animationSync;
+ const spirit=report.equippedSpirit;
  return {completed:report.completed,outcome:report.outcome,wavesCleared:report.wavesCleared,bouts:report.bouts,
   randomBranchesVerified:false,overlapMs:Number.isFinite(sync?.overlapMs)?sync.overlapMs:null,
-  unresolvedActions:Array.isArray(sync?.unresolved)?sync.unresolved.length:null};
+  unresolvedActions:Array.isArray(sync?.unresolved)?sync.unresolved.length:null,
+  spirit:spirit?{id:spirit.id,star:spirit.star,level:spirit.level}:null};
 }
 
 function createRuneRunner({configPath,scriptRoot,suits}){

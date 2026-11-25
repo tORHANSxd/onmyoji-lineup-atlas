@@ -29,7 +29,7 @@ test('魂王复跑按原码槽位使用精算选中的库存实例和自动施�
  assert.match(conditions[0],/平安志未提供/);
 });
 
-test('魂王复跑拒绝未精算、库存已变化和未核对的契灵输入',()=>{
+test('魂王复跑拒绝未精算、库存已变化和不完整的契灵配置',()=>{
  const {lineup,account,result}=match();
  assert.throws(()=>team(lineup,{...result,completed:false},account,bundle.gameConfig),/未给出/);
  const soul=result.assignment[0].soulIds[0];
@@ -37,4 +37,22 @@ test('魂王复跑拒绝未精算、库存已变化和未核对的契灵输入',
  assert.throws(()=>team(lineup,result,account,bundle.gameConfig),/已不在当前库存/);
  lineup.members[0].qiling={id:100};
  assert.throws(()=>team(lineup,result,account,bundle.gameConfig),/契灵/);
+});
+
+test('魂王复跑按原版星级、等级和重复术印要求选取真实契灵',()=>{
+ const {lineup,account,result}=match();
+ const actor=lineup.members[0];
+ actor.qiling={id:100,star:5,lv:3,mark_gid:5,marks:[36,38,36]};
+ const base={id:100,star:6,lv:7,shiny:true,marks:[36,36,38,33]};
+ account.raw={hunlings:[
+  {...base,uid:'limited-marks',marks:[36,33,38]},
+  {...base,uid:'limited-level',lv:1},
+  {...base,uid:'limited-star',star:4},
+  {...base,uid:'another-type',id:101},
+ ]};
+ assert.throws(()=>team(lineup,result,account,bundle.gameConfig),/库存缺少满足/);
+ account.raw.hunlings.push({...base,uid:'owned-selected'});
+ const {plan}=team(lineup,result,account,bundle.gameConfig);
+ assert.deepEqual(plan.spirit,base);
+ assert.equal(Object.hasOwn(plan.spirit,'uid'),false);
 });
