@@ -3,6 +3,7 @@ const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
 const {readIndex,readTable}=require('../desktop/dungeon-catalog.cjs');
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
+const {Background}=require('../desktop/background.cjs');
 const root=path.resolve(__dirname,'..'),profile=path.join(root,'user-data','optimization-ui');
 app.setPath('userData',profile);
 app.disableHardwareAcceleration();
@@ -10,13 +11,17 @@ let win,stored,exported,failSave=false,failExport=false,failLoad=false,holdSave=
 async function held(){for(let i=0;i<200;i++){if(heldSaves.length)return;await sleep(10);}throw Error("Save did not start");}
 function releaseSaves(){holdSave=false;heldSaves.splice(0).forEach(resolve=>resolve());}
 const results=[],errors=[],blank=()=>({schemaVersion:1,lineups:[],accounts:[],activeAccount:'',deletedPresetIds:[]});
-const ui=code=>win.webContents.executeJavaScript(code),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const ui=async code=>{
+ try{return await win.webContents.executeJavaScript(code);}
+ catch(error){throw Error(error.message+' · '+code.slice(0,180));}
+},sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(code,timeout=5000){const deadline=Date.now()+timeout;while(Date.now()<deadline){if(await ui(code))return;await sleep(25);}throw Error('UI timeout: '+code);}
 async function check(name,fn){try{await fn();results.push({name,passed:true});}catch(e){results.push({name,passed:false,error:e.message});console.error(name,e.message);}finally{releaseSaves();}}
 async function capture(name){await win.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true});await sleep(350);await fs.writeFile(path.join(profile,name+'.png'),(await win.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true})).toPNG());}
 async function main(){
  await app.whenReady();await fs.mkdir(profile,{recursive:true});
  const data=JSON.parse(await fs.readFile(path.join(root,'data/bundle.json'),'utf8'));data.officialUpdate={autoUpdate:false};stored=blank();
+ const background=new Background(),shareCalls=[];
  const local=(name,fn)=>{ipcMain.handle(name,(_e,...args)=>fn(...args));if(name==='export-json')ipcMain.handle('export-json-text',(_e,p)=>fn({name:p.name,data:JSON.parse(p.text)}));if(['load-data','load-state'].includes(name))ipcMain.handle(name+'-json',async(_e,...args)=>JSON.stringify(await fn(...args)));if(['save-state','save-parsed-state'].includes(name))ipcMain.handle(name+'-json',(_e,text)=>fn(JSON.parse(text)));};
  local('save-state-fields-json',async text=>{if(holdSave)await new Promise(resolve=>heldSaves.push(resolve));if(failSave)throw Error('synthetic disk full');if(!stored)return {needsSnapshot:true};stored={...JSON.parse(text),lineups:stored.lineups};return {saved:true};});
  local('parse-json',text=>JSON.parse(text));local('save-parsed-delta',()=>({needsSnapshot:true}));
@@ -26,6 +31,11 @@ async function main(){
  local('export-json',payload=>{if(failExport)throw Error('synthetic read-only target');exported=structuredClone(payload.data);return true;});
  local('ta-status',()=>status);local('ta-action',(_action,p)=>{status={...status,risk_accepted:p?.accepted};return status;});local('ta-logout',()=>status);
  local('copy-code',()=>({copied:true}));local('import-files',()=>[]);
+ local('build-lineup',input=>background.run('build',{input,catalog:data}));
+ local('ta-share',async code=>{
+  shareCalls.push(code);
+  return {code:await background.run('verify-share',{code,response:{err:0,share_key:'qa-stock-share',lineup_data:code}})};
+ });
  for(const channel of ['official-status','official-auto','official-refresh','official-cancel'])local(channel,()=>({autoUpdate:false}));
  local('ta-query',()=>{throw Error('synthetic offline');});local('decode',()=>{throw Error('synthetic offline');});
  const catalog=await readIndex(path.join(root,'data/dungeon-catalog')).catch(error=>{if(error.code!=='ENOENT')throw error;return null;});
@@ -324,7 +334,7 @@ async function main(){
     ]};
   };
   try{
-   await ui(`stopMatch();STATE={...${JSON.stringify(blank())},lineups:[${JSON.stringify(lineup)}],accounts:[C.parseAccount(${JSON.stringify({...raw,heroes,hero_equips})})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-stock-search');renderSelection();`);
+   await ui(`stopMatch();DATA={...DATA,lineups:[]};STATE={...${JSON.stringify(blank())},lineups:[${JSON.stringify(lineup)}],accounts:[C.parseAccount(${JSON.stringify({...raw,heroes,hero_equips})})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-stock-search');renderSelection();`);
    assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
    await ui('$("dungeon-match-selected").click()');
    await until('!$("dungeon-search-stock").hidden');
@@ -346,6 +356,45 @@ async function main(){
    win.setContentSize(720,960);
    try{assert.equal(await ui('$("dungeon-stock-results").scrollWidth<=$("dungeon-stock-results").clientWidth+2'),true);}
    finally{win.setContentSize(1440,1000);}
+   assert.equal(await ui('document.querySelectorAll("[data-stock-preview]").length'),1);
+   await ui('document.querySelector("[data-stock-preview]").click()');
+   await until('document.querySelector(".rune-code-preview img")?.naturalWidth>0');
+   assert.equal(await ui('!!$("stock-candidate-upload")'),false);
+   const code=await ui('$("stock-candidate-code").value');assert.match(code,/^#TA#/);
+   assert.equal(shareCalls.length,0);
+   await capture('dungeon-candidate-code');
+   await ui('$("stock-candidate-save").click()');
+   await until('$("stock-candidate-status").textContent.includes("已保存")');
+   const saved=stored.lineups.find(l=>l.code===code);assert.equal(saved.runeReceipts.length,1);
+   await ui('$("detail-dialog").close()');
+   const offline=status;
+   status={...status,authenticated:true,risk_accepted:true,query_ready:true,selected_server:String(raw.player.serverId),selected_avatar:'synthetic',
+    servers:[{id:String(raw.player.serverId),name:'测试区改名',category:'测试',available:true,roles:[{avatar_id:'synthetic',name:'测试角色'}]}]};
+   win.webContents.send('ta-status-changed',status);
+   try{
+    await until('TALogin.status().selected_avatar==="synthetic"&&account().server==="测试区改名"');
+    await ui('reloadOfficial()');
+    await ui('document.querySelector("[data-stock-preview]").click()');
+    await ui('$("stock-candidate-upload").click()');
+    try{
+     await until('$("stock-candidate-short").textContent==="|TA|qa-stock-share"&&!$("stock-candidate-short").hidden');
+     await until('STATE.lineups.some(l=>l.shortCode==="|TA|qa-stock-share")');
+    }catch(error){throw Error(error.message+' · '+await ui('$("stock-candidate-status")?.textContent'));}
+    assert.deepEqual(shareCalls,[code]);
+    assert.equal(stored.lineups.find(l=>l.id===saved.id).shortCode,'|TA|qa-stock-share');
+   }finally{status=offline;win.webContents.send('ta-status-changed',status);}
+   await ui(`$("detail-dialog").close();showLineup(lineups().find(l=>l.id===${JSON.stringify(saved.id)}));$("export-lineup").click()`);
+   await until('!$("dialog-feedback").hidden');
+   assert.equal(Object.hasOwn(exported,'runeReceipts'),false);
+   await win.loadFile(path.join(root,'app/index.html'));
+   await until('!!DATA && $("loading").hidden');
+   await ui(`$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add(${JSON.stringify(saved.id)});renderSelection()`);
+   await until('!$("dungeon-match-selected").disabled&&$("dungeon-match-selected").textContent.includes("复跑")');
+   await ui('$("dungeon-match-selected").click()');
+   await until('dungeonBattle?.rows[0]?.state==="finished"',10000);
+   assert.match(await ui('$("dungeon-battle-results").textContent'),/按已保存配装.*本次复跑通关/s);
+   assert.equal(calls.at(-1).ids,winner);
+   assert.deepEqual(replayPlan.onmyoji.skinfo,[[1003,5],[1008,5],[1011,5]]);
   }finally{mockBattle=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
  });
  if(process.argv.includes('--visual')){
@@ -366,6 +415,7 @@ async function main(){
   for(const page of ['library','accounts','decode','manage','audit']){await ui('selectView('+JSON.stringify(page)+')');await check(page+' 200%缩放',async()=>assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true));}
  }
  const report={version:require('../package.json').version,results,errors,synthetic:true,method:'生产 Electron 页面、预加载脚本与合成 IPC；失败注入、慢保存竞态、1440/900/720 像素及 200% 缩放。真实手机扫码与网易服务未在本轮实测。'};
+ await background.close();
  await fs.writeFile(path.join(profile,'report.json'),JSON.stringify(report,null,2));
   await fs.mkdir(path.join(root,'verification'),{recursive:true});await fs.writeFile(process.env.YUQI_UI_REPORT||path.join(root,'verification','optimization-ui-v'+report.version.replaceAll('.','')+'.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({passed:results.filter(r=>r.passed).length,failed:results.filter(r=>!r.passed),profile,errors},null,2));

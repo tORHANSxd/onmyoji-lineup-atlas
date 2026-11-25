@@ -84,6 +84,12 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-stock-health ul{margin-left:10px}
 .dungeon-stock-health li{display:grid;gap:2px;margin:4px 0}
 .dungeon-stock-health span{color:var(--muted)}
+.dungeon-stock-card>button{margin-top:10px}
+#detail-dialog:has(.rune-code-preview){width:min(890px,95vw)}
+.rune-code-preview{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,330px);gap:24px;align-items:start}
+.rune-code-preview textarea{display:block;box-sizing:border-box;width:100%;margin:6px 0 12px}
+.rune-code-preview img{width:min(330px,100%);height:auto}
+@media(max-width:780px){.rune-code-preview{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:780px){.dungeon-battle-list li{grid-template-columns:minmax(0,1fr)}}
 .dungeon-waves{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;margin:12px 0}
 .dungeon-wave{border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0}

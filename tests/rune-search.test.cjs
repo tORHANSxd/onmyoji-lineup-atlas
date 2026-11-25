@@ -3,6 +3,8 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const C=require('../app/core.js');
 const G=require('../app/game-config.js');
+const R=require('../app/rune-candidate.js');
+const T=require('../desktop/ta-codec.cjs');
 const {candidates,teamKey,sampleSeeds}=require('../app/rune-search.js');
 const data=require('../data/bundle.json');
 
@@ -58,4 +60,34 @@ test('不足五名可用式神时不补造角色和配装',()=>{
  const raw=inventory();
  delete raw.heroes['hero-389'];
  assert.deepEqual(candidates(C.parseAccount(raw),data),[]);
+});
+
+test('采样候选的游戏码带条件，本机配装经过持久化后可以精确复跑',async()=>{
+ const account=C.parseAccount(inventory());
+ const [row]=candidates(account,data);
+ row.samples=sampleSeeds.map(seed=>({seed,completed:true,outcome:'win',wavesCleared:3,engineSeconds:20}));
+ const fields=await R.template(row,data);
+ const code=T.encodeLineupData(T.validateGameLineup(fields,data));
+ const parsed=C.adaptTA(T.decodeInput(code),data);
+ const saved=await R.receipt(row,account,code);
+ const lineup={...parsed,runeReceipts:[JSON.parse(JSON.stringify(saved))]};
+ assert.equal(parsed.members.length,6);
+ assert.equal(parsed.gameSceneId,1001001);
+ assert.deepEqual(parsed.members[0].skills.map(s=>s.id),[1008,1011]);
+ for(const [i,m] of parsed.members.slice(1).entries()){
+  const gear=row.plan.members[i].souls.map(q=>account.souls[q.id]);
+  assert.deepEqual(C.equipmentGaps(gear,m.config,data.effects),[]);
+  assert.deepEqual(C.checkPanel(row.panels[i],m.config),[]);
+  assert.ok(!JSON.stringify(parsed.raw).includes(row.plan.members[i].instanceId));
+  assert.ok(gear.every(q=>!JSON.stringify(parsed.raw).includes(q.id)));
+ }
+ const restored=C.restoreAccount(account);
+ assert.deepEqual(await R.restore(lineup,restored),row.plan);
+ assert.equal(await R.restore(lineup,{...restored,id:'other'}),null);
+ await assert.rejects(R.restore({...lineup,code:code+'a'},restored),/有变化/);
+ const soul=row.plan.members[0].souls[0].id;
+ const altered=C.restoreAccount(account);
+ altered.souls[soul].raw.mainAttrValue++;
+ await assert.rejects(R.restore(lineup,altered),/有变化/);
+ await assert.rejects(R.template({...row,samples:row.samples.slice(1)},data),/全部采样/);
 });
