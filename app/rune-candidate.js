@@ -69,9 +69,22 @@ function equipment(souls,panel,suits){
   yuhun_star:souls.every(row=>row.quality===6)?[6]:[1,2,3,4,5,6],criteria:1,suit,limit,main_attr};
 }
 
-async function template(row,{gameConfig:game,suits:suitIndex}){
+async function template(row,data){
  const dungeonId=row.dungeonId??R.dungeonId,sceneId=R.sceneForDungeon(dungeonId);
  if(sceneId===null||!passed(row.samples,dungeonId))throw Error('完成当前副本的全部采样复跑后才可生成此阵容码');
+ return draft(row,data,sceneId,dungeonId===R.dungeonId?'魂王':'魂土',row.samples.length);
+}
+
+const passedHun13=samples=>samples.length===S.hun13SampleSeeds.length&&samples.every((report,index)=>
+ report?.seed===S.hun13SampleSeeds[index]&&report.completed===true&&report.outcome==='win'&&
+ Number.isFinite(report.engineSeconds)&&report.engineSeconds>=0);
+
+async function hun13Templates(row,data){
+ if(row.rounds.length!==2||!passedHun13(row.samples))throw Error('完成虚无的全部采样复跑后才可生成双队阵容码');
+ return Promise.all(row.rounds.map((round,index)=>draft(round,data,R.hun13SceneId,`虚无第 ${index+1} 波`,row.samples.length)));
+}
+
+async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples){
  const {onmyoji,spirit,members}=row.plan;
  const basic=game.heroes[onmyoji.heroId]?.skills[0];
  const actor={hero_id:onmyoji.heroId,level:onmyoji.level,star:onmyoji.star,awake:onmyoji.awake,
@@ -82,9 +95,9 @@ async function template(row,{gameConfig:game,suits:suitIndex}){
   not_calc_flag:0,equip_info:equipment(souls,row.panels[index],suits)
  }))];
  const names=members.map(({hero})=>game.heroes[hero.heroId]?.name);
- const title=(dungeonId===R.dungeonId?'魂王':'魂土')+' · '+names.join('、')+' · '+(await sha256(hconf)).slice(0,10);
+ const title=label+' · '+names.join('、')+' · '+(await sha256(hconf)).slice(0,10);
  const basicLevel=onmyoji.skinfo.find(([id])=>id===basic)?.[1];
- return G.validate(game,{title,desc:`资源 ${R.resourceVersion}，${row.samples.length} 个离线种子通关。阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`,
+ return G.validate(game,{title,desc:`资源 ${R.resourceVersion}，${samples} 个离线种子通关。阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`,
   select_stage_id:sceneId,hconf});
 }
 
@@ -138,5 +151,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,passed,commonSampleTiming,template,receipt,receiptFor,restore};
+return {sampleVerdict,passed,passedHun13,commonSampleTiming,template,hun13Templates,receipt,receiptFor,restore};
 });

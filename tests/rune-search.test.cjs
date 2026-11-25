@@ -5,7 +5,7 @@ const C=require('../app/core.js');
 const G=require('../app/game-config.js');
 const R=require('../app/rune-candidate.js');
 const T=require('../desktop/ta-codec.cjs');
-const {candidates,teamKey,sampleSeeds,baseSampleSeeds}=require('../app/rune-search.js');
+const {candidates,teamKey,sampleSeeds,baseSampleSeeds,hun13Candidates,hun13Key,hun13SampleSeeds}=require('../app/rune-search.js');
 const data=require('../data/bundle.json');
 
 function inventory(){
@@ -141,4 +141,36 @@ test('悲鸣库存备选按六种子生成悲鸣码，并隔离魂王凭据',asy
  assert.deepEqual(await R.restore(lineup,account),row.plan);
  await assert.rejects(R.restore({...lineup,gameSceneId:1001001},account),/有变化/);
  await assert.rejects(R.template({...row,dungeonId:102},data),/全部采样/);
+});
+
+test('虚无备选跨波分配真实库存，同种式神可使用不同实例，胜利后生成两条可解析原码',async()=>{
+ const raw=inventory();
+ assert.deepEqual(hun13Candidates(C.parseAccount(raw),data),[]);
+ raw.heroes={...raw.heroes,...Object.fromEntries(Object.entries(raw.heroes).map(([id,hero])=>[id+'-next',hero]))};
+ raw.hero_equips=[...raw.hero_equips,...raw.hero_equips.map(soul=>({...soul,id:soul.id+'-next'}))];
+ const account=C.parseAccount(raw),rows=hun13Candidates(account,data),row=rows[0];
+ assert.ok(rows.length>0&&rows.length<=6);
+ const members=row.plan.rounds.flatMap(round=>round.members),souls=members.flatMap(member=>member.souls);
+ assert.equal(new Set(members.map(m=>m.instanceId)).size,10);
+ assert.equal(new Set(souls.map(soul=>soul.id)).size,60);
+ assert.ok(members.every(member=>account.heroes[member.instanceId].raw===member.hero));
+ assert.ok(souls.every(soul=>account.souls[soul.id].raw===soul));
+ const excluded=rows.map(value=>hun13Key(value.plan));
+ assert.ok(hun13Candidates(account,data,excluded).every(value=>!excluded.includes(hun13Key(value.plan))));
+ row.samples=hun13SampleSeeds.map(seed=>({seed,completed:true,outcome:'win',wavesCleared:1,engineSeconds:110}));
+ assert.equal(R.passedHun13(row.samples),true);
+ await assert.rejects(R.hun13Templates({...row,samples:row.samples.slice(1)},data),/全部采样/);
+ const templates=await R.hun13Templates(row,data);
+ for(const [index,request] of templates.entries()){
+  const code=T.encodeLineupData(T.validateGameLineup(request,data));
+  const parsed=C.adaptTA(T.decodeInput(code),data);
+  assert.equal(parsed.gameSceneId,1001000);
+  assert.match(parsed.title,new RegExp(`虚无第 ${index+1} 波`));
+  assert.equal(parsed.members.length,6);
+  for(const [i,m] of parsed.members.slice(1).entries()){
+   const gear=row.rounds[index].plan.members[i].souls.map(q=>account.souls[q.id]);
+   assert.deepEqual(C.equipmentGaps(gear,m.config,data.effects),[]);
+   assert.deepEqual(C.checkPanel(row.rounds[index].panels[i],m.config),[]);
+  }
+ }
 });

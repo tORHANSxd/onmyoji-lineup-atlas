@@ -23,6 +23,9 @@ const roles={
  groupHeal:{heroes:[[238,2383],[594,5943],[347,3473],[200,2002]],metric:10,sets:['树妖']},
  amplify:{heroes:[[347,3473],[594,5943],[557,5573]],metric:10,sets:['火灵']},
  criticalHeal:{heroes:[[554,5543],[594,5943],[200,2002]],metric:10,sets:['招财猫'],auto:11},
+ accelerate:{heroes:[[237,2372],[261,2612],[596,5963],[601]],metric:7,sets:['火灵','招财猫']},
+ markAmp:{heroes:[[369,3693],[363,3632],[367,3672],[583,5832]],metric:7,sets:['遗念火','招财猫']},
+ lightDamage:{heroes:[[556,5563],[568,5683],[591,5913],[364,3643]],metric:1,sets:['海月火玉','针女','破势'],damage:true},
 };
 const groupBuff={name:'群疗增伤',roles:['orbs','amplify','groupHeal','opener','support'],sets:{opener:'针女'}};
 const groupDebuff={name:'群疗与破防',roles:['openingOrbs','debuff','opener','groupHeal','support']};
@@ -33,11 +36,17 @@ const sustain={name:'持续供火与续航',roles:['opener','finisher','orbs','h
 // 神罚的罪凝在低于七成生命时压低伤害，优先试恢复和破防组合。
 const soulKingStrategies=[groupBuff,groupDebuff,groupDamage,openingDamage,turnAdvance,sustain];
 const sorrowStrategies=[groupBuff,turnAdvance,groupDamage,sustain,openingDamage,groupDebuff];
+const hun13Pace={name:'拉条双输出',roles:['accelerate','orbs','lightDamage','fastFinisher','support']};
+const hun13Mark={name:'拉条增伤',roles:['accelerate','orbs','markAmp','opener','fastFinisher']};
+const hun13Hold={name:'拉条与治疗',roles:['accelerate','orbs','lightDamage','finisher','criticalHeal']};
+const hun13Strategies=[[hun13Pace,hun13Mark,hun13Hold,openingDamage,groupBuff,turnAdvance],
+ [hun13Mark,hun13Hold,hun13Pace,sustain,openingDamage,groupDamage]];
 const limit=6;
 // Check the observed losing seed before the two long fights found in the full-domain audit.
 const baseSampleSeeds=Object.freeze([0,1,2,3,7,42]);
 const sampleSeeds=Object.freeze([...baseSampleSeeds,8929,2016,7698]);
 const extraSeeds=Object.freeze(Array.from({length:24},(_,seed)=>seed).filter(seed=>!sampleSeeds.includes(seed)));
+const hun13SampleSeeds=Object.freeze([0,1,2,3,7,42,9999]);
 const samplesForDungeon=id=>id===102?sampleSeeds:id===101?baseSampleSeeds:null;
 
 function searchProfile(dungeonId){
@@ -121,16 +130,20 @@ function teamKey(plan){
   [instanceId,souls.map(row=>row.id).sort(),aiSkill])]);
 }
 
-function candidates(account,{gameConfig:game,roster,effects},alternatives=[],dungeonId=102){
- const profile=searchProfile(dungeonId);
+function candidates(account,data,alternatives=[],dungeonId=102){
+ return buildCandidates(account,data,searchProfile(dungeonId),alternatives,dungeonId);
+}
+
+function buildCandidates(account,{gameConfig:game,roster,effects},profile,alternatives,dungeonId,max=limit){
  const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
  const heroes=Object.values(account.heroes),inventory=Object.values(account.souls).filter(q=>!q.unknown.length);
- const available=Object.fromEntries(Object.keys(roles).map(name=>[name,roleOptions(name,heroes,game,roster)]));
+ const names=new Set(profile.strategies.flatMap(strategy=>strategy.roles));
+ const available=Object.fromEntries([...names].map(name=>[name,roleOptions(name,heroes,game,roster)]));
  const {openingSpeed,bossSpeed,earlySpeed}=profile;
  const sampled=[],seen=new Set(alternatives);
  // Test different role combinations and sets. This bounds interactive search;
  // native replays, rather than the gear scoring, decide which teams clear waves.
- for(let variant=0;variant<4&&sampled.length<limit;variant++){
+ for(let variant=0;variant<4&&sampled.length<max;variant++){
   for(const strategy of profile.strategies){
    const chosen=[],species=new Set();
    for(const name of strategy.roles){
@@ -145,7 +158,8 @@ function candidates(account,{gameConfig:game,roster,effects},alternatives=[],dun
     const remaining=inventory.filter(q=>!used.has(q.id));
     const sets=id===392?['镇墓兽']:id===372||id===379?[]:roles[name].sets;
     const set=strategy.sets?.[name]??sets[variant%sets.length];
-    const find=setName=>C.findBuilds(hero,configFor(name,id,openingSpeed,bossSpeed,earlySpeed,setName),account,roster,effects,
+    const fastSupport=name==='accelerate'?earlySpeed+25:earlySpeed;
+    const find=setName=>C.findBuilds(hero,configFor(name,id,openingSpeed,bossSpeed,fastSupport,setName),account,roster,effects,
      {inventory:remaining,width:22,perSet:3,limit:1000});
     const scored=find(set);
     const open=set&&!scored.builds.length?find(null):null;
@@ -163,11 +177,41 @@ function candidates(account,{gameConfig:game,roster,effects},alternatives=[],dun
    if(seen.has(key))continue;
    seen.add(key);
    sampled.push({dungeonId,title:strategy.name,heroIds:chosen.map(row=>row.id),plan,panels});
-   if(sampled.length===limit)break;
+   if(sampled.length===max)break;
   }
  }
  return sampled;
 }
 
-return {candidates,teamKey,baseSampleSeeds,sampleSeeds,extraSeeds,samplesForDungeon};
+const hun13Key=plan=>JSON.stringify(plan.rounds.map(teamKey));
+
+function hun13Candidates(account,data,alternatives=[]){
+ const stage=G.runeOpeningStage('0.0.816',103);
+ if(stage?.engine!=='Hun13Engine'||stage.waves.length!==2)throw Error('缺少本版本虚无两波的原版开场资料');
+ const profiles=stage.waves.map((wave,index)=>{
+  const maximum=Math.max(...wave.map(enemy=>enemy.speed));
+  return {strategies:hun13Strategies[index],openingSpeed:maximum+1,bossSpeed:maximum+1,earlySpeed:maximum+8};
+ });
+ const remove=(from,used)=>Object.fromEntries(Object.entries(from).filter(([id])=>!used.has(id)));
+ const unseen=new Set(alternatives),rows=[];
+ // Allocate the strongest gear to each wave in turn. The other wave may
+ // still use another instance of the same character if the account has it.
+ const leads=profiles.map(profile=>buildCandidates(account,data,profile,[],103));
+ for(let i=0;i<limit&&rows.length<limit;i++)for(const wave of [0,1]){
+  const lead=leads[wave][i];
+  if(!lead||rows.length===limit)continue;
+  const remaining={...account,
+   heroes:remove(account.heroes,new Set(lead.plan.members.map(member=>member.instanceId))),
+   souls:remove(account.souls,new Set(lead.plan.members.flatMap(member=>member.souls.map(soul=>soul.id))))};
+  for(const partner of buildCandidates(remaining,data,profiles[1-wave],[],103,2)){
+   const rounds=wave===0?[lead,partner]:[partner,lead];
+   const plan={rounds:rounds.map(row=>row.plan)},key=hun13Key(plan);
+   if(unseen.has(key))continue;
+   unseen.add(key);rows.push({plan,rounds});break;
+  }
+ }
+ return rows;
+}
+
+return {candidates,teamKey,hun13Candidates,hun13Key,hun13SampleSeeds,baseSampleSeeds,sampleSeeds,extraSeeds,samplesForDungeon};
 });

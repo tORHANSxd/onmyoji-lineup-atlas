@@ -5,6 +5,7 @@ const {readIndex,readTable,readEncounters,readRecords}=require('../desktop/dunge
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
 const {createRuneFloorRunner}=require('../desktop/rune-floor-runner.cjs');
 const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
+const game=require('../app/game-config.js');
 const {Background}=require('../desktop/background.cjs');
 const root=path.resolve(__dirname,'..'),profile=path.join(root,'user-data','optimization-ui');
 app.setPath('userData',profile);
@@ -717,7 +718,7 @@ async function main(){
   assert.match(markup,/常规单人本地入口的 10,000 个种子全部通过.*最慢种子 13.*引擎全程 25\.50 秒.*开战至结算 14\.40 秒/s);
   assert.doesNotMatch(markup,/data-full-seeds-fixture|<progress/);
  });
- await check('虚无指定两波原码后共同精算，十个实例及六十件御魂各只使用一次',async()=>{
+ await check('虚无先复跑勾选原码，失败后从库存生成、保存并核对两波备选码',async()=>{
   const fighters=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&
    new Set(l.members.filter(m=>m.kind==='shikigami').map(m=>m.shikigamiId)).size===5).members.filter(m=>m.kind==='shikigami');
   const heroes={},items=[];
@@ -727,15 +728,21 @@ async function main(){
    heroes[prefix]={heroId:Number(m.shikigamiId),level:m.level,star:m.star,awake:m.awakening,
     skinfo:m.skills.map(s=>[s.id,s.level]),equips,
     attrs:[[8000,0,0,0],[101,0,0,0],[.5,0,0,0],[.1,0,0,0],[500,0,0,0],[2500,0,0,0],0,0]};
-   equips.forEach((id,i)=>items.push({id,slot:i+1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:40,subAttributes:[]}));
+   equips.forEach((id,i)=>items.push({id,slot:i+1,quality:6,level:15,setId:'招财猫',
+    mainAttrType:['attack_flat','speed','defense_flat','attack_rate','hp_flat','crit_rate'][i],
+    mainAttrValue:[486,57,104,.55,2052,.55][i],subAttributes:[{type:'crit_rate',value:.1}]}));
   }
   const lineups=[10,13].map((id,wave)=>({id:`qa-hun13-${wave+1}`,title:wave?'虚无第二队':'虚无第一队',code:`|TA|qa-hun13-${wave+1}`,
    gameSceneId:1001000,requirementsComplete:true,decodeState:'decoded-local',members:[
     {index:0,name:data.gameConfig.heroes[id].name,kind:'onmyoji',onmyojiId:String(id),level:60,star:2,awakening:0,
      skills:(wave?[1304,1302]:[1008,1011]).map(id=>({id,level:5})),aiSkill:0},
     ...fighters.map(m=>({...m,borrowed:false,config:{keepCurrent:true},aiSkill:0}))]}));
-  const available={...raw,heroes,hero_equips:items};
-  const incomplete={...available,heroes:Object.fromEntries(Object.entries(heroes).filter(([id])=>id.startsWith('h13-1-'))),hero_equips:items.slice(0,30)};
+  const incomplete={...raw,heroes:Object.fromEntries(Object.entries(heroes).filter(([id])=>id.startsWith('h13-1-'))),hero_equips:items.slice(0,30)};
+  for(const id of [591,389,596,557,379])for(let copy=0;copy<2;copy++){
+   const skinfo=data.gameConfig.heroes[id].skills.map(skill=>[skill,game.levels(data.gameConfig,skill,1).at(-1).level]);
+   heroes[`h13-stock-${id}-${copy}`]={heroId:id,level:40,star:6,awake:1,skinfo,equips:[]};
+  }
+  const available={...raw,heroes,hero_equips:[...items,...items.slice(0,18).map(q=>({...q,id:q.id+'-extra',setId:'海月火玉'}))]};
   async function setup(inventory){
    await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify(lineups)},accounts:[C.parseAccount(${JSON.stringify(inventory)})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};runeStatus=null;selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-rules-select').value='103';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.clear();${lineups.map(l=>`selectedLineups.add('${l.id}');`).join('')}renderSelection()`);
    await until('!$("dungeon-match-selected").disabled && $("dungeon-match-selected").textContent.includes("两波")');
@@ -744,31 +751,70 @@ async function main(){
   runeEnabled=true;
   mockBattle=(plan,options)=>{
    calls++;
-   assert.deepEqual(options,{dungeonId:103,seed:calls-1,fixedStep:true});
-   assert.deepEqual(plan.rounds.map(r=>r.onmyoji.heroId),[13,10]);
+   const ids=calls<3?[13,10]:[10,13];
+   assert.deepEqual(options,{dungeonId:103,seed:calls===2?1:0,fixedStep:true});
+   assert.deepEqual(plan.rounds.map(r=>r.onmyoji.heroId),ids);
    assert.equal(new Set(plan.rounds.flatMap(r=>r.members.map(m=>m.instanceId))).size,10);
    assert.equal(new Set(plan.rounds.flatMap(r=>r.members.flatMap(m=>m.souls.map(q=>q.id)))).size,60);
-   const win=options.seed===0;
+   const win=calls===1;
    return {seed:options.seed,completed:true,outcome:win?'win':'loss',wavesCleared:win?1:0,engineSeconds:86.6,rounds:[
-    {wave:1,onmyojiId:13,cleared:false,availableSeconds:120,seconds:22.48,carriedSeconds:-72.04},
-    {wave:2,onmyojiId:10,cleared:win,availableSeconds:48,seconds:39.3}],animationPlayback:{combatOverlapMs:24139}};
+    {wave:1,onmyojiId:ids[0],cleared:false,availableSeconds:120,seconds:22.48,carriedSeconds:-72.04},
+    {wave:2,onmyojiId:ids[1],cleared:win,availableSeconds:48,seconds:39.3}],animationPlayback:{combatOverlapMs:24139}};
   };
   try{
    await setup(incomplete);await ui('$("dungeon-match-selected").click()');
    await until('dungeonHun13&&!dungeonHun13.running',20000);
-   assert.match(await ui('$("dungeon-hun13-status").textContent'),/无法同时配装/);
+   assert.match(await ui('$("dungeon-hun13-samples").textContent'),/无法同时配装/);
    assert.equal(calls,0);
    await setup(available);
+   assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
    await ui('$("dungeon-hun13-first").value="qa-hun13-2";$("dungeon-hun13-second").value="qa-hun13-1";renderDungeonSelection();$("dungeon-match-selected").click()');
    await until('dungeonHun13&&!dungeonHun13.running',20000);
-   assert.equal(calls,2);
-   assert.match(await ui('$("dungeon-hun13-status").textContent'),/第 1 波 虚无第二队.*第 2 波 虚无第一队.*未通过全部采样/);
+   assert.equal(calls,3);
+   assert.match(await ui('$("dungeon-hun13-status").textContent'),/第 1 波 虚无第一队.*第 2 波 虚无第二队.*未通过全部采样/);
    assert.match(await ui('$("dungeon-hun13-samples").textContent'),/原版结算胜利，有波次未清场.*源博雅.*晴明.*时限 48 秒/s);
+   assert.equal(await ui('$("dungeon-search-stock").hidden'),false);
    await ui('$("dungeon-hun13-rounds").scrollIntoView({block:"center",behavior:"instant"})');
    await capture('dungeon-hun13-pair');
    win.setContentSize(720,960);
    try{assert.equal(await ui('$("dungeon-hun13-rounds").scrollWidth<=$("dungeon-hun13-rounds").clientWidth+2'),true);}
    finally{win.setContentSize(1440,1000);}
+   let firstPlan;
+   mockBattle=(plan,options)=>{
+    const signature=JSON.stringify(plan);firstPlan??=signature;
+    const win=signature===firstPlan;
+    assert.equal(new Set(plan.rounds.flatMap(round=>round.members.map(m=>m.instanceId))).size,10);
+    assert.equal(new Set(plan.rounds.flatMap(round=>round.members.flatMap(m=>m.souls.map(q=>q.id)))).size,60);
+    return {seed:options.seed,completed:true,outcome:win?'win':'loss',wavesCleared:win?2:0,engineSeconds:90,
+     rounds:[{wave:1,onmyojiId:10,cleared:win,availableSeconds:120,seconds:25,carriedSeconds:95},
+      {wave:2,onmyojiId:10,cleared:win,availableSeconds:215,seconds:45}],
+     animationPlayback:{combatElapsedMs:80000,combatOverlapMs:24139}};
+   };
+   await ui('$("dungeon-search-stock").click()');
+   await until('dungeonHun13?.kind==="stock"&&!dungeonHun13.running',50000);
+   assert.match(await ui('$("dungeon-hun13-status").textContent'),/1 组通过 7 个采样种子/);
+   await ui('document.querySelector("[data-hun13-code]").click()');
+   await until('document.querySelectorAll(".rune-code-preview img").length===2 && [...document.querySelectorAll(".rune-code-preview img")].every(img=>img.naturalWidth>0)');
+   const pair=await ui('[0,1].map(index=>$("hun13-code-"+index).value)');
+   assert.ok(pair[0]!==pair[1]&&pair.every(code=>code.startsWith('#TA#')));
+   await ui('$("hun13-code-save").click()');await until('$("hun13-code-feedback").textContent.includes("已保存")');
+   assert.equal(stored.lineups.filter(l=>pair.includes(l.code)&&l.gameSceneId===1001000).length,2);
+   await capture('dungeon-hun13-stock-codes');
+   await ui('$("detail-dialog").close()');
+   const offline=status,priorShares=shareCalls.length;
+   status={...status,authenticated:true,risk_accepted:true,query_ready:true,selected_server:String(raw.player.serverId),selected_avatar:'synthetic',
+    servers:[{id:String(raw.player.serverId),name:'虚无测试区',category:'测试',available:true,roles:[{avatar_id:'synthetic',name:'测试角色'}]}]};
+   win.webContents.send('ta-status-changed',status);
+   try{
+    await until('TALogin.status().selected_avatar==="synthetic"&&account().server==="虚无测试区"');
+    await ui('reloadOfficial()');
+    await ui('document.querySelector("[data-hun13-code]").click()');
+    await ui('$("hun13-code-share").click()');
+    await until('$("hun13-code-feedback").textContent.includes("短码已生成")');
+    assert.deepEqual(shareCalls.slice(priorShares),pair);
+    assert.equal(stored.lineups.filter(l=>pair.includes(l.code)&&l.shortCode).length,2);
+    await ui('$("detail-dialog").close()');
+   }finally{status=offline;win.webContents.send('ta-status-changed',status);}
   }finally{mockBattle=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
  });
  if(process.argv.includes('--visual')){
