@@ -5,7 +5,7 @@ const C=require('../app/core.js');
 const G=require('../app/game-config.js');
 const R=require('../app/rune-candidate.js');
 const T=require('../desktop/ta-codec.cjs');
-const {candidates,teamKey,sampleSeeds}=require('../app/rune-search.js');
+const {candidates,teamKey,sampleSeeds,baseSampleSeeds}=require('../app/rune-search.js');
 const data=require('../data/bundle.json');
 
 function inventory(){
@@ -110,7 +110,8 @@ test('采样候选的游戏码带条件，本机配装经过持久化后可以�
  }
  const restored=C.restoreAccount(account);
  assert.deepEqual(await R.restore(lineup,restored),row.plan);
- const older={...lineup,runeReceipts:[{...saved,samples:saved.samples.slice(0,6)}]};
+ const {dungeonId,...legacy}=saved;
+ const older={...lineup,runeReceipts:[{...legacy,samples:saved.samples.slice(0,6)}]};
  assert.deepEqual(await R.restore(older,restored),row.plan);
  assert.equal(await R.restore(lineup,{...restored,id:'other'}),null);
  await assert.rejects(R.restore({...lineup,code:code+'a'},restored),/有变化/);
@@ -119,4 +120,25 @@ test('采样候选的游戏码带条件，本机配装经过持久化后可以�
  altered.souls[soul].raw.mainAttrValue++;
  await assert.rejects(R.restore(lineup,altered),/有变化/);
  await assert.rejects(R.template({...row,samples:row.samples.slice(1)},data),/全部采样/);
+});
+
+test('悲鸣库存备选按六种子生成悲鸣码，并隔离魂王凭据',async()=>{
+ const account=C.parseAccount(inventory());
+ const [row]=candidates(account,data,[],101);
+ assert.equal(row.dungeonId,101);
+ assert.equal(new Set(row.plan.members.flatMap(m=>m.souls.map(q=>q.id))).size,30);
+ row.samples=baseSampleSeeds.map(seed=>({seed,completed:true,outcome:'win',wavesCleared:3,engineSeconds:20}));
+ assert.equal(R.passed(row.samples,101),true);
+ assert.equal(R.passed(row.samples,102),false);
+ const template=await R.template(row,data);
+ assert.match(template.title,/^魂土/);
+ assert.match(template.desc,/6 个离线种子/);
+ const code=T.encodeLineupData(T.validateGameLineup(template,data));
+ const parsed=C.adaptTA(T.decodeInput(code),data);
+ assert.equal(parsed.gameSceneId,1001002);
+ const saved=await R.receipt(row,account,code);
+ const lineup={...parsed,runeReceipts:[saved]};
+ assert.deepEqual(await R.restore(lineup,account),row.plan);
+ await assert.rejects(R.restore({...lineup,gameSceneId:1001001},account),/有变化/);
+ await assert.rejects(R.template({...row,dungeonId:102},data),/全部采样/);
 });

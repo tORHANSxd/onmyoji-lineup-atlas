@@ -21,8 +21,9 @@ function sampleVerdict(report,seed){
  return report.outcome==='win'&&report.wavesCleared===3?'pass':'unknown';
 }
 
-function passed(samples){
- return samples.length===S.sampleSeeds.length&&samples.every((r,i)=>sampleVerdict(r,S.sampleSeeds[i])==='pass');
+function passed(samples,dungeonId=R.dungeonId){
+ const seeds=S.samplesForDungeon(dungeonId);
+ return !!seeds&&samples.length===seeds.length&&samples.every((r,i)=>sampleVerdict(r,seeds[i])==='pass');
 }
 
 function commonSampleTiming(rows){
@@ -69,7 +70,8 @@ function equipment(souls,panel,suits){
 }
 
 async function template(row,{gameConfig:game,suits:suitIndex}){
- if(!passed(row.samples))throw Error('完成全部采样复跑后才可生成此阵容码');
+ const dungeonId=row.dungeonId??R.dungeonId,sceneId=R.sceneForDungeon(dungeonId);
+ if(sceneId===null||!passed(row.samples,dungeonId))throw Error('完成当前副本的全部采样复跑后才可生成此阵容码');
  const {onmyoji,spirit,members}=row.plan;
  const basic=game.heroes[onmyoji.heroId]?.skills[0];
  const actor={hero_id:onmyoji.heroId,level:onmyoji.level,star:onmyoji.star,awake:onmyoji.awake,
@@ -80,10 +82,10 @@ async function template(row,{gameConfig:game,suits:suitIndex}){
   not_calc_flag:0,equip_info:equipment(souls,row.panels[index],suits)
  }))];
  const names=members.map(({hero})=>game.heroes[hero.heroId]?.name);
- const title='魂王 · '+names.join('、')+' · '+(await sha256(hconf)).slice(0,10);
+ const title=(dungeonId===R.dungeonId?'魂王':'魂土')+' · '+names.join('、')+' · '+(await sha256(hconf)).slice(0,10);
  const basicLevel=onmyoji.skinfo.find(([id])=>id===basic)?.[1];
- return G.validate(game,{title,desc:`资源 ${R.resourceVersion}，${S.sampleSeeds.length} 个离线种子通关。阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`,
-  select_stage_id:R.sceneId,hconf});
+ return G.validate(game,{title,desc:`资源 ${R.resourceVersion}，${row.samples.length} 个离线种子通关。阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`,
+  select_stage_id:sceneId,hconf});
 }
 
 // Match the actual fields consumed by rune_team.py. Worn gear and display metadata
@@ -96,19 +98,20 @@ async function sha256(value){
  const sum=await globalThis.crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value)));
  return Array.from(new Uint8Array(sum),v=>v.toString(16).padStart(2,'0')).join('');
 }
-async function fingerprint(code,accountId,plan){
- const payload=[R.resourceVersion,R.sceneId,code,accountId,heroKeys(plan.onmyoji),plan.onmyoji.aiSkill,spiritKeys(plan.spirit),
+async function fingerprint(code,accountId,plan,sceneId){
+ const payload=[R.resourceVersion,sceneId,code,accountId,heroKeys(plan.onmyoji),plan.onmyoji.aiSkill,spiritKeys(plan.spirit),
   plan.members.map(m=>[m.instanceId,heroKeys(m.hero),m.aiSkill,m.souls.map(soulKeys)])];
  return sha256(payload);
 }
 
 async function receipt(row,account,code){
- if(!passed(row.samples))throw Error('当前配装尚未通过全部采样');
+ const dungeonId=row.dungeonId??R.dungeonId,sceneId=R.sceneForDungeon(dungeonId);
+ if(sceneId===null||!passed(row.samples,dungeonId))throw Error('当前配装尚未通过该副本的全部采样');
  const {onmyoji,spirit,members}=row.plan;
- return {version:1,resourceVersion:R.resourceVersion,accountId:account.id,onmyoji,spirit,
+ return {version:1,resourceVersion:R.resourceVersion,dungeonId,accountId:account.id,onmyoji,spirit,
   members:members.map(m=>({id:m.instanceId,souls:m.souls.map(s=>s.id),aiSkill:m.aiSkill})),
   samples:row.samples.map(({seed,engineSeconds})=>({seed,engineSeconds})),
-  digest:await fingerprint(code,account.id,row.plan)};
+  digest:await fingerprint(code,account.id,row.plan,sceneId)};
 }
 
 function receiptFor(lineup,account){
@@ -119,7 +122,8 @@ async function restore(lineup,account){
  const saved=receiptFor(lineup,account);
  if(!saved)return null;
  const changed=()=>{throw Error('已保存的原版复跑配装或版本有变化，改用阵容码重新精算');};
- if(saved.version!==1||saved.resourceVersion!==R.resourceVersion||Number(lineup.gameSceneId)!==R.sceneId||
+ const sceneId=R.sceneForDungeon(saved.dungeonId??R.dungeonId);
+ if(saved.version!==1||saved.resourceVersion!==R.resourceVersion||sceneId===null||Number(lineup.gameSceneId)!==sceneId||
     !Array.isArray(saved.members)||saved.members.length!==5||!saved.onmyoji)return changed();
  const members=saved.members.map(m=>{
   const hero=account.heroes[m?.id]?.raw;
@@ -130,7 +134,7 @@ async function restore(lineup,account){
  const {onmyoji,spirit}=saved;
  if(spirit&&(!Array.isArray(account.raw.hunlings)||!account.raw.hunlings.some(q=>JSON.stringify(spiritKeys(q))===JSON.stringify(spiritKeys(spirit)))))return changed();
  const plan={onmyoji,...(spirit?{spirit}:{}),members};
- if(await fingerprint(lineup.code,account.id,plan)!==saved.digest)return changed();
+ if(await fingerprint(lineup.code,account.id,plan,sceneId)!==saved.digest)return changed();
  return plan;
 }
 

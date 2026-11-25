@@ -24,20 +24,34 @@ const roles={
  amplify:{heroes:[[347,3473],[594,5943],[557,5573]],metric:10,sets:['火灵']},
  criticalHeal:{heroes:[[554,5543],[594,5943],[200,2002]],metric:10,sets:['招财猫'],auto:11},
 };
-const strategies=[
- // 罪凝在低于七成生命时压低伤害，优先试能恢复全队的组合。
- {name:'群疗增伤',roles:['orbs','amplify','groupHeal','opener','support'],sets:{opener:'针女'}},
- {name:'群疗与破防',roles:['openingOrbs','debuff','opener','groupHeal','support']},
- {name:'群疗与双输出',roles:['openingOrbs','groupHeal','opener','fastFinisher','criticalHeal']},
- {name:'开场输出与尾刀',roles:['opener','finisher','orbs','debuff','support']},
- {name:'行动推进与治疗',roles:['opener','finisher','tempo','healer','support']},
- {name:'持续供火与续航',roles:['opener','finisher','orbs','healer','debuff']},
-];
+const groupBuff={name:'群疗增伤',roles:['orbs','amplify','groupHeal','opener','support'],sets:{opener:'针女'}};
+const groupDebuff={name:'群疗与破防',roles:['openingOrbs','debuff','opener','groupHeal','support']};
+const groupDamage={name:'群疗与双输出',roles:['openingOrbs','groupHeal','opener','fastFinisher','criticalHeal']};
+const openingDamage={name:'开场输出与尾刀',roles:['opener','finisher','orbs','debuff','support']};
+const turnAdvance={name:'行动推进与治疗',roles:['opener','finisher','tempo','healer','support']};
+const sustain={name:'持续供火与续航',roles:['opener','finisher','orbs','healer','debuff']};
+// 神罚的罪凝在低于七成生命时压低伤害，优先试恢复和破防组合。
+const soulKingStrategies=[groupBuff,groupDebuff,groupDamage,openingDamage,turnAdvance,sustain];
+const sorrowStrategies=[groupBuff,turnAdvance,groupDamage,sustain,openingDamage,groupDebuff];
 const limit=6;
 // Check the observed losing seed before the two long fights found in the full-domain audit.
 const baseSampleSeeds=Object.freeze([0,1,2,3,7,42]);
 const sampleSeeds=Object.freeze([...baseSampleSeeds,8929,2016,7698]);
 const extraSeeds=Object.freeze(Array.from({length:24},(_,seed)=>seed).filter(seed=>!sampleSeeds.includes(seed)));
+const samplesForDungeon=id=>id===102?sampleSeeds:id===101?baseSampleSeeds:null;
+
+function searchProfile(dungeonId){
+ const stage=G.runeOpeningStage('0.0.816',dungeonId);
+ if(!stage||!samplesForDungeon(dungeonId))throw Error('当前副本未接入库存备选搜索');
+ if(dungeonId===102){
+  return {strategies:soulKingStrategies,openingSpeed:G.runeOpeningStats('0.0.816',102,4742287).speed+1,
+   bossSpeed:G.runeOpeningStats('0.0.816',102,4740061).speed+1,
+   earlySpeed:G.runeOpeningStats('0.0.816',102,4741297).speed+2};
+ }
+ const fastest=wave=>Math.max(...wave.map(enemy=>enemy.speed));
+ return {strategies:sorrowStrategies,openingSpeed:fastest(stage.waves[0])+1,
+  bossSpeed:fastest(stage.waves[2])+1,earlySpeed:Math.max(...stage.waves.map(fastest))+2};
+}
 
 function actor(game){
  const heroId=10,awake=0;
@@ -107,18 +121,17 @@ function teamKey(plan){
   [instanceId,souls.map(row=>row.id).sort(),aiSkill])]);
 }
 
-function candidates(account,{gameConfig:game,roster,effects},alternatives=[]){
+function candidates(account,{gameConfig:game,roster,effects},alternatives=[],dungeonId=102){
+ const profile=searchProfile(dungeonId);
  const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
  const heroes=Object.values(account.heroes),inventory=Object.values(account.souls).filter(q=>!q.unknown.length);
  const available=Object.fromEntries(Object.keys(roles).map(name=>[name,roleOptions(name,heroes,game,roster)]));
- const openingSpeed=G.runeOpeningStats('0.0.816',102,4742287).speed+1;
- const bossSpeed=G.runeOpeningStats('0.0.816',102,4740061).speed+1;
- const earlySpeed=G.runeOpeningStats('0.0.816',102,4741297).speed+2;
+ const {openingSpeed,bossSpeed,earlySpeed}=profile;
  const sampled=[],seen=new Set(alternatives);
  // Test different role combinations and sets. This bounds interactive search;
  // native replays, rather than the gear scoring, decide which teams clear waves.
  for(let variant=0;variant<4&&sampled.length<limit;variant++){
-  for(const strategy of strategies){
+  for(const strategy of profile.strategies){
    const chosen=[],species=new Set();
    for(const name of strategy.roles){
     const rows=available[name].filter(({id})=>!species.has(id));
@@ -149,12 +162,12 @@ function candidates(account,{gameConfig:game,roster,effects},alternatives=[]){
    const key=teamKey(plan);
    if(seen.has(key))continue;
    seen.add(key);
-   sampled.push({title:strategy.name,heroIds:chosen.map(row=>row.id),plan,panels});
+   sampled.push({dungeonId,title:strategy.name,heroIds:chosen.map(row=>row.id),plan,panels});
    if(sampled.length===limit)break;
   }
  }
  return sampled;
 }
 
-return {candidates,teamKey,baseSampleSeeds,sampleSeeds,extraSeeds};
+return {candidates,teamKey,baseSampleSeeds,sampleSeeds,extraSeeds,samplesForDungeon};
 });

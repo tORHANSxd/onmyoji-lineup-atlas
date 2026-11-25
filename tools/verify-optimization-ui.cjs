@@ -498,7 +498,8 @@ async function main(){
   await ui('$("dungeon-match-selected").click()');
   await until('dungeonBattle?.dungeonId===101&&dungeonBattle.rows[0].state==="finished"&&!dungeonBattle.running',110000);
   assert.match(await ui('$("dungeon-battle-results").textContent'),/悲鸣复跑验收.*本次复跑(通关|失败).*列出的离线种子/s);
-  assert.equal(await ui('$("dungeon-search-stock").hidden&&!document.querySelector("[data-battle-full]")'),true);
+  assert.equal(await ui('!document.querySelector("[data-battle-full]")'),true);
+  assert.equal(await ui('$("dungeon-search-stock").hidden'),await ui('dungeonBattle.rows[0].verdict!=="loss"'));
   assert.ok(floorCalls.length);
   assert.deepEqual(floorCalls,commonSeeds.slice(0,Math.min(floorCalls.length,6)).map(seed=>({dungeonId:101,seed,fixedStep:true})));
   assert.deepEqual(replayPlan.spirit,spirit);
@@ -644,6 +645,45 @@ async function main(){
    assert.equal(await ui('$("dungeon-search-stock").hidden'),false);
    assert.equal(calls.at(-1).ids,winner);
    assert.deepEqual(replayPlan.onmyoji.skinfo,[[1003,5],[1008,5],[1011,5]]);
+   savedEvidence=null;
+   const sorrow={...lineup,id:'qa-sorrow-stock',gameSceneId:1001002,code:'|TA|qa-sorrow-stock'};
+   const sorrowSamples=[];let winningPlan;
+   mockBattle=(plan,options)=>{
+    assert.equal(options.dungeonId,101);
+    const key=JSON.stringify(plan);
+    winningPlan??=key;
+    if(key===winningPlan)sorrowSamples.push(options.seed);
+    const win=key===winningPlan;
+    return {seed:options.seed,engineSeconds:22,completed:true,outcome:win?'win':'loss',wavesCleared:win?3:2,bouts:7};
+   };
+   await ui(`stopMatch();STATE={...STATE,lineups:[...STATE.lineups,${JSON.stringify(sorrow)}]};$('dungeon-rules-select').value='101';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-sorrow-stock');renderSelection()`);
+   assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
+   await ui('$("dungeon-match-selected").click()');
+   await until('!$("dungeon-search-stock").hidden');
+   assert.equal(sorrowSamples.length,0);
+   await ui('$("dungeon-search-stock").click()');
+   await until('dungeonStock?.dungeonId===101&&!dungeonStock.running',20000);
+   assert.deepEqual(sorrowSamples,commonSeeds.slice(0,6));
+   assert.equal(await ui('document.querySelector("[data-stock-full]")'),null);
+   await ui('document.querySelector("[data-stock-preview]").click()');
+   await until('document.querySelector(".rune-code-preview img")?.naturalWidth>0');
+   assert.match(await ui('$("detail-dialog").textContent'),/魂土.*离线采样通过/s);
+   const sorrowCode=await ui('$("stock-candidate-code").value');
+   await ui('$("stock-candidate-save").click()');
+   await until('$("stock-candidate-status").textContent.includes("已保存")');
+   const savedSorrow=stored.lineups.find(l=>l.code===sorrowCode);
+   assert.equal(savedSorrow.gameSceneId,1001002);
+   assert.equal(savedSorrow.runeReceipts[0].dungeonId,101);
+   await ui('$("detail-dialog").close()');
+   await win.loadFile(path.join(root,'app/index.html'));
+   await until('!!DATA && $("loading").hidden');
+   await ui(`$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-rules-select').value='101';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add(${JSON.stringify(savedSorrow.id)});renderSelection()`);
+   await until('!$("dungeon-match-selected").disabled&&$("dungeon-match-selected").textContent.includes("复跑")');
+   await ui('$("dungeon-match-selected").click()');
+   await until('dungeonBattle?.rows[0]?.state==="finished"&&!dungeonBattle.running');
+   assert.equal(JSON.stringify(replayPlan),winningPlan);
+   assert.match(await ui('$("dungeon-battle-results").textContent'),/按已保存配装.*已通过 6 个采样种子/s);
+   await capture('dungeon-soul-11-saved-candidate');
   }finally{mockBattle=null;mockRandom=null;stopRandom=null;mockSeeds=null;savedEvidence=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
  });
  await check('全种子通过结果显示单人本地范围和最慢一场',async()=>{
