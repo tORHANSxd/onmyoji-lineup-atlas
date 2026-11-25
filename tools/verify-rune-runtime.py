@@ -1,4 +1,4 @@
-"""Run a synthetic 神罚 encounter using locally extracted client scripts."""
+"""Run a 神罚 encounter using locally extracted client scripts."""
 
 import argparse
 import builtins
@@ -18,6 +18,7 @@ def run(args):
     from original_battle import RuntimeModules, no_transport
     from original_host import Host
     from rune_replay import read_models, sync_windows
+    from rune_team import selected_team
 
     catalog = run_path(str(Path(__file__).with_name("extract-dungeon-catalog.py")))
     client = catalog["open_catalog_client"](args.snapshot.resolve())
@@ -31,6 +32,13 @@ def run(args):
         raise ValueError("The script index belongs to another client")
 
     output = args.output.resolve()
+    team_scope = "synthetic-qingming-zhoushen"
+    team = None
+    if args.team:
+        bundle_path = Path(__file__).resolve().parent.parent / "data/bundle.json"
+        bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+        team = selected_team(json.loads(args.team.read_text(encoding="utf-8-sig")), bundle["suits"])
+        team_scope = "selected-inventory"
     work = output.parent / (output.stem + "-work")
     models = work / "src/model_info"
     models.mkdir(parents=True, exist_ok=True)
@@ -131,10 +139,19 @@ def run(args):
     def fixture_hero(hero_id, uid, level):
         return {"heroId": hero_id, "heroUid": uid, "level": level, "attr": [0] * 8, "suit": []}
 
-    fighters = {uid: fixture_hero(408, uid, 40) for uid in ("fixture-a", "fixture-a2")}
-    actor = fixture_hero(10, "fixture-qingming", 60)
     avatar = BattleAvatar()
-    avatar.init_from_dict({"heroes_gamble": {**fighters, "fixture-qingming": actor}, "yysid": 10})
+    if team:
+        from DynamicConfigData import DATA_HERO
+
+        actor, fighters, equipment = team
+        if any(hero["heroId"] not in DATA_HERO.data for hero in (actor, *fighters.values())):
+            raise ValueError("Unknown hero in this client's resources")
+        avatar.init_from_dict({"heroes": {**fighters, "selected-onmyoji": actor}, "yysid": actor["heroId"]})
+        avatar.inventory.update(equipment)
+    else:
+        fighters = {uid: fixture_hero(408, uid, 40) for uid in ("fixture-a", "fixture-a2")}
+        actor = fixture_hero(10, "fixture-qingming", 60)
+        avatar.init_from_dict({"heroes_gamble": {**fighters, "fixture-qingming": actor}, "yysid": 10})
     avatar.defaultHeros = list(fighters)
     engine = RuneFbEngine({"fbId": 102, "seed": 0})
     entity_models = {}
@@ -160,7 +177,7 @@ def run(args):
     engine.controllers.append(controller)
     engine.op_init_flag = True
     engine.init()
-    engine.op_init(controller, 10, list(fighters), [])
+    engine.op_init(controller, actor["heroId"], list(fighters), [])
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
 
@@ -185,7 +202,7 @@ def run(args):
     names = {value: key for key, value in vars(const.BattleState).items() if key.startswith("BS_")}
     report = {
         "resourceVersion": resource_version, "nativeSHA256": native_hash, "dungeonId": 102,
-        "fixture": "synthetic-qingming-zhoushen", "seed": engine.seed,
+        "fixture": team_scope, "seed": engine.seed,
         "completed": completed, "phases": [names[state] for state in phases],
         "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,
         "remainingPlayers": len(engine.heroEntities), "remainingEnemies": len(engine.monsterEntities),
@@ -209,6 +226,7 @@ if __name__ == "__main__":
     parser.add_argument("--opcode-proof", type=Path, required=True)
     parser.add_argument("--script-index", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--team", type=Path, help="Explicit selected roster and soul rows (see DUNGEON_CATALOG.md)")
     parser.add_argument("--timeout", type=int, default=75)
     args = parser.parse_args()
     if args.timeout < 1:
