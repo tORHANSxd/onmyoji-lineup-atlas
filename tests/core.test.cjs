@@ -1,6 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const C=require('../app/core.js');
+const E=require('../app/exact-solver.js');
 const base={attack:100,defense:100,maxHp:1000,speed:100,critRate:.1,critPower:.5,debuffEnhance:0,debuffResist:0};
 const roster=['1','2'].map(id=>({id,name:'测试式神'+id,assets:{baseAttrs40:{0:base,1:base}}}));
 const hero=(heroId=1,extra={})=>({heroId,level:40,star:6,awake:1,skinfo:[[1003,5],[1001,1],[1002,4]],...extra});
@@ -48,3 +49,50 @@ test('未知两件套值、负额外属性、最高属性约束保持未知',()=
 test('未知觉醒、技能和增量快照仍不能判为全队可组成',()=>{const a=C.parseAccount(raw());for(const l of [lineup([member('1',{awakening:null})]),lineup([member('1',{skills:null})]),lineup(undefined,{requirementsComplete:false})])assert.equal(C.matchLineup(l,a,roster,[]).status,'unknown');assert.equal(C.matchLineup(lineup(),{...a,merged:true},roster,[]).status,'unknown');});
 test('本地配置校验拒绝非法技能、Infinity和反向区间',()=>{assert.throws(()=>C.validateLineup(lineup([member('1',{skills:[{id:'<img>',level:5}]})])));assert.throws(()=>C.validateLineup(lineup([member('1',{config:cfg({extraAttributes:{attack:Infinity}})})])));assert.throws(()=>C.validateLineup(lineup([member('1',{config:cfg({ranges:[{stat:'speed',min:200,max:100}]})})])));assert.equal(C.validateLineup(lineup()).members[0].shikigamiId,'1');});
 test('协战需求不能误报账号缺式神',()=>{const a=C.parseAccount(raw({heroes:{}}));const r=C.matchLineup(lineup([member('1',{borrowed:true})]),a,roster,[]);assert.equal(r.status,'unknown');assert.match(r.reasons.join(' '),/借用/);});
+
+const exactEffects=[{name:'测试套装',stat:'hpPercent',value:0,suitNames:['测试套装']}];
+function exact(members,account){
+ const search=E.search(lineup(members),account,roster,exactEffects);let step;
+ do {step=search.next();} while(!step.done);
+ return step.value;
+}
+
+test('原版御魂计算开关会卸下御魂，旧缓存也采用此规则',()=>{
+ const a=C.parseAccount(raw({heroes:{a:hero(1,{equips:['s0']})}}));
+ const parsed=C.adaptTA({ok:true,format:'ta-payload',kinds:['shikigami'],data:{hconf:[{hero_id:1,awake:1,skills:[],not_calc_flag:1}]}});
+ assert.equal(parsed.members[0].config.noSouls,true);
+ for(const config of [parsed.members[0].config,cfg({keepCurrent:true,protocol:{notCalcFlag:1},ranges:[{stat:'attack',min:900}]})]){
+  const result=exact([member('1',{config})],a);
+  assert.equal(result.proof.state,'optimal');assert.deepEqual(result.assignment[0].soulIds,[]);
+  assert.equal(result.assignment[0].panel.attack,100);
+ }
+ const onlyHeroes=C.parseAccount(raw({hero_equips:[],scope:{heroes:true,souls:false}}));
+ assert.equal(exact([member('1',{config:parsed.members[0].config})],onlyHeroes).proof.state,'optimal');
+});
+
+test('固定穿戴与普通配装并存时不能把可互换式神和同面板御魂合并',()=>{
+ const original=raw(),ids=original.hero_equips.map(q=>q.id);
+ original.heroes={worn:hero(1,{equips:ids}),empty:hero(1,{equips:[]})};
+ original.hero_equips.push(...original.hero_equips.map(q=>({...q,id:'spare-'+q.id})));
+ const a=C.parseAccount(original);
+ const result=exact([member('1',{config:cfg({metricId:null})}),member('1',{index:1,config:cfg({keepCurrent:true,ranges:[{stat:'attack',min:150}]})})],a);
+ assert.equal(result.proof.state,'optimal');
+ assert.equal(result.assignment[0].heroId,'empty');assert.equal(result.assignment[1].heroId,'worn');
+ assert.deepEqual(result.assignment[1].soulIds,ids);
+ assert.ok(result.assignment[0].soulIds.every(id=>id.startsWith('spare-')));
+});
+
+test('只选未穿戴御魂也排除预设中的占用御魂，归属重复或缺失保持未知',()=>{
+ const original=raw(),ids=original.hero_equips.map(q=>q.id);
+ original.heroes={a:hero(1,{equips:[]}),b:hero(2,{equips:ids})};
+ original.equipPresets=[['已装备预设',ids]];
+ original.hero_equips.push(...original.hero_equips.map(q=>({...q,id:'bag-'+q.id,mainAttrValue:1})));
+ const config=cfg({scope:'unequipped'});
+ const a=C.parseAccount(original),result=exact([member('1',{config})],a);
+ assert.equal(result.proof.state,'optimal');assert.equal(result.assignment[0].panel.attack,106);
+ assert.equal(C.findBuilds(a.heroes.a,config,a,roster,exactEffects).builds[0].panel.attack,106);
+ original.heroes.a.equips=[ids[0]];
+ assert.equal(exact([member('1',{config})],C.parseAccount(original)).proof.state,'blocked');
+ delete original.heroes.a.equips;
+ assert.equal(exact([member('1',{config})],C.parseAccount(original)).proof.state,'blocked');
+});

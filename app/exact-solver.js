@@ -1,6 +1,6 @@
 (function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./core.js'):root.AtlasCore);if(typeof module==='object'&&module.exports)module.exports=api;else root.AtlasExact=api;})(globalThis,function(C){
 'use strict';
-const stats=Object.keys(C.STAT_NAMES),percent=new Set(['crit','critDamage','effectHit','effectResist']),version='exact-3';
+const stats=Object.keys(C.STAT_NAMES),percent=new Set(['crit','critDamage','effectHit','effectResist']),version='exact-4';
 const compare=(a,b)=>{for(let i=0;i<a.length;i++)if(a[i]!==b[i])return a[i]>b[i]?1:-1;return 0;};
 const tolerance=x=>1e-7+Math.abs(x)*1e-12;
 // Scoped to one immutable worker inventory. Direct callers get a fresh index.
@@ -24,24 +24,36 @@ function* inventoryContext(souls,shared){
 function* solve(lineup,account,roster,effects,context){
  const diagnostic=C.matchLineup(lineup,account,roster,effects,{limit:64,width:6,perSet:1,assignmentLimit:1000,inventory:context.sample,approximateInventory:context.sample!==context.inventory,diagnosticHeroLimit:3});
  for(const row of diagnostic.members)row.builds=(row.builds||[]).slice(0,1);
- const roles=(lineup.members||[]).filter(m=>m.occupied!==false&&m.kind==='shikigami').sort((a,b)=>a.index-b.index);
+ const roles=(lineup.members||[]).filter(m=>m.occupied!==false&&m.kind==='shikigami').sort((a,b)=>a.index-b.index)
+  .map(m=>({...m,config:C.activeSoulConfig(m.config)}));
  const inventory=context.inventory,unknown=[];let nodes=0,pruned=0,best=null,bestVector=null,checkpoint=Date.now();
  if(!roles.length||!C.hasParsedContent(lineup))unknown.push('原码尚未解析出完整的式神要求');
- if(!C.inventoryComplete(account))unknown.push('需要完整采集式神和御魂并替换导入，才能证明全局最优或无解');
- const relevant=inventory.filter(q=>roles.some(m=>C.soulEligible(q,m.config)));
+ const noEquippedSouls=roles.length&&roles.every(m=>C.soulMode(m.config)==='none');
+ if(!C.inventoryComplete(account,noEquippedSouls?'heroes':undefined))unknown.push('需要完整采集参与精算的库存并替换导入，才能证明全局最优或无解');
+ const ownership=roles.some(m=>C.soulMode(m.config)==='current'||C.usesUnworn(m.config))?C.equipmentOwnership(account):null;
+ const searching=roles.filter(m=>C.soulMode(m.config)==='search');
+ const relevant=inventory.filter(q=>searching.some(m=>C.soulEligible(q,m.config,ownership)));
  if(relevant.some(q=>q.unknown?.length||!effects.some(e=>e.suitNames.includes(q.set))||Object.values(q.stats).some(v=>!Number.isFinite(v)||v<0)))unknown.push('符合配装筛选的御魂含未识别属性或套装，无法确定结果');
- if(effects.some(e=>!Number.isFinite(e.value)||e.value<0))unknown.push('套装加成数据未完整核实');
+ if(!noEquippedSouls&&effects.some(e=>!Number.isFinite(e.value)||e.value<0))unknown.push('套装加成数据未完整核实');
  const prepared=[];
  for(const m of roles){
-  const owned=C.memberCandidates(m,account),config=m.config||{};
-  unknown.push(...C.configUnknown(m.config,effects));
+  const owned=C.memberCandidates(m,account),config=m.config||{},mode=C.soulMode(config);
+  unknown.push(...C.configUnknown(m.config,effects,ownership));
   if(m.borrowed||!m.shikigamiId)unknown.push('协战或成员身份需要补全');
   const heroes=owned.heroes.map(hero=>({hero,base:C.baseFromRoster(hero,roster)}));
   if(heroes.some(h=>!h.base))unknown.push(m.name+'缺少可核验的基础属性');
   if(heroes.some(({base})=>base&&(base.critDamage<1||['attack','hp','defense','speed','crit','critDamage','effectHit','effectResist'].some(s=>!Number.isFinite(base[s])||base[s]<0)||Object.values(base.innate||{}).some(v=>!Number.isFinite(v)||v<0))))unknown.push(m.name+'基础属性异常，不能使用单调指标上界证明');
-   const groups=[];
-   for(const slot of context.slots){groups.push(slot.filter(q=>!q.unknown?.length&&C.soulEligible(q,config)));if(Date.now()-checkpoint>=8){yield {...diagnostic,assignment:null,ready:false,status:'unknown',label:'正在准备库存',proof:{state:'computing',phase:'preparing',version,nodes,pruned}};checkpoint=Date.now();}}
-   prepared.push({m,owned,config,heroes,groups});
+  const groups=[];
+  if(mode==='search'){
+   for(const slot of context.slots){groups.push(slot.filter(q=>!q.unknown?.length&&C.soulEligible(q,config,ownership)));if(Date.now()-checkpoint>=8){yield {...diagnostic,assignment:null,ready:false,status:'unknown',label:'正在准备库存',proof:{state:'computing',phase:'preparing',version,nodes,pruned}};checkpoint=Date.now();}}
+  }else{
+   for(const candidate of heroes){
+    const result=C.findBuilds(candidate.hero,config,account,roster,effects,{ownership});
+    if(result.status==='unknown')unknown.push(...result.reasons.map(reason=>m.name+'：'+reason));
+    candidate.fixed=result.builds[0];
+   }
+  }
+  prepared.push({m,config,mode,heroes:mode==='search'?heroes:heroes.filter(candidate=>candidate.fixed),groups});
   }
  const snapshot=(state='computing')=>{
   const result={...diagnostic,members:diagnostic.members.map(m=>({...m}))};
@@ -59,13 +71,16 @@ function* solve(lineup,account,roster,effects,context){
  // Exchangeable instances have identical effects on every supported constraint.
  // Keep their multiplicity in inventory, but skip permutations of their IDs.
  const soulKey=context.soulKey;
+ const reservedIds=new Set(prepared.flatMap(p=>p.heroes.flatMap(h=>h.fixed?.soulIds||[])));
+ const currentHeroes=prepared.some(p=>p.mode==='current');
  const maxBonus=Object.fromEntries(stats.map(s=>[s,3*Math.max(0,...effects.filter(e=>e.stat===s).map(e=>e.value))]));
  const usedHeroes=new Set(),usedSouls=new Set(),chosen=[];
  const rankedGroups=new Map();
  // This conservative case has exactly one objective vector. It does not
  // discard candidates before finding a complete, constraint-valid assignment.
- const constantObjective=prepared.every(({config,heroes,groups})=>{
+ const constantObjective=prepared.every(({config,heroes,groups,mode})=>{
   if(config.metricId==null)return true;
+  if(mode!=='search')return heroes.every(h=>h.fixed.score===heroes[0]?.fixed.score);
   const keys={2:['effectHit'],3:['effectResist'],7:['speed'],8:['crit'],9:['critDamage'],11:['effectHit','effectResist']}[config.metricId];
   return !!keys&&heroes.length>0&&groups.every(g=>g.length)&&keys.every(k=>
    !effects.some(e=>e.stat===k&&e.value)&&heroes.every(h=>h.base[k]===heroes[0].base[k]&&(h.base.innate?.[k]||0)===(heroes[0].base.innate?.[k]||0))&&
@@ -74,14 +89,18 @@ function* solve(lineup,account,roster,effects,context){
  // A necessary matching check for every remaining slot. It only rejects a
  // branch when even independent per-slot assignments cannot avoid reuse.
  function remainingPossible(n){
-  for(const choices of [prepared.slice(n).map(p=>p.heroes.map(h=>h.hero.instanceId).filter(id=>!usedHeroes.has(id))),...[0,1,2,3,4,5].map(slot=>prepared.slice(n).map(p=>p.groups[slot].filter(q=>!usedSouls.has(q.id)).map(q=>q.id)))]){
+  const remaining=prepared.slice(n),openSlots=remaining.filter(p=>p.mode==='search');
+  for(const choices of [remaining.map(p=>p.heroes.map(h=>h.hero.instanceId).filter(id=>!usedHeroes.has(id))),...[0,1,2,3,4,5].map(slot=>openSlots.map(p=>p.groups[slot].filter(q=>!usedSouls.has(q.id)).map(q=>q.id)))]){
    const owners=new Map();
    function assign(i,seen){for(const id of choices[i]){if(seen.has(id))continue;seen.add(id);const old=owners.get(id);if(old==null||assign(old,seen)){owners.set(id,i);return true;}}return false;}
    if(choices.some((_,i)=>!assign(i,new Set())))return false;
   }
   return true;
  }
- function highestValid(build){for(const prior of chosen){const original=roles.find(r=>r.index===prior.index);for(const stat of original.config.highestStats||[])if(build.panel[stat]>prior.rawPanel[stat]-(percent.has(stat)?.001:.1)+1e-8)return false;}return true;}
+ function highestValid(build){
+  if(C.soulMode(roles.find(r=>r.index===build.index).config)==='none')return true;
+  for(const prior of chosen){const original=roles.find(r=>r.index===prior.index);for(const stat of original.config.highestStats||[])if(build.panel[stat]>prior.rawPanel[stat]-(percent.has(stat)?.001:.1)+1e-8)return false;}return true;
+ }
  function bounds(base,config,picked,suffix,depth){
   const low={...base.innate},high={...base.innate};
   const counts={};for(const q of picked)counts[q.set]=(counts[q.set]||0)+1;
@@ -108,9 +127,10 @@ function* solve(lineup,account,roster,effects,context){
   if(bestVector&&compare(chosen.map(b=>b.score??0),bestVector.slice(0,n))<0){pruned++;return;}
   if(!remainingPossible(n)){pruned++;return;}
   const seenHeroes=new Set();
-  for(const {hero,base} of heroes){
+  for(const {hero,base,fixed} of heroes){
    if(usedHeroes.has(hero.instanceId))continue;
-   const key=JSON.stringify([hero.shikigamiId,hero.level,hero.star,hero.awake,hero.skills,base]);if(seenHeroes.has(key)){pruned++;continue;}seenHeroes.add(key);
+   if(!currentHeroes){const key=JSON.stringify([hero.shikigamiId,hero.level,hero.star,hero.awake,hero.skills,base]);if(seenHeroes.has(key)){pruned++;continue;}seenHeroes.add(key);}
+   if(fixed){yield* tryBuild(n,{index:m.index,name:m.name,...fixed});continue;}
    const objective={heroId:hero.shikigamiId,baseAttack:base.attack};
    const rankKey=JSON.stringify([n,base]);let ordered=rankedGroups.get(rankKey);
     if(!ordered){ordered=[];for(const group of allGroups){const ranked=[];for(let i=0;i<group.length;i++){const q=group[i];ranked.push({q,score:C.score(C.panel(base,[q],effects,config.extraAttributes).values,config.metricId,objective)||0});if(i%128===0&&Date.now()-checkpoint>=8){yield snapshot();checkpoint=Date.now();}}ordered.push(ranked.sort((a,b)=>b.score-a.score).map(x=>x.q));}rankedGroups.set(rankKey,ordered);}
@@ -142,13 +162,18 @@ function* solve(lineup,account,roster,effects,context){
      const p=C.panel(base,picked,effects,config.extraAttributes);
      if(p.unsupported.length||C.equipmentGaps(picked,config,effects).length||C.panelGaps(p.values,config,objective).length)return;
      const build={index:m.index,name:m.name,heroId:hero.instanceId,objective,soulIds:[...picked].sort((a,b)=>a.slot-b.slot).map(q=>q.id),panel:p.values,rawPanel:C.panel(base,picked,effects).values,sets:p.sets,score:C.score(p.values,config.metricId,objective),distance:0,gaps:[]};
-     if(!highestValid(build))return;
-     usedHeroes.add(hero.instanceId);picked.forEach(q=>usedSouls.add(q.id));chosen.push(build);yield* visitMember(n+1);chosen.pop();picked.forEach(q=>usedSouls.delete(q.id));usedHeroes.delete(hero.instanceId);return;
+     yield* tryBuild(n,build);return;
     }
-    const seenSouls=new Set();for(const q of groups[depth]){const key=soulKey.get(q.id);if(seenSouls.has(key)){pruned++;continue;}seenSouls.add(key);picked.push(q);yield* visitSlot(depth+1);picked.pop();}
+    const seenSouls=new Set();for(const q of groups[depth]){const key=reservedIds.has(q.id)?q.id:soulKey.get(q.id);if(seenSouls.has(key)){pruned++;continue;}seenSouls.add(key);picked.push(q);yield* visitSlot(depth+1);picked.pop();}
    }
    yield* visitSlot(0);
   }
+ }
+ function* tryBuild(n,build){
+  if(!highestValid(build)||build.soulIds.some(id=>usedSouls.has(id)))return;
+  usedHeroes.add(build.heroId);build.soulIds.forEach(id=>usedSouls.add(id));chosen.push(build);
+  yield* visitMember(n+1);
+  chosen.pop();build.soulIds.forEach(id=>usedSouls.delete(id));usedHeroes.delete(build.heroId);
  }
   yield snapshot();const traversal=visitMember(0);
   while(true){const step=traversal.next();if(step.done)break;if(constantObjective&&best){traversal.return();return snapshot('optimal');}yield step.value;}
@@ -182,11 +207,12 @@ function inspectHeroes(lineup,account,options){
 }
 function soulShortages(roles,account,effects,inventory=Object.values(account.souls)){
  if(!C.inventoryComplete(account,'souls'))return [];
+ const ownership=roles.some(m=>C.usesUnworn(m.config))?C.equipmentOwnership(account):null;
  const knownSets=new Set(effects.flatMap(e=>e.suitNames)),requests=new Map(),deficits=new Map();
  const add=(name,text)=>{if(!deficits.has(name))deficits.set(name,{name,reasons:[]});deficits.get(name).reasons.push(text);};
  for(const m of roles){
-  if(m.borrowed||!m.config||C.configUnknown(m.config,effects).length)continue;
-  const eligible=inventory.filter(q=>C.soulEligible(q,m.config));
+  if(m.borrowed||C.soulMode(m.config)!=='search'||C.configUnknown(m.config,effects,ownership).length)continue;
+  const eligible=inventory.filter(q=>C.soulEligible(q,m.config,ownership));
   for(const r of m.config.suitRequirements||[]){
    const effect=effects.find(e=>e.name===r.name||(r.effectId!=null&&e.teamCodeId===r.effectId)),sets=effect?.suitNames||[r.name];
    const available=eligible.filter(q=>sets.includes(q.set)||!knownSets.has(q.set));

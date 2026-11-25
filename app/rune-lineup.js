@@ -1,8 +1,8 @@
 (function(root,factory){
  const common=typeof module==='object'&&module.exports;
- const api=factory(common?require('./game-config.js'):root.AtlasGame);
+ const api=factory(common?require('./game-config.js'):root.AtlasGame,common?require('./core.js'):root.AtlasCore);
  if(common)module.exports=api;else root.AtlasRuneLineup=api;
-})(globalThis,function(G){
+})(globalThis,function(G,C){
 'use strict';
 const sceneId=1001001,resourceVersion='0.0.816',dungeonId=102;
 
@@ -57,10 +57,12 @@ function team(lineup,result,account,game){
  const spirit=actor.qiling?inventorySpirit(actor,account,game):null;
  const plan={onmyoji,...(spirit?{spirit}:{}),members:members.map(member=>{
   const build=builds.get(member.index),hero=account.heroes[build?.heroId];
-  if(!hero?.raw||String(member.shikigamiId)!==hero.shikigamiId||build.soulIds?.length!==6){
+  const mode=C.soulMode(member.config),ids=build?.soulIds;
+  if(!hero?.raw||String(member.shikigamiId)!==hero.shikigamiId||!Array.isArray(ids)||
+     (mode==='none'?ids.length!==0:mode==='current'?ids.length>6:ids.length!==6)){
    throw Error(`${member.name}的库存配装已变化，请重新精算`);
   }
-  const souls=build.soulIds.map(id=>account.souls[id]?.raw);
+  const souls=ids.map(id=>account.souls[id]?.raw);
   if(souls.some(row=>!row))throw Error(`${member.name}的部分御魂已不在当前库存，请重新精算`);
   return {instanceId:hero.instanceId,hero:hero.raw,souls,aiSkill:autoSkill(member,game,hero.raw.skinfo)};
  })};

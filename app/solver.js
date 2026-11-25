@@ -2,6 +2,37 @@
 'use strict';
 const finite=Number.isFinite,percent=new Set(['crit','critDamage','effectHit','effectResist']);
 const unique=a=>[...new Set(a)],names=C.STAT_NAMES;
+const ownershipIndexes=new WeakMap(),emptyConfiguration=Object.freeze({noSouls:true});
+function soulMode(config){
+ if(config?.noSouls===true||config?.protocol?.notCalcFlag===1)return 'none';
+ if(config?.keepCurrent||config?.yuhunConfigEnabled===false)return 'current';
+ return 'search';
+}
+const activeSoulConfig=config=>soulMode(config)==='none'?emptyConfiguration:config;
+const usesUnworn=config=>config?.scope==='unequipped'||config?.excludeOccupied===true;
+function equipmentOwnership(account){
+ const cached=ownershipIndexes.get(account);if(cached)return cached;
+ const byHero=new Map(),owners=new Map(),invalid=new Set(),unworn=new Set();
+ const whole=C.inventoryComplete(account);
+ if(whole)for(const [heroId,hero] of Object.entries(account.heroes)){
+  const ids=hero.raw?.equips,slots=new Set(),worn=[];
+  if(!Array.isArray(ids)){invalid.add(heroId);continue;}
+  for(const id of ids){
+   const q=typeof id==='string'&&Object.hasOwn(account.souls,id)?account.souls[id]:null;
+   if(!q){invalid.add(heroId);continue;}
+   if(slots.has(q.slot))invalid.add(heroId);
+   slots.add(q.slot);
+   const other=owners.get(id);
+   if(other&&other!==heroId){invalid.add(other);invalid.add(heroId);}
+   owners.set(id,heroId);worn.push(q);
+  }
+  byHero.set(heroId,worn);
+ }
+ for(const heroId of invalid)byHero.delete(heroId);
+ const complete=whole&&!invalid.size;
+ if(complete)for(const id of Object.keys(account.souls))if(!owners.has(id))unworn.add(id);
+ const index={byHero,unworn,complete};ownershipIndexes.set(account,index);return index;
+}
 function fmt(stat,value){return finite(value)?(value*(percent.has(stat)?100:1)).toFixed(2).replace(/\.00$/,'')+(percent.has(stat)?'%':''):'未知';}
 function panelGaps(panel,config,objective){
   const gaps=[];
@@ -36,7 +67,7 @@ function equipmentGaps(souls,config,effects){
   const gaps=suitGaps(souls,config,effects);
   for(let slot=1;slot<=6;slot++){
     const q=souls.find(s=>s.slot===slot),main=config.mainStats?.[slot];
-    if(!q){gaps.push({kind:'slot',slot,weight:12,text:`缺少${slot}号位御魂`});continue;}
+    if(!q){if(soulMode(config)==='search')gaps.push({kind:'slot',slot,weight:12,text:`缺少${slot}号位御魂`});continue;}
     if(main?.length&&!main.includes(q.mainStat))gaps.push({kind:'main',slot,weight:8,text:`${slot}号位主属性${names[q.mainStat]||q.mainStat}，需要${main.map(s=>names[s]||s).join(' / ')}`});
     if(config.sixStarOnly&&q.star!==6||config.allowedStars?.length&&!config.allowedStars.includes(q.star))gaps.push({kind:'star',slot,weight:5,text:`${slot}号位${q.star}星不满足星级要求`});
     const range=config.levelRange||[config.maxLevelOnly?15:0,15];
@@ -44,12 +75,14 @@ function equipmentGaps(souls,config,effects){
   }
   return gaps;
 }
-function configUnknown(config,effects){
+function configUnknown(config,effects,ownership){
   if(!config)return ['缺少御魂配置'];
+  if(soulMode(config)==='none')return [];
   const reasons=[...(config.protocolUncertainties||[])];
-  if(config.keepCurrent||config.yuhunConfigEnabled===false)reasons.push('原码要求保留当前御魂；导出未提供穿戴归属');
+  const originalFlag=config.protocol?.notCalcFlag;
+  if(originalFlag!=null&&originalFlag!==0)reasons.push('原码御魂计算开关未核实');
   if(config.scope!=null&&!['all','unequipped'].includes(config.scope))reasons.push('未支持的库存范围');
-  if(config.scope==='unequipped'||config.excludeOccupied)reasons.push('导出缺少穿戴归属，不能筛选未占用御魂');
+  if(usesUnworn(config)&&!ownership?.complete)reasons.push('穿戴归属不完整，无法证明哪些御魂未穿戴');
   if(config.highestStat)reasons.push('旧版最高属性字段需重新解析');
   if((config.highestStats||[]).some(s=>!Object.hasOwn(names,s)||s.endsWith('Percent')))reasons.push('未知最高属性');
   if((config.ranges||[]).some(r=>!Object.hasOwn(names,r.stat)||r.stat.endsWith('Percent')))reasons.push('包含未支持的面板范围');
@@ -62,8 +95,9 @@ function configUnknown(config,effects){
 }
 // Unknown attributes only matter if this instance could pass the hard filters.
 // An unrecognized main-stat name remains a possible match, not an exclusion.
-function soulEligible(q,config={}){
+function soulEligible(q,config={},ownership){
   config=config||{};
+  if(usesUnworn(config)&&!ownership?.unworn.has(q.id))return false;
   const range=config.levelRange||[config.maxLevelOnly?15:0,15],main=config.mainStats?.[q.slot];
   return (!config.sixStarOnly||q.star===6)&&(!config.allowedStars?.length||config.allowedStars.includes(q.star))&&q.level>=range[0]&&q.level<=range[1]&&(!main?.length||!Object.hasOwn(names,q.mainStat)||main.includes(q.mainStat));
 }
@@ -98,14 +132,28 @@ function suggestions(config,closest,account,effects){
   return out.sort((a,b)=>a.priority-b.priority).slice(0,6).map(x=>x.text);
 }
 function findBuilds(hero,config,account,roster,effects,options={}){
-  const base=C.baseFromRoster(hero,roster),unknown=configUnknown(config,effects);
+  config=activeSoulConfig(config);
+  const mode=soulMode(config),ownership=options.ownership||(mode==='current'||usesUnworn(config)?equipmentOwnership(account):null);
+  const base=C.baseFromRoster(hero,roster),unknown=configUnknown(config,effects,ownership);
   if(!base)return {status:'unknown',reasons:['缺少此实例可核验的基础面板；需要完整 attrs 或对应官方属性'],builds:[],suggestions:[]};
   if(unknown.length)return {status:'unknown',reasons:unknown,builds:[],suggestions:[]};
   const objective={heroId:hero.shikigamiId,baseAttack:base.attack};
+  if(mode!=='search'){
+    const gear=mode==='none'?[]:ownership.byHero.get(hero.instanceId);
+    const note=mode==='none'?'按原码不佩戴御魂':'按导入时的穿戴记录保留御魂';
+    if(!gear||gear.some(q=>q.unknown.length))return {status:'unknown',reasons:['此式神的当前穿戴或御魂属性待核对'],builds:[],suggestions:[]};
+    if(usesUnworn(config)&&gear.some(q=>!ownership.unworn.has(q.id)))return {status:'missing',reasons:['当前穿戴与仅使用未穿戴御魂的要求冲突'],builds:[],suggestions:[]};
+    const p=C.panel(base,gear,effects,config.extraAttributes);
+    if(p.unsupported.length)return {status:'unknown',reasons:p.unsupported,builds:[],suggestions:[]};
+    const gaps=[...equipmentGaps(gear,config,effects),...panelGaps(p.values,config,objective)];
+    const build={heroId:hero.instanceId,objective,soulIds:[...gear].sort((a,b)=>a.slot-b.slot).map(q=>q.id),sets:p.sets,
+      panel:p.values,rawPanel:C.panel(base,gear,effects).values,score:C.score(p.values,config.metricId,objective),distance:gaps.reduce((n,g)=>n+(g.weight||0),0),gaps};
+    return {status:gaps.length?'missing':'found',reasons:[note,...gaps.map(g=>g.text)],builds:gaps.length?[]:[build],closest:build,checked:1,exhaustive:true,suggestions:[]};
+  }
   let cache=null;if(options.cache&&options.inventory==null){cache=options.cache.get(account.souls);if(!cache){cache=new Map();options.cache.set(account.souls,cache);}}
   const cacheKey=cache&&JSON.stringify([base,objective,config,effects,C.inventoryComplete(account,'souls'),account.presets,options.limit,options.width,options.perSet,options.approximateInventory]);
   if(cacheKey&&cache.has(cacheKey)){const saved=cache.get(cacheKey);return {...saved,builds:saved.builds.map(b=>({...b,heroId:hero.instanceId})),closest:saved.closest?{...saved.closest,heroId:hero.instanceId}:null};}
-  const inventory=options.inventory||Object.values(account.souls),known=inventory.filter(q=>!q.unknown.length);
+  const inventory=(options.inventory||Object.values(account.souls)).filter(q=>!usesUnworn(config)||ownership.unworn.has(q.id)),known=inventory.filter(q=>!q.unknown.length);
   const absence=!options.approximateInventory&&C.inventoryComplete(account,'souls')&&!inventory.some(q=>q.unknown.length)?'missing':'unknown';
   const level=config.levelRange||[config.maxLevelOnly?15:0,15];
   const legal=q=>(!config.sixStarOnly||q.star===6)&&(!config.allowedStars?.length||config.allowedStars.includes(q.star))&&q.level>=level[0]&&q.level<=level[1]&&(!config.mainStats?.[q.slot]?.length||config.mainStats[q.slot].includes(q.mainStat));
@@ -122,7 +170,7 @@ function findBuilds(hero,config,account,roster,effects,options={}){
       if(q.length===6&&!gaps.length){const key=result.soulIds.join(',');if(!seen.has(key)){seen.add(key);allBuilds.push(result);}}}
     return result;
   };
-  const inventoryIds=options.inventory?new Set(inventory.map(q=>q.id)):null;
+  const inventoryIds=options.inventory||usesUnworn(config)?new Set(inventory.map(q=>q.id)):null;
   for(const preset of account.presets||[]){const ids=Array.isArray(preset)?preset[1]:null;if(!Array.isArray(ids)||ids.length!==6||inventoryIds&&ids.some(id=>!inventoryIds.has(id)))continue;const q=ids.map(id=>account.souls[id]);if(q.every(s=>s&&!s.unknown.length)&&new Set(q.map(x=>x.slot)).size===6){assess(q);checked++;}}
   const product=relaxed.reduce((p,g)=>p*g.length,1),limit=options.limit??16000;let exhaustive=product<=limit;
   if(product===0){assess(relaxed.filter(g=>g.length).map(g=>g[0]));}
@@ -201,7 +249,7 @@ function matchLineup(lineup,account,roster,effects,options={}){
   }
   const buildRoles=members.filter(m=>m.builds.length).sort((a,b)=>a.builds.length-b.builds.length);let assignment=null,steps=0;
   function highestValid(chosen){
-    for(const owner of chosen){const original=roles.find(m=>m.index===owner.index);for(const stat of original?.config?.highestStats||[])for(const other of chosen){if(other.index<=owner.index)continue;const delta=percent.has(stat)?.001:.1;if(!finite(other.panel[stat])||other.panel[stat]>owner.rawPanel[stat]-delta+1e-8)return false;}}
+    for(const owner of chosen){const original=roles.find(m=>m.index===owner.index);for(const stat of activeSoulConfig(original?.config)?.highestStats||[])for(const other of chosen){if(other.index<=owner.index||soulMode(roles.find(m=>m.index===other.index)?.config)==='none')continue;const delta=percent.has(stat)?.001:.1;if(!finite(other.panel[stat])||other.panel[stat]>owner.rawPanel[stat]-delta+1e-8)return false;}}
     return true;
   }
   function assign(n,heroes,souls,chosen){
@@ -222,5 +270,5 @@ function matchLineup(lineup,account,roster,effects,options={}){
   return {status,label:status==='available'?'配置可组成':missing?'存在缺口':ready?'式神御魂就绪 · 仍需核对':'需核对',ready,distance:Math.round(distance*100)/100,checks,reasons:unique([...(forcedMissing?checks.filter(c=>c.includes('个不同实例')):[]),...members.filter(m=>m.status==='missing').map(m=>`${m.name}：${m.reasons.join('；')}`),...unknown]),members,assignment};
 }
 function compareMatches(a,b){if(a?.status==='available'&&b?.status!=='available')return -1;if(b?.status==='available'&&a?.status!=='available')return 1;return (a?.distance??Infinity)-(b?.distance??Infinity)||(a?.checks?.length||0)-(b?.checks?.length||0);}
-return {heroIndex,findBuilds,memberCandidates,matchLineup,compareMatches,shikigamiRequirementsComplete,panelGaps,equipmentGaps,suggestions,configUnknown,soulEligible,formatStat:fmt,suitMatches:(q,c,e)=>!suitGaps(q,c,e).length};
+return {heroIndex,findBuilds,memberCandidates,matchLineup,compareMatches,shikigamiRequirementsComplete,panelGaps,equipmentGaps,suggestions,configUnknown,soulEligible,soulMode,activeSoulConfig,usesUnworn,equipmentOwnership,formatStat:fmt,suitMatches:(q,c,e)=>!suitGaps(q,c,e).length};
 });

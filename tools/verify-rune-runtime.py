@@ -260,8 +260,12 @@ def run(args):
                     if controller.autoSkill.get(entity.uid) != setting:
                         raise RuntimeError("The original engine did not apply the selected automatic skill")
                 active_skills = list(entity.SkillMgrComp.skillList)
+                actual_equips = [uid for uid in entity.HeroComp.heroData.equips if uid]
+                if sorted(actual_equips) != sorted(fighters.get(alias, actor)["equips"]):
+                    raise RuntimeError("The original engine changed the selected soul equipment")
                 selected_settings.append({"member": alias, "heroId": entity.protoid,
-                                          "skills": active_skills, "aiSkill": setting})
+                                          "skills": active_skills, "aiSkill": setting,
+                                          "equippedSoulCount": len(actual_equips)})
                 if alias == "selected-onmyoji" and spirit:
                     attached = entity.get_hunlingData()
                     if not attached or attached.uuid != spirit["uid"]:

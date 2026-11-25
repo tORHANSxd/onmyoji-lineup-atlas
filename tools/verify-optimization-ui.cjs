@@ -267,13 +267,15 @@ async function main(){
    assert.equal(stored.accounts[0].souls['desktop-first'].stats.attack,25);assert.equal(stored.accounts[0].souls['desktop-second'].stats.attack,40);
    assert.equal(stored.accounts[0].merged,true);assert.equal(stored.accounts[0].raw.souls.length,2);
   });
- await check('勾选魂王阵容后库存精算将五位式神、三十件御魂和契灵交给原版复跑',async()=>{
+ await check('勾选魂王阵容后原版复跑遵守不佩戴御魂，并带入真实选中的契灵',async()=>{
   const source=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&!l.members[0].qiling&&l.members[0].onmyojiId==='11');
   const lineup={...source,id:'qa-rune-e2e',code:'|TA|qa-rune-e2e',title:'魂王复跑验收',requirementsComplete:true,
-   members:source.members.map(m=>m.kind==='onmyoji'?{...m,qiling:{id:101,star:5,lv:3,mark_gid:2,marks:[9,9]}}:{...m,config:{scope:'all'},aiSkill:0})};
+   members:source.members.map(m=>m.kind==='onmyoji'?{...m,qiling:{id:101,star:5,lv:3,mark_gid:2,marks:[9,9]}}:
+    {...m,config:m.index===5?{scope:'all',keepCurrent:true,protocol:{...m.config.protocol,notCalcFlag:1}}:{scope:'all'},aiSkill:0})};
   const roles=lineup.members.filter(m=>m.kind==='shikigami');
   const heroes=Object.fromEntries(roles.map(m=>[`native-${m.index}`,{
    heroId:Number(m.shikigamiId),level:40,star:6,awake:m.awakening,skinfo:m.skills.map(s=>[s.id,s.level]),
+   equips:Array.from({length:6},(_,i)=>`gear-${m.index}-${i}`),
    attrs:[[8000,0,0,0],[101,0,0,0],[.5,0,0,0],[.1,0,0,0],[500,0,0,0],[2500,0,0,0],0,0],
   }]));
   const hero_equips=roles.flatMap(m=>Array.from({length:6},(_,i)=>({id:`gear-${m.index}-${i}`,slot:i+1,quality:6,level:15,
@@ -289,8 +291,13 @@ async function main(){
   assert.match(await ui('$("dungeon-battle-results").textContent'),/已佩戴.*6 星 5 级/);
   assert.deepEqual(replayPlan.spirit,spirit);
   assert.equal(replayPlan.members.length,5);
-  assert.equal(new Set(replayPlan.members.flatMap(member=>member.souls.map(soul=>soul.id))).size,30);
+  assert.equal(new Set(replayPlan.members.flatMap(member=>member.souls.map(soul=>soul.id))).size,24);
+  assert.equal(replayPlan.members.at(-1).souls.length,0);
   await ui('$("dungeon-workbench").scrollIntoView({block:"start"})');await capture('dungeon-selected-replay');
+  await ui('showLineup(lineups().find(l=>l.id==="qa-rune-e2e"))');
+  assert.match(await ui('document.querySelector("[data-member=\\"5\\"]").textContent'),/原码要求不佩戴御魂/);
+  assert.equal(await ui('document.querySelectorAll("[data-member=\\"5\\"] .soul-slot").length'),0);
+  await ui('$("detail-dialog").close()');
   await ui('stopMatch();$("dungeon-workbench").open=false');
  });
  if(process.argv.includes('--visual')){
