@@ -1,0 +1,29 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs/promises');
+const os=require('node:os');
+const path=require('node:path');
+const {createRuneRunner}=require('../desktop/rune-runner.cjs');
+
+test('复跑取消后释放正在运行的任务，未连接资料仍保留离线精算',async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'yuqi-rune-test-'));
+ t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const configPath=path.join(root,'config.json'),entry=path.join(root,'verify-rune-runtime.py');
+ const runner=createRuneRunner({configPath,scriptRoot:root,suits:{}});
+ assert.deepEqual(await runner.status(),{available:false,reason:'未连接本机魂王复跑资料'});
+ await fs.writeFile(entry,'');
+ const extra=path.join(root,'raw','extra');
+ await fs.mkdir(extra,{recursive:true});
+ await fs.writeFile(path.join(extra,'update.ini'),'version = 0.0.816\n');
+ await fs.writeFile(configPath,JSON.stringify({python:process.execPath,snapshot:root,gameTools:root,opcodeProof:root,scriptIndex:entry}));
+ assert.deepEqual(await runner.status(),{available:true,resourceVersion:'0.0.816'});
+ const input={onmyoji:{},members:Array.from({length:5},()=>({}))};
+ const initial=assert.rejects(runner.run(input),/已停止或超时/);
+ await assert.rejects(runner.run(input),/已有魂王复跑/);
+ await runner.stop();
+ await initial;
+ const next=assert.rejects(runner.run(input),/已停止或超时/);
+ await runner.stop();
+ await next;
+});

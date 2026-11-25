@@ -2,6 +2,7 @@
 const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
 const {readIndex,readTable}=require('../desktop/dungeon-catalog.cjs');
+const {createRuneRunner}=require('../desktop/rune-runner.cjs');
 const root=path.resolve(__dirname,'..'),profile=path.join(root,'user-data','optimization-ui');
 app.setPath('userData',profile);
 app.disableHardwareAcceleration();
@@ -10,7 +11,7 @@ async function held(){for(let i=0;i<200;i++){if(heldSaves.length)return;await sl
 function releaseSaves(){holdSave=false;heldSaves.splice(0).forEach(resolve=>resolve());}
 const results=[],errors=[],blank=()=>({schemaVersion:1,lineups:[],accounts:[],activeAccount:'',deletedPresetIds:[]});
 const ui=code=>win.webContents.executeJavaScript(code),sleep=ms=>new Promise(r=>setTimeout(r,ms));
-async function until(code){for(let i=0;i<200;i++){if(await ui(code))return;await sleep(25);}throw Error('UI timeout: '+code);}
+async function until(code,timeout=5000){const deadline=Date.now()+timeout;while(Date.now()<deadline){if(await ui(code))return;await sleep(25);}throw Error('UI timeout: '+code);}
 async function check(name,fn){try{await fn();results.push({name,passed:true});}catch(e){results.push({name,passed:false,error:e.message});console.error(name,e.message);}finally{releaseSaves();}}
 async function capture(name){await win.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true});await sleep(350);await fs.writeFile(path.join(profile,name+'.png'),(await win.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true})).toPNG());}
 async function main(){
@@ -30,6 +31,11 @@ async function main(){
  const catalog=await readIndex(path.join(root,'data/dungeon-catalog')).catch(error=>{if(error.code!=='ENOENT')throw error;return null;});
  local('dungeon-catalog-index',()=>catalog?.index||null);
  local('dungeon-catalog-table',name=>readTable(catalog,name));
+ const rune=process.env.ATLAS_RUNE_RUNTIME?createRuneRunner({configPath:process.env.ATLAS_RUNE_RUNTIME,scriptRoot:path.join(root,'tools'),suits:data.suits}):null;
+ let runeEnabled=false,replayPlan=null;
+ local('rune-battle-status',()=>runeEnabled?(rune?.status()||{available:true,resourceVersion:'0.0.816'}):{available:false});
+ local('rune-battle-run',plan=>{replayPlan=plan;return rune?.run(plan)||{completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0};});
+ local('rune-battle-stop',()=>rune?.stop());
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
  win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
  await win.loadFile(path.join(root,'app/index.html'));win.webContents.setZoomFactor(1);await sleep(80);await until('!!DATA && document.getElementById("loading").hidden');await ui('TALogin.ready()');
@@ -261,6 +267,29 @@ async function main(){
    assert.equal(stored.accounts[0].souls['desktop-first'].stats.attack,25);assert.equal(stored.accounts[0].souls['desktop-second'].stats.attack,40);
    assert.equal(stored.accounts[0].merged,true);assert.equal(stored.accounts[0].raw.souls.length,2);
   });
+ await check('勾选魂王阵容后库存精算自动把五位式神和三十件御魂交给复跑',async()=>{
+  const source=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&!l.members[0].qiling&&l.members[0].onmyojiId==='11');
+  const lineup={...source,id:'qa-rune-e2e',code:'|TA|qa-rune-e2e',title:'魂王复跑验收',requirementsComplete:true,
+   members:source.members.map(m=>m.kind==='onmyoji'?m:{...m,config:{scope:'all'},aiSkill:0})};
+  const roles=lineup.members.filter(m=>m.kind==='shikigami');
+  const heroes=Object.fromEntries(roles.map(m=>[`native-${m.index}`,{
+   heroId:Number(m.shikigamiId),level:40,star:6,awake:m.awakening,skinfo:m.skills.map(s=>[s.id,s.level]),
+   attrs:[[8000,0,0,0],[101,0,0,0],[.5,0,0,0],[.1,0,0,0],[500,0,0,0],[2500,0,0,0],0,0],
+  }]));
+  const hero_equips=roles.flatMap(m=>Array.from({length:6},(_,i)=>({id:`gear-${m.index}-${i}`,slot:i+1,quality:6,level:15,
+   setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:40,subAttributes:[]})));
+  const roster={...raw,heroes,hero_equips};
+  runeEnabled=true;
+  await ui(`stopMatch();STATE={...${JSON.stringify(blank())},lineups:[${JSON.stringify(lineup)}],accounts:[C.parseAccount(${JSON.stringify(roster)})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};runeStatus=null;selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-rune-e2e');renderSelection();`);
+  await until('!$("dungeon-match-selected").disabled&&$("dungeon-match-selected").textContent.includes("复跑")');
+  await ui('$("dungeon-match-selected").click()');
+  await until('dungeonBattle?.rows.every(row=>row.state==="finished")',110000);
+  assert.match(await ui('$("dungeon-battle-results").textContent'),/本次复跑(失败|通关).*随机分支/s);
+  assert.equal(replayPlan.members.length,5);
+  assert.equal(new Set(replayPlan.members.flatMap(member=>member.souls.map(soul=>soul.id))).size,30);
+  await ui('$("dungeon-workbench").scrollIntoView({block:"start"})');await capture('dungeon-selected-replay');
+  await ui('stopMatch();$("dungeon-workbench").open=false');
+ });
  if(process.argv.includes('--visual')){
   await ui('STATE='+JSON.stringify(blank())+';backupUndo=null;document.getElementById("undo-restore").hidden=true;document.getElementById("toast").classList.remove("show");document.getElementById("code-input").value="";updateCode();updateAccountSelect();fillFilters();selectView("library")');
   for(const width of [1440,900,720]){

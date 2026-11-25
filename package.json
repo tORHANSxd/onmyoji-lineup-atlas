@@ -41,6 +41,11 @@
     ],
     "extraResources": [
       {
+        "from": "tools",
+        "to": "rune-runner",
+        "filter": ["verify-rune-runtime.py", "extract-dungeon-catalog.py", "rune_replay.py", "rune_team.py"]
+      },
+      {
         "from": "release/ta-runtime/atlas-ta-helper",
         "to": "ta-runtime",
         "filter": [

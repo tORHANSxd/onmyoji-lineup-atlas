@@ -134,12 +134,68 @@ function filteredLineups(){const query=$('search').value.trim().toLowerCase().sp
  if(!selectedMembers.every(id=>l.members?.some(m=>m.shikigamiId===id)))return false;
   return !query.length||query.every(q=>searchText(l).includes(q));
 });}
-let dungeonRulesSource=null,dungeonStageFilter=null;
+let dungeonRulesSource=null,dungeonStageFilter=null,runeStatus=null,runeStatusPending=false,dungeonBattle=null,dungeonStopPending=false,dungeonBattleRenderKey='';
 function selectedDungeon(){
  return DATA?.dungeonRules?.dungeons.find(row=>row.id===Number($('dungeon-rules-select').value));
 }
 function checkedDungeonLineups(dungeon){
  return dungeon?.gameSceneId?lineups().filter(l=>Number(l.gameSceneId)===dungeon.gameSceneId&&selectedLineups.has(l.id)):[];
+}
+function hasRuneRuntime(dungeon){
+ return dungeon?.id===AtlasRuneLineup.dungeonId&&DATA.dungeonRules.source.resourceVersion===AtlasRuneLineup.resourceVersion;
+}
+function describeBattle(report){
+ if(!report.completed)return '复跑超时，未取得结算';
+ const outcome={win:'本次复跑通关',loss:'本次复跑失败',unknown:'胜负待核对'}[report.outcome];
+ const time=report.overlapMs==null||report.unresolvedActions?[]:[`动作窗口重叠 ${(report.overlapMs/1000).toFixed(2)} 秒`];
+ return [outcome,`通过 ${report.wavesCleared} 波`,`共 ${report.bouts} 回合`,...time].join(' · ');
+}
+function renderDungeonBattle(dungeon){
+ const body=$('dungeon-battle-results'),job=dungeonBattle;
+ const shown=hasRuneRuntime(dungeon)&&job&&job.account===account();
+ body.hidden=!shown;
+ $('dungeon-stop-battle').hidden=!shown||job.cancelled||!job.rows.some(row=>row.state==='waiting'||row.state==='running');
+ if(!shown)return;
+ const conditions=job.rows.find(row=>row.conditions)?.conditions||[];
+ const renderKey=JSON.stringify([job.rows.map(row=>[row.lineup.title,row.state,row.detail]),conditions]);
+ if(renderKey===dungeonBattleRenderKey)return;
+ dungeonBattleRenderKey=renderKey;
+ body.innerHTML=`<ul class="dungeon-battle-list">${job.rows.map(({lineup,state,detail})=>`<li><strong>${esc(lineup.title)}</strong><span>${esc(detail||{waiting:'等待库存精算',running:'正在原版引擎复跑',cancelled:'已停止'}[state])}</span></li>`).join('')}</ul>
+ ${conditions.length?`<p class="caption">${esc(conditions.join(' '))} 每个结果对应一次离线复跑，随机分支和实机动画耗时待验证。</p>`:''}`;
+}
+function stopDungeonBattle(clear=false){
+ const job=dungeonBattle;
+ if(job){
+  job.cancelled=true;
+  for(const row of job.rows)if(row.state==='waiting'||row.state==='running')row.state='cancelled';
+  if(job.running&&!dungeonStopPending){
+   dungeonStopPending=true;
+   void window.runeBattle.stop().catch(()=>{}).finally(()=>{dungeonStopPending=false;renderDungeonSelection();});
+  }
+ }
+ if(clear)dungeonBattle=null;
+ renderDungeonSelection();
+}
+async function advanceDungeonBattle(){
+ const job=dungeonBattle;
+ if(!job||job.cancelled||job.running||job.account!==account())return;
+ job.running=true;
+ try{
+  while(!job.cancelled&&job===dungeonBattle&&job.account===account()){
+   const row=job.rows.find(entry=>entry.state==='waiting'&&matchResults[entry.lineup.id]?.completed);
+   if(!row)break;
+   const result=matchResults[row.lineup.id];
+   try{
+    if(!result.ready)throw Error(result.proof?.state==='infeasible'?'库存精算已证明原码约束无解':'库存精算尚有条件待核对');
+    const {plan,conditions}=AtlasRuneLineup.team(row.lineup,result,job.account,DATA.gameConfig);
+    row.state='running';row.conditions=conditions;
+    renderDungeonSelection();
+    const report=await window.runeBattle.run(plan);
+    if(!job.cancelled)row.detail=describeBattle(report);
+   }catch(error){if(!job.cancelled)row.detail=error.message.replace(/^Error invoking remote method '[^']+': Error: /,'');}
+   if(!job.cancelled)row.state='finished';
+  }
+ }finally{job.running=false;renderDungeonSelection();}
 }
 function renderDungeonSelection(){
  if(!$('dungeon-workbench').open)return;
@@ -149,11 +205,22 @@ function renderDungeonSelection(){
  const matched=results.filter(r=>r?.completed&&r.ready).length;
  const finished=results.filter(r=>r?.completed).length;
  const skipped=selection.length-checked.length;
- $('dungeon-match-selected').disabled=!account()||!checked.length;
+ const offerRune=hasRuneRuntime(dungeon)&&window.runeBattle;
+ if(offerRune&&!runeStatus&&!runeStatusPending){
+  runeStatusPending=true;
+  window.runeBattle.status().then(result=>{runeStatus=result;},()=>{runeStatus={available:false};}).finally(()=>{runeStatusPending=false;renderDungeonSelection();});
+ }
+ const canReplay=offerRune&&runeStatus?.available&&runeStatus.resourceVersion===AtlasRuneLineup.resourceVersion;
+ const busy=hasRuneRuntime(dungeon)&&dungeonBattle&&dungeonBattle.account===account()&&
+  (dungeonBattle.running||!dungeonBattle.cancelled&&dungeonBattle.rows.some(row=>row.state==='waiting'));
+ $('dungeon-match-selected').disabled=!account()||!checked.length||!!busy||!!offerRune&&(runeStatusPending||dungeonStopPending);
+ $('dungeon-match-selected').textContent=canReplay?'精算并离线复跑':'精算勾选阵容';
  $('dungeon-show-lineups').disabled=!dungeon?.gameSceneId;
  const activeFilter=dungeonStageFilter===dungeon?.gameSceneId?'已按原码副本筛选。':'';
  $('dungeon-match-status').textContent=activeFilter+(!account()?'先导入并选择库存账号。':
-  `本关已勾选 ${selection.length} 个${skipped?` · ${skipped} 个需解析`:''}${finished?` · 已核对 ${finished} 个，配置达标 ${matched} 个`:''}。`);
+  `本关已勾选 ${selection.length} 个${skipped?` · ${skipped} 个需解析`:''}${finished?` · 已核对 ${finished} 个，配置达标 ${matched} 个`:''}。`)+
+  (offerRune&&!canReplay&&!runeStatusPending?' '+(runeStatus?.reason||'本机魂王复跑资料未连接')+'。':'');
+ renderDungeonBattle(dungeon);
 }
 function renderDungeonRules(){
  const panel=$('dungeon-workbench'),data=DATA?.dungeonRules;
@@ -200,9 +267,15 @@ $('dungeon-show-lineups').onclick=()=>{
  dungeonStageFilter=dungeon.gameSceneId;page=1;renderLibrary();
 };
 $('dungeon-match-selected').onclick=()=>{
- const checked=checkedDungeonLineups(selectedDungeon()).filter(C.hasParsedContent);
- if(checked.length)startMatch(checked.map(l=>l.id),{reuse:true});
+ const dungeon=selectedDungeon(),checked=checkedDungeonLineups(dungeon).filter(C.hasParsedContent);
+ if(!checked.length)return;
+ if(hasRuneRuntime(dungeon)&&runeStatus?.available&&runeStatus.resourceVersion===AtlasRuneLineup.resourceVersion){
+  dungeonBattle={account:account(),rows:checked.map(lineup=>({lineup,state:'waiting'})),running:false,cancelled:false};
+ }
+ startMatch(checked.map(l=>l.id),{reuse:true});
+ void advanceDungeonBattle();
 };
+$('dungeon-stop-battle').onclick=()=>stopDungeonBattle();
 function renderLibrary(){
  renderDungeonRules();
  if(view!=='library')return;
@@ -718,11 +791,12 @@ async function undoBackupRestore(){
  finally{libraryBusy=false;createLibraryParser(sessionRevision);}
 }
 
-function stopMatch(){
+function stopMatch({keepDungeon=false}={}){
  if(worker)worker.terminate();worker=null;matchPaused=false;
  for(const id of matchJobIds){const r=matchResults[id];if(r&&!r.completed)r.proof={...r.proof,state:'stopped'};}
  matchJobIds.clear();$('cancel-match').hidden=true;$('match-all').disabled=!account();
  if(!$('match-progress').hidden)$('match-progress').textContent='精算已停止，已有结果保留';
+ if(!keepDungeon)stopDungeonBattle(true);
  renderGapStatistics();
 }
 function showSamples(){openDialog('官方图片小样','采集后已核对资源类型；没有把立绘、头像或书签当作原生卡面',`<div class="sample-grid">${[['608','art-before','png','石长姬 · 未觉醒官方立绘','830 × 696'],['608','art-after','png','石长姬 · 觉醒官方立绘','830 × 696'],['217','portrait-before','jpg','大天狗 · 官方头像','90 × 90'],['217','bookmark','png','大天狗 · 官方书签','73 × 240']].map(([id,f,ext,name,size])=>`<div><img src="../data/images/${id}/${f}.${ext}" alt="${name}"><h3>${name}</h3><p>${size}</p></div>`).join('')}</div><div class="notice">透明立绘在矩形容器中完整展示，原图未裁切、未拉伸。原生卡面覆盖为 0；双形态图片没有互相复制填补。</div>`);}

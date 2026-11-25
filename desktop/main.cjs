@@ -11,7 +11,8 @@ const { TAQueryQueue } = require('./ta-query-queue.cjs');
 const { TACredentials } = require('./ta-credentials.cjs');
 const { TAResponseCache } = require('./ta-response-cache.cjs');
 const { readIndex: readDungeonIndex, readTable: readDungeonTable } = require('./dungeon-catalog.cjs');
-let win, official, taSession, queryQueue, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
+const {createRuneRunner}=require('./rune-runner.cjs');
+let win, official, taSession, queryQueue, runeRunner, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
 const isSmoke = process.argv.includes('--smoke');
 // Branding changes must never create a different personal inventory directory.
 if (!isSmoke) app.setPath('userData',path.join(app.getPath('appData'),'onmyoji-lineup-atlas'));
@@ -40,7 +41,8 @@ app.whenReady().then(async () => {
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true } });
   win.webContents.setWindowOpenHandler(({url}) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return {action:'deny'}; });
   win.webContents.on('will-navigate', (e,url) => { if (!isAppURL(url)) { e.preventDefault(); if (/^https:\/\//.test(url)) shell.openExternal(url); } });
-  official=await new OfficialData({baseData:JSON.parse(await fs.readFile(path.join(__dirname,'../data/bundle.json'),'utf8')),appRoot:path.join(__dirname,'..'),cacheRoot:path.join(app.getPath('userData'),'official-cache'),inspectImage:(bytes,info)=>{const image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw new Error('图片不能完整解码');const size=image.getSize();if(size.width!==info.width||size.height!==info.height||image.toBitmap().length!==size.width*size.height*4)throw new Error('图片解码尺寸不匹配');},onProgress:status=>{if(win&&!win.isDestroyed())win.webContents.send('official-progress',status);}}).init();
+  const baseData=JSON.parse(await fs.readFile(path.join(__dirname,'../data/bundle.json'),'utf8'));
+  official=await new OfficialData({baseData,appRoot:path.join(__dirname,'..'),cacheRoot:path.join(app.getPath('userData'),'official-cache'),inspectImage:(bytes,info)=>{const image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw new Error('图片不能完整解码');const size=image.getSize();if(size.width!==info.width||size.height!==info.height||image.toBitmap().length!==size.width*size.height*4)throw new Error('图片解码尺寸不匹配');},onProgress:status=>{if(win&&!win.isDestroyed())win.webContents.send('official-progress',status);}}).init();
   protocol.handle('atlas-asset',request=>{const u=new URL(request.url),file=u.pathname.slice(1);if(u.hostname!=='cache'||u.search||!validFile(file))return new Response('Not found',{status:404});return net.fetch(pathToFileURL(path.join(official.root,'images',file)).href);});
   background=new Background({statePath:statePath()});
   const dungeonPath = path.join(app.getPath('userData'), 'dungeon-catalog-path.json');
@@ -56,6 +58,14 @@ app.whenReady().then(async () => {
   })();
   handleLocal('dungeon-catalog-index', async () => (await dungeonCatalog)?.index ?? null);
   handleLocal('dungeon-catalog-table', async (_check, name) => readDungeonTable(await dungeonCatalog, name));
+  runeRunner=createRuneRunner({
+    configPath:process.env.ATLAS_RUNE_RUNTIME||path.join(app.isPackaged?process.resourcesPath:app.getPath('userData'),'rune-runtime.json'),
+    scriptRoot:app.isPackaged?path.join(process.resourcesPath,'rune-runner'):path.join(__dirname,'../tools'),
+    suits:baseData.suits,
+  });
+  handleLocal('rune-battle-status',()=>runeRunner.status());
+  handleLocal('rune-battle-run',(_check,plan)=>runeRunner.run(plan));
+  handleLocal('rune-battle-stop',()=>runeRunner.stop());
   handleLocal('dungeon-catalog-choose', async check => {
     const selection = await dialog.showOpenDialog(win, { title: '选择包含 index.json 的副本资料目录', properties: ['openDirectory'] });
     if (selection.canceled) return null;
@@ -151,5 +161,9 @@ app.whenReady().then(async () => {
   if(isSmoke) win.webContents.once('did-finish-load', async()=>{setTimeout(async()=>{try{const result=await win.webContents.executeJavaScript('window.runLoginSmoke ? window.runLoginSmoke() : ({error:"smoke entry not ready"})');taSession.stop();result.loginModuleLoggedOut=!taSession.status().authenticated&&!taSession.child;const out=process.env.ATLAS_SMOKE_OUTPUT;if(out)await atomicWrite(path.resolve(out),JSON.stringify(result,null,2));app.exit(result.error?1:0);}catch(e){taSession?.stop();console.error(e);app.exit(1);}},1500);});
   else setInterval(()=>{if(loggedIn&&official.due())official.refresh().catch(()=>{});},3600000).unref();
 });
-app.on('before-quit',()=>{official?.cancel();taSession?.stop();background?.close();});
+app.on('before-quit',event=>{
+  official?.cancel();taSession?.stop();background?.close();
+  const pending=runeRunner?.stop();
+  if(pending){event.preventDefault();void pending.then(()=>app.quit());}
+});
 app.on('window-all-closed',()=>app.quit());

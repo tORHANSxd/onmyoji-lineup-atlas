@@ -4,10 +4,12 @@ import argparse
 import builtins
 import faulthandler
 import json
+import math
 import os
 from pathlib import Path
 import re
 from runpy import run_path
+import struct
 import sys
 import time
 import types
@@ -88,6 +90,22 @@ def run(args):
     modules.game_builtins["open"] = open_model
     host = Host(library)
     host.install()
+    from unicorn.x86_const import UC_X86_REG_XMM0
+
+    native_api = host.oracle.api
+
+    def host_api(name, arguments):
+        if name != "acosf":
+            return native_api(name, arguments)
+        # The imported SysV function takes and returns a float in XMM0.
+        argument = host.oracle.uc.reg_read(UC_X86_REG_XMM0) & 0xffffffff
+        value, = struct.unpack("<f", struct.pack("<I", argument))
+        angle = math.acos(value) if -1 <= value <= 1 else math.nan
+        bits, = struct.unpack("<I", struct.pack("<f", angle))
+        host.oracle.uc.reg_write(UC_X86_REG_XMM0, bits)
+        return 0
+
+    host.oracle.api = host_api
 
     def table_key(key):
         return tuple(table_key(value) for value in key) if isinstance(key, list) else key

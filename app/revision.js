@@ -60,7 +60,8 @@ function startMatch(ids=null,{reuse=false}={}){
   const rows=[...matchJobIds].map(id=>matchResults[id]),done=rows.filter(r=>r?.completed).length,blocked=rows.filter(r=>r?.completed&&r.gapCategory==='unknown'&&r.proof?.state!=='error').length,errors=rows.filter(r=>r?.proof?.state==='error').length;
   const progress=`已精算 ${done} / ${matchJobIds.size}${blocked?' · '+blocked+' 个待补资料':''}${errors?' · '+errors+' 个异常待重试':''}`;
    if(Date.now()-matchRenderAt>350||d.done){matchRenderAt=Date.now();$('match-progress').textContent=progress;if(matchRenderPending){if(view==='library')renderLibrary();if(view==='accounts')renderRecommendations();matchRenderPending=false;}renderGapStatistics();}
-  if(d.done){stopMatch();$('match-progress').textContent=progress;renderLibrary();renderRecommendations();renderGapStatistics();}
+  if(d.result?.completed)void advanceDungeonBattle();
+  if(d.done){stopMatch({keepDungeon:true});$('match-progress').textContent=progress;renderLibrary();renderRecommendations();renderGapStatistics();}
  };
  worker.onerror=e=>{for(const id of matchJobIds)if(!matchResults[id]?.completed)matchResults[id]={...matchResults[id],completed:true,status:'unknown',gapCategory:'unknown',proof:{...matchResults[id]?.proof,state:'error'}};toast('计算任务异常：'+e.message);stopMatch();renderLibrary();};
  worker.postMessage({action:existing?'replace':'start',batch:++matchBatch,versions:matchVersions,lineups:ls,account:account(),roster:DATA.roster,effects:DATA.effects});

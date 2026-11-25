@@ -43,8 +43,10 @@
 <summary>副本资料与库存精算</summary>
 <div class="dungeon-controls"><label for="dungeon-rules-select">御魂副本<select id="dungeon-rules-select"></select></label>
 <button id="dungeon-show-lineups" class="secondary">查看阵容</button>
-<button id="dungeon-match-selected" class="primary">精算勾选阵容</button></div>
+<button id="dungeon-match-selected" class="primary">精算勾选阵容</button>
+<button id="dungeon-stop-battle" class="secondary" hidden>停止离线复跑</button></div>
 <p id="dungeon-match-status" class="caption" role="status"></p>
+<div id="dungeon-battle-results" aria-live="polite" hidden></div>
 <div id="dungeon-rules-details"></div>
 </details>
 <details id="client-dungeons" class="panel dungeon-workbench">
@@ -93,4 +95,4 @@
 </div><div class="bulk-footer"><p id="bulk-summary" role="status">粘贴后显示导入预览</p><label class="check"><input id="bulk-auto-parse" type="checkbox" checked>添加后自动解析新码，并继续库内剩余内容</label><p id="bulk-status" role="status" aria-live="polite"></p><div class="actions"><button id="bulk-apply" class="primary" disabled>添加 0 条有效阵容</button><button id="bulk-view" class="secondary" hidden>查看已添加阵容</button></div></div>
 <input id="bulk-file" type="file" accept=".txt,.tsv,text/plain,text/tab-separated-values" hidden>
 </dialog>
-<input id="file-input" type="file" accept=".json,application/json" multiple hidden></div><script src="vendor/jsQR.js"></script><script src="qr-reader.js"></script><script src="solver.js"></script><script src="game-config.js"></script><script src="core.js"></script><script src="library-model.js"></script><script src="exact-solver.js"></script><script src="lineup-tools.js"></script><script src="bulk-import.js"></script><script src="parse-errors.js"></script><script src="library-parser.js"></script><script src="categories.js"></script><script src="app.js"></script><script src="dungeon-catalog.js"></script><script src="revision.js"></script><script src="ta-login.js"></script><script src="skills.js"></script><script src="builder.js"></script></body></html>
+<input id="file-input" type="file" accept=".json,application/json" multiple hidden></div><script src="vendor/jsQR.js"></script><script src="qr-reader.js"></script><script src="solver.js"></script><script src="game-config.js"></script><script src="core.js"></script><script src="library-model.js"></script><script src="exact-solver.js"></script><script src="lineup-tools.js"></script><script src="bulk-import.js"></script><script src="parse-errors.js"></script><script src="library-parser.js"></script><script src="categories.js"></script><script src="rune-lineup.js"></script><script src="app.js"></script><script src="dungeon-catalog.js"></script><script src="revision.js"></script><script src="ta-login.js"></script><script src="skills.js"></script><script src="builder.js"></script></body></html>

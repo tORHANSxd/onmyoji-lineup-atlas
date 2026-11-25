@@ -54,3 +54,17 @@ $env:PYTHONHASHSEED = '0'
 式神培养信息使用原版 `HeroData`。御魂导出值映射为 `EquipAttrCalc` 的属性名，套装效果由原版按套装 ID 处理。首领御魂的固定值通过导出属性计入一次。回放用临时别名代替库存实例 ID。
 
 `onmyoji` 和 `members` 每项可设置 `aiSkill`。已知自动施法值通过原版 `op_setAutoSkill` 应用，报告记录实际装载的技能和已应用的设置。开启技能选择后，一名真实账号式神、六件真实御魂及测试晴明在第一波经五回合结算为失败，原版报告写明胜负。契灵和全随机分支证明仍待接入。
+
+### 在桌面软件复跑勾选阵容
+
+本机运行时须能读取同一资源版本的客户端快照、脚本索引和匹配的原生库证据。创建本地 `rune-runtime.json`，填写以下五个绝对路径：
+
+| 字段 | 本地位置 |
+|---|---|
+| `python` | 能运行本节工具和游戏资源依赖的 Python 3.11 可执行文件 |
+| `snapshot` | 解包工具生成的客户端快照目录 |
+| `gameTools` | 包含 `game_resources.py`、`original_battle.py` 和 `original_host.py` 的工具目录 |
+| `opcodeProof` | 包含 `native-evidence.json` 和对应 opcode 映射的目录 |
+| `scriptIndex` | 通过 `--script-index` 从同一快照生成的 JSON |
+
+将 `ATLAS_RUNE_RUNTIME` 指向这个文件后启动御契，也可把文件放进便携版的 `resources` 目录。打开「副本资料与库存精算」，在御魂神罚中勾选已经解析的阵容，点击「精算并离线复跑」。原版复跑按单场依次结算，仅接收精算得到的当前库存配装。切换账号会停止旧任务，运行结束后清理临时库存。缺少本机运行时仍可使用库存精算。
