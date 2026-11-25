@@ -1,22 +1,15 @@
-(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.AtlasGame=api;})(typeof self!=='undefined'?self:globalThis,function(){
+(function(root,factory){const common=typeof module==='object'&&module.exports;const api=factory(common?require('./rune-openings.js'):root.AtlasRuneOpenings);if(common)module.exports=api;else root.AtlasGame=api;})(typeof self!=='undefined'?self:globalThis,function(openings){
 'use strict';
 const integer=(n,min,max)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
-// Initial enemy panels emitted by RuneFbEngine for 神罚 (0.0.816, dungeon 102).
-const soulKingOpeningStats=new Map([
- [4741338,{hp:300000.99994992,speed:141,attack:7233.3,defense:425}],
- [47410270,{hp:130000.999999872,speed:132,attack:9644.4,defense:320.32}],
- [4742287,{hp:120001.00000003121,speed:145,attack:9644.4,defense:320.32}],
- [4740061,{hp:666666.999992592,speed:137,attack:8197.74,defense:390}],
- [4741324,{hp:44000.99999994672,speed:148,attack:10019.46,defense:900}],
- [4741297,{hp:198501.0000003024,speed:152,attack:2094.978,defense:0}],
- [4740062,{hp:800000.9999976192,speed:135,attack:6858.24,defense:580}],
- [4740063,{hp:172001.0000006272,speed:127,attack:5143.68,defense:570}],
- [4740064,{hp:172001.0000006272,speed:127,attack:5143.68,defense:570}],
-]);
-for(const stats of soulKingOpeningStats.values())Object.freeze(stats);
-function runeOpeningStats(resourceVersion,dungeonId,monsterId){
- if(resourceVersion==='0.0.816'&&dungeonId===102)return soulKingOpeningStats.get(monsterId)??null;
- return null;
+function runeOpeningStage(resourceVersion,dungeonId,tableSHA256=openings.dungeonTableSHA256){
+ return resourceVersion===openings.resourceVersion&&tableSHA256===openings.dungeonTableSHA256?openings.floors[dungeonId]??null:null;
+}
+function runeOpeningStats(resourceVersion,dungeonId,monsterId,wave,position){
+ const stage=runeOpeningStage(resourceVersion,dungeonId);
+ if(!stage)return null;
+ const units=wave==null?stage.waves.flat():stage.waves[wave-1]??[];
+ const candidates=units.filter(unit=>unit.id===monsterId&&(position==null||unit.position===position));
+ return candidates.length===1?candidates[0]:null;
 }
 function levels(data,id,awake=1){const v=data?.skills?.[id]?.variants;return v?.[String(awake?1:0)]||v?.['-1']||[];}
 function skill(data,id,level=1,awake=1){return levels(data,id,awake).find(s=>s.level===level)||null;}
@@ -97,5 +90,5 @@ function validate(data,input){
   }
  });return input;
 }
-return {levels,skill,slots,defaultMember,memberSkills,skillOrder,skillLabel,aiChoices,aiName,markLevels,spiritAttributes,runeOpeningStats,validate};
+return {levels,skill,slots,defaultMember,memberSkills,skillOrder,skillLabel,aiChoices,aiName,markLevels,spiritAttributes,runeOpeningStage,runeOpeningStats,validate};
 });

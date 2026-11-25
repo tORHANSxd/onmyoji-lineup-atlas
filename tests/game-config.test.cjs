@@ -12,6 +12,30 @@ test('魂王的原版开场属性只适用于已核验版本和关卡',()=>{
  assert.equal(G.runeOpeningStats('0.0.817',stage.id,4740062),null);
  assert.equal(G.runeOpeningStats(source.resourceVersion,101,4740062),null);
 });
+test('八岐大蛇原版开场按副本、波次和槽位匹配，虚无按专用引擎核验两波',()=>{
+ const {source,dungeons}=require('../data/dungeon-rules.json');
+ const {floors,dungeonTableSHA256}=require('../app/rune-openings.js');
+ const version=source.resourceVersion;
+ assert.equal(dungeonTableSHA256,source.tables.dungeon_rune.marshalSHA256);
+ assert.equal(Object.keys(floors).length,13);
+ for(const [id,floor] of Object.entries(floors)){
+  const raw=dungeons.find(row=>row.id===Number(id));
+  assert.equal(floor.scene,raw.scene);
+  assert.deepEqual([floor.allyOrbs,floor.enemyOrbs],[3,2]);
+  assert.equal(floor.waves.length,id==='103'?2:3);
+  for(const [i,wave] of floor.waves.entries()){
+   assert.deepEqual(wave.map(({id,position,level})=>({id,position,level})),raw.waves[i].map(({id,position,level})=>({id,position,level})));
+  }
+ }
+ assert.equal(G.runeOpeningStats(version,1,15405),null);
+ assert.equal(G.runeOpeningStats(version,1,15405,3,2).speed,101);
+ assert.equal(G.runeOpeningStats(version,1,15405,3,3).speed,101);
+ assert.equal(G.runeOpeningStats(version,1,15405,1,2),null);
+ assert.equal(G.runeOpeningStage(version,103).engine,'Hun13Engine');
+ assert.equal(G.runeOpeningStage(version,103).battleMode,580);
+ assert.equal(G.runeOpeningStage(version,103).baseRoundSeconds,120);
+ assert.equal(G.runeOpeningStage(version,103,'changed-table'),null);
+});
 function lineup(){return {title:'官方结构测试',desc:'',select_stage_id:stage,hconf:[G.defaultMember(D,10),...[554,554,554,554,554].map(id=>G.defaultMember(D,id))]};}
 test('客户端技能与原图覆盖每个可用角色，等级和标签按数据读取',()=>{
  for(const hero of Object.values(D.heroes))for(const id of hero.choices){const levels=G.levels(D,id,1);assert.ok(levels.length,hero.name);for(const s of levels){assert.ok(s.name);assert.ok(D.icons[s.icon]?.fileSHA256);assert.ok(s.tags.every(t=>D.tags[t]));}}

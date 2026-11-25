@@ -318,6 +318,17 @@ async function main(){
   assert.match(await ui('document.getElementById("dungeon-match-status").textContent'),/已核对 1 个/);
   await ui('document.getElementById("dungeon-workbench").open=false;document.getElementById("clear-filters").click()');
  });
+ await check('悲鸣显示原版开场面板，虚无区分两波战斗和原表附加波次',async()=>{
+  await ui('selectView("library");$("dungeon-workbench").open=true;$("dungeon-rules-select").value="101";renderDungeonRules()');
+  const rules=()=>ui('$("dungeon-rules-details").textContent');
+  assert.match(await rules(),/原版战斗 3 波.*八岐大蛇.*开场速度 134.*生命 199,999\.99.*攻击 27,861\.6.*防御 577\.28/s);
+  await ui('$("dungeon-rules-select").value="103";renderDungeonRules()');
+  assert.match(await rules(),/原版战斗 2 波.*每波基础时限 120 秒.*换队禁用名单.*原表附加波次 3/s);
+  assert.match(await rules(),/伊邪那美.*开场速度 130.*生命 750,001/s);
+  assert.equal(await ui('document.querySelector(".dungeon-wave:last-child").textContent.includes("开场速度")'),false);
+  await ui('$("dungeon-rules-details").scrollIntoView({block:"start",behavior:"instant"})');await capture('dungeon-soul-13-openings');
+  await ui('$("dungeon-rules-select").value="102";renderDungeonRules();$("dungeon-workbench").open=false');
+ });
   await check('旧缓存重启重新解析原始库存，备份再恢复不丢新版数据',async()=>{
   delete stored.accounts[0].snapshot;delete stored.accounts[0].coverage;stored.accounts[0].warnings=[];
   await win.loadFile(path.join(root,'app/index.html'));await until('!!DATA && document.getElementById("loading").hidden');
