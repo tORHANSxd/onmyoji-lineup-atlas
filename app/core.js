@@ -204,6 +204,11 @@ function inventoryComplete(account,kind){
 }
 function snapshotSoulKey(raw){return raw?.format==='mumu-snapshot-v1'?'hero_equips':raw?.format==='yys-desktop-cache-v1'?'souls':null;}
 function parseAccount(raw,fileName='账号'){
+  // 平安志 0.2.8-beta 版本 2 的 MuMu 缓存包含原始库存快照。
+  if(object(raw)&&raw.version===2&&raw.sourceKind==='mumu'&&typeof raw.rawSha256==='string'
+    &&/^[a-f0-9]{64}$/.test(raw.rawSha256)&&raw.sourcePayload?.format==='mumu-snapshot-v1'){
+    raw=raw.sourcePayload;
+  }
   const soulKey=snapshotSoulKey(raw),soulRows=soulKey?raw[soulKey]:null;
   if(!object(raw)||!soulKey||!object(raw.heroes)||!Array.isArray(soulRows)||!object(raw.player))throw new Error('仅支持已核验的平安志 JSON（mumu-snapshot-v1 或 yys-desktop-cache-v1）；未导入任何数据');
   if(Object.keys(raw.heroes).length>100000||soulRows.length>100000)throw new Error('账号数据规模超出100000条限制');

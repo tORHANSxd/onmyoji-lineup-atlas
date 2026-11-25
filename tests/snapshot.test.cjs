@@ -20,6 +20,16 @@ const lineup={code:'|TA|synthetic',decodeState:'decoded-local',requirementsCompl
 const effects=[{name:'防御加成',stat:'defensePercent',value:.3,suitNames:['招财猫']}];
 const finish=a=>{const it=E.search(lineup,a,roster,effects);let s;do{s=it.next();}while(!s.done);return s.value;};
 
+test('平安志版本 2 MuMu 缓存使用原始快照，忽略派生库存',()=>{
+ const raw=snapshot({futureSection:[1,2,3]});
+ const wrapper={version:2,sourceKind:'mumu',rawSha256:'a'.repeat(64),sourcePayload:raw,normalizedSouls:[]};
+ const parsed=C.parseAccount(wrapper);
+ assert.deepEqual(parsed,C.parseAccount(raw));
+ assert.deepEqual(C.restoreAccount(JSON.parse(JSON.stringify(parsed))).raw,raw);
+ assert.throws(()=>C.parseAccount({...wrapper,version:3}),/平安志/);
+ assert.throws(()=>C.parseAccount({...wrapper,sourcePayload:{...raw,hero_equips:undefined}}),/平安志/);
+});
+
 test('新版快照保留所有扩展字段，摘要不把堆叠素材算成战斗实例',()=>{
  const raw=snapshot({futureSection:{value:123}}),before=JSON.stringify(raw),a=C.parseAccount(raw);
  assert.equal(Object.keys(a.heroes).length,1);assert.equal(a.heroes.example.locked,true);

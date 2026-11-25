@@ -211,6 +211,7 @@ async function main(){
   assert.equal(await ui('filteredLineups().length>0&&filteredLineups().every(l=>Number(l.gameSceneId)===1001001)'),true);
   await ui('const row=filteredLineups().find(C.hasParsedContent);selectedLineups.add(row.id);renderSelection();document.getElementById("dungeon-workbench").scrollIntoView({block:"start"})');
   assert.equal(await ui('document.getElementById("dungeon-match-selected").disabled'),false);
+  assert.match(await ui('document.getElementById("dungeon-rules-details").textContent'),/我方 3 \/ 敌方 2.*攻击加成率 \+200%.*攻击加成率 \+240%.*攻击加成率 \+220%/s);
   await capture('dungeon-soul-12');
   await ui('document.getElementById("dungeon-match-selected").click()');
   await until('matchJobIds.size===0');
