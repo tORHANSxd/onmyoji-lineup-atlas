@@ -743,7 +743,7 @@ function renderDungeonRules(){
    }).join('')}</ul></section>`;
   }).join('');
   const rotation=native?.engine==='Hun13Engine'?
-   `<p class="caption">每波基础时限 ${native.baseRoundSeconds} 秒。首波出战的式神实例进入第二波换队禁用名单，首波通关的剩余时间计入第二波。</p>`:'';
+   `<p class="caption">每波基础时限 ${native.baseRoundSeconds} 秒。首波出战的式神实例不能参加第二波。首波通关时，剩余时间计入第二波。首波落败时，按首领剩余生命比例扣减第二波时间。</p>`:'';
   details.innerHTML=`<p class="caption">客户端资源 ${esc(data.source.resourceVersion)} · ${dungeon.stamina} 体力 · ${native?`原版战斗 ${nativeWaves} 波 · 初始鬼火 我方 ${native.allyOrbs} / 敌方 ${native.enemyOrbs}`:`配置 ${dungeon.waves.length} 波`}</p>${rotation}<div class="dungeon-waves">${waves}</div><p class="caption">精算核对原码的库存与面板要求。实战胜率和动画耗时待验证。</p>`;
  }
  renderDungeonSelection();

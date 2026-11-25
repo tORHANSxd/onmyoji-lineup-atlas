@@ -328,7 +328,7 @@ async function main(){
   const rules=()=>ui('$("dungeon-rules-details").textContent');
   assert.match(await rules(),/原版战斗 3 波.*八岐大蛇.*开场速度 134.*生命 199,999\.99.*攻击 27,861\.6.*防御 577\.28/s);
   await ui('$("dungeon-rules-select").value="103";renderDungeonRules()');
-  assert.match(await rules(),/原版战斗 2 波.*每波基础时限 120 秒.*换队禁用名单.*原表附加波次 3/s);
+  assert.match(await rules(),/原版战斗 2 波.*每波基础时限 120 秒.*不能参加第二波.*首领剩余生命比例扣减第二波时间.*原表附加波次 3/s);
   assert.match(await rules(),/伊邪那美.*开场速度 130.*生命 750,001/s);
   assert.equal(await ui('document.querySelector(".dungeon-wave:last-child").textContent.includes("开场速度")'),false);
   await ui('$("dungeon-rules-details").scrollIntoView({block:"start",behavior:"instant"})');await capture('dungeon-soul-13-openings');
