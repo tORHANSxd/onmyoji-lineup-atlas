@@ -48,7 +48,7 @@ async function main(){
  local('rune-battle-status',()=>runeEnabled?(rune?.status()||{available:true,resourceVersion:'0.0.816'}):{available:false});
  local('rune-battle-run',(plan,options)=>{
   replayPlan=plan;
-  return mockBattle?.(plan,options)||rune?.run(plan,options)||{completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};
+  return mockBattle?.(plan,options)||rune?.run(plan,options)||{seed:options?.seed??0,engineSeconds:13,completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};
  });
  local('rune-battle-verify-random',(plan,seed,id)=>{
   const progress=update=>win.webContents.send('rune-battle-random-progress',id,update);
@@ -340,6 +340,26 @@ async function main(){
   assert.match(await ui('document.querySelector("[data-member=\\"5\\"]").textContent'),/原码要求不佩戴御魂/);
   assert.equal(await ui('document.querySelectorAll("[data-member=\\"5\\"] .soul-slot").length'),0);
   await ui('$("detail-dialog").close()');
+  try{
+   for(const verdict of ['unknown','loss','pass']){
+    const seeds=[];
+    mockBattle=(_plan,options)=>{
+     assert.equal(options.fixedStep,true);seeds.push(options.seed);
+     const outcome=options.seed===1&&verdict!=='pass'?verdict:'win';
+     return {seed:options.seed,completed:outcome!=='unknown',outcome,wavesCleared:outcome==='win'?3:1,bouts:6,engineSeconds:13};
+    };
+    await ui('$("dungeon-match-selected").click()');
+    await until(`dungeonBattle?.rows[0]?.verdict===${JSON.stringify(verdict)}&&!dungeonBattle.running`);
+    const all=verdict==='pass';
+    assert.deepEqual(seeds,all?[0,1,2,3,7,42]:[0,1]);
+    assert.equal(await ui('$("dungeon-search-stock").hidden'),verdict!=='loss');
+    const status=await ui('$("dungeon-battle-results").textContent');
+    assert.match(status,/种子 0.*本次复跑通关/s);
+    if(all)assert.match(status,/已通过 6 个采样种子.*种子 42/s);
+    else if(verdict==='unknown')assert.match(status,/复跑结算待核对/);
+    else assert.match(status,/种子 1 未通关/);
+   }
+  }finally{mockBattle=null;}
   await ui('stopMatch();$("dungeon-workbench").open=false');
  });
  await check('勾选原码无解后才开放备选，分开显示各个种子的战报',async()=>{
@@ -368,7 +388,7 @@ async function main(){
    await ui('$("dungeon-match-selected").click()');
    await until('!$("dungeon-search-stock").hidden');
    assert.equal(calls.length,0);
-   assert.match(await ui('$("dungeon-match-status").textContent'),/勾选的阵容均未取得通关结果/);
+   assert.match(await ui('$("dungeon-match-status").textContent'),/勾选的阵容均已证明库存无解/);
    await ui('$("dungeon-search-stock").click()');
    await until('dungeonStock&&!dungeonStock.running',20000);
    assert.deepEqual(calls.filter(x=>x.ids===winner).map(x=>x.options),[0,1,2,3,7,42].map(seed=>({seed,fixedStep:true})));

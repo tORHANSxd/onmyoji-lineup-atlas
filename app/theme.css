@@ -63,9 +63,10 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-controls label{display:grid;gap:4px}
 .dungeon-controls button{min-height:36px}
 .dungeon-battle-list{list-style:none;margin:12px 0;padding:0;border:1px solid var(--line);border-radius:8px}
-.dungeon-battle-list li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 18px;padding:10px 12px;overflow-wrap:anywhere}
-.dungeon-battle-list li+li{border-top:1px solid var(--line)}
+.dungeon-battle-list>li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 18px;padding:10px 12px;overflow-wrap:anywhere}
+.dungeon-battle-list>li+li{border-top:1px solid var(--line)}
 .dungeon-battle-list span{color:var(--muted)}
+.dungeon-battle-list details{grid-column:1/-1;font-size:12px}
 #dungeon-stock-results{border-top:1px solid var(--line);margin:14px 0;padding-top:12px}
 #dungeon-stock-title{margin:0 0 6px;font-size:16px}
 .dungeon-stock-list,.dungeon-stock-members,.dungeon-stock-samples{list-style:none;padding:0}
@@ -91,7 +92,7 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .rune-code-preview textarea{display:block;box-sizing:border-box;width:100%;margin:6px 0 12px}
 .rune-code-preview img{width:min(330px,100%);height:auto}
 @media(max-width:780px){.rune-code-preview{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:780px){.dungeon-battle-list li{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:780px){.dungeon-battle-list>li{grid-template-columns:minmax(0,1fr)}}
 .dungeon-waves{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;margin:12px 0}
 .dungeon-wave{border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0}
 .dungeon-wave h3{margin:0;font-size:14px}

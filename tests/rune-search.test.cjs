@@ -62,6 +62,18 @@ test('不足五名可用式神时不补造角色和配装',()=>{
  assert.deepEqual(candidates(C.parseAccount(raw),data),[]);
 });
 
+test('只有同种子的有效结算可以判为通关或落败',()=>{
+ const win={seed:0,completed:true,outcome:'win',wavesCleared:3,engineSeconds:18.2};
+ assert.equal(R.sampleVerdict(win,0),'pass');
+ assert.equal(R.sampleVerdict({...win,outcome:'loss',wavesCleared:1},0),'loss');
+ for(const report of [{...win,seed:1},{...win,completed:false,outcome:'loss'},
+  {...win,wavesCleared:2},{...win,outcome:'unknown'},{...win,engineSeconds:NaN}]){
+  assert.equal(R.sampleVerdict(report,0),'unknown');
+ }
+ assert.equal(R.passed(sampleSeeds.map(seed=>({...win,seed}))),true);
+ assert.equal(R.passed([win]),false);
+});
+
 test('采样候选的游戏码带条件，本机配装经过持久化后可以精确复跑',async()=>{
  const account=C.parseAccount(inventory());
  const [row]=candidates(account,data);

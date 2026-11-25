@@ -14,9 +14,15 @@ const limits=[
  ['crit','critical_rate',100],['critDamage','critical_pow',100],['effectHit','debuff_acc',100],['effectResist','debuff_res',100],
 ];
 
+function sampleVerdict(report,seed){
+ if(report?.seed!==seed||report.completed!==true||!Number.isFinite(report.engineSeconds)||report.engineSeconds<0||
+  !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>3)return 'unknown';
+ if(report.outcome==='loss')return 'loss';
+ return report.outcome==='win'&&report.wavesCleared===3?'pass':'unknown';
+}
+
 function passed(samples){
- return samples.length===S.sampleSeeds.length&&samples.every((r,i)=>
-  r.seed===S.sampleSeeds[i]&&r.completed&&r.outcome==='win'&&r.wavesCleared===3&&Number.isFinite(r.engineSeconds));
+ return samples.length===S.sampleSeeds.length&&samples.every((r,i)=>sampleVerdict(r,S.sampleSeeds[i])==='pass');
 }
 
 function spiritConfig(game,spirit){
@@ -116,5 +122,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {passed,template,receipt,receiptFor,restore};
+return {sampleVerdict,passed,template,receipt,receiptFor,restore};
 });
