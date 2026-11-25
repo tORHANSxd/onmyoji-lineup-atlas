@@ -47,6 +47,13 @@ async function main(){
   assert.match(await ui('document.getElementById("client-dungeons-detail").textContent'),/将魂试炼.*team_player_num/s);
   await ui('document.getElementById("client-dungeons").scrollIntoView({block:"start",behavior:"instant"});document.querySelector("#client-dungeons-detail details").open=true');
   await capture('client-dungeon-catalog');
+  await ui('document.querySelector("#client-dungeons-detail button").click()');
+  await until('document.getElementById("client-dungeons-detail").textContent.includes("SSR3困难")');
+  assert.equal(await ui('document.getElementById("client-dungeons-table").value'),'pve_stage_data');
+  await ui('qaCatalogInput("family","guild");qaCatalogInput("query","首领退治");qaCatalogInput("table","guild_boss_show")');
+  await until('!document.getElementById("client-dungeons-records").hidden');
+  await ui('qaCatalogInput("row-query","贪婪的铁鼠");document.querySelector("#client-dungeons-list button").click()');
+  assert.match(await ui('document.getElementById("client-dungeons-detail").textContent'),/首领机制.*不能被复活/s);
   await ui('document.getElementById("client-dungeons").open=false');
  });
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};

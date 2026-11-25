@@ -25,3 +25,5 @@
 ```powershell
 python tools/build_dungeon_catalog.py tmp/dungeon-tables data/dungeon-catalog
 ```
+
+运行提取命令时可追加 `--battle-index output/battle-modules.json`，为本版本的 6,942 个战斗模块记录资源路径、偏移和校验值。该索引可定位同一版本的模块，客户端原始文件仍位于解包目录。

@@ -10,14 +10,16 @@ import re
 
 # Names used by the client configuration modules.
 FAMILIES = (
-    ("daily", r"dungeon|explore|chapter|daily|encounter|secret|challenge|boss|shilian|pve|mitama"),
+    ("daily", r"dungeon|explore|chapter|daily|encounter|secret|challenge|boss|shilian|pve|mitama|fengmo|^hunling"),
     ("guild", r"guild|crevice|kekkai|kirin"),
-    ("event", r"^act_|activity|event|festival|anniversary"),
-    ("battle", r"battle|monster|^skill$|buff|^hero$|^rune|loot|^team_assist_"),
+    ("event", r"^act_|activity|event|festival|anniversary|super_?ghost"),
+    ("battle", r"battle|monster|^skill$|buff|^hero$|^rune|loot|^team_assist_|^combinesceneinfo$"),
 )
 
 
 def family(name):
+    if name.startswith(("shilian_", "hunling_")):
+        return "daily"
     matches = {key for key, pattern in FAMILIES if re.search(pattern, name, re.I)}
     return next((key for key in ("guild", "event", "daily", "battle") if key in matches), "other")
 

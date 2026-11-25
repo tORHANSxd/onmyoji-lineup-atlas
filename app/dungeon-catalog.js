@@ -7,15 +7,27 @@
     pve_stage_data: '通用 PvE 关卡',
     BattleMonstersInfo: '战斗编组与波次',
     BattleScenesInfo: '战斗场景与站位',
+    Combinesceneinfo: '关卡场景配置',
     normal_battle_config: '通用战斗模式',
     dungeon_rune: '御魂副本',
     dungeon_awake: '觉醒副本',
     dungeon_challenge: '秘闻副本',
     dungeon_challenge_race: '秘闻竞速',
+    dungeon_challenge_series: '秘闻关卡与独立规则',
     dungeon_yuling: '御灵副本',
     guild_crevice_battle: '阴阳寮狭间暗域战斗',
+    guild_boss_show: '阴阳寮首领退治规则',
     guild_boss_reward: '阴阳寮首领奖励',
+    guild_dinner_monster: '阴阳寮宴会首领',
     act_team_battle: '活动组队战斗',
+    MZB_fengmo: '逢魔首领',
+    lbs_world_boss_type: '逢魔首领战斗规则',
+    shilian_stage_detail: '六道之门试炼',
+    hunling_noraml_boss_battle: '契灵之境首领奖励',
+    hunling_jijie_boss_battle: '契灵集结首领奖励',
+    SuperGhost_bossmission: '超鬼王历史首领挑战',
+    super_ghost_boss_accumulate_reward: '超鬼王累计奖励',
+    rpg_chapter: '剧情副本章节',
     team_assist_stage: '阵容码副本目录',
     monster: '怪物属性与免疫',
     skill: '技能配置',
@@ -32,6 +44,14 @@
     fbtips: '规则提示 ID', passReward: '通关奖励 ID', save_round_hp: '跨轮保留生命',
     halt_time: '停止时间配置', group_battle: '多人战斗',
     act_id: '活动 ID', battle_id: '关卡 ID', team_player_num: '组队人数', team_battle_type: '战斗类型',
+    rule: '玩法规则', boss_rule: '首领机制', attack_tip: '战斗提示', challenge_time: '挑战时限',
+    begin_time: '开放时间', end_time: '关闭时间', reward_id: '奖励 ID',
+  };
+  const links = {
+    pve_stage_data: ['groupid', 'BattleMonstersInfo', '查看敌方编组'],
+    act_team_battle: ['battle_id', 'pve_stage_data', '查看活动关卡'],
+    dungeon_rune: ['scene', 'Combinesceneinfo', '查看关卡场景'],
+    Combinesceneinfo: ['battlesceneinfo', 'BattleScenesInfo', '查看战斗站位'],
   };
   const state = { token: 0, index: null, entry: null, rows: [], matches: [], page: 0, selected: -1 };
   const option = (label, value) => new Option(label, value);
@@ -43,7 +63,7 @@
   };
   const normalized = value => String(value ?? '').normalize('NFKC').trim().toLowerCase();
   const keyText = key => typeof key === 'object' ? JSON.stringify(key) : String(key);
-  const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.floordesc, row?.typedesc, row?.skill_name]
+  const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.chapter_name, row?.floordesc, row?.typedesc, row?.skill_name]
     .find(value => typeof value === 'string' && value.trim()) || '';
 
   async function selectTable(name, key = '') {
@@ -72,7 +92,13 @@
       el('records').hidden = false;
       filterRows();
       const exact = key && rows.findIndex(([id]) => keyText(id) === key);
-      if (key && exact >= 0) selectRow(exact);
+      if (key && exact >= 0) {
+        state.page = Math.floor(state.matches.indexOf(exact) / pageSize);
+        renderRows();
+        selectRow(exact);
+      } else if (key) {
+        el('status').textContent = '本版本未找到关联记录 ' + key + '。';
+      }
     } catch (error) {
       if (token === state.token) el('status').textContent = '资料表读取失败。' + error.message;
     }
@@ -141,14 +167,15 @@
     raw.append(node('summary', '查看全部原始字段'), node('pre', JSON.stringify(row, null, 2)));
     details.replaceChildren(node('h3', rowTitle(row) || '记录 ' + keyText(key)));
     if (fields.childElementCount) details.append(fields);
-    if (state.entry.name === 'pve_stage_data' && row?.groupid != null
-        && state.index.tables.some(entry => entry.name === 'BattleMonstersInfo' && entry.status === 'decoded')) {
-      const link = node('button', '查看敌方编组 ' + row.groupid, 'secondary');
+    const [field, destination, label] = links[state.entry.name] ?? [];
+    const related = row?.[field];
+    if (related != null && state.index.tables.some(entry => entry.name === destination && entry.status === 'decoded')) {
+      const link = node('button', label + ' ' + related, 'secondary');
       link.type = 'button';
       link.onclick = () => {
         el('family').value = el('query').value = '';
-        filterTables('BattleMonstersInfo', false);
-        void selectTable('BattleMonstersInfo', String(row.groupid));
+        filterTables(destination, false);
+        void selectTable(destination, String(related));
         el('table').focus();
       };
       details.append(link);

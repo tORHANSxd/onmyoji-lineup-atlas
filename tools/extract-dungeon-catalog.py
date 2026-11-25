@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 
-def extract(snapshot, proof, apk_version, output):
+def extract(snapshot, proof, apk_version, output, battle_index=None):
     import game_resources as resources
     from literal_tables import read_literal_table
     from original_modules import OriginalModules
@@ -43,6 +43,7 @@ def extract(snapshot, proof, apk_version, output):
     tables = {}
     failures = []
     battle_modules = 0
+    battle_evidence = []
     output.mkdir(parents=True, exist_ok=True)
     for digest in digests:
         try:
@@ -54,6 +55,11 @@ def extract(snapshot, proof, apk_version, output):
         module = code.co_filename.replace(chr(92), "/")
         if module.startswith("battleengine/"):
             battle_modules += 1
+            if battle_index is not None:
+                battle_evidence.append({
+                    **{key: evidence[key] for key in ("digest", "origin", "source", "offset", "rawSHA256", "decodedSHA256")},
+                    "module": module, "marshalSHA256": resources.sha256(marshalled),
+                })
         if not module.startswith("com/data/cdata/"):
             continue
         name = module.split("/")[-1].removesuffix(".py")
@@ -98,6 +104,13 @@ def extract(snapshot, proof, apk_version, output):
         "scriptModules": len(digests) - len(failures), "battleModules": battle_modules,
         "unresolvedScripts": failures,
     })
+    if battle_index is not None:
+        resources.write_json(battle_index, {
+            "apkVersion": apk_version, "resourceVersion": resource_version, "nativeSHA256": elf_hash,
+            "battleModules": battle_modules, "scriptModules": len(digests) - len(failures),
+            "unresolvedScripts": failures,
+            "modules": sorted(battle_evidence, key=lambda row: (row["module"], row["digest"])),
+        })
     print(f"{counts}, {battle_modules} battle modules, {len(failures)} unreadable script resources")
 
 
@@ -109,10 +122,11 @@ if __name__ == "__main__":
     parser.add_argument("--apk-version", required=True)
     parser.add_argument("--tables", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--battle-index", type=Path)
     args = parser.parse_args()
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from build_dungeon_catalog import build
 
     sys.path.insert(0, str(args.game_tools.resolve()))
-    extract(args.snapshot.resolve(), args.opcode_proof.resolve(), args.apk_version, args.tables.resolve())
+    extract(args.snapshot.resolve(), args.opcode_proof.resolve(), args.apk_version, args.tables.resolve(), args.battle_index)
     build(args.tables, args.output)
