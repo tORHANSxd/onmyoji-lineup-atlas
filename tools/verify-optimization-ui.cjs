@@ -815,7 +815,39 @@ async function main(){
     assert.equal(stored.lineups.filter(l=>pair.includes(l.code)&&l.shortCode).length,2);
     await ui('$("detail-dialog").close()');
    }finally{status=offline;win.webContents.send('ta-status-changed',status);}
-  }finally{mockBattle=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
+   const scope='normal-solo-hun13',recordSHA256='a'.repeat(64);
+   const slowest={seed:13,engineSeconds:90,combatMs:80000,wavesCleared:1,recordSHA256};
+   const progress=seedEvidence({scope,bothWavesWins:0,slowest});
+   mockSeeds=(plan,update,dungeonId)=>{
+    assert.equal(dungeonId,103);assert.equal(JSON.stringify(plan),firstPlan);
+    update(progress);
+    return new Promise(resolve=>{stopSeeds=()=>{stopSeeds=null;resolve({...progress,wins:74,stopped:true});};});
+   };
+   const startFull=()=>ui('document.querySelector("[data-hun13-full]").click()');
+   await startFull();
+   await until('document.querySelector("#dungeon-hun13-result progress")?.value===73');
+   assert.equal(await ui('$("dungeon-stop-battle").textContent'),'暂停全种子验收');
+   assert.equal(await ui('document.querySelector("[data-hun13-code]").disabled'),true);
+   await ui('$("dungeon-stop-battle").click()');
+   await until('!dungeonHun13.activeFullSeedAudit&&!dungeonStopPending');
+   assert.match(await ui('$("dungeon-hun13-samples").textContent'),/已暂停全种子验收.*74 \/ 10,000 已通过.*两波均清场 0 场/s);
+   mockBattle=(plan,options)=>{
+    assert.equal(JSON.stringify(plan),firstPlan);assert.deepEqual(options,{dungeonId:103,seed:13,fixedStep:true});
+    return {seed:13,completed:true,outcome:'win',wavesCleared:1,engineSeconds:90,recordSHA256,
+     rounds:[{wave:1,onmyojiId:10,cleared:false,availableSeconds:120,seconds:25,carriedSeconds:-30},
+      {wave:2,onmyojiId:10,cleared:true,availableSeconds:90,seconds:45}],animationPlayback:{combatElapsedMs:80000}};
+   };
+   await ui('document.querySelector("[data-hun13-detail]").click()');
+   await until('!!document.querySelector("#dungeon-hun13-result .dungeon-wave-report")');
+   assert.match(await ui('document.querySelector("#dungeon-hun13-result .dungeon-wave-report").textContent'),/种子 13.*有波次未清场.*时限 90 秒/s);
+   await capture('dungeon-hun13-full-seeds');
+   mockSeeds=async()=>({...progress,wins:74,status:'seed-loss',loss:{seed:3167,wavesCleared:1}});
+   await startFull();
+   await until('!dungeonHun13.activeFullSeedAudit');
+   assert.match(await ui('$("dungeon-hun13-samples").textContent'),/种子 3167 未通关/);
+   assert.equal(await ui('document.querySelector("[data-hun13-code]")===null'),true);
+   assert.equal(stored.lineups.filter(l=>pair.includes(l.code)).length,2);
+  }finally{mockBattle=null;mockSeeds=null;stopSeeds=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
  });
  if(process.argv.includes('--visual')){
   await ui('STATE='+JSON.stringify(blank())+';backupUndo=null;document.getElementById("undo-restore").hidden=true;document.getElementById("toast").classList.remove("show");document.getElementById("code-input").value="";updateCode();updateAccountSelect();fillFilters();selectView("library")');

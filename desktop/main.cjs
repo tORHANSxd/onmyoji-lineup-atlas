@@ -72,7 +72,7 @@ app.whenReady().then(async () => {
   runeFloor=createRuneFloorRunner(runeRuntime);
   hun13=createHun13Runner(runeRuntime);
   const evidenceDirectory=path.join(app.getPath('userData'),'rune-seed-evidence');
-  const seedRunners=new Map([[101,runeFloor],[102,runeRunner]].map(([dungeonId,runner])=>[dungeonId,
+  const seedRunners=new Map([[101,runeFloor],[102,runeRunner],[103,hun13]].map(([dungeonId,runner])=>[dungeonId,
     createSeedEvidenceRunner({...runeRuntime,dungeonId,runner,directory:evidenceDirectory}),
   ]));
   const forDungeon=(dungeonId=102)=>{
@@ -82,7 +82,7 @@ app.whenReady().then(async () => {
   };
   seedEvidence={
     get running(){return [...seedRunners.values()].some(audit=>audit.running);},
-    stop(){return forDungeon(101).stop()||forDungeon(102).stop();},
+    stop(){return forDungeon(101).stop()||forDungeon(102).stop()||forDungeon(103).stop();},
   };
   let nativeReplayInFlight=false;
   const runNativeReplay=async action=>{

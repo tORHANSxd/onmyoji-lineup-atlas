@@ -14,6 +14,8 @@ const execute=promisify(execFile);
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const hash=value=>typeof value==='string'&&/^[a-f\d]{64}$/.test(value);
 const nonnegative=value=>Number.isFinite(value)&&value>=0;
+const isHun13Plan=plan=>Array.isArray(plan?.rounds)&&plan.rounds.length===2&&
+ plan.rounds.every(row=>row?.onmyoji&&Array.isArray(row.members)&&row.members.length===5);
 
 function verifyReport(report,seed,team,suits){
  const rounds=report?.rounds;
@@ -41,7 +43,7 @@ function verifyReport(report,seed,team,suits){
 function createHun13Runner({configPath,scriptRoot,suits}){
  const entry=path.join(scriptRoot,'verify-hun13.py');
  let current=null;
- return {
+ const runner={
   async available(){
    try{await fs.access(entry);return true;}
    catch{return false;}
@@ -49,7 +51,7 @@ function createHun13Runner({configPath,scriptRoot,suits}){
   async run(plan,{dungeonId,seed,fixedStep}={}){
    if(current)throw Error('已有虚无原版复跑正在运行');
    if(dungeonId!==103||fixedStep!==true||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
-      !Array.isArray(plan?.rounds)||plan.rounds.length!==2||!plan.rounds.every(row=>row?.onmyoji&&Array.isArray(row.members)&&row.members.length===5))
+      !isHun13Plan(plan))
     throw Error('无效的虚无双队复跑请求');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>512*1024)throw Error('虚无双队配装超过复跑大小限制');
@@ -80,8 +82,15 @@ function createHun13Runner({configPath,scriptRoot,suits}){
     finally{current=null;release();}
    }
   },
+  async runSeedEvidence(plan,seed){
+   const {completed,outcome,engineSeconds,rounds,wavesCleared,nativeSHA256,scriptIndexSHA256,teamSHA256,suitIndexSHA256,
+    engineSHA256,recordSHA256,animationPlayback}=await runner.run(plan,{dungeonId:103,seed,fixedStep:true});
+   return {seed,completed,outcome,engineSeconds,rounds,wavesCleared,combatMs:animationPlayback?.combatElapsedMs??null,
+    nativeSHA256,scriptIndexSHA256,teamSHA256,suitIndexSHA256,engineSHA256,recordSHA256};
+  },
   stop(){current?.cancel.abort();return current?.done;},
  };
+ return runner;
 }
 
-module.exports={createHun13Runner};
+module.exports={createHun13Runner,isHun13Plan};

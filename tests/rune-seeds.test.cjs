@@ -70,3 +70,30 @@ test('取消并保留已完成的种子，未知结果在下次运行可重试',
  }}]});
  assert.equal(retried.wins,2);
 });
+
+test('虚无全种子断点区分最终胜利、两波清场与原版落败',async t=>{
+ const dir=await directory(t),plan={};
+ const hun={...scope,dungeonId:103,route:'normal-solo-hun13',engineSHA256:hash};
+ const report=(seed,first,second)=>({
+  ...win(seed),engineSHA256:hash,outcome:second?'win':'loss',wavesCleared:Number(first)+Number(second),
+  rounds:[{wave:1,cleared:first,seconds:20,availableSeconds:120,carriedSeconds:first?100:-30.5,carriedBudgetSeconds:first?100:-30},
+   {wave:2,cleared:second,seconds:55,availableSeconds:first?220:90}],
+ });
+ const start=await scanSeeds({scope:hun,dir,plan,limit:2,runners:[{
+  async runSeedEvidence(_plan,seed){return report(seed,seed===0,true);},
+ }]});
+ assert.equal(start.wins,2);assert.equal(start.bothWavesWins,1);assert.equal(start.slowest.wavesCleared,1);
+ assert.equal(start.slowest.recordSHA256,hash);
+ const unknown=await scanSeeds({scope:hun,dir,plan,limit:1,runners:[{
+  async runSeedEvidence(_plan,seed){return {...report(seed,true,false),outcome:'win'};},
+ }]});
+ assert.equal(unknown.status,'inconclusive');assert.equal(unknown.wins,2);
+ const failure=await scanSeeds({scope:hun,dir,plan,runners:[{
+  async runSeedEvidence(_plan,seed){assert.equal(seed,seedOrder[2]);return report(seed,true,false);},
+ }]});
+ assert.equal(failure.status,'seed-loss');assert.equal(failure.bothWavesWins,1);
+ assert.deepEqual(failure.loss.rounds.map(round=>round.cleared),[true,false]);
+ const restored=await scanSeeds({scope:hun,dir,plan,runners:[{runSeedEvidence:()=>assert.fail('已有落败结果禁止发起新复跑')}]});
+ assert.equal(restored.attempted,0);assert.deepEqual(restored.loss,failure.loss);
+ await assert.rejects(scanSeeds({scope:{...hun,dungeonId:102},dir,plan,runners:[]}),/绑定了另一份阵容/);
+});

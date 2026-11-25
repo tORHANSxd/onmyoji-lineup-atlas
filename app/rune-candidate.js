@@ -75,9 +75,13 @@ async function template(row,data){
  return draft(row,data,sceneId,dungeonId===R.dungeonId?'魂王':'魂土',row.samples.length);
 }
 
+function hun13Verdict(report,seed){
+ if(report?.seed!==seed||report.completed!==true||!Number.isFinite(report.engineSeconds)||report.engineSeconds<0||
+    !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>2)return 'unknown';
+ return report.outcome==='win'?'pass':report.outcome==='loss'?'loss':'unknown';
+}
 const passedHun13=samples=>samples.length===S.hun13SampleSeeds.length&&samples.every((report,index)=>
- report?.seed===S.hun13SampleSeeds[index]&&report.completed===true&&report.outcome==='win'&&
- Number.isFinite(report.engineSeconds)&&report.engineSeconds>=0);
+ hun13Verdict(report,S.hun13SampleSeeds[index])==='pass');
 
 async function hun13Templates(row,data){
  if(row.rounds.length!==2||!passedHun13(row.samples))throw Error('完成虚无的全部采样复跑后才可生成双队阵容码');
@@ -151,5 +155,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,passed,passedHun13,commonSampleTiming,template,hun13Templates,receipt,receiptFor,restore};
+return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,template,hun13Templates,receipt,receiptFor,restore};
 });
