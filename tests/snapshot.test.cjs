@@ -30,6 +30,20 @@ test('平安志版本 2 MuMu 缓存使用原始快照，忽略派生库存',()=>
  assert.throws(()=>C.parseAccount({...wrapper,sourcePayload:{...raw,hero_equips:undefined}}),/平安志/);
 });
 
+test('平安志桌面缓存只用原始库存，拒绝藏宝阁和由派生字段冒充的库存',()=>{
+ const raw=desktopSnapshot();
+ const wrapper={version:2,sourceKind:'desktop',rawSha256:'a'.repeat(64),sourcePayload:raw,
+  completeness:'complete',normalizedSouls:[{}]};
+ assert.deepEqual(C.parseAccount(wrapper),C.parseAccount(raw));
+ assert.throws(()=>C.parseAccount({...wrapper,sourceKind:'cbg'}),/原始库存/);
+ assert.throws(()=>C.parseAccount({...wrapper,sourcePayload:null}),/原始库存/);
+ assert.deepEqual(C.parseAccount({...wrapper,sourcePayload:snapshot()}),C.parseAccount(snapshot()));
+ assert.throws(()=>C.parseAccount({...wrapper,sourcePayload:{...raw,format:'unknown'}}),/原始库存/);
+ for(const sourceKind of ['ldplayer','bluestacks']){
+  assert.deepEqual(C.parseAccount({...wrapper,sourceKind,sourcePayload:snapshot()}),C.parseAccount(snapshot()));
+ }
+});
+
 test('新版快照保留所有扩展字段，摘要不把堆叠素材算成战斗实例',()=>{
  const raw=snapshot({futureSection:{value:123}}),before=JSON.stringify(raw),a=C.parseAccount(raw);
  assert.equal(Object.keys(a.heroes).length,1);assert.equal(a.heroes.example.locked,true);

@@ -237,8 +237,9 @@ async function main(){
   });
   const desktopRaw={...raw,format:'yys-desktop-cache-v1',heroCount:1,inventoryCount:1,retainedCount:1,excludedCount:0,souls:[{id:'desktop-first',slot:1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:25,subAttributes:[{type:'crit_rate',value:.03}],equippedState:null}],equipPresets:[['合成桌面预设',['desktop-first']]]};
   delete desktopRaw.hero_equips;
-  await check('桌面缓存快照经后台导入后显示实际式神、御魂和预设',async()=>{
-   await ui('importMode="accounts";document.getElementById("merge-import").checked=false;handleFiles('+file(desktopRaw)+')');
+  const desktopCache={version:2,rawSha256:'a'.repeat(64),sourceKind:'desktop',sourcePayload:desktopRaw,normalizedSouls:[]};
+  await check('桌面版本 2 缓存经后台导入后显示实际式神、御魂和预设',async()=>{
+   await ui('importMode="accounts";document.getElementById("merge-import").checked=false;handleFiles('+file(desktopCache)+')');
    assert.equal(stored.accounts[0].raw.format,'yys-desktop-cache-v1');assert.equal(stored.accounts[0].souls['desktop-first'].stats.attack,25);
    assert.equal(Object.hasOwn(stored.accounts[0].raw,'hero_equips'),false);
    await ui('selectView("accounts");window.scrollTo(0,0)');

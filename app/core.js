@@ -203,12 +203,16 @@ function inventoryComplete(account,kind){
  return (kind?[kind]:['heroes','souls']).every(key=>account.coverage?.[key]!==false);
 }
 function snapshotSoulKey(raw){return raw?.format==='mumu-snapshot-v1'?'hero_equips':raw?.format==='yys-desktop-cache-v1'?'souls':null;}
+function accountSnapshot(file){
+  if(!object(file)||snapshotSoulKey(file)||!Object.hasOwn(file,'sourcePayload')||
+    typeof file.rawSha256!=='string'||!/^[a-f0-9]{64}$/i.test(file.rawSha256))return file;
+  if(file.version!==2)throw new Error('当前平安志缓存版本未核验，请从角色档案导出 JSON');
+  const payload=file.sourcePayload;
+  if(['desktop','mumu','ldplayer','bluestacks'].includes(file.sourceKind)&&snapshotSoulKey(payload))return payload;
+  throw new Error('平安志缓存缺少受支持的原始库存，请从角色档案导出 JSON');
+}
 function parseAccount(raw,fileName='账号'){
-  // 平安志 0.2.8-beta 版本 2 的 MuMu 缓存包含原始库存快照。
-  if(object(raw)&&raw.version===2&&raw.sourceKind==='mumu'&&typeof raw.rawSha256==='string'
-    &&/^[a-f0-9]{64}$/.test(raw.rawSha256)&&raw.sourcePayload?.format==='mumu-snapshot-v1'){
-    raw=raw.sourcePayload;
-  }
+  raw=accountSnapshot(raw);
   const soulKey=snapshotSoulKey(raw),soulRows=soulKey?raw[soulKey]:null;
   if(!object(raw)||!soulKey||!object(raw.heroes)||!Array.isArray(soulRows)||!object(raw.player))throw new Error('仅支持已核验的平安志 JSON（mumu-snapshot-v1 或 yys-desktop-cache-v1）；未导入任何数据');
   if(Object.keys(raw.heroes).length>100000||soulRows.length>100000)throw new Error('账号数据规模超出100000条限制');
