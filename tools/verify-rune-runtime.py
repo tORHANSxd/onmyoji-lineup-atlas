@@ -205,7 +205,7 @@ def run(args):
         actor = fixture_hero(10, "fixture-qingming", 60)
         avatar.init_from_dict({"heroes_gamble": {**fighters, "fixture-qingming": actor}, "yysid": 10})
     avatar.defaultHeros = list(fighters)
-    engine = RuneFbEngine({"fbId": 102, "seed": args.seed})
+    engine = RuneFbEngine({"fbId": 102})
     variant_rng = engine.random
     random_audit = None
     if args.audit_random:
@@ -245,6 +245,7 @@ def run(args):
     engine.onEntityCreated = observe_created
     engine.battleMode = const.BattleMode.MODE_RUNE_FB
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
+    # Rune mode keeps the constructor's seed. Choose it directly for repeatable offline runs.
     engine.seed = args.seed
     controller = LocalBattleController(const.CampFlag.CAMP1, avatar)
     controller.battleEngine = engine
