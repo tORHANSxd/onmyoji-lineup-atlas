@@ -5,6 +5,8 @@
 })(globalThis,function(G,C){
 'use strict';
 const sceneId=1001001,resourceVersion='0.0.816',dungeonId=102;
+const replayStages=new Map([[101,1001002],[dungeonId,sceneId]]);
+const sceneForDungeon=id=>replayStages.get(id)??null;
 
 function autoSkill(member,game,skills){
  const setting=member.aiSkill??0;
@@ -34,15 +36,16 @@ function inventorySpirit(actor,account,game){
  return {id:owned.id,star:owned.star,lv:owned.lv,shiny:owned.shiny,marks:owned.marks};
 }
 
-function team(lineup,result,account,game){
- if(Number(lineup.gameSceneId)!==sceneId)throw Error('该阵容码不属于御魂神罚');
+function team(lineup,result,account,game,floor=dungeonId){
+ const scene=sceneForDungeon(floor);
+ if(scene===null||Number(lineup.gameSceneId)!==scene)throw Error('该阵容码不属于当前复跑副本');
  if(!result?.ready||!result.completed||result.proof?.state!=='optimal'||!Array.isArray(result.assignment)){
   throw Error('精算未给出已核对的库存配装');
  }
  const occupied=lineup.members.filter(member=>member.occupied!==false);
  const actors=occupied.filter(member=>member.kind==='onmyoji');
  const members=occupied.filter(member=>member.kind==='shikigami').sort((a,b)=>a.index-b.index);
- if(actors.length!==1||members.length!==5||result.assignment.length!==members.length)throw Error('阵容码缺少魂王战斗所需的完整阵容');
+ if(actors.length!==1||members.length!==5||result.assignment.length!==members.length)throw Error('阵容码缺少战斗所需的完整阵容');
  const actor=actors[0],heroId=Number(actor.onmyojiId),actorRules=game.heroes[heroId];
  if(actorRules?.kind!=='onmyoji'||!Array.isArray(actor.skills)||!Number.isInteger(actor.level)||!Number.isInteger(actor.star)||actor.awakening!==0){
   throw Error('阵容码没有提供完整的阴阳师培养与技能配置');
@@ -69,5 +72,5 @@ function team(lineup,result,account,game){
  return {plan,conditions:['阴阳师按阵容码培养和携带技能复跑，平安志未提供其实际培养。普攻等级缺失时使用客户端最低等级。']};
 }
 
-return {sceneId,resourceVersion,dungeonId,team};
+return {sceneId,resourceVersion,dungeonId,sceneForDungeon,team};
 });

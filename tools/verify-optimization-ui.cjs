@@ -3,6 +3,7 @@ const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
 const {readIndex,readTable,readEncounters,readRecords}=require('../desktop/dungeon-catalog.cjs');
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
+const {createRuneFloorRunner}=require('../desktop/rune-floor-runner.cjs');
 const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
 const {Background}=require('../desktop/background.cjs');
 const root=path.resolve(__dirname,'..'),profile=path.join(root,'user-data','optimization-ui');
@@ -44,14 +45,18 @@ async function main(){
  local('dungeon-catalog-table',name=>readTable(catalog,name));
  local('dungeon-catalog-encounters',()=>readEncounters(catalog));
  local('dungeon-catalog-records',(table,keys)=>readRecords(catalog,table,keys));
- const rune=process.env.ATLAS_RUNE_RUNTIME?createRuneRunner({configPath:process.env.ATLAS_RUNE_RUNTIME,scriptRoot:path.join(root,'tools'),suits:data.suits}):null;
+ const runtime={configPath:process.env.ATLAS_RUNE_RUNTIME,scriptRoot:path.join(root,'tools'),suits:data.suits};
+ const rune=runtime.configPath?createRuneRunner(runtime):null;
+ const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
  const seedEvidence=(props={})=>({scope:'local-solo-rune',status:'incomplete',total:10000,wins:73,loss:null,
   slowest:{seed:13,engineSeconds:25.5,combatMs:14400},...props});
- local('rune-battle-status',()=>runeEnabled?(rune?.status()||{available:true,resourceVersion:'0.0.816'}):{available:false});
+ local('rune-battle-status',async()=>runeEnabled?{...(await rune?.status()||{available:true,resourceVersion:'0.0.816'}),floors:[101,102]}:{available:false});
  local('rune-battle-run',(plan,options)=>{
   replayPlan=plan;
-  return mockBattle?.(plan,options)||rune?.run(plan,options)||{seed:options?.seed??0,engineSeconds:13,completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};
+  if(options?.dungeonId===101)floorCalls.push(options);
+  const runner=options?.dungeonId===101?runeFloor:rune;
+  return mockBattle?.(plan,options)||runner?.run(plan,options)||{seed:options?.seed??0,engineSeconds:13,completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:plan.spirit&&{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};
  });
  local('rune-battle-verify-random',(plan,seed,id)=>{
   const progress=update=>win.webContents.send('rune-battle-random-progress',id,update);
@@ -59,7 +64,7 @@ async function main(){
  });
  local('rune-battle-seed-evidence',plan=>savedEvidence?.(plan)??null);
  local('rune-battle-verify-seeds',(plan,id)=>mockSeeds(plan,update=>win.webContents.send('rune-battle-seeds-progress',id,update)));
- local('rune-battle-stop',()=>stopSeeds?stopSeeds():stopRandom?stopRandom():rune?.stop());
+ local('rune-battle-stop',()=>stopSeeds?stopSeeds():stopRandom?stopRandom():runeFloor?.stop()||rune?.stop());
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
  win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
  await win.loadFile(path.join(root,'app/index.html'));win.webContents.setZoomFactor(1);await sleep(80);await until('!!DATA && document.getElementById("loading").hidden');await ui('TALogin.ready()');
@@ -370,7 +375,7 @@ async function main(){
    await ui('selectView("accounts");document.getElementById("account-snapshot-extra").open=true');
    assert.match(await ui('document.getElementById("account-snapshot-extra").textContent'),/账号概况 · 物品已提供本次未采集 · 沿用 2026-11-25T00:00:00Z 的旧记录/);
   });
- await check('勾选魂王阵容后原版复跑遵守不佩戴御魂，并带入真实选中的契灵',async()=>{
+ await check('魂王和悲鸣走各自的原版复跑，保留库存契灵及穿戴限制',async()=>{
   const source=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&!l.members[0].qiling&&l.members[0].onmyojiId==='11');
   const lineup={...source,id:'qa-rune-e2e',code:'|TA|qa-rune-e2e',title:'魂王复跑验收',requirementsComplete:true,
    members:source.members.map(m=>m.kind==='onmyoji'?{...m,qiling:{id:101,star:5,lv:3,mark_gid:2,marks:[9,9]}}:
@@ -487,7 +492,21 @@ async function main(){
     }
    }
   }finally{mockBattle=null;stopRandom=null;mockSeeds=null;stopSeeds=null;}
-  await ui('stopMatch();$("dungeon-workbench").open=false');
+  const sorrow={...lineup,id:'qa-rune-101',gameSceneId:1001002,code:'|TA|qa-rune-101',title:'悲鸣复跑验收'};
+  await ui(`stopMatch();STATE={...STATE,lineups:[${JSON.stringify(sorrow)}]};$("dungeon-rules-select").value="101";renderDungeonRules();$("dungeon-show-lineups").click();selectedLineups.add("qa-rune-101");renderSelection()`);
+  await until('!$("dungeon-match-selected").disabled&&$("dungeon-match-selected").textContent.includes("复跑")');
+  await ui('$("dungeon-match-selected").click()');
+  await until('dungeonBattle?.dungeonId===101&&dungeonBattle.rows[0].state==="finished"&&!dungeonBattle.running',110000);
+  assert.match(await ui('$("dungeon-battle-results").textContent'),/悲鸣复跑验收.*本次复跑(通关|失败).*列出的离线种子/s);
+  assert.equal(await ui('$("dungeon-search-stock").hidden&&!document.querySelector("[data-battle-full]")'),true);
+  assert.ok(floorCalls.length);
+  assert.deepEqual(floorCalls,commonSeeds.slice(0,Math.min(floorCalls.length,6)).map(seed=>({dungeonId:101,seed,fixedStep:true})));
+  assert.deepEqual(replayPlan.spirit,spirit);
+  assert.equal(replayPlan.members.at(-1).souls.length,0);
+  await capture('dungeon-soul-11-replay');
+  await ui('$("dungeon-rules-select").value="102";renderDungeonRules()');
+  assert.equal(await ui('$("dungeon-battle-results").hidden'),true);
+  await ui('stopMatch();$("clear-filters").click();$("dungeon-workbench").open=false');
  });
  await check('勾选原码无解后才开放备选，分开显示各个种子的战报',async()=>{
   const source=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&!l.members[0].qiling&&l.members[0].onmyojiId==='11');

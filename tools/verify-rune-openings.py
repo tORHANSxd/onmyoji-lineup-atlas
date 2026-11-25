@@ -1,120 +1,18 @@
 """Extract opening panels for the original 八岐大蛇 encounter configurations."""
 
 import argparse
-import builtins
 import faulthandler
 import json
 from math import isfinite
 import os
 from pathlib import Path
-import re
-from runpy import run_path
 import sys
 from tempfile import TemporaryDirectory
-from types import ModuleType
-
 
 def extract(runtime, work):
-    from game_resources import Bindict, decode_module, sha256
-    from original_battle import RuntimeModules, no_transport
-    from original_host import Host
+    from rune_floor_host import prepare_runtime
 
-    catalog = run_path(str(Path(__file__).with_name("extract-dungeon-catalog.py")))
-    client = catalog["open_catalog_client"](Path(runtime["snapshot"]))
-    proof = Path(runtime["opcodeProof"])
-    library, native_hash = catalog["verify_native_library"](client, proof)
-    patch = (client.snapshot / "raw/extra/update.ini").read_text(encoding="utf-8-sig")
-    version = re.search(r"^version\s*=\s*([\d.]+)\s*$", patch, re.M)[1]
-    script_bytes = Path(runtime["scriptIndex"]).read_bytes()
-    index = json.loads(script_bytes)
-    if version != "0.0.816" or index.get("resourceVersion", version) != version or index.get("nativeSHA256", native_hash) != native_hash:
-        raise ValueError("Opening verification requires matching 0.0.816 client resources")
-
-    class ActiveModules(RuntimeModules):
-        def __init__(self):
-            super().__init__(proof, work)
-            self.rows.clear()
-            self.packages.clear()
-            self.ambiguous.clear()
-            for row in index["modules"]:
-                raw = row["module"].replace("\\", "/").removesuffix(".py").removeprefix("lib3/")
-                name = raw.removesuffix("/__init__").replace("/", ".")
-                if name in self.rows:
-                    self.ambiguous[name] = (self.rows[name], row)
-                else:
-                    self.rows[name] = row
-                    if raw.endswith("/__init__"):
-                        self.packages.add(name)
-
-        def load(self, name):
-            if name in self.ambiguous:
-                raise ValueError("Ambiguous original module: " + name)
-            row = self.rows[name]
-            raw, _ = client.by_digest("script3", row["digest"])
-            code, marshalled = decode_module(raw)
-            if sha256(marshalled) != row["marshalSHA256"]:
-                raise ValueError("Script differs from the indexed resource: " + name)
-            return self.code(code)
-
-    modules = ActiveModules()
-    models = work / "src/model_info"
-    models.mkdir(parents=True)
-
-    def open_model(file, *args, **kwargs):
-        if isinstance(file, (str, Path)):
-            path = Path(file).resolve()
-            if path.parent == models and re.fullmatch(r"model_[\w]+\.json", path.name) and not path.exists():
-                payload, _ = client.resource("model_info", path.name)
-                path.write_bytes(payload)
-        return builtins.open(file, *args, **kwargs)
-
-    modules.game_builtins["open"] = open_model
-    host = Host(library)
-    host.install()
-
-    def table_key(key):
-        return tuple(table_key(value) for value in key) if isinstance(key, list) else key
-
-    class DecodedClientTable(dict):
-        def has_key(self, key):
-            return self.__contains__(key)
-
-        def __getitem__(self, key):
-            return super().__getitem__(table_key(key))
-
-        def __contains__(self, key):
-            return super().__contains__(table_key(key))
-
-        def get(self, key, default=None):
-            return super().get(table_key(key), default)
-
-    def decode_table(blob):
-        table = Bindict(blob).decode()
-        if not isinstance(table, dict):
-            raise ValueError("Expected a dictionary client table")
-        return DecodedClientTable(table)
-
-    sys.modules["bindict"].bindict = decode_table
-    environment = ModuleType("Globals")
-    environment.debugMode = False
-    environment.component = "server"
-    sys.modules["Globals"] = environment
-    for name in ("distserver", "distserver.game"):
-        package = ModuleType(name)
-        package.__path__ = []
-        sys.modules[name] = package
-    repository = ModuleType("distserver.game.GameServerRepo")
-    repository.game_service = None
-
-    class ErrorObserver:
-        def on_traceback(self, *unused, **kwargs):
-            raise RuntimeError("The original engine reported an internal error")
-
-    repository.game_event_callback = ErrorObserver()
-    sys.modules[repository.__name__] = repository
-    sys.meta_path.insert(0, modules)
-    sys.addaudithook(no_transport)
-
+    modules, host, source = prepare_runtime(runtime, work)
     from battleengine.BattleCommon import BattleAvatar
     from battleengine.BattleController import LocalBattleController
     from battleengine.engine.Hun13Engine import Hun13Engine
@@ -177,8 +75,7 @@ def extract(runtime, work):
     if not floors or host.oracle.unsupported:
         raise RuntimeError(f"Native opening verification incomplete: {host.oracle.unsupported}")
     engines = {name: modules.rows[f"battleengine.engine.{name}"]["marshalSHA256"] for name in ("RuneFbEngine", "Hun13Engine")}
-    return {"resourceVersion": version, "nativeSHA256": native_hash, "scriptIndexSHA256": sha256(script_bytes),
-            "engineSHA256": engines,
+    return {**source, "engineSHA256": engines,
             "dungeonTableSHA256": modules.rows["com.data.cdata.dungeon_rune"]["marshalSHA256"], "floors": floors}
 
 
@@ -189,7 +86,7 @@ def main():
     args = parser.parse_args()
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     output = args.output.resolve()
-    sys.path.insert(0, str(Path(runtime["gameTools"]).resolve()))
+    sys.path[:0] = [str(Path(__file__).resolve().parent), str(Path(runtime["gameTools"]).resolve())]
     faulthandler.dump_traceback_later(100, exit=True)
     with TemporaryDirectory(prefix="yuqi-rune-openings-") as directory:
         previous = Path.cwd()

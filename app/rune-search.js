@@ -35,7 +35,8 @@ const strategies=[
 ];
 const limit=6;
 // Check the observed losing seed before the two long fights found in the full-domain audit.
-const sampleSeeds=Object.freeze([0,1,2,3,7,42,8929,2016,7698]);
+const baseSampleSeeds=Object.freeze([0,1,2,3,7,42]);
+const sampleSeeds=Object.freeze([...baseSampleSeeds,8929,2016,7698]);
 const extraSeeds=Object.freeze(Array.from({length:24},(_,seed)=>seed).filter(seed=>!sampleSeeds.includes(seed)));
 
 function actor(game){
@@ -155,5 +156,5 @@ function candidates(account,{gameConfig:game,roster,effects},alternatives=[]){
  return sampled;
 }
 
-return {candidates,teamKey,sampleSeeds,extraSeeds};
+return {candidates,teamKey,baseSampleSeeds,sampleSeeds,extraSeeds};
 });

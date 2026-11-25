@@ -29,6 +29,14 @@ test('魂王复跑按原码槽位使用精算选中的库存实例和自动施�
  assert.match(conditions[0],/平安志未提供/);
 });
 
+test('悲鸣复跑读取对应原码，并拒绝跨副本使用阵容码',()=>{
+ const {lineup,account,result}=match();
+ const sorrow={...lineup,gameSceneId:1001002};
+ assert.deepEqual(team(sorrow,result,account,bundle.gameConfig,101).plan,team(lineup,result,account,bundle.gameConfig).plan);
+ assert.throws(()=>team(lineup,result,account,bundle.gameConfig,101),/当前复跑副本/);
+ assert.throws(()=>team(sorrow,result,account,bundle.gameConfig,103),/当前复跑副本/);
+});
+
 test('魂王复跑拒绝未精算、库存已变化和不完整的契灵配置',()=>{
  const {lineup,account,result}=match();
  assert.throws(()=>team(lineup,{...result,completed:false},account,bundle.gameConfig),/未给出/);

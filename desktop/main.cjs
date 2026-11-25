@@ -12,8 +12,9 @@ const { TACredentials } = require('./ta-credentials.cjs');
 const { TAResponseCache } = require('./ta-response-cache.cjs');
 const { readIndex: readDungeonIndex, readTable: readDungeonTable, readEncounters, readRecords } = require('./dungeon-catalog.cjs');
 const {createRuneRunner}=require('./rune-runner.cjs');
+const {createRuneFloorRunner}=require('./rune-floor-runner.cjs');
 const {createSeedEvidenceRunner}=require('./rune-seed-evidence.cjs');
-let win, official, taSession, queryQueue, runeRunner, seedEvidence, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
+let win, official, taSession, queryQueue, runeRunner, runeFloor, seedEvidence, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
 const isSmoke = process.argv.includes('--smoke');
 // Branding changes must never create a different personal inventory directory.
 if (!isSmoke) app.setPath('userData',path.join(app.getPath('appData'),'onmyoji-lineup-atlas'));
@@ -67,26 +68,41 @@ app.whenReady().then(async () => {
     suits:baseData.suits,
   };
   runeRunner=createRuneRunner(runeRuntime);
+  runeFloor=createRuneFloorRunner(runeRuntime);
   seedEvidence=createSeedEvidenceRunner({...runeRuntime,runner:runeRunner,directory:path.join(app.getPath('userData'),'rune-seed-evidence')});
-  const requireIdle=()=>{if(seedEvidence.running)throw Error('已有魂王全种子验收正在运行');};
-  handleLocal('rune-battle-status',()=>runeRunner.status());
-  handleLocal('rune-battle-run',(_check,plan,options)=>{requireIdle();return runeRunner.run(plan,options);});
+  let nativeReplayInFlight=false;
+  const runNativeReplay=async action=>{
+    if(nativeReplayInFlight||seedEvidence.running)throw Error('已有原版复跑正在运行');
+    nativeReplayInFlight=true;
+    try{return await action();}finally{nativeReplayInFlight=false;}
+  };
+  handleLocal('rune-battle-status',async()=>{
+    const status=await runeRunner.status();
+    const floors=status.available?[102]:[];
+    if(status.available&&await runeFloor.available())floors.push(101);
+    return {...status,floors};
+  });
+  handleLocal('rune-battle-run',(_check,plan,options)=>runNativeReplay(()=>{
+    if(options?.dungeonId===101)return runeFloor.run(plan,options);
+    if(options?.dungeonId!=null&&options.dungeonId!==102)throw Error('当前副本未接入原版复跑');
+    return runeRunner.run(plan,options);
+  }));
   handleLocal('rune-battle-verify-random',(_check,plan,seed,requestId)=>{
-    requireIdle();
     if(!Number.isSafeInteger(requestId)||requestId<1)throw Error('无效的复跑请求');
-    return runeRunner.verifyRandom(plan,seed,progress=>{
+    return runNativeReplay(()=>runeRunner.verifyRandom(plan,seed,progress=>{
       if(win&&!win.isDestroyed())win.webContents.send('rune-battle-random-progress',requestId,progress);
-    });
+    }));
   });
   handleLocal('rune-battle-seed-evidence',(_check,plan)=>seedEvidence.lookup(plan));
   handleLocal('rune-battle-verify-seeds',(_check,plan,requestId)=>{
     if(!Number.isSafeInteger(requestId)||requestId<1)throw Error('无效的复跑请求');
+    if(nativeReplayInFlight)throw Error('已有原版复跑正在运行');
     return seedEvidence.run(plan,progress=>{
       if(win&&!win.isDestroyed())win.webContents.send('rune-battle-seeds-progress',requestId,progress);
     });
   });
-  handleLocal('rune-battle-stop',()=>seedEvidence.stop()||runeRunner.stop());
-  win.webContents.on('dom-ready',()=>{void seedEvidence.stop();});
+  handleLocal('rune-battle-stop',()=>seedEvidence.stop()||runeFloor.stop()||runeRunner.stop());
+  win.webContents.on('dom-ready',()=>{void (seedEvidence.stop()||runeFloor.stop()||runeRunner.stop());});
   handleLocal('dungeon-catalog-choose', async check => {
     const selection = await dialog.showOpenDialog(win, { title: '选择包含 index.json 的副本资料目录', properties: ['openDirectory'] });
     if (selection.canceled) return null;
@@ -184,7 +200,7 @@ app.whenReady().then(async () => {
 });
 app.on('before-quit',event=>{
   official?.cancel();taSession?.stop();background?.close();
-  const pending=seedEvidence?.stop()||runeRunner?.stop();
+  const pending=seedEvidence?.stop()||runeFloor?.stop()||runeRunner?.stop();
   if(pending){event.preventDefault();void pending.then(()=>app.quit());}
 });
 app.on('window-all-closed',()=>app.quit());
