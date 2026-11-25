@@ -8,10 +8,8 @@ from pathlib import Path
 import re
 import sys
 
-def extract(snapshot, proof, apk_version, output, battle_index=None):
+def open_catalog_client(snapshot):
     import game_resources as resources
-    from literal_tables import read_literal_table
-    from original_modules import OriginalModules
 
     class CatalogClient(resources.Client):
         def prepare(self, group):
@@ -28,12 +26,26 @@ def extract(snapshot, proof, apk_version, output, battle_index=None):
 
     client = CatalogClient(snapshot)
     client.cloud = snapshot / "raw/external/cloud_resources"
+    return client
+
+
+def verify_native_library(client, proof):
     library = client.assets.parent / "lib/x86_64/libclient.so"
     with library.open("rb") as stream:
         elf_hash = hashlib.file_digest(stream, "sha256").hexdigest()
     native_evidence = json.loads((proof / "native-evidence.json").read_text(encoding="utf-8"))
     if elf_hash != native_evidence["elfSHA256"]:
         raise ValueError("The opcode proof belongs to a different native library")
+    return library, elf_hash
+
+
+def extract(snapshot, proof, apk_version, output, battle_index=None, script_index=None):
+    import game_resources as resources
+    from literal_tables import read_literal_table
+    from original_modules import OriginalModules
+
+    client = open_catalog_client(snapshot)
+    _, elf_hash = verify_native_library(client, proof)
     patch = (snapshot / "raw/extra/update.ini").read_text(encoding="utf-8-sig")
     resource_version = re.search(r"^version\s*=\s*([\d.]+)\s*$", patch, re.M)[1]
     decoder = OriginalModules(proof)
@@ -44,6 +56,7 @@ def extract(snapshot, proof, apk_version, output, battle_index=None):
     failures = []
     battle_modules = 0
     battle_evidence = []
+    script_evidence = []
     output.mkdir(parents=True, exist_ok=True)
     for digest in digests:
         try:
@@ -53,6 +66,8 @@ def extract(snapshot, proof, apk_version, output, battle_index=None):
             failures.append({"digest": digest, "error": str(error)})
             continue
         module = code.co_filename.replace(chr(92), "/")
+        if script_index is not None:
+            script_evidence.append({"module": module, "digest": digest, "marshalSHA256": resources.sha256(marshalled)})
         if module.startswith("battleengine/"):
             battle_modules += 1
             if battle_index is not None:
@@ -111,6 +126,11 @@ def extract(snapshot, proof, apk_version, output, battle_index=None):
             "unresolvedScripts": failures,
             "modules": sorted(battle_evidence, key=lambda row: (row["module"], row["digest"])),
         })
+    if script_index is not None:
+        resources.write_json(script_index, {
+            "resourceVersion": resource_version, "nativeSHA256": elf_hash,
+            "modules": script_evidence, "failures": failures,
+        })
     print(f"{counts}, {battle_modules} battle modules, {len(failures)} unreadable script resources")
 
 
@@ -123,10 +143,12 @@ if __name__ == "__main__":
     parser.add_argument("--tables", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--battle-index", type=Path)
+    parser.add_argument("--script-index", type=Path)
     args = parser.parse_args()
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from build_dungeon_catalog import build
 
     sys.path.insert(0, str(args.game_tools.resolve()))
-    extract(args.snapshot.resolve(), args.opcode_proof.resolve(), args.apk_version, args.tables.resolve(), args.battle_index)
+    extract(args.snapshot.resolve(), args.opcode_proof.resolve(), args.apk_version, args.tables.resolve(),
+            args.battle_index, args.script_index)
     build(args.tables, args.output)

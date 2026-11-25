@@ -29,3 +29,16 @@ python tools/build_dungeon_catalog.py tmp/dungeon-tables data/dungeon-catalog
 ```
 
 运行提取命令时可追加 `--battle-index output/battle-modules.json`，为本版本的 6,942 个战斗模块记录资源路径、偏移和校验值。该索引可定位同一版本的模块，客户端原始文件仍位于解包目录。
+
+## 复跑原版引擎的合成对局
+
+提取时追加 `--script-index tmp/active-scripts.json`，让原版引擎使用从同一资源包提取的脚本和模型。通过下列命令运行晴明与两名帚神的合成对局。
+
+```powershell
+$env:PYTHONHASHSEED = '0'
+& $YuqiPython tools/verify-rune-runtime.py --snapshot $YuqiSnapshot --game-tools $YuqiGameTools --opcode-proof $YuqiOpcodeProof --script-index tmp/active-scripts.json --output tmp/rune-runtime.json
+```
+
+脚本会检查原生库和脚本校验值、禁止网络连接，输出阶段、已过波次、随机调用计数和战斗记录。Windows 宿主使用从相同资源解出的静态字典来适配原版数据表查找。此夹具用于验证结算链路，使用合成角色数据，未测客户端渲染时间或可达随机分支。
+
+本机复跑依次经过加载、准备、召唤、选式神、战斗和结算。合成阵容两回合后在第一波落败，回放文件包含 828 行。记录的行数和 SHA-256 以每次输出为准。
