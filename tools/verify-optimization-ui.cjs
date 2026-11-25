@@ -32,9 +32,12 @@ async function main(){
  local('dungeon-catalog-index',()=>catalog?.index||null);
  local('dungeon-catalog-table',name=>readTable(catalog,name));
  const rune=process.env.ATLAS_RUNE_RUNTIME?createRuneRunner({configPath:process.env.ATLAS_RUNE_RUNTIME,scriptRoot:path.join(root,'tools'),suits:data.suits}):null;
- let runeEnabled=false,replayPlan=null;
+ let runeEnabled=false,replayPlan=null,mockBattle=null;
  local('rune-battle-status',()=>runeEnabled?(rune?.status()||{available:true,resourceVersion:'0.0.816'}):{available:false});
- local('rune-battle-run',plan=>{replayPlan=plan;return rune?.run(plan)||{completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};});
+ local('rune-battle-run',(plan,options)=>{
+  replayPlan=plan;
+  return mockBattle?.(plan,options)||rune?.run(plan,options)||{completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};
+ });
  local('rune-battle-stop',()=>rune?.stop());
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
  win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
@@ -299,6 +302,47 @@ async function main(){
   assert.equal(await ui('document.querySelectorAll("[data-member=\\"5\\"] .soul-slot").length'),0);
   await ui('$("detail-dialog").close()');
   await ui('stopMatch();$("dungeon-workbench").open=false');
+ });
+ await check('勾选原码无解后才开放备选，分开显示各个种子的战报',async()=>{
+  const source=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&!l.members[0].qiling&&l.members[0].onmyojiId==='11');
+  const lineup={...source,id:'qa-stock-search',code:'|TA|qa-stock-search'};
+  const ids=[591,389,596,557,379,372,554];
+  const heroes=Object.fromEntries(ids.map(id=>['stock-'+id,{heroId:id,level:40,star:6,awake:1,equips:[],
+   skinfo:data.gameConfig.heroes[id].skills.map(s=>[s,1])}]));
+  const stats=[['attack_flat',486],['speed',57],['defense_flat',104],['attack_rate',.55],['hp_flat',2052],['crit_rate',.55]];
+  const hero_equips=['海月火玉','针女','火灵','元兴寺','心眼','网切'].flatMap((setId,i)=>stats.map(([mainAttrType,mainAttrValue],j)=>({
+   id:`stock-${i}-${j}`,slot:j+1,quality:6,level:15,setId,mainAttrType,mainAttrValue,subAttributes:[{type:'crit_rate',value:.1}]
+  })));
+  const calls=[];let winner;
+  mockBattle=(plan,options)=>{
+   const ids=JSON.stringify(plan.members.map(m=>[m.instanceId,m.souls.map(q=>q.id)]));
+   winner??=ids;calls.push({ids,options});
+   const win=winner===ids;
+   return {seed:options.seed,engineSeconds:13+options.seed,completed:true,outcome:win?'win':'loss',
+    wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0};
+  };
+  try{
+   await ui(`stopMatch();STATE={...${JSON.stringify(blank())},lineups:[${JSON.stringify(lineup)}],accounts:[C.parseAccount(${JSON.stringify({...raw,heroes,hero_equips})})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-stock-search');renderSelection();`);
+   assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
+   await ui('$("dungeon-match-selected").click()');
+   await until('!$("dungeon-search-stock").hidden');
+   assert.equal(calls.length,0);
+   assert.match(await ui('$("dungeon-match-status").textContent'),/勾选的阵容均未取得通关结果/);
+   await ui('$("dungeon-search-stock").click()');
+   await until('dungeonStock&&!dungeonStock.running',20000);
+   assert.deepEqual(calls.slice(0,2).map(x=>x.options),[{seed:0,fixedStep:true},{seed:1,fixedStep:true}]);
+   assert.ok(calls.some(x=>x.ids!==winner),'需要至少一个落败的合成候选');
+   const top=await ui('document.querySelector(".dungeon-stock-card").textContent');
+   assert.match(top,/种子 0.*本次复跑通关.*种子 1.*本次复跑通关/s);
+   assert.match(await ui('$("dungeon-stock-list").textContent'),/本次复跑失败/);
+   assert.match(await ui('$("dungeon-stock-results").textContent'),/所有随机分支仍待验证/);
+   await ui('document.querySelector(".dungeon-stock-card summary").click()');
+   assert.match(await ui('document.querySelector(".dungeon-stock-card details[open]").textContent'),/速度.*暴击.*×/s);
+   await ui('$("dungeon-stock-results").scrollIntoView({block:"start"})');await capture('dungeon-stock-search');
+   win.setContentSize(720,960);
+   try{assert.equal(await ui('$("dungeon-stock-results").scrollWidth<=$("dungeon-stock-results").clientWidth+2'),true);}
+   finally{win.setContentSize(1440,1000);}
+  }finally{mockBattle=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
  });
  if(process.argv.includes('--visual')){
   await ui('STATE='+JSON.stringify(blank())+';backupUndo=null;document.getElementById("undo-restore").hidden=true;document.getElementById("toast").classList.remove("show");document.getElementById("code-input").value="";updateCode();updateAccountSelect();fillFilters();selectView("library")');

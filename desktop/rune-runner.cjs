@@ -29,13 +29,18 @@ function waitForExit(python,args,dir,signal){
  });
 }
 
-function summary(report){
+function summary(report,seed,fixedStep){
  if(report.resourceVersion!==resourceVersion||report.dungeonId!==dungeonId||report.fixture!=='selected-inventory'||
+  report.seed!==seed||
   typeof report.completed!=='boolean'||!['win','loss','unknown'].includes(report.outcome)||
   !Number.isSafeInteger(report.wavesCleared)||!Number.isSafeInteger(report.bouts))throw Error('客户端复跑没有返回可识别的结算');
  const sync=report.animationSync;
  const spirit=report.equippedSpirit;
- return {completed:report.completed,outcome:report.outcome,wavesCleared:report.wavesCleared,bouts:report.bouts,
+ const clock=report.clock;
+ if(clock?.mode!==(fixedStep?'client-record-step':'host-wall')||clock.stepMs!==(fixedStep?20:null)||
+  !Number.isFinite(clock.elapsedEngineSeconds)||clock.elapsedEngineSeconds<0)throw Error('客户端复跑时钟与所选条件不符');
+ return {seed,completed:report.completed,outcome:report.outcome,wavesCleared:report.wavesCleared,bouts:report.bouts,
+  engineSeconds:clock.elapsedEngineSeconds,
   randomBranchesVerified:false,overlapMs:Number.isFinite(sync?.overlapMs)?sync.overlapMs:null,
   unresolvedActions:Array.isArray(sync?.unresolved)?sync.unresolved.length:null,
   spirit:spirit?{id:spirit.id,star:spirit.star,level:spirit.level}:null};
@@ -48,9 +53,10 @@ function createRuneRunner({configPath,scriptRoot,suits}){
    try{await Promise.all([readConfig(configPath),fs.access(path.join(scriptRoot,'verify-rune-runtime.py'))]);return {available:true,resourceVersion};}
    catch(error){return {available:false,reason:error.code==='ENOENT'?'未连接本机魂王复跑资料':'本机魂王复跑配置无效'};}
   },
-  async run(plan){
+  async run(plan,{seed=0,fixedStep=false}={}){
    if(current)throw Error('已有魂王复跑正在运行');
    if(!plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length!==5)throw Error('复跑需要一位阴阳师及五位式神');
+   if(!Number.isSafeInteger(seed)||seed<0||seed>=2**32||typeof fixedStep!=='boolean')throw Error('无效的复跑种子或时钟');
    const input=JSON.stringify(plan);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑输入超过大小限制');
    const action=new AbortController();
@@ -66,12 +72,13 @@ function createRuneRunner({configPath,scriptRoot,suits}){
     await Promise.all([fs.writeFile(team,input,'utf8'),fs.writeFile(suitIndex,JSON.stringify(suits),'utf8')]);
     const argv=['-X','utf8',path.join(scriptRoot,'verify-rune-runtime.py'),
      '--snapshot',config.snapshot,'--game-tools',config.gameTools,'--opcode-proof',config.opcodeProof,
-     '--script-index',config.scriptIndex,'--output',out,'--suit-index',suitIndex,'--team',team,'--timeout','75'];
+     '--script-index',config.scriptIndex,'--output',out,'--suit-index',suitIndex,'--team',team,'--timeout','75','--seed',String(seed)];
+    if(fixedStep)argv.push('--fixed-step-ms','20');
     const code=await waitForExit(config.python,argv,dir,action.signal);
     if(code!==0&&code!==1)throw Error('原版引擎未能完成复跑');
     const report=await fs.readFile(out,'utf8').then(JSON.parse).catch(()=>null);
     if(!report)throw Error('原版引擎未生成结算，请核对客户端资料和阵容配置');
-    return summary(report);
+    return summary(report,seed,fixedStep);
    }catch(error){
     if(action.signal.aborted)throw Error('魂王复跑已停止或超时');
     throw error;

@@ -134,7 +134,7 @@ function filteredLineups(){const query=$('search').value.trim().toLowerCase().sp
  if(!selectedMembers.every(id=>l.members?.some(m=>m.shikigamiId===id)))return false;
   return !query.length||query.every(q=>searchText(l).includes(q));
 });}
-let dungeonRulesSource=null,dungeonStageFilter=null,runeStatus=null,runeStatusPending=false,dungeonBattle=null,dungeonStopPending=false,dungeonBattleRenderKey='';
+let dungeonRulesSource=null,dungeonStageFilter=null,runeStatus=null,runeStatusPending=false,dungeonBattle=null,dungeonStock=null,dungeonStopPending=false,dungeonBattleRenderKey='',dungeonStockRenderKey='';
 function selectedDungeon(){
  return DATA?.dungeonRules?.dungeons.find(row=>row.id===Number($('dungeon-rules-select').value));
 }
@@ -156,7 +156,6 @@ function renderDungeonBattle(dungeon){
  const body=$('dungeon-battle-results'),job=dungeonBattle;
  const shown=hasRuneRuntime(dungeon)&&job&&job.account===account();
  body.hidden=!shown;
- $('dungeon-stop-battle').hidden=!shown||job.cancelled||!job.rows.some(row=>row.state==='waiting'||row.state==='running');
  if(!shown)return;
  const conditions=job.rows.find(row=>row.conditions)?.conditions||[];
  const renderKey=JSON.stringify([job.rows.map(row=>[row.lineup.title,row.state,row.detail]),conditions]);
@@ -166,16 +165,16 @@ function renderDungeonBattle(dungeon){
  ${conditions.length?`<p class="caption">${esc(conditions.join(' '))} 每个结果对应一次离线复跑，随机分支和实机动画耗时待验证。</p>`:''}`;
 }
 function stopDungeonBattle(clear=false){
- const job=dungeonBattle;
- if(job){
-  job.cancelled=true;
+ const jobs=[dungeonBattle,dungeonStock].filter(Boolean);
+ for(const job of jobs){
+  job.cancelled=true;job.stopSearch?.();
   for(const row of job.rows)if(row.state==='waiting'||row.state==='running')row.state='cancelled';
-  if(job.running&&!dungeonStopPending){
-   dungeonStopPending=true;
-   void window.runeBattle.stop().catch(()=>{}).finally(()=>{dungeonStopPending=false;renderDungeonSelection();});
-  }
  }
- if(clear)dungeonBattle=null;
+ if(jobs.some(job=>job.running)&&!dungeonStopPending){
+  dungeonStopPending=true;
+  void window.runeBattle.stop().catch(()=>{}).finally(()=>{dungeonStopPending=false;renderDungeonSelection();});
+ }
+ if(clear){dungeonBattle=null;dungeonStock=null;}
  renderDungeonSelection();
 }
 async function advanceDungeonBattle(){
@@ -190,14 +189,106 @@ async function advanceDungeonBattle(){
    try{
     if(!result.ready)throw Error(result.proof?.state==='infeasible'?'库存精算已证明原码约束无解':'库存精算尚有条件待核对');
     const {plan,conditions}=AtlasRuneLineup.team(row.lineup,result,job.account,DATA.gameConfig);
-    row.state='running';row.conditions=conditions;
+    row.state='running';row.conditions=conditions;row.teamKey=AtlasRuneSearch.teamKey(plan);
     renderDungeonSelection();
     const report=await window.runeBattle.run(plan);
-    if(!job.cancelled)row.detail=describeBattle(report);
+    if(!job.cancelled){row.report=report;row.detail=describeBattle(report);}
    }catch(error){if(!job.cancelled)row.detail=error.message.replace(/^Error invoking remote method '[^']+': Error: /,'');}
    if(!job.cancelled)row.state='finished';
   }
  }finally{job.running=false;renderDungeonSelection();}
+}
+function originalsTried(selection){
+ if(!selection.length)return true;
+ const job=dungeonBattle;
+ if(!job||job.account!==account()||job.cancelled||job.rows.length!==selection.length)return false;
+ const allChecked=new Set(selection.map(l=>l.id));
+ return job.rows.every(row=>allChecked.has(row.lineup.id)&&row.state==='finished'&&row.report?.outcome!=='win');
+}
+function stockBusy(job){return !!job&&job.account===account()&&job.running&&!job.cancelled;}
+function stockPasses(row){return row.samples.length===2&&row.samples.every(sample=>sample.completed&&sample.outcome==='win');}
+function renderDungeonStock(dungeon){
+ const panel=$('dungeon-stock-results'),job=dungeonStock;
+ panel.hidden=!hasRuneRuntime(dungeon)||!job||job.account!==account();
+ if(panel.hidden)return;
+ const completed=job.rows.filter(row=>row.state==='finished').length,passes=job.rows.filter(stockPasses).length;
+ const status=job.cancelled?'已停止，保留已完成的复跑。':job.error||(
+  job.searching?'正在按输出、供火和辅助技能挑选式神与御魂…':
+  !job.rows.length?'当前库存未找到可组成的备选队伍。':
+  `已复跑 ${completed} / ${job.rows.length} 队 · ${passes} 队通过两组种子${job.running?'':'。'}`);
+ const key=JSON.stringify([status,job.rows.map(row=>[row.index,row.heroIds,row.state,row.samples,row.error])]);
+ if(key===dungeonStockRenderKey)return;
+ dungeonStockRenderKey=key;$('dungeon-stock-status').textContent=status;
+ const list=$('dungeon-stock-list'),opened=new Set([...list.querySelectorAll('details[open]')].map(el=>el.dataset.stockGear));
+ const focus=document.activeElement.closest('summary')?.parentElement?.dataset.stockGear;
+ const names=DATA.gameConfig.heroes;
+ const worstSample=row=>Math.max(...row.samples.map(sample=>sample.engineSeconds));
+ const rows=[...job.rows].sort((a,b)=>Number(stockPasses(b))-Number(stockPasses(a))||
+  (stockPasses(a)&&stockPasses(b)?worstSample(a)-worstSample(b):0));
+ list.innerHTML=rows.map(row=>{
+  const summary=row.error||{waiting:'等待复跑',running:'正在原版引擎复跑',cancelled:'已停止'}[row.state]||'';
+  const members=row.heroIds.map((id,index)=>{
+   const m={kind:'shikigami',name:names[id]?.name,shikigamiId:String(id),awakening:row.plan.members[index].hero.awake};
+   return `<li>${thumb(m)}<span>${esc(m.name)}</span></li>`;
+  }).join('');
+  const samples=row.samples.map(sample=>{
+   const time=sample.completed?` · 引擎 ${sample.engineSeconds.toFixed(2)} 秒`:'';
+   return `<li>种子 ${sample.seed} · ${esc(describeBattle(sample)+time)}</li>`;
+  }).join('');
+  const builds=row.plan.members.map((member,index)=>{
+   const panel=row.panels[index],speed=panel.speed.toFixed(2),crit=(panel.crit*100).toFixed(1);
+   const sets=new Map();
+   for(const soul of member.souls){
+    const set=job.account.souls[soul.id].set;
+    sets.set(set,(sets.get(set)||0)+1);
+   }
+   const suits=[...sets].map(([set,count])=>`${set} × ${count}`).join('、');
+   return `<li><strong>${esc(names[row.heroIds[index]]?.name)}</strong><span>速度 ${speed} · 暴击 ${crit}%</span><span>${esc(suits)}</span></li>`;
+  }).join('');
+  return `<li class="dungeon-stock-card"><strong>${esc(row.title)}</strong><ul class="dungeon-stock-members" aria-label="式神">${members}</ul>
+   ${samples?`<ul class="dungeon-stock-samples" aria-label="复跑结果">${samples}</ul>`:''}
+   ${summary?`<p class="caption">${esc(summary)}</p>`:''}
+   <details data-stock-gear="${row.index}"${opened.has(String(row.index))?' open':''}><summary>查看御魂搭配</summary><ul class="dungeon-stock-builds">${builds}</ul></details></li>`;
+ }).join('');
+ if(focus!==undefined)list.querySelector(`[data-stock-gear="${focus}"] summary`)?.focus();
+}
+function generateDungeonStock(job){
+ const candidates=new Worker('rune-search-worker.js');
+ const {roster,effects,gameConfig}=DATA;
+ return new Promise((resolve,reject)=>{
+  job.stopSearch=()=>resolve([]);
+  candidates.onmessage=({data})=>data.error?reject(Error(data.error)):resolve(data.candidates);
+  candidates.onerror=event=>reject(Error(event.message||'备选搜索未完成'));
+  candidates.postMessage({account:job.account,roster,effects,gameConfig,alternatives:job.alternatives});
+ }).finally(()=>{candidates.terminate();delete job.stopSearch;});
+}
+async function searchDungeonStock(){
+ const dungeon=selectedDungeon(),selection=checkedDungeonLineups(dungeon),selected=account();
+ if(!selected||!hasRuneRuntime(dungeon)||!runeStatus?.available||dungeonStopPending||dungeonBattle?.running||stockBusy(dungeonStock)||!originalsTried(selection))return;
+ const alternatives=dungeonBattle?.account===selected?dungeonBattle.rows.map(row=>row.teamKey).filter(Boolean):[];
+ const job=dungeonStock={account:selected,rows:[],running:true,searching:true,cancelled:false,alternatives};
+ renderDungeonSelection();
+ $('dungeon-stop-battle').focus();
+ try{
+  const candidates=await generateDungeonStock(job);
+  if(job.cancelled)return;
+  job.rows=candidates.map((row,index)=>({...row,index,state:'waiting',samples:[]}));
+  job.searching=false;renderDungeonSelection();
+  for(const row of job.rows){
+   if(job.cancelled)break;
+   row.state='running';renderDungeonSelection();
+   try{
+    for(const seed of [0,1]){
+     const report=await window.runeBattle.run(row.plan,{seed,fixedStep:true});
+     if(job.cancelled)break;
+     row.samples.push(report);renderDungeonSelection();
+     if(!report.completed||report.outcome!=='win')break;
+    }
+   }catch(error){if(!job.cancelled)row.error=error.message.replace(/^Error invoking remote method '[^']+': Error: /,'');}
+   if(!job.cancelled)row.state='finished';
+  }
+ }catch(error){if(!job.cancelled)job.error=error.message;}
+ finally{job.running=false;job.searching=false;renderDungeonSelection();}
 }
 function renderDungeonSelection(){
  if(!$('dungeon-workbench').open)return;
@@ -215,14 +306,21 @@ function renderDungeonSelection(){
  const canReplay=offerRune&&runeStatus?.available&&runeStatus.resourceVersion===AtlasRuneLineup.resourceVersion;
  const busy=hasRuneRuntime(dungeon)&&dungeonBattle&&dungeonBattle.account===account()&&
   (dungeonBattle.running||!dungeonBattle.cancelled&&dungeonBattle.rows.some(row=>row.state==='waiting'));
- $('dungeon-match-selected').disabled=!account()||!checked.length||!!busy||!!offerRune&&(runeStatusPending||dungeonStopPending);
+ const workingStock=hasRuneRuntime(dungeon)&&stockBusy(dungeonStock);
+ $('dungeon-match-selected').disabled=!account()||!checked.length||!!busy||workingStock||!!offerRune&&(runeStatusPending||dungeonStopPending);
  $('dungeon-match-selected').textContent=canReplay?'精算并离线复跑':'精算勾选阵容';
+ const offerStock=canReplay&&account()&&!busy&&!workingStock&&originalsTried(selection);
+ $('dungeon-search-stock').hidden=!offerStock;
+ $('dungeon-search-stock').disabled=dungeonStopPending;
+ $('dungeon-stop-battle').hidden=!(workingStock||busy&&!dungeonBattle.cancelled);
  $('dungeon-show-lineups').disabled=!dungeon?.gameSceneId;
  const activeFilter=dungeonStageFilter===dungeon?.gameSceneId?'已按原码副本筛选。':'';
  $('dungeon-match-status').textContent=activeFilter+(!account()?'先导入并选择库存账号。':
   `本关已勾选 ${selection.length} 个${skipped?` · ${skipped} 个需解析`:''}${finished?` · 已核对 ${finished} 个，配置达标 ${matched} 个`:''}。`)+
-  (offerRune&&!canReplay&&!runeStatusPending?' '+(runeStatus?.reason||'本机魂王复跑资料未连接')+'。':'');
+  (offerRune&&!canReplay&&!runeStatusPending?' '+(runeStatus?.reason||'本机魂王复跑资料未连接')+'。':'')+
+  (offerStock&&selection.length?' 勾选的阵容均未取得通关结果，可从库存寻找备选。':'');
  renderDungeonBattle(dungeon);
+ renderDungeonStock(dungeon);
 }
 function renderDungeonRules(){
  const panel=$('dungeon-workbench'),data=DATA?.dungeonRules;
@@ -272,11 +370,13 @@ $('dungeon-match-selected').onclick=()=>{
  const dungeon=selectedDungeon(),checked=checkedDungeonLineups(dungeon).filter(C.hasParsedContent);
  if(!checked.length)return;
  if(hasRuneRuntime(dungeon)&&runeStatus?.available&&runeStatus.resourceVersion===AtlasRuneLineup.resourceVersion){
+  dungeonStock=null;
   dungeonBattle={account:account(),rows:checked.map(lineup=>({lineup,state:'waiting'})),running:false,cancelled:false};
  }
  startMatch(checked.map(l=>l.id),{reuse:true});
  void advanceDungeonBattle();
 };
+$('dungeon-search-stock').onclick=()=>void searchDungeonStock();
 $('dungeon-stop-battle').onclick=()=>stopDungeonBattle();
 function renderLibrary(){
  renderDungeonRules();

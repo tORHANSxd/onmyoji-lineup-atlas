@@ -19,6 +19,8 @@ test('复跑取消后释放正在运行的任务，未连接资料仍保留离�
  await fs.writeFile(configPath,JSON.stringify({python:process.execPath,snapshot:root,gameTools:root,opcodeProof:root,scriptIndex:entry}));
  assert.deepEqual(await runner.status(),{available:true,resourceVersion:'0.0.816'});
  const input={onmyoji:{},members:Array.from({length:5},()=>({}))};
+ await assert.rejects(runner.run(input,{seed:2**32}),/无效的复跑种子/);
+ await assert.rejects(runner.run(input,{fixedStep:'20'}),/无效的复跑种子/);
  const initial=assert.rejects(runner.run(input),/已停止或超时/);
  await assert.rejects(runner.run(input),/已有魂王复跑/);
  await runner.stop();

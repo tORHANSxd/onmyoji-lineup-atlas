@@ -64,7 +64,7 @@ app.whenReady().then(async () => {
     suits:baseData.suits,
   });
   handleLocal('rune-battle-status',()=>runeRunner.status());
-  handleLocal('rune-battle-run',(_check,plan)=>runeRunner.run(plan));
+  handleLocal('rune-battle-run',(_check,plan,options)=>runeRunner.run(plan,options));
   handleLocal('rune-battle-stop',()=>runeRunner.stop());
   handleLocal('dungeon-catalog-choose', async check => {
     const selection = await dialog.showOpenDialog(win, { title: '选择包含 index.json 的副本资料目录', properties: ['openDirectory'] });
