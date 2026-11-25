@@ -170,8 +170,8 @@ function sampleBattleMarkup(samples){
  }).join('');
 }
 
-async function sampleDungeonTeam(plan,row,active){
- for(const seed of AtlasRuneSearch.sampleSeeds){
+async function sampleDungeonTeam(plan,row,active,seeds=AtlasRuneSearch.sampleSeeds){
+ for(const seed of seeds){
   if(!active())return 'unknown';
   const report=await window.runeBattle.run(plan,{seed,fixedStep:true});
   if(!active())return 'unknown';
@@ -180,6 +180,47 @@ async function sampleDungeonTeam(plan,row,active){
   if(verdict!=='pass')return verdict;
  }
  return 'pass';
+}
+function seedAuditMarkup(row,action,section,busy){
+ if(row.verdict!=='pass'&&!AtlasRuneCandidate.passed(row.samples))return '';
+ const audit=row.seedAudit, count=audit?.samples.length||0, total=AtlasRuneSearch.extraSeeds.length;
+ const status=audit&&(audit.verdict==='loss'?`补测种子 ${audit.samples.at(-1).seed} 未通关`:
+  audit.verdict==='pass'?`已通过全部 ${total} 个补测种子`:
+   `${audit.running?'正在补测':audit.cancelled?'已停止补测':'补测待重试'} · 已记录 ${count}/${total} 个种子`);
+ const canRun=audit?.verdict!=='pass'&&audit?.verdict!=='loss';
+ return `${status?`<p class="caption" role="status">${esc(status)}${audit.error?` · ${esc(audit.error)}`:''}</p>`:''}
+  ${count?`<details ${section}><summary>查看补测战报</summary><ul class="dungeon-stock-samples">${sampleBattleMarkup(audit.samples)}</ul></details>`:''}
+  ${canRun?`<button class="secondary" type="button" ${action} ${busy?'disabled':''}>${audit?'继续补测原生种子':`补测 ${total} 个原生种子`}</button>`:''}`;
+}
+const dungeonSeedAudits=new WeakMap();
+function planSeedAudits(job){
+ if(!dungeonSeedAudits.has(job.account))dungeonSeedAudits.set(job.account,new Map());
+ return dungeonSeedAudits.get(job.account);
+}
+function battleBusy(job){return usesDungeonInventory(job)&&!job.cancelled&&(job.running||job.activeSeedAudit||job.rows.some(row=>row.state==='waiting'));}
+function runeBusy(){return !!(dungeonStopPending||battleBusy(dungeonBattle)||stockBusy(dungeonStock));}
+async function verifyDungeonSeeds(job,row,selector){
+ if(runeBusy()||!usesDungeonInventory(job)||(row.verdict!=='pass'&&!stockPasses(row)))return;
+ const audit=row.seedAudit??={samples:[]};
+ if(audit.verdict==='pass'||audit.verdict==='loss')return;
+ planSeedAudits(job).set(row.teamKey,audit);
+ if(audit.samples.length&&audit.verdict==='unknown'&&
+    AtlasRuneCandidate.sampleVerdict(audit.samples.at(-1),AtlasRuneSearch.extraSeeds[audit.samples.length-1])!=='pass')audit.samples.pop();
+ Object.assign(audit,{running:true,cancelled:false,error:null,verdict:null});
+ job.activeSeedAudit=audit;
+ const current=()=>usesDungeonInventory(job)&&(dungeonBattle===job||dungeonStock===job);
+ const active=()=>current()&&!audit.cancelled;
+ renderDungeonSelection();$('dungeon-stop-battle').focus();
+ try{audit.verdict=await sampleDungeonTeam(row.plan,audit,active,AtlasRuneSearch.extraSeeds.slice(audit.samples.length));}
+ catch(error){if(active()){audit.error=runeError(error);audit.verdict='unknown';}}
+ finally{
+  const restoreFocus=document.activeElement===$('dungeon-stop-battle');
+  audit.running=false;job.activeSeedAudit=null;renderDungeonSelection();
+  if(restoreFocus){
+   await dungeonStopPending;
+   if(current()&&[document.body,$('dungeon-stop-battle')].includes(document.activeElement))document.querySelector(selector)?.focus();
+  }
+ }
 }
 function monsterHealthMarkup(waves,dungeon){
  const display=new Intl.NumberFormat('zh-CN',{maximumFractionDigits:0});
@@ -200,7 +241,8 @@ function renderDungeonBattle(dungeon){
  const shown=hasRuneRuntime(dungeon)&&usesDungeonInventory(job);
  body.hidden=!shown;
  if(!shown)return;
- const renderKey=JSON.stringify(job.rows.map(row=>[row.lineup.title,row.state,row.detail,row.verdict,row.conditions,row.samples]));
+ const busy=runeBusy();
+ const renderKey=JSON.stringify([busy,job.rows.map(row=>[row.lineup.id,row.lineup.title,row.state,row.detail,row.verdict,row.conditions,row.samples,row.seedAudit])]);
  if(renderKey===dungeonBattleRenderKey)return;
  dungeonBattleRenderKey=renderKey;
  const open=new Set([...body.querySelectorAll('details[open]')].map(el=>el.dataset.battleSamples));
@@ -213,13 +255,14 @@ function renderDungeonBattle(dungeon){
     verdict==='loss'?`种子 ${samples.at(-1).seed} 未通关`:'');
   return `<li><strong>${esc(lineup.title)}</strong><span>${esc([detail,status].filter(Boolean).join(' · '))}</span>
    ${samples.length?`<details data-battle-samples="${esc(lineup.id)}" ${open.has(lineup.id)?'open':''}><summary>查看种子战报</summary>
-   ${conditions?.length?`<p class="caption">${esc(conditions.join(' '))}</p>`:''}<ul class="dungeon-stock-samples">${sampleBattleMarkup(samples)}</ul></details>`:''}</li>`;
+   ${conditions?.length?`<p class="caption">${esc(conditions.join(' '))}</p>`:''}<ul class="dungeon-stock-samples">${sampleBattleMarkup(samples)}</ul></details>`:''}
+   ${seedAuditMarkup(row,`data-battle-extra="${esc(lineup.id)}"`,`data-battle-samples="${esc(lineup.id+'-extra')}"${open.has(lineup.id+'-extra')?' open':''}`,busy)}</li>`;
  }).join('')}</ul><p class="caption">当前结果覆盖列出的库存配装和采样种子。所有随机分支及实机动画耗时仍待验证。</p>`;
  if(focused!==undefined)body.querySelector(`[data-battle-samples="${CSS.escape(focused)}"] summary`)?.focus();
 }
 function stopDungeonBattle(clear=false){
  const jobs=[dungeonBattle,dungeonStock].filter(Boolean);
- const audit=dungeonStock?.activeRandomAudit;
+ const audit=dungeonStock?.activeRandomAudit||dungeonStock?.activeSeedAudit||dungeonBattle?.activeSeedAudit;
  if(audit)audit.cancelled=true;
  if(clear||!audit)for(const job of jobs){
   job.cancelled=true;job.stopSearch?.();
@@ -249,7 +292,7 @@ async function advanceDungeonBattle(){
      const {plan,conditions}=row.savedPlan?{plan:row.savedPlan,conditions:['使用此账号保存的实际式神、御魂及阴阳师配置。']}:
       AtlasRuneLineup.team(row.lineup,result,job.account,DATA.gameConfig);
      row.state='running';row.conditions=conditions;row.detail=row.savedPlan?'按已保存配装':row.savedNote;
-     row.teamKey=AtlasRuneSearch.teamKey(plan);renderDungeonSelection();
+     row.plan=plan;row.teamKey=AtlasRuneSearch.teamKey(plan);row.seedAudit=planSeedAudits(job).get(row.teamKey);renderDungeonSelection();
      row.verdict=await sampleDungeonTeam(plan,row,active);
      if(active()&&row.verdict==='unknown')row.detail=[row.detail,'复跑结算待核对，可重试'].filter(Boolean).join(' · ');
     }
@@ -278,10 +321,10 @@ function selectedBattleRows(selection){
  return selection.map(lineup=>completed.get(lineup));
 }
 function originalsFailed(selection){
- return selectedBattleRows(selection).every(row=>row?.verdict==='loss'||row?.verdict==='infeasible');
+ return selectedBattleRows(selection).every(row=>row?.verdict==='loss'||row?.verdict==='infeasible'||row?.seedAudit?.verdict==='loss');
 }
-function stockBusy(job){return usesDungeonInventory(job)&&!job.cancelled&&(job.running||!!job.activeRandomAudit);}
-const stockPasses=row=>AtlasRuneCandidate.passed(row.samples);
+function stockBusy(job){return usesDungeonInventory(job)&&(job.activeRandomAudit||job.activeSeedAudit||!job.cancelled&&job.running);}
+const stockPasses=row=>row.seedAudit?.verdict!=='loss'&&AtlasRuneCandidate.passed(row.samples);
 const runeError=error=>error.message.replace(/^Error invoking remote method '[^']+': Error: /,'');
 
 function randomAuditMarkup({running,cancelled,error,result}={}){
@@ -328,14 +371,14 @@ function renderDungeonStock(dungeon){
  const status=job.cancelled?'已停止，保留已完成的复跑。':job.error||(
   job.searching?'正在按输出、供火和辅助技能挑选式神与御魂…':
   !job.rows.length?'当前库存未找到可组成的备选队伍。':
-  `已复跑 ${completed} / ${job.rows.length} 队 · ${passes} 队通过全部 ${AtlasRuneSearch.sampleSeeds.length} 个采样种子${job.running?'':'。'}`);
- const busy=stockBusy(job)||!!dungeonStopPending;
- const key=JSON.stringify([status,busy,job.rows.map(row=>[row.index,row.heroIds,row.state,row.samples,row.error,row.encoding,row.codeError,row.output?.code,row.randomAudit])]);
+  `已复跑 ${completed} / ${job.rows.length} 队 · ${passes} 队已通过采样且无已知原生种子失败${job.running?'':'。'}`);
+ const busy=runeBusy();
+ const key=JSON.stringify([status,busy,job.rows.map(row=>[row.index,row.heroIds,row.state,row.samples,row.error,row.encoding,row.codeError,row.output?.code,row.randomAudit,row.seedAudit])]);
  if(key===dungeonStockRenderKey)return;
  dungeonStockRenderKey=key;$('dungeon-stock-status').textContent=status;
  const list=$('dungeon-stock-list'),opened=new Set([...list.querySelectorAll('details[open]')].map(el=>el.dataset.stockSection));
  const focused=document.activeElement,focus=focused.closest('summary')?.parentElement?.dataset.stockSection;
- const focusedAction=[...focused.attributes].find(a=>['data-stock-preview','data-stock-encode','data-stock-audit'].includes(a.name));
+ const focusedAction=[...focused.attributes].find(a=>['data-stock-preview','data-stock-encode','data-stock-audit','data-stock-extra'].includes(a.name));
  const names=DATA.gameConfig.heroes;
  const worstSample=row=>Math.max(...row.samples.map(sample=>sample.engineSeconds));
  const rows=[...job.rows].sort((a,b)=>Number(stockPasses(b))-Number(stockPasses(a))||
@@ -370,7 +413,8 @@ function renderDungeonStock(dungeon){
    ${observations?`<details ${section('random')}><summary>查看随机调用记录</summary><p class="caption">各项计数来自对应种子的复跑。可达随机分支仍待验证。</p><ul class="dungeon-stock-samples">${observations}</ul>
     ${stockPasses(row)&&row.samples.some(s=>s.randomObservations?.alternatives>0)?`<button class="secondary" type="button" data-stock-audit="${row.index}" ${busy?'disabled':''}>${row.randomAudit?.running?'正在测试随机判断':row.randomAudit?'重新测试随机判断':'测试随机判断'}</button>`:''}
     ${randomAuditMarkup(row.randomAudit)}</details>`:''}
-   ${row.output?`<button class="secondary" type="button" data-stock-preview="${row.index}">查看阵容码和保存</button>`:
+   ${seedAuditMarkup(row,`data-stock-extra="${row.index}"`,section('extra'),busy)}
+   ${!stockPasses(row)?'':row.output?`<button class="secondary" type="button" data-stock-preview="${row.index}" ${busy?'disabled':''}>查看阵容码和保存</button>`:
      row.encoding?'<p class="caption">正在生成阵容码…</p>':row.codeError?`<p class="caption">${esc(row.codeError)}</p><button class="secondary" type="button" data-stock-encode="${row.index}">重试生成阵容码</button>`:''}</li>`;
  }).join('');
  if(focus!==undefined)list.querySelector(`[data-stock-section="${CSS.escape(focus)}"] summary`)?.focus();
@@ -379,7 +423,7 @@ function renderDungeonStock(dungeon){
 
 let nextRandomAudit=0;
 async function verifyStockRandom(job,row){
- if(stockBusy(job)||dungeonStopPending||!stockPasses(row))return;
+ if(runeBusy()||!stockPasses(row))return;
  const reference=row.samples.find(s=>s.randomObservations?.alternatives>0);
  if(!reference)return;
  const requestId=++nextRandomAudit, audit=row.randomAudit={running:true,cancelled:false,result:null,error:null};
@@ -415,7 +459,7 @@ async function encodeStockCandidate(job,row){
  finally{row.encoding=false;renderDungeonSelection();}
 }
 async function saveStockCandidate(job,row,{create=true}={}){
- const output=row.output,current=()=>create?dungeonStock===job&&usesDungeonInventory(job):STATE.lineups.some(l=>l.code===output.code);
+ const output=row.output,current=()=>create?dungeonStock===job&&usesDungeonInventory(job)&&stockPasses(row):STATE.lineups.some(l=>l.code===output.code);
  if(!output||!current()||libraryBusy||bulkBusy)return false;
  let stored;
  const saved=await commitState(state=>{
@@ -437,7 +481,7 @@ async function saveStockCandidate(job,row,{create=true}={}){
 }
 function openStockCandidate(job,row){
  const output=row?.output;
- if(!output)return;
+ if(!output||runeBusy()||!stockPasses(row))return;
  currentDialog=null;
  const auth=TALogin.status(),canUpload=auth.authenticated&&auth.risk_accepted&&auth.query_ready!==false&&!!auth.selected_avatar;
  output.shortCode??=STATE.lineups.find(l=>l.code===output.code)?.shortCode;
@@ -459,7 +503,7 @@ function openStockCandidate(job,row){
  $('stock-candidate-copy').onclick=event=>copyCode(event.currentTarget,output.code);
  copyShort.onclick=event=>copyCode(event.currentTarget,output.shortCode);
  if(upload)upload.onclick=async()=>{
-  if(output.shortCode||upload.disabled)return;
+  if(output.shortCode||upload.disabled||runeBusy()||!stockPasses(row))return;
   upload.disabled=true;status.textContent='正在上传并核对官方返回…';
   try{
    const result=await window.taLogin.share(output.code);
@@ -482,7 +526,7 @@ function generateDungeonStock(job){
 }
 async function searchDungeonStock(){
  const dungeon=selectedDungeon(),selection=checkedDungeonLineups(dungeon),selected=account();
- if(!selected||!hasRuneRuntime(dungeon)||!runeStatus?.available||dungeonStopPending||dungeonBattle?.running||stockBusy(dungeonStock)||!originalsFailed(selection))return;
+ if(!selected||!hasRuneRuntime(dungeon)||!runeStatus?.available||runeBusy()||!originalsFailed(selection))return;
  const alternatives=selectedBattleRows(selection).map(row=>row?.teamKey).filter(Boolean);
  const job=dungeonStock={account:selected,rows:[],running:true,searching:true,cancelled:false,alternatives};
  const active=()=>!job.cancelled&&dungeonStock===job&&usesDungeonInventory(job);
@@ -491,7 +535,11 @@ async function searchDungeonStock(){
  try{
   const candidates=await generateDungeonStock(job);
   if(!active())return;
-  job.rows=candidates.map((row,index)=>({...row,index,state:'waiting',samples:[]}));
+  const audits=planSeedAudits(job);
+  job.rows=candidates.map((row,index)=>{
+   const teamKey=AtlasRuneSearch.teamKey(row.plan);
+   return {...row,index,teamKey,seedAudit:audits.get(teamKey),state:'waiting',samples:[]};
+  });
   job.searching=false;renderDungeonSelection();
   for(const row of job.rows){
    if(!active())break;
@@ -519,8 +567,7 @@ function renderDungeonSelection(){
   window.runeBattle.status().then(result=>{runeStatus=result;},()=>{runeStatus={available:false};}).finally(()=>{runeStatusPending=false;renderDungeonSelection();});
  }
  const canReplay=offerRune&&runeStatus?.available&&runeStatus.resourceVersion===AtlasRuneLineup.resourceVersion;
- const busy=hasRuneRuntime(dungeon)&&usesDungeonInventory(dungeonBattle)&&
-  (dungeonBattle.running||!dungeonBattle.cancelled&&dungeonBattle.rows.some(row=>row.state==='waiting'));
+ const busy=hasRuneRuntime(dungeon)&&battleBusy(dungeonBattle);
  const workingStock=hasRuneRuntime(dungeon)&&stockBusy(dungeonStock);
  $('dungeon-match-selected').disabled=!account()||!checked.length||!!busy||workingStock||!!offerRune&&(runeStatusPending||dungeonStopPending);
  $('dungeon-match-selected').textContent=canReplay?'精算并离线复跑':'精算勾选阵容';
@@ -597,11 +644,17 @@ $('dungeon-match-selected').onclick=()=>{
  }
 };
 $('dungeon-search-stock').onclick=()=>void searchDungeonStock();
+$('dungeon-battle-results').onclick=event=>{
+ const id=event.target.closest('[data-battle-extra]')?.dataset.battleExtra,job=dungeonBattle;
+ const row=job?.rows.find(entry=>entry.lineup.id===id);
+ if(row)void verifyDungeonSeeds(job,row,`[data-battle-extra="${CSS.escape(id)}"]`);
+};
 $('dungeon-stock-list').onclick=event=>{
- const button=event.target.closest('[data-stock-preview],[data-stock-encode],[data-stock-audit]'),job=dungeonStock;
+ const button=event.target.closest('[data-stock-preview],[data-stock-encode],[data-stock-audit],[data-stock-extra]'),job=dungeonStock;
  if(!button||!usesDungeonInventory(job))return;
- const row=job.rows[Number(button.dataset.stockPreview??button.dataset.stockEncode??button.dataset.stockAudit)];
- if(row){if(button.dataset.stockAudit!=null)void verifyStockRandom(job,row);
+ const row=job.rows[Number(button.dataset.stockPreview??button.dataset.stockEncode??button.dataset.stockAudit??button.dataset.stockExtra)];
+ if(row){if(button.dataset.stockExtra!=null)void verifyDungeonSeeds(job,row,`[data-stock-extra="${row.index}"]`);
+  else if(button.dataset.stockAudit!=null)void verifyStockRandom(job,row);
   else if(button.dataset.stockEncode!=null)void encodeStockCandidate(job,row);else openStockCandidate(job,row);}
 };
 $('dungeon-stop-battle').onclick=()=>stopDungeonBattle();

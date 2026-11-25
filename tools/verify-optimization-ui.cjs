@@ -403,8 +403,34 @@ async function main(){
     if(all)assert.match(status,/已通过 6 个采样种子.*种子 42/s);
     else if(verdict==='unknown')assert.match(status,/复跑结算待核对/);
     else assert.match(status,/种子 1 未通关/);
+    if(all){
+     let nextOutcome='blocked';
+     mockBattle=(_plan,options)=>{
+      const {seed,fixedStep}=options;assert.equal(fixedStep,true);seeds.push(seed);
+      if(seed===5&&nextOutcome==='blocked')return new Promise((_resolve,reject)=>{stopRandom=()=>reject(Error('已停止'));});
+      const outcome=seed===5?nextOutcome:'win';
+      return {seed,completed:outcome!=='unknown',outcome,wavesCleared:outcome==='win'?3:1,bouts:6,engineSeconds:13};
+     };
+     const startExtra=()=>ui('document.querySelector("[data-battle-extra]").click()');
+     await startExtra();
+     await until('dungeonBattle.activeSeedAudit?.samples.length===1');
+     assert.equal(await ui('$("dungeon-match-selected").disabled'),true);
+     await ui('$("dungeon-stop-battle").click()');
+     await until('!dungeonBattle.activeSeedAudit&&!dungeonStopPending');
+     assert.match(await ui('$("dungeon-battle-results").textContent'),/已停止补测.*1\/19/);
+     nextOutcome='unknown';await startExtra();
+     await until('dungeonBattle.rows[0].seedAudit.verdict==="unknown"');
+     assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
+     nextOutcome='loss';await startExtra();
+     await until('!$("dungeon-search-stock").hidden');
+     assert.match(await ui('$("dungeon-battle-results").textContent'),/补测种子 5 未通关.*种子 4.*种子 5.*本次复跑失败/s);
+     assert.deepEqual(seeds.slice(6),[4,5,5,5]);
+     await ui('$("dungeon-match-selected").click()');
+     await until('!$("dungeon-search-stock").hidden');
+     assert.match(await ui('$("dungeon-battle-results").textContent'),/补测种子 5 未通关/);
+    }
    }
-  }finally{mockBattle=null;}
+  }finally{mockBattle=null;stopRandom=null;}
   await ui('stopMatch();$("dungeon-workbench").open=false');
  });
  await check('勾选原码无解后才开放备选，分开显示各个种子的战报',async()=>{
@@ -417,11 +443,11 @@ async function main(){
   const hero_equips=['海月火玉','针女','火灵','元兴寺','心眼','网切'].flatMap((setId,i)=>stats.map(([mainAttrType,mainAttrValue],j)=>({
    id:`stock-${i}-${j}`,slot:j+1,quality:6,level:15,setId,mainAttrType,mainAttrValue,subAttributes:[{type:'crit_rate',value:.1}]
   })));
-  const calls=[];let winner;
+  const calls=[];let winner,extraLoss=false;
   mockBattle=(plan,options)=>{
    const ids=JSON.stringify(plan.members.map(m=>[m.instanceId,m.souls.map(q=>q.id)]));
    winner??=ids;calls.push({ids,options});
-   const win=winner===ids;
+   const win=winner===ids&&!(extraLoss&&options.seed===4);
    return {seed:options.seed,engineSeconds:13+options.seed,completed:true,outcome:win?'win':'loss',
     wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,
     animationPlayback:{combatElapsedMs:11234,combatOverlapMs:1250,overlapMs:3000,interruptedClips:5,unresolved:2},
@@ -515,6 +541,13 @@ async function main(){
    await ui(`$("detail-dialog").close();showLineup(lineups().find(l=>l.id===${JSON.stringify(saved.id)}));$("export-lineup").click()`);
    await until('!$("dialog-feedback").hidden');
    assert.equal(Object.hasOwn(exported,'runeReceipts'),false);
+   extraLoss=true;
+   await ui('$("detail-dialog").close();document.querySelector("[data-stock-extra]").click()');
+   await until('$("dungeon-stock-list").textContent.includes("补测种子 4 未通关")');
+   assert.deepEqual(calls.at(-1).options,{seed:4,fixedStep:true});
+   assert.equal(await ui('document.querySelectorAll("[data-stock-preview]").length'),0);
+   assert.match(await ui('$("dungeon-stock-status").textContent'),/0 队已通过采样且无已知原生种子失败/);
+   extraLoss=false;
    await win.loadFile(path.join(root,'app/index.html'));
    await until('!!DATA && $("loading").hidden');
    await ui(`$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add(${JSON.stringify(saved.id)});renderSelection()`);

@@ -35,6 +35,7 @@ const strategies=[
 ];
 const limit=6;
 const sampleSeeds=Object.freeze([0,1,2,3,7,42]);
+const extraSeeds=Object.freeze(Array.from({length:24},(_,seed)=>seed).filter(seed=>!sampleSeeds.includes(seed)));
 
 function actor(game){
  const heroId=10,awake=0;
@@ -153,5 +154,5 @@ function candidates(account,{gameConfig:game,roster,effects},alternatives=[]){
  return sampled;
 }
 
-return {candidates,teamKey,sampleSeeds};
+return {candidates,teamKey,sampleSeeds,extraSeeds};
 });
