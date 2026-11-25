@@ -5,7 +5,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs/promises');
 const os=require('node:os');
 const path=require('node:path');
-const {scanSeeds,seedOrder}=require('../tools/verify-rune-seeds.cjs');
+const {scanSeeds,seedOrder}=require('../desktop/rune-seed-evidence.cjs');
 
 const hash='a'.repeat(64);
 const scope={route:'local-solo-rune',resourceVersion:'0.0.816',nativeSHA256:hash,

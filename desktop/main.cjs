@@ -12,7 +12,8 @@ const { TACredentials } = require('./ta-credentials.cjs');
 const { TAResponseCache } = require('./ta-response-cache.cjs');
 const { readIndex: readDungeonIndex, readTable: readDungeonTable, readEncounters, readRecords } = require('./dungeon-catalog.cjs');
 const {createRuneRunner}=require('./rune-runner.cjs');
-let win, official, taSession, queryQueue, runeRunner, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
+const {createSeedEvidenceRunner}=require('./rune-seed-evidence.cjs');
+let win, official, taSession, queryQueue, runeRunner, seedEvidence, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
 const isSmoke = process.argv.includes('--smoke');
 // Branding changes must never create a different personal inventory directory.
 if (!isSmoke) app.setPath('userData',path.join(app.getPath('appData'),'onmyoji-lineup-atlas'));
@@ -60,20 +61,32 @@ app.whenReady().then(async () => {
   handleLocal('dungeon-catalog-table', async (_check, name) => readDungeonTable(await dungeonCatalog, name));
   handleLocal('dungeon-catalog-encounters', async () => readEncounters(await dungeonCatalog));
   handleLocal('dungeon-catalog-records', async (_check, name, keys) => readRecords(await dungeonCatalog, name, keys));
-  runeRunner=createRuneRunner({
+  const runeRuntime={
     configPath:process.env.ATLAS_RUNE_RUNTIME||path.join(app.isPackaged?process.resourcesPath:app.getPath('userData'),'rune-runtime.json'),
     scriptRoot:app.isPackaged?path.join(process.resourcesPath,'rune-runner'):path.join(__dirname,'../tools'),
     suits:baseData.suits,
-  });
+  };
+  runeRunner=createRuneRunner(runeRuntime);
+  seedEvidence=createSeedEvidenceRunner({...runeRuntime,runner:runeRunner,directory:path.join(app.getPath('userData'),'rune-seed-evidence')});
+  const requireIdle=()=>{if(seedEvidence.running)throw Error('已有魂王全种子验收正在运行');};
   handleLocal('rune-battle-status',()=>runeRunner.status());
-  handleLocal('rune-battle-run',(_check,plan,options)=>runeRunner.run(plan,options));
+  handleLocal('rune-battle-run',(_check,plan,options)=>{requireIdle();return runeRunner.run(plan,options);});
   handleLocal('rune-battle-verify-random',(_check,plan,seed,requestId)=>{
+    requireIdle();
     if(!Number.isSafeInteger(requestId)||requestId<1)throw Error('无效的复跑请求');
     return runeRunner.verifyRandom(plan,seed,progress=>{
       if(win&&!win.isDestroyed())win.webContents.send('rune-battle-random-progress',requestId,progress);
     });
   });
-  handleLocal('rune-battle-stop',()=>runeRunner.stop());
+  handleLocal('rune-battle-seed-evidence',(_check,plan)=>seedEvidence.lookup(plan));
+  handleLocal('rune-battle-verify-seeds',(_check,plan,requestId)=>{
+    if(!Number.isSafeInteger(requestId)||requestId<1)throw Error('无效的复跑请求');
+    return seedEvidence.run(plan,progress=>{
+      if(win&&!win.isDestroyed())win.webContents.send('rune-battle-seeds-progress',requestId,progress);
+    });
+  });
+  handleLocal('rune-battle-stop',()=>seedEvidence.stop()||runeRunner.stop());
+  win.webContents.on('dom-ready',()=>{void seedEvidence.stop();});
   handleLocal('dungeon-catalog-choose', async check => {
     const selection = await dialog.showOpenDialog(win, { title: '选择包含 index.json 的副本资料目录', properties: ['openDirectory'] });
     if (selection.canceled) return null;
@@ -171,7 +184,7 @@ app.whenReady().then(async () => {
 });
 app.on('before-quit',event=>{
   official?.cancel();taSession?.stop();background?.close();
-  const pending=runeRunner?.stop();
+  const pending=seedEvidence?.stop()||runeRunner?.stop();
   if(pending){event.preventDefault();void pending.then(()=>app.quit());}
 });
 app.on('window-all-closed',()=>app.quit());

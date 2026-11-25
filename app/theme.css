@@ -67,6 +67,12 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-battle-list>li+li{border-top:1px solid var(--line)}
 .dungeon-battle-list span{color:var(--muted)}
 .dungeon-battle-list details{grid-column:1/-1;font-size:12px}
+.dungeon-battle-list>li>button{justify-self:start}
+.dungeon-full-seeds{grid-column:1/-1;margin-top:6px}
+.dungeon-full-seeds .caption{margin:4px 0}
+.dungeon-full-seeds progress{appearance:none;display:block;width:min(100%,22rem);height:8px;margin:8px 0;border:0}
+.dungeon-full-seeds progress::-webkit-progress-bar{background:var(--line);border-radius:4px}
+.dungeon-full-seeds progress::-webkit-progress-value{background:var(--teal);border-radius:4px}
 #dungeon-stock-results{border-top:1px solid var(--line);margin:14px 0;padding-top:12px}
 #dungeon-stock-title{margin:0 0 6px;font-size:16px}
 .dungeon-stock-list,.dungeon-stock-members,.dungeon-stock-samples{list-style:none;padding:0}

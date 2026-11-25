@@ -44,7 +44,9 @@ async function main(){
  local('dungeon-catalog-encounters',()=>readEncounters(catalog));
  local('dungeon-catalog-records',(table,keys)=>readRecords(catalog,table,keys));
  const rune=process.env.ATLAS_RUNE_RUNTIME?createRuneRunner({configPath:process.env.ATLAS_RUNE_RUNTIME,scriptRoot:path.join(root,'tools'),suits:data.suits}):null;
- let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null;
+ let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
+ const seedEvidence=(props={})=>({scope:'local-solo-rune',status:'incomplete',total:10000,wins:73,loss:null,
+  slowest:{seed:13,engineSeconds:25.5,combatMs:14400},...props});
  local('rune-battle-status',()=>runeEnabled?(rune?.status()||{available:true,resourceVersion:'0.0.816'}):{available:false});
  local('rune-battle-run',(plan,options)=>{
   replayPlan=plan;
@@ -54,7 +56,9 @@ async function main(){
   const progress=update=>win.webContents.send('rune-battle-random-progress',id,update);
   return mockRandom?mockRandom(plan,seed,progress):rune?.verifyRandom(plan,seed,progress);
  });
- local('rune-battle-stop',()=>stopRandom?stopRandom():rune?.stop());
+ local('rune-battle-seed-evidence',plan=>savedEvidence?.(plan)??null);
+ local('rune-battle-verify-seeds',(plan,id)=>mockSeeds(plan,update=>win.webContents.send('rune-battle-seeds-progress',id,update)));
+ local('rune-battle-stop',()=>stopSeeds?stopSeeds():stopRandom?stopRandom():rune?.stop());
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
  win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
  await win.loadFile(path.join(root,'app/index.html'));win.webContents.setZoomFactor(1);await sleep(80);await until('!!DATA && document.getElementById("loading").hidden');await ui('TALogin.ready()');
@@ -374,7 +378,7 @@ async function main(){
   await until('!$("dungeon-match-selected").disabled&&$("dungeon-match-selected").textContent.includes("复跑")');
   await ui('$("dungeon-match-selected").click()');
   await until('dungeonBattle?.rows.every(row=>row.state==="finished")',110000);
-  assert.match(await ui('$("dungeon-battle-results").textContent'),/本次复跑(失败|通关).*随机分支/s);
+  assert.match(await ui('$("dungeon-battle-results").textContent'),/本次复跑(失败|通关).*常规单人本地入口和当前配装/s);
   assert.match(await ui('$("dungeon-battle-results").textContent'),/已佩戴.*6 星 5 级/);
   assert.deepEqual(replayPlan.spirit,spirit);
   assert.equal(replayPlan.members.length,5);
@@ -404,6 +408,25 @@ async function main(){
     else if(verdict==='unknown')assert.match(status,/复跑结算待核对/);
     else assert.match(status,/种子 1 未通关/);
     if(all){
+     mockSeeds=(plan,progress)=>{
+      assert.deepEqual(plan,replayPlan);progress(seedEvidence());
+      return new Promise(resolve=>{stopSeeds=()=>resolve(seedEvidence({wins:74,stopped:true}));});
+     };
+     await ui('document.querySelector("[data-battle-full]").click()');
+     await until('document.querySelector(".dungeon-full-seeds progress")?.value===73');
+     assert.equal(await ui('$("dungeon-stop-battle").textContent'),'暂停全种子验收');
+     assert.equal(await ui('document.querySelector("[data-battle-extra]").disabled'),true);
+     assert.equal(await ui('document.querySelector("[data-battle-full]")===null'),true);
+     win.setContentSize(720,960);
+     try{assert.equal(await ui('$("dungeon-battle-results").scrollWidth<=$("dungeon-battle-results").clientWidth+2'),true);}
+     finally{win.setContentSize(1440,1000);}
+     await ui('document.querySelector(".dungeon-full-seeds").scrollIntoView({block:"center",behavior:"instant"})');
+     await capture('dungeon-full-seed-progress');
+     await ui('$("dungeon-stop-battle").click()');
+     await until('!dungeonBattle.activeFullSeedAudit&&!dungeonStopPending');
+     assert.match(await ui('$("dungeon-battle-results").textContent'),/已暂停全种子验收.*74 \/ 10,000.*继续全种子验收/s);
+     assert.equal(await ui('document.activeElement.dataset.battleFull'),'qa-rune-e2e');
+     stopSeeds=null;mockSeeds=null;
      let nextOutcome='blocked';
      mockBattle=(_plan,options)=>{
       const {seed,fixedStep}=options;assert.equal(fixedStep,true);seeds.push(seed);
@@ -430,7 +453,7 @@ async function main(){
      assert.match(await ui('$("dungeon-battle-results").textContent'),/补测种子 5 未通关/);
     }
    }
-  }finally{mockBattle=null;stopRandom=null;}
+  }finally{mockBattle=null;stopRandom=null;mockSeeds=null;stopSeeds=null;}
   await ui('stopMatch();$("dungeon-workbench").open=false');
  });
  await check('勾选原码无解后才开放备选，分开显示各个种子的战报',async()=>{
@@ -443,11 +466,11 @@ async function main(){
   const hero_equips=['海月火玉','针女','火灵','元兴寺','心眼','网切'].flatMap((setId,i)=>stats.map(([mainAttrType,mainAttrValue],j)=>({
    id:`stock-${i}-${j}`,slot:j+1,quality:6,level:15,setId,mainAttrType,mainAttrValue,subAttributes:[{type:'crit_rate',value:.1}]
   })));
-  const calls=[];let winner,extraLoss=false;
+  const calls=[];let winner;
   mockBattle=(plan,options)=>{
    const ids=JSON.stringify(plan.members.map(m=>[m.instanceId,m.souls.map(q=>q.id)]));
    winner??=ids;calls.push({ids,options});
-   const win=winner===ids&&!(extraLoss&&options.seed===4);
+   const win=winner===ids;
    return {seed:options.seed,engineSeconds:13+options.seed,completed:true,outcome:win?'win':'loss',
     wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,
     animationPlayback:{combatElapsedMs:11234,combatOverlapMs:1250,overlapMs:3000,interruptedClips:5,unresolved:2},
@@ -541,13 +564,16 @@ async function main(){
    await ui(`$("detail-dialog").close();showLineup(lineups().find(l=>l.id===${JSON.stringify(saved.id)}));$("export-lineup").click()`);
    await until('!$("dialog-feedback").hidden');
    assert.equal(Object.hasOwn(exported,'runeReceipts'),false);
-   extraLoss=true;
-   await ui('$("detail-dialog").close();document.querySelector("[data-stock-extra]").click()');
-   await until('$("dungeon-stock-list").textContent.includes("补测种子 4 未通关")');
-   assert.deepEqual(calls.at(-1).options,{seed:4,fixedStep:true});
+   const observedLoss=seedEvidence({status:'seed-loss',loss:{seed:3167,wavesCleared:2}});
+   mockSeeds=async plan=>{
+    assert.equal(JSON.stringify(plan.members.map(m=>[m.instanceId,m.souls.map(q=>q.id)])),winner);
+    return observedLoss;
+   };
+   await ui('$("detail-dialog").close();document.querySelector("[data-stock-full]").click()');
+   await until('$("dungeon-stock-list").textContent.includes("种子 3167 未通关")');
    assert.equal(await ui('document.querySelectorAll("[data-stock-preview]").length'),0);
    assert.match(await ui('$("dungeon-stock-status").textContent'),/0 队已通过采样且无已知原生种子失败/);
-   extraLoss=false;
+   savedEvidence=()=>observedLoss;
    await win.loadFile(path.join(root,'app/index.html'));
    await until('!!DATA && $("loading").hidden');
    await ui(`$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add(${JSON.stringify(saved.id)});renderSelection()`);
@@ -555,9 +581,17 @@ async function main(){
    await ui('$("dungeon-match-selected").click()');
    await until('dungeonBattle?.rows[0]?.state==="finished"',10000);
    assert.match(await ui('$("dungeon-battle-results").textContent'),/按已保存配装.*本次复跑通关/s);
+   assert.match(await ui('$("dungeon-battle-results").textContent'),/全种子验收.*种子 3167 未通关.*通过 2 波/s);
+   assert.equal(await ui('$("dungeon-search-stock").hidden'),false);
    assert.equal(calls.at(-1).ids,winner);
    assert.deepEqual(replayPlan.onmyoji.skinfo,[[1003,5],[1008,5],[1011,5]]);
-  }finally{mockBattle=null;mockRandom=null;stopRandom=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
+  }finally{mockBattle=null;mockRandom=null;stopRandom=null;mockSeeds=null;savedEvidence=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
+ });
+ await check('全种子通过结果显示单人本地范围和最慢一场',async()=>{
+  const complete=JSON.stringify(seedEvidence({status:'all-local-seeds-passed',wins:10000}));
+  const markup=await ui(`fullSeedAuditMarkup({samples:AtlasRuneSearch.sampleSeeds.map(seed=>({seed,completed:true,outcome:'win',wavesCleared:3,engineSeconds:13})),fullSeedAudit:{progress:${complete}}},'data-full-seeds-fixture',false)`);
+  assert.match(markup,/常规单人本地入口的 10,000 个种子全部通过.*最慢种子 13.*引擎全程 25\.50 秒.*开战至结算 14\.40 秒/s);
+  assert.doesNotMatch(markup,/data-full-seeds-fixture|<progress/);
  });
  if(process.argv.includes('--visual')){
   await ui('STATE='+JSON.stringify(blank())+';backupUndo=null;document.getElementById("undo-restore").hidden=true;document.getElementById("toast").classList.remove("show");document.getElementById("code-input").value="";updateCode();updateAccountSelect();fillFilters();selectView("library")');

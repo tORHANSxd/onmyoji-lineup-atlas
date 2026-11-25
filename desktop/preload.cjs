@@ -10,6 +10,14 @@ contextBridge.exposeInMainWorld('dungeonCatalog', Object.freeze({
 contextBridge.exposeInMainWorld('runeBattle',Object.freeze({
   status:()=>ipcRenderer.invoke('rune-battle-status'),
   run:(plan,options)=>ipcRenderer.invoke('rune-battle-run',plan,options),
+  seedEvidence:plan=>ipcRenderer.invoke('rune-battle-seed-evidence',plan),
+  verifySeeds:(plan,requestId)=>ipcRenderer.invoke('rune-battle-verify-seeds',plan,requestId),
+  onSeedsProgress:callback=>{
+    if(typeof callback!=='function')throw Error('Invalid callback');
+    const listener=(_event,requestId,progress)=>callback(requestId,progress);
+    ipcRenderer.on('rune-battle-seeds-progress',listener);
+    return ()=>ipcRenderer.removeListener('rune-battle-seeds-progress',listener);
+  },
   verifyRandom:(plan,seed,requestId)=>ipcRenderer.invoke('rune-battle-verify-random',plan,seed,requestId),
   onRandomProgress:callback=>{
     if(typeof callback!=='function')throw Error('Invalid callback');
