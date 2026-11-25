@@ -326,6 +326,8 @@ def run(args):
     names = {value: key for key, value in vars(const.BattleState).items() if key.startswith("BS_")}
     report = {
         "resourceVersion": resource_version, "nativeSHA256": native_hash, "dungeonId": 102,
+        "scriptIndexSHA256": sha256(script_bytes), "teamSHA256": sha256(team_bytes),
+        "suitIndexSHA256": sha256(suit_bytes),
         "fixture": team_scope, "seed": engine.seed,
         "completed": completed, "phases": [names[state] for state in phases],
         "outcome": "win" if winner == const.CampFlag.CAMP1 else "loss" if winner == const.CampFlag.CAMP2 else "unknown",

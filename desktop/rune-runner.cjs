@@ -170,6 +170,15 @@ function createRuneRunner({configPath,scriptRoot,suits}){
   async run(plan,{seed=0,fixedStep=false}={}){
    return withRun(plan,seed,fixedStep,async replay=>(await replay()).result);
   },
+  async runSeedEvidence(plan,seed){
+   return withRun(plan,seed,true,async replay=>{
+    const {raw,result}=await replay();
+    const {nativeSHA256,scriptIndexSHA256,teamSHA256,suitIndexSHA256,recordSHA256}=raw;
+    return {seed,completed:result.completed,outcome:result.outcome,wavesCleared:result.wavesCleared,
+     bouts:result.bouts,engineSeconds:result.engineSeconds,combatMs:result.animationPlayback?.combatElapsedMs??null,
+     nativeSHA256,scriptIndexSHA256,teamSHA256,suitIndexSHA256,recordSHA256};
+   });
+  },
   verifyRandom(plan,seed,onProgress=()=>{}){
    return withRun(plan,seed,true,async (replay,signal)=>{
     const {raw,result:baseline}=await replay();
@@ -213,4 +222,4 @@ function createRuneRunner({configPath,scriptRoot,suits}){
  };
 }
 
-module.exports={createRuneRunner,planRandomTrials};
+module.exports={createRuneRunner,planRandomTrials,readConfig};
