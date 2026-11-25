@@ -162,21 +162,27 @@ const SNAPSHOT_SECTIONS={
  currency:'资源余额',heroesBagEntries:'堆叠素材',heroBookShards:'式神碎片',
  heroShardBinding:'碎片绑定',hunlings:'契灵',realmCards:'结界卡',
  storyTasks:'剧情任务',heroStoryProgress:'式神传记',taskRecords:'任务记录',
- guild:'阴阳寮',collections:'收藏',accountComparison:'账号概况',diagnostics:'采集诊断',mergeSources:'档案合并来源'
+ guild:'阴阳寮',collections:'收藏',equipPresets:'御魂预设',lineupPresets:'游戏阵容预设',
+ accountComparison:'账号概况',diagnostics:'采集诊断',mergeSources:'档案合并来源'
 };
+// 平安志 0.2.8-beta 分类导出的字段分组，见 docs/PINGANZHI_EXPORT.md。
 const SNAPSHOT_SCOPES={
- currency:'items',heroesBagEntries:'heroes',heroesBagCount:'heroes',
- realmCards:'realmCards',guild:'guild',taskRecords:'taskRecords'
+ equipPresets:'souls',lineupPresets:'souls',
+ heroesBagEntries:'heroes',heroesBagCount:'heroes',heroBookShards:'heroes',
+ heroShardBinding:'heroes',heroStoryProgress:'heroes',hunlings:'heroes',
+ currency:'items',collections:'items',realmCards:'realmCards',guild:'guild',taskRecords:'taskRecords'
 };
+const COMPARISON_SCOPES={items:'items',realm:'realmCards'};
 const SNAPSHOT_OBJECT_SECTIONS=new Set([
- 'currency','heroShardBinding','heroStoryProgress','taskRecords','guild','collections','accountComparison','mergeSources'
+ 'currency','heroShardBinding','heroStoryProgress','taskRecords','guild','collections','lineupPresets','accountComparison','mergeSources'
 ]);
 function snapshotInfo(raw,warnings){
  const scope=object(raw.scope)?raw.scope:{},sections={};
  if(raw.scope!=null&&!object(raw.scope))warnings.push('采集范围格式异常，请重新导出库存');
  for(const [key,label] of Object.entries(SNAPSHOT_SECTIONS)){
-  const value=raw[key],valid=SNAPSHOT_OBJECT_SECTIONS.has(key)?object(value):Array.isArray(value);
-  sections[key]=value==null||!valid?null:key==='guild'?1:Object.keys(value).length;
+  const value=raw[key],valid=key==='lineupPresets'?object(value)&&value.version===1:
+   SNAPSHOT_OBJECT_SECTIONS.has(key)?object(value):Array.isArray(value);
+  sections[key]=value==null||!valid?null:['guild','lineupPresets'].includes(key)?1:Object.keys(value).length;
   if(value!=null&&!valid)warnings.push(`${label}格式未识别，原始数据已保留`);
  }
  let stackedHeroes=null;
@@ -276,16 +282,40 @@ function mergeAccount(old,incoming){
   delete raw[soulKey==='souls'?'hero_equips':'souls'];
   if(!Object.hasOwn(incoming.raw,'mergeSources'))delete raw.mergeSources;
  const retainedSections={};
+ const retain=(key,parent=key)=>{
+  const previous=old.retainedSections||{};
+  const source=[key,parent].find(field=>Object.hasOwn(previous,field));
+  retainedSections[key]=source?previous[source]:old.capturedAt??null;
+ };
  for(const key of [...Object.keys(SNAPSHOT_SECTIONS),'heroesBagCount']){
-  if(key!=='mergeSources'&&Object.hasOwn(old.raw,key)&&(!Object.hasOwn(incoming.raw,key)||incoming.raw.scope?.[SNAPSHOT_SCOPES[key]]===false)){
-   raw[key]=old.raw[key];retainedSections[key]=old.retainedSections?.[key]||old.capturedAt||null;
+  if(key!=='mergeSources'&&old.raw[key]!=null&&(incoming.raw[key]==null||incoming.raw.scope?.[SNAPSHOT_SCOPES[key]]===false)){
+   raw[key]=old.raw[key];retain(key);
+  }
+ }
+ const previousComparison=old.raw.accountComparison,newComparison=incoming.raw.accountComparison;
+ for(const [field,scope] of Object.entries(COMPARISON_SCOPES)){
+  const key=`accountComparison.${field}`;
+  if(Object.hasOwn(retainedSections,'accountComparison')&&Object.hasOwn(old.retainedSections||{},key))retain(key);
+  if(previousComparison?.version===1&&newComparison?.version===1&&previousComparison[field]!=null&&
+    (newComparison[field]==null||incoming.raw.scope?.[scope]===false)){
+   raw.accountComparison={...raw.accountComparison,[field]:previousComparison[field]};
+   retain(key,'accountComparison');
   }
  }
  const warnings=[...incoming.warnings,'按实例ID覆盖并保留未再次导入的旧记录；已删除资产可能仍存在，请用完整快照替换清理。'];
  const presets=Array.isArray(raw.equipPresets)?raw.equipPresets:[];
  return {...incoming,heroes,souls,raw,snapshot:snapshotInfo(raw,warnings),retainedSections,presets,merged:true,previousCapturedAt:old.capturedAt,warnings};
 }
-function restoreAccount(saved){const a=parseAccount(saved.raw,saved.name);if(saved.merged){a.merged=true;a.previousCapturedAt=saved.previousCapturedAt;a.retainedSections=object(saved.retainedSections)?Object.fromEntries(Object.entries(saved.retainedSections).filter(([key,time])=>(Object.hasOwn(SNAPSHOT_SECTIONS,key)||key==='heroesBagCount')&&(time==null||typeof time==='string'))):{};a.warnings.push('此备份包含增量合并的旧记录，请确认资产仍在仓库。');}return a;}
+function restoreAccount(saved){
+ const a=parseAccount(saved.raw,saved.name);
+ if(saved.merged){
+  a.merged=true;a.previousCapturedAt=saved.previousCapturedAt;
+  const sectionKeys=new Set([...Object.keys(SNAPSHOT_SECTIONS),'heroesBagCount',...Object.keys(COMPARISON_SCOPES).map(key=>`accountComparison.${key}`)]);
+  a.retainedSections=object(saved.retainedSections)?Object.fromEntries(Object.entries(saved.retainedSections).filter(([key,time])=>sectionKeys.has(key)&&(time===null||typeof time==='string'))):{};
+  a.warnings.push('此备份包含增量合并的旧记录，请确认资产仍在仓库。');
+ }
+ return a;
+}
 function validateLineup(l){
   if(!object(l)||typeof l.title!=='string'||!Array.isArray(l.members)||l.members.length>30)throw new Error('阵容JSON缺少 title / members 或成员过多');
   const members=l.members.map((m,i)=>{

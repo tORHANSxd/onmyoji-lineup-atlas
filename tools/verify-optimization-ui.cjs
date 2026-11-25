@@ -302,7 +302,7 @@ async function main(){
   await ui('selectView("accounts");document.getElementById("account-snapshot-extra").open=true');win.setContentSize(720,960);
    assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);await ui('document.getElementById("toast").classList.remove("show");document.getElementById("account-snapshot-extra").scrollIntoView({block:"start",behavior:"instant"})');await capture('snapshot-v094-narrow');win.setContentSize(1440,960);
   });
-  const desktopRaw={...raw,format:'yys-desktop-cache-v1',heroCount:1,inventoryCount:1,retainedCount:1,excludedCount:0,heroes:{a:{...raw.heroes.a,equips:['desktop-first']}},souls:[{id:'desktop-first',slot:1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:25,subAttributes:[{type:'crit_rate',value:.03}],equippedState:null}],equipPresets:[['合成桌面预设',['desktop-first']]]};
+  const desktopRaw={...raw,capturedAt:'2026-11-25T00:00:00Z',format:'yys-desktop-cache-v1',heroCount:1,inventoryCount:1,retainedCount:1,excludedCount:0,heroes:{a:{...raw.heroes.a,equips:['desktop-first']}},souls:[{id:'desktop-first',slot:1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:25,subAttributes:[{type:'crit_rate',value:.03}],equippedState:null}],equipPresets:[['合成桌面预设',['desktop-first']]],lineupPresets:{version:1},accountComparison:{version:1,items:{synthetic:1},realm:{synthetic:2}}};
   delete desktopRaw.hero_equips;
   const desktopCache={version:2,rawSha256:'a'.repeat(64),sourceKind:'desktop',sourcePayload:desktopRaw,normalizedSouls:[]};
   await check('桌面版本 2 缓存经后台导入后显示实际式神、御魂和预设',async()=>{
@@ -312,7 +312,7 @@ async function main(){
    await ui('selectView("accounts");window.scrollTo(0,0)');
    assert.deepEqual(await ui('[...document.querySelectorAll("#account-summary .overview strong")].map(e=>e.textContent)'),['1','1','1','1']);
    const summary=await ui('document.getElementById("account-summary").textContent');
-   assert.match(summary,/御魂：完整/);assert.match(summary,/1 件已穿戴，0 件未穿戴/);await capture('snapshot-desktop-cache');
+   assert.match(summary,/御魂：完整/);assert.match(summary,/1 件已穿戴，0 件未穿戴/);assert.match(summary,/游戏阵容预设格式版本 1/);await capture('snapshot-desktop-cache');
   });
   await check('桌面与旧版库存交叉合并，导出备份、重启和恢复均保留旧御魂',async()=>{
    await ui('document.getElementById("merge-import").checked=true;importMode="accounts";handleFiles('+file(raw)+')');
@@ -320,7 +320,7 @@ async function main(){
    assert.equal(Object.hasOwn(stored.accounts[0].raw,'souls'),false);
    assert.equal(await ui('STATE.accounts[0].presets.length'),1);
    assert.match(await ui('document.getElementById("account-summary").textContent'),/全仓库的穿戴归属待核对/);
-   const latest={...desktopRaw,souls:[{...desktopRaw.souls[0],id:'desktop-second',mainAttrValue:40}]};
+   const latest={...desktopRaw,scope:{souls:true,items:false,realmCards:true},accountComparison:{version:1,items:null,realm:{synthetic:3}},souls:[{...desktopRaw.souls[0],id:'desktop-second',mainAttrValue:40}]};
    await ui('importMode="accounts";handleFiles('+file(latest)+')');
    assert.equal(stored.accounts[0].raw.souls.length,2);assert.equal(Object.hasOwn(stored.accounts[0].raw,'hero_equips'),false);
    assert.equal(await ui('exportBackup()'),true);const backup=structuredClone(exported);
@@ -329,6 +329,9 @@ async function main(){
    await ui('importMode="backup";handleFiles('+file(backup)+')');await ui('applyBackupRestore()');
    assert.equal(stored.accounts[0].souls['desktop-first'].stats.attack,25);assert.equal(stored.accounts[0].souls['desktop-second'].stats.attack,40);
    assert.equal(stored.accounts[0].merged,true);assert.equal(stored.accounts[0].raw.souls.length,2);
+   assert.deepEqual(stored.accounts[0].raw.accountComparison,{version:1,items:{synthetic:1},realm:{synthetic:3}});
+   await ui('selectView("accounts");document.getElementById("account-snapshot-extra").open=true');
+   assert.match(await ui('document.getElementById("account-snapshot-extra").textContent'),/账号概况 · 物品已提供本次未采集 · 沿用 2026-11-25T00:00:00Z 的旧记录/);
   });
  await check('勾选魂王阵容后原版复跑遵守不佩戴御魂，并带入真实选中的契灵',async()=>{
   const source=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&!l.members[0].qiling&&l.members[0].onmyojiId==='11');

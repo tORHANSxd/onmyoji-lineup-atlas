@@ -166,9 +166,46 @@ test('增量档案省略御魂预设时继续使用旧预设，明确导出的�
  delete restricted.equipPresets;
  const merged=C.mergeAccount(initial,C.parseAccount(restricted));
  assert.deepEqual(merged.presets,initial.presets);
+ assert.equal(merged.retainedSections.equipPresets,initial.capturedAt);
  assert.deepEqual(C.restoreAccount(JSON.parse(JSON.stringify(merged))).presets,merged.presets);
  const cleared=C.mergeAccount(merged,C.parseAccount(snapshot({equipPresets:[]})));
  assert.deepEqual(cleared.presets,[]);
+});
+
+test('按平安志原版类别保留未采集的契灵、预设和账号概况子项，备份恢复后保留来源',()=>{
+ const old=C.parseAccount(snapshot({
+  hunlings:[{id:1,star:1,lv:1,marks:[]}],
+  heroShardBinding:{1:2},collections:{version:1},
+  lineupPresets:{version:1,synthetic:[1]},
+  accountComparison:{version:1,appearance:{synthetic:1},items:{synthetic:2},realm:{synthetic:3}}
+ }));
+ const newRaw=snapshot({
+  capturedAt:'2026-11-26T00:00:00Z',scope:{souls:false,heroes:false,items:false,realmCards:true},
+  hero_equips:[],heroes:{},hunlings:null,heroBookShards:[],heroShardBinding:null,
+  equipPresets:[],lineupPresets:null,collections:null,currency:{},
+  accountComparison:{version:1,appearance:{synthetic:4},items:null,realm:{synthetic:5}}
+ });
+ const incoming=C.parseAccount(newRaw);
+ const restored=C.restoreAccount(JSON.parse(JSON.stringify(C.mergeAccount(old,incoming))));
+ for(const key of ['hunlings','heroBookShards','heroShardBinding','equipPresets','lineupPresets','collections','currency']){
+  assert.deepEqual(restored.raw[key],old.raw[key]);
+  assert.equal(restored.retainedSections[key],old.capturedAt);
+ }
+ assert.equal(restored.snapshot.sections.lineupPresets,1);
+ assert.deepEqual(restored.raw.accountComparison,{version:1,appearance:{synthetic:4},items:{synthetic:2},realm:{synthetic:5}});
+ assert.equal(restored.retainedSections['accountComparison.items'],old.capturedAt);
+ assert.equal(restored.retainedSections['accountComparison.realm'],undefined);
+ const next=C.mergeAccount(restored,C.parseAccount(snapshot({accountComparison:null})));
+ assert.deepEqual(next.raw.accountComparison,restored.raw.accountComparison);
+ assert.equal(next.retainedSections['accountComparison.items'],old.capturedAt);
+ const newRealm=C.mergeAccount(next,incoming);
+ assert.equal(newRealm.retainedSections['accountComparison.items'],old.capturedAt);
+ const skipped=C.mergeAccount(old,C.parseAccount(snapshot({capturedAt:undefined,accountComparison:null})));
+ assert.equal(C.mergeAccount(skipped,incoming).retainedSections['accountComparison.items'],old.capturedAt);
+ const cleared=C.mergeAccount(next,C.parseAccount(snapshot({accountComparison:{version:1,items:{},realm:{}}})));
+ assert.deepEqual(cleared.raw.accountComparison.items,{});
+ assert.deepEqual(cleared.raw.accountComparison.realm,{});
+ assert.equal(cleared.retainedSections['accountComparison.items'],undefined);
 });
 
 test('桌面缓存快照保留技能、五条副属性、空预设和全部原始扩展数据',()=>{

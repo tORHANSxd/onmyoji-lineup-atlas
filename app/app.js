@@ -706,13 +706,24 @@ function snapshotDetails(a){
  const snapshot=a.snapshot;if(!snapshot)return '';
  const scopeNames={heroes:'式神',souls:'御魂',items:'物品',realmCards:'结界卡',guild:'阴阳寮',taskRecords:'任务记录'};
  const ranges=Object.entries(snapshot.scope).filter(([key])=>scopeNames[key]).map(([key,value])=>`${scopeNames[key]}：${value===true?'已采集':value===false?'未采集':'范围不明确'}`).join('；');
- const rows=Object.entries(C.SNAPSHOT_SECTIONS).map(([key,label])=>{
-  const count=snapshot.sections[key],notCollected=snapshot.scope[C.SNAPSHOT_SCOPES[key]]===false;
-  const content=count==null?'未提供或格式待核对':`${count} 条${key==='heroesBagEntries'&&snapshot.stackedHeroes!=null?' · 合计 '+snapshot.stackedHeroes+' 个':''}`;
+ const sectionRow=(key,label,content,scope)=>{
   const retained=Object.hasOwn(a.retainedSections||{},key)?` · 沿用 ${a.retainedSections[key]||'时间未知'} 的旧记录`:'';
-  return `<tr><th>${esc(label)}</th><td>${esc(content)}</td><td>${notCollected?'本次未采集':count==null?'—':'已保留原始记录'}${esc(retained)}</td></tr>`;
- }).join('');
- return `<details class="inventory-notes" id="account-snapshot-extra"><summary>其他采集数据与范围</summary>${ranges?`<p>${esc(ranges)}</p>`:''}<p>备份保留原始记录。堆叠素材不计入可上阵实例。</p><div class="scroll-table"><table><thead><tr><th>内容</th><th>记录数量</th><th>采集状态</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+  const status=snapshot.scope[scope]===false?'本次未采集':content==null?'—':'已保留原始记录';
+  return `<tr><th>${esc(label)}</th><td>${esc(content??'未提供或格式待核对')}</td><td>${status}${esc(retained)}</td></tr>`;
+ };
+ const rows=Object.entries(C.SNAPSHOT_SECTIONS).map(([key,label])=>{
+  const count=snapshot.sections[key];
+  const content=count==null?null:key==='lineupPresets'?'格式版本 1':
+   `${count} 条${key==='heroesBagEntries'&&snapshot.stackedHeroes!=null?' · 合计 '+snapshot.stackedHeroes+' 个':''}`;
+  return sectionRow(key,label,content,C.SNAPSHOT_SCOPES[key]);
+ });
+ const comparison=a.raw.accountComparison;
+ if(comparison?.version===1){
+  for(const [key,label,scope] of [['items','账号概况 · 物品','items'],['realm','账号概况 · 结界','realmCards']]){
+   rows.push(sectionRow(`accountComparison.${key}`,label,comparison[key]==null?null:'已提供',scope));
+  }
+ }
+ return `<details class="inventory-notes" id="account-snapshot-extra"><summary>其他采集数据与范围</summary>${ranges?`<p>${esc(ranges)}</p>`:''}<p>备份保留原始记录。堆叠素材不计入可上阵实例。</p><div class="scroll-table"><table><thead><tr><th>内容</th><th>记录</th><th>采集状态</th></tr></thead><tbody>${rows.join('')}</tbody></table></div></details>`;
 }
 const ACCOUNT_CURRENCIES={
  action_point:'体力',auto_point:'樱饼',broken_amulet:'破碎的符咒',coin:'金币',
