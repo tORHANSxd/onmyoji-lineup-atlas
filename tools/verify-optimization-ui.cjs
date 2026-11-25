@@ -101,6 +101,27 @@ async function main(){
   assert.match(await ui('document.getElementById("client-dungeons-detail").textContent'),/首领机制.*不能被复活/s);
   await ui('document.getElementById("client-dungeons").open=false');
  });
+ if(catalog?.index.encounters&&catalog.entries.has('tipsInfoData_cn'))await check('通用关卡默认场景、站位以及原版战斗和秘闻规则可查',async()=>{
+  await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
+  await ui('qaEncounterInput("battle","3345301")');
+  await until('$("client-dungeons-encounter-detail").textContent.includes("通用 PvE 默认场景")');
+  const rocks=await ui('$("client-dungeons-encounter-detail").textContent');
+  assert.match(rocks,/礁石.*默认场景.*819.*站位配置 ID.*418.*战斗站位.*敌方 1 号位.*55\.0,0\.0,0\.0,1\.6,270\.0/s);
+  await ui('qaEncounterInput("battle","12136001")');
+  await until('$("client-dungeons-encounter-detail").textContent.includes("首领凝炼5朵磐长花")');
+  assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/通用战斗规则原文.*叩岩.*击退行动条的概率提升到100%/s);
+  await ui('qaEncounterInput("daily","流萤之夏")');
+  await until('$("client-dungeons-encounter-detail").textContent.includes("虫师根据场上存活目标的奇偶")');
+  const rules=await ui('document.querySelector(".encounter-rule-text").textContent');
+  assert.match(rules,/秘闻副本·流萤之夏.*会优先被虫师化为虫茧/s);
+  assert.doesNotMatch(rules,/<(?:green|orange)>|<\/>/);
+  win.setContentSize(720,960);
+  assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);
+  win.setContentSize(1440,1000);
+  await ui('document.querySelector(".encounter-rule-text").closest("section").scrollIntoView({block:"start",behavior:"instant"})');
+  await capture('client-dungeon-verified-rule');
+  await ui('$("client-dungeons").open=false');
+ });
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
  const file=json=>'[{name:"synthetic.json",size:1024,text:async()=>'+JSON.stringify(JSON.stringify(json))+'}]';
  await check('账号导入失败保持原账号和原库存',async()=>{

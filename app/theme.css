@@ -126,6 +126,7 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .encounter-source{border:1px solid var(--line);padding:12px;margin-top:10px;border-radius:6px;min-width:0}
 .encounter-source h4{margin:0 0 8px}
 .encounter-source>button{margin-top:8px}
+.encounter-rule-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.65}
 .dungeon-encounter-waves{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:10px}
 .dungeon-encounter-waves section{padding:10px;background:#f2ede1;border-radius:5px}
 .dungeon-encounter-waves ul{list-style:none;margin:4px 0;padding:0}

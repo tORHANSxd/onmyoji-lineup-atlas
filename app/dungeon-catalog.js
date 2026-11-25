@@ -9,6 +9,9 @@
     BattleScenesInfo: '战斗场景与站位',
     Combinesceneinfo: '关卡场景配置',
     normal_battle_config: '通用战斗模式',
+    normal_battle_tips: '通用战斗规则索引',
+    system_rule_dsc: '战斗与玩法规则原文',
+    tipsInfoData_cn: '简体中文旧版玩法提示',
     dungeon_rune: '御魂副本',
     dungeon_awake: '觉醒副本',
     dungeon_challenge: '秘闻副本',
@@ -41,6 +44,8 @@
     ssinitguihuo: '式神初始鬼火', yysinitguihuo: '阴阳师初始鬼火', gwinitguihuo: '敌方初始鬼火',
     oneboutaddguihuo: '回合鬼火增量', strength: '体力消耗', battleTime: '战斗时限',
     check_strength: '体力检查', tip: '关卡提示', no_yys: '阴阳师限制',
+    resindex: '默认场景 ID', battlesceneinfo: '站位配置 ID', mapsrc: '场景资源路径',
+    rule_key: '规则文本 ID', pve_data_flag: '通用 PvE 关卡 ID',
     replace_yysid: '替换阴阳师 ID', hpaddrate: '生命调整参数', sl_file: '关卡脚本',
     atk_alter: '攻击调整', def_alter: '防御调整', hp_alter: '生命调整',
     sp_alter: '速度调整', spd_alter: '速度调整', crt_alter: '暴击调整',
@@ -62,6 +67,7 @@
   };
   const links = {
     pve_stage_data: ['groupid', 'BattleMonstersInfo', '查看敌方编组'],
+    BattleMonstersInfo: ['resindex', 'Combinesceneinfo', '查看默认场景'],
     act_team_battle: ['battle_id', 'pve_stage_data', '查看活动关卡'],
     dungeon_rune: ['scene', 'Combinesceneinfo', '查看关卡场景'],
     Combinesceneinfo: ['battlesceneinfo', 'BattleScenesInfo', '查看战斗站位'],
@@ -257,6 +263,27 @@
     block.append(grid);
   }
 
+  function appendSpecialDetails(block, table, row) {
+    const rule = table === 'system_rule_dsc' ? row.rule_dsc : table === 'tipsInfoData_cn' ? row : null;
+    if (typeof rule === 'string' && rule.trim()) {
+      const text = rule.replace(/<\/?(?:green|orange|red|yellow|blue|white|purple)>|<\/>/gi,'').trim();
+      block.append(node('p', text, 'encounter-rule-text'));
+    }
+    if (table !== 'BattleScenesInfo') return;
+    const details = document.createElement('details');
+    const slots = document.createElement('dl');
+    for (const [prefix, side] of [['My','我方'],['Mon','敌方']]) {
+      const format = new RegExp('^'+prefix+'Pos\\d+$');
+      const rows = Object.entries(row).filter(([key,value]) => format.test(key) && typeof value === 'string');
+      rows.sort(([a],[b]) => Number(a.slice(prefix.length+3))-Number(b.slice(prefix.length+3)));
+      for (const [key,value] of rows) slots.append(node('dt', side+' '+key.slice(prefix.length+3)+' 号位'),node('dd',value));
+    }
+    if (slots.childElementCount) {
+      details.append(node('summary','查看站位原始坐标'),slots);
+      block.append(details);
+    }
+  }
+
   async function showEncounter(entry) {
     if (!entry) return;
     const token = ++stage.token, destination = el('encounter-detail');
@@ -297,6 +324,7 @@
       }
       const fields = fieldsFor(row);
       if (fields.childElementCount) block.append(fields);
+      appendSpecialDetails(block, ref.table, row);
       appendWaves(block,waves,monsters);
       const details = document.createElement('details');
       const source = state.index.tables.find(t => t.name === ref.table)?.source;

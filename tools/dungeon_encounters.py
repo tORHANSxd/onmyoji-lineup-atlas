@@ -57,9 +57,12 @@ EDGES = {
     "hunling_boss": (("catch_battle_id", "pve_stage_data", "收服关卡"),),
     "Combinesceneinfo": (("battlesceneinfo", "BattleScenesInfo", "战斗站位"),),
 }
+FOLLOWED_TABLES = {"pve_stage_data", "BattleMonstersInfo", "Combinesceneinfo", "dungeon_awake_scene", "normal_battle_tips"}
 BATTLE_ID_FIELDS = ("battle_id", "battleId", "pve_stage_id", "pve_id")
 RULE_TEXT_FIELDS = {"tip": "关卡提示", "fbtips": "副本规则", "attack_tip": "战斗提示",
                     "rule": "玩法规则", "boss_rule": "首领机制", "notice": "机制说明", "fb1_defs": "竞速规则"}
+PANEL_RULE_FIELDS = {"normal_battle_tips": ("rule_key", "通用战斗规则原文"),
+                     "dungeon_challenge_series": ("fbtips", "秘闻默认规则原文")}
 NAME_FIELDS = ("title_name", "name", "boss_name", "battle_name", "chapter_name",
                "area_name", "floordesc", "title")
 
@@ -83,6 +86,12 @@ def encounter_index(source, load_rows):
     language = "languageData_cn"
     localized = {key for key, row in load_rows(language)
                  if isinstance(key, str) and isinstance(row, dict) and row.get("cn")} if language in manifests else set()
+    rule_table = "system_rule_dsc"
+    legacy_tips = "tipsInfoData_cn"
+    rules = {key for key, row in load_rows(rule_table)
+             if isinstance(key, str) and isinstance(row, dict) and row.get("rule_dsc")} if rule_table in manifests else set()
+    tips = {key for key, row in load_rows(legacy_tips)
+            if isinstance(key, str) and isinstance(row, str) and row.strip()} if legacy_tips in manifests else set()
 
     def table(name):
         if name not in lookup:
@@ -106,6 +115,21 @@ def encounter_index(source, load_rows):
             resolved = relation(destination, row.get(field), label, True)
             if resolved:
                 links.append(resolved)
+        if name == "pve_stage_data":
+            tip = relation("normal_battle_tips", row.get("id"), "通用战斗规则", False)
+            if tip:
+                links.append(tip)
+        if name == "BattleMonstersInfo":
+            scene = relation("Combinesceneinfo", row.get("resindex", 11032), "通用 PvE 默认场景", True)
+            if scene:
+                links.append(scene)
+        panel_field = PANEL_RULE_FIELDS.get(name)
+        if panel_field:
+            field, label = panel_field
+            key = row.get(field)
+            if isinstance(key, str) and key:
+                dest = legacy_tips if key not in rules and key in tips else rule_table
+                links.append({"table": dest, "key": key, "label": label, "found": key in rules or key in tips})
         if name == "lbs_world_boss_area":
             for choice in row.get("weighted_battles", ()):
                 if isinstance(choice, list) and choice:
@@ -118,10 +142,27 @@ def encounter_index(source, load_rows):
                 if resolved:
                     links.append(resolved)
         for field, label in RULE_TEXT_FIELDS.items():
+            if panel_field and field == panel_field[0]:
+                continue
             key = row.get(field)
             if isinstance(key, str) and key in localized:
                 links.append({"table": language, "key": key, "label": label, "found": True})
         return links
+
+    def related(table_name, row, direct):
+        pending = [*explicit(table_name, row), *direct]
+        references, seen = [], set()
+        for link in pending:
+            dest, key = link["table"], link["key"]
+            identity = (dest, key)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            references.append(link)
+            if link["found"] and dest in FOLLOWED_TABLES:
+                _, data = table(dest)[numeric_key(key)]
+                pending.extend(explicit(dest, data))
+        return references
 
     candidates = [
         name for name, row in manifests.items()
@@ -143,20 +184,14 @@ def encounter_index(source, load_rows):
             ]
             if not root and not linked_battles and not row.get("monsterWaves"):
                 continue
-            references = [*explicit(table_name, row), *linked_battles]
-            for linked in references[:]:
-                if not linked["found"]:
-                    continue
-                dest = linked["table"]
-                # Unpack one known level so the stage view can show both the
-                # upstream encounter and the canonical battle or scene.
-                if dest in {"pve_stage_data", "Combinesceneinfo", "dungeon_awake_scene"}:
-                    _, data = table(dest)[numeric_key(linked["key"])]
-                    references.extend(explicit(dest, data))
+            references = related(table_name, row, linked_battles)
             title = name(row)
             if not title and linked_battles:
                 _, battle = table("pve_stage_data")[numeric_key(linked_battles[0]["key"])]
                 title = name(battle)
+            series_title = row.get("title")
+            if table_name == "dungeon_challenge_series" and isinstance(series_title, str) and series_title.strip():
+                title = " · ".join(dict.fromkeys(part for part in (series_title.strip(), title) if part))
             description = row.get("typedesc")
             if title and isinstance(description, str) and description and description not in title:
                 title = description if title in description else description + " · " + title

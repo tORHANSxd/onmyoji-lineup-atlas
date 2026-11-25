@@ -2,11 +2,49 @@
 
 import argparse
 from collections import Counter
+import dis
 import hashlib
 import json
 from pathlib import Path
 import re
 import sys
+
+CLIENT_TIP_MODULE = "com/data/pdata/tipsInfoData_cn.py"
+
+
+def read_client_tip_table(code):
+    """Recover the shipped literal string map without executing the module."""
+    stack = []
+    for op in dis.get_instructions(code):
+        kind = op.opname
+        if kind in {"RESUME", "EXTENDED_ARG"}:
+            continue
+        if kind == "LOAD_CONST" and isinstance(op.argval, str):
+            stack.append(op.argval)
+        elif kind == "BUILD_MAP":
+            count = op.arg * 2
+            values = stack[-count:] if count else []
+            if len(values) != count or any(type(value) is not str for value in values):
+                raise ValueError("Invalid literal tip map")
+            if count:
+                del stack[-count:]
+            stack.append(dict(zip(values[::2], values[1::2])))
+        elif kind == "MAP_ADD" and op.arg == 1:
+            value, key = stack.pop(), stack.pop()
+            if type(key) is not str or type(value) is not str or type(stack[-1]) is not dict:
+                raise ValueError("Invalid literal tip entry")
+            stack[-1][key] = value
+        elif kind == "DICT_UPDATE" and op.arg == 1:
+            values = stack.pop()
+            if type(values) is not dict or type(stack[-1]) is not dict:
+                raise ValueError("Invalid literal tip map update")
+            stack[-1].update(values)
+        elif kind == "STORE_NAME" and op.argval == "data" and len(stack) == 1 and type(stack[0]) is dict:
+            return stack[0]
+        else:
+            raise ValueError(f"Unexpected tip-table opcode {kind} at {op.offset}")
+    raise ValueError("The tip module has no literal data assignment")
+
 
 def open_catalog_client(snapshot):
     import game_resources as resources
@@ -75,7 +113,7 @@ def extract(snapshot, proof, apk_version, output, battle_index=None, script_inde
                     **{key: evidence[key] for key in ("digest", "origin", "source", "offset", "rawSHA256", "decodedSHA256")},
                     "module": module, "marshalSHA256": resources.sha256(marshalled),
                 })
-        if not module.startswith("com/data/cdata/"):
+        if not module.startswith("com/data/cdata/") and module != CLIENT_TIP_MODULE:
             continue
         name = module.split("/")[-1].removesuffix(".py")
         if not re.fullmatch(r"[A-Za-z0-9_]+", name) or name in tables:
@@ -101,7 +139,8 @@ def extract(snapshot, proof, apk_version, output, battle_index=None, script_inde
         if rows is None:
             storage = "literal"
             try:
-                rows = read_literal_table(decoder.code(code))
+                read_table = read_client_tip_table if module == CLIENT_TIP_MODULE else read_literal_table
+                rows = read_table(decoder.code(code))
             except Exception as error:
                 reasons.append(f"{type(error).__name__}: {error}")
         if rows is None:
