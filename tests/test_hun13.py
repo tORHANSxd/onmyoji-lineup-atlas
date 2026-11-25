@@ -26,14 +26,25 @@ def input_plan():
 class Hun13InventoryTest(unittest.TestCase):
     def test_rounds_keep_distinct_instances_even_for_same_shikigami_type(self):
         plan = input_plan()
-        actor, heroes, items, rounds = verify.prepare_teams(plan, {"300014": "招财猫"}, selected_team)
-        self.assertEqual(actor["heroId"], 10)
+        heroes, items, rounds = verify.prepare_teams(plan, {"300014": "招财猫"}, selected_team)
+        self.assertEqual(heroes["selected-onmyoji"]["heroId"], 10)
         self.assertEqual(len(heroes), 11)
         self.assertEqual(len(items), 10)
-        self.assertFalse(set(rounds[0][0]).intersection(rounds[1][0]))
+        self.assertFalse(set(rounds[0]["lineup"]).intersection(rounds[1]["lineup"]))
         self.assertEqual(heroes["r2-member-1"]["equips"], ["r2-member-1-soul-1"])
-        self.assertEqual(rounds[1][1]["r2-member-1"], 3)
+        self.assertEqual(rounds[1]["choices"]["r2-member-1"], 3)
         self.assertEqual(plan["teams"][1][0]["souls"][0]["id"], "s6")
+
+    def test_each_round_keeps_its_onmyoji_and_settings(self):
+        plan = input_plan()
+        first = plan["onmyoji"]
+        second = {**first, "skinfo": [[1003, 1], [1008, 5]], "aiSkill": 2}
+        allocation = {"rounds": [{"members": members, "onmyoji": actor}
+                                 for members, actor in zip(plan["teams"], (first, second))]}
+        heroes, _, rounds = verify.prepare_teams(allocation, {"300014": "招财猫"}, selected_team)
+        self.assertEqual(rounds[0]["actorAlias"], "r1-onmyoji")
+        self.assertEqual(heroes["r2-onmyoji"]["skinfo"], [[1003, 1], [1008, 5]])
+        self.assertEqual(rounds[1]["choices"]["r2-onmyoji"], 2)
 
     def test_rejects_duplicate_instance_and_shared_equipment_across_rounds(self):
         plan = input_plan()

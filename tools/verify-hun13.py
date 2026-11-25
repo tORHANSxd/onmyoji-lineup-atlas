@@ -13,9 +13,13 @@ import time
 
 
 def prepare_teams(plan, suits, selected_team):
-    teams = plan["teams"]
-    if not isinstance(teams, list) or len(teams) != 2 or any(not isinstance(team, list) or len(team) != 5 for team in teams):
+    legacy = "rounds" not in plan
+    source = [{"onmyoji": plan["onmyoji"], "spirit": plan.get("spirit"), "members": team}
+              for team in plan.get("teams", [])] if legacy else plan["rounds"]
+    if (not isinstance(source, list) or len(source) != 2 or any(not isinstance(row, dict)
+            or not isinstance(row.get("members"), list) or len(row["members"]) != 5 for row in source)):
         raise ValueError("Select two complete five-shikigami teams")
+    teams = [row["members"] for row in source]
     if len({member["instanceId"] for team in teams for member in team}) != 10:
         raise ValueError("The same shikigami instance cannot enter both rounds")
     items = [soul["id"] for team in teams for member in team for soul in member["souls"]]
@@ -23,18 +27,20 @@ def prepare_teams(plan, suits, selected_team):
         raise ValueError("The two teams must have simultaneous equipment")
 
     inventory, heroes, rounds = {}, {}, []
-    for index, team in enumerate(teams, 1):
-        actor, fighters, equips, choices = selected_team({"onmyoji": plan["onmyoji"], "members": team}, suits)
+    for index, row in enumerate(source, 1):
+        actor, fighters, equips, choices = selected_team(row, suits)
         prefix = f"r{index}-"
+        actor_alias = "selected-onmyoji" if legacy else prefix + "onmyoji"
         lineup = [prefix + alias for alias in fighters]
         for alias, hero in fighters.items():
             hero["equips"] = [prefix + equip for equip in hero["equips"]]
             heroes[prefix + alias] = hero
         inventory.update((prefix + alias, item) for alias, item in equips.items())
-        rounds.append((lineup, {alias: choices[alias.removeprefix(prefix)] for alias in lineup}
-                       | {"selected-onmyoji": choices["selected-onmyoji"]}))
-    heroes["selected-onmyoji"] = actor
-    return actor, heroes, inventory, rounds
+        rounds.append({"lineup": lineup, "actor": actor, "actorAlias": actor_alias, "spirit": row.get("spirit"),
+                       "choices": {alias: choices[alias.removeprefix(prefix)] for alias in lineup}
+                       | {actor_alias: choices["selected-onmyoji"]}})
+    heroes.update((row["actorAlias"], row["actor"]) for row in rounds)
+    return heroes, inventory, rounds
 
 
 def replay(runtime, work, args):
@@ -46,7 +52,7 @@ def replay(runtime, work, args):
 
     plan_bytes, suit_bytes = args.team.read_bytes(), args.suit_index.read_bytes()
     plan = json.loads(plan_bytes)
-    actor, heroes, inventory, rounds = prepare_teams(plan, json.loads(suit_bytes), selected_team)
+    heroes, inventory, rounds = prepare_teams(plan, json.loads(suit_bytes), selected_team)
     modules, host, evidence = prepare_runtime(runtime, work)
     native_api = host.oracle.api
 
@@ -68,23 +74,29 @@ def replay(runtime, work, args):
 
     if any(hero["heroId"] not in DATA_HERO.data for hero in heroes.values()):
         raise ValueError("Unknown inventory character")
-    source = {"heroes": heroes, "yysid": actor["heroId"]}
-    spirit = plan.get("spirit")
-    if spirit is not None:
+    source = {"heroes": heroes, "yysid": rounds[0]["actor"]["heroId"], "hunling_info": {}}
+    if any(row["spirit"] is not None for row in rounds):
         from AttrCalc import HunlingAttrCalc
         from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
 
+    for index, row in enumerate(rounds, 1):
+        if row["spirit"] is None:
+            continue
+        actor, spirit = row["actor"], row["spirit"]
         spirit = battle_spirit(spirit, HunlingAttrCalc)
+        if "rounds" in plan:
+            spirit["uid"] = f"r{index}-spirit"
         template = DATA_HUNLING_BASE.data.get(spirit["id"], {})
         if (actor["heroId"] not in template.get("heroIdList", ())
                 or (spirit["id"], spirit["star"]) not in DATA_HUNLING_ATTR.data
                 or any(mark not in DATA_HUNLING_MARK.data for mark in spirit["marks"])):
             raise ValueError("Invalid inventory spirit for the selected onmyoji")
-        source["hunling_info"] = {spirit["uid"]: spirit}
-        source["yys_hunling"] = {str(actor["heroId"]): spirit["uid"]}
+        source["hunling_info"][spirit["uid"]] = spirit
+        row["spirit"] = spirit
     avatar = BattleAvatar()
     avatar.init_from_dict(source)
     avatar.inventory.update(inventory)
+    actors = {alias: avatar.heroes[alias] for alias in {row["actorAlias"] for row in rounds}}
     engine = Hun13Engine({"dungeon_id": 103, "mode": "normal", "is_solo": True})
     engine.battleMode = const.BattleMode.MODE_HUN_13
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
@@ -117,7 +129,16 @@ def replay(runtime, work, args):
         wave = engine.finishedWaveCount
         if owner is not controller or wave not in (0, 1):
             raise RuntimeError("Unexpected original round selection")
-        owner.ctrlPlayer.defaultHeros = rounds[wave][0][:]
+        selected_round = rounds[wave]
+        for actor_alias in actors:
+            if actor_alias != selected_round["actorAlias"]:
+                avatar.heroes.pop(actor_alias, None)
+        alias = selected_round["actorAlias"]
+        avatar.heroes[alias] = actors[alias]
+        avatar.defaultYYSId = selected_round["actor"]["heroId"]
+        avatar.defaultHeros = selected_round["lineup"][:]
+        spirit = selected_round["spirit"]
+        avatar.yysEquipHunLingInfo = {str(avatar.defaultYYSId): spirit["uid"]} if spirit else {}
         return create_actor(owner, *extra)
 
     def observe_round_start():
@@ -125,10 +146,14 @@ def replay(runtime, work, args):
         if wave not in selected or wave in history:
             raise RuntimeError("The battle started without confirmed inventory")
         start_round()
-        if set(controller.bannedHeroes) != set(rounds[0][0]):
+        if set(controller.bannedHeroes) != set(rounds[0]["lineup"]):
             raise RuntimeError("The original first-round restriction did not match the selected inventory")
         history[wave] = {"wave": wave + 1, "start": engine.waveBeginTime,
                          "availableSeconds": engine.get_totaltime() + int(engine.bonus_time)}
+        if "rounds" in plan:
+            row = rounds[wave]
+            history[wave]["onmyojiId"] = row["actor"]["heroId"]
+            history[wave]["spiritId"] = row["spirit"]["id"] if row["spirit"] else None
 
     def observe_round_end(camp):
         wave = engine.finishedWaveCount
@@ -138,6 +163,7 @@ def replay(runtime, work, args):
         settle_round(camp)
         if wave == 0:
             report["carriedSeconds"] = round(engine.bonus_time, 6)
+            report["carriedBudgetSeconds"] = int(engine.bonus_time)
 
     def observe_battle_end(camp):
         nonlocal winner
@@ -172,7 +198,7 @@ def replay(runtime, work, args):
         if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk:
             continue
         wave = engine.finishedWaveCount
-        pending = dict(rounds[wave][1])
+        pending = dict(rounds[wave]["choices"])
         for entity in engine.heroEntities.values():
             if entity.ownerController is not controller:
                 continue
@@ -185,10 +211,11 @@ def replay(runtime, work, args):
                 engine.op_setAutoSkill(controller, entity.uid, setting)
                 if controller.autoSkill.get(entity.uid) != setting:
                     raise RuntimeError("The engine rejected the selected automatic skill")
-            if alias == "selected-onmyoji" and spirit:
+            if alias == rounds[wave]["actorAlias"]:
+                spirit = rounds[wave]["spirit"]
                 attached = entity.get_hunlingData()
-                if attached is None or attached.uuid != spirit["uid"]:
-                    raise RuntimeError("The engine did not attach the selected spirit")
+                if getattr(attached, "uuid", None) != (spirit["uid"] if spirit else None):
+                    raise RuntimeError("The engine did not apply the selected spirit")
         if pending:
             raise RuntimeError("The engine did not summon all selected inventory characters")
         selected.add(wave)

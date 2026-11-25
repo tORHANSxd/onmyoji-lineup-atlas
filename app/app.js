@@ -135,7 +135,7 @@ function filteredLineups(){const query=$('search').value.trim().toLowerCase().sp
  if(!selectedMembers.every(id=>l.members?.some(m=>m.shikigamiId===id)))return false;
   return !query.length||query.every(q=>searchText(l).includes(q));
 });}
-let dungeonRulesSource=null,dungeonStageFilter=null,runeStatus=null,runeStatusPending=false,dungeonBattle=null,dungeonStock=null,dungeonStopPending=null,dungeonBattleRenderKey='',dungeonStockRenderKey='';
+let dungeonRulesSource=null,dungeonStageFilter=null,runeStatus=null,runeStatusPending=false,dungeonBattle=null,dungeonStock=null,dungeonHun13=null,dungeonStopPending=null,dungeonBattleRenderKey='',dungeonStockRenderKey='';
 function selectedDungeon(){
  return DATA?.dungeonRules?.dungeons.find(row=>row.id===Number($('dungeon-rules-select').value));
 }
@@ -143,7 +143,7 @@ function checkedDungeonLineups(dungeon){
  return dungeon?.gameSceneId?lineups().filter(l=>Number(l.gameSceneId)===dungeon.gameSceneId&&selectedLineups.has(l.id)):[];
 }
 function hasRuneRuntime(dungeon){
- const scene=AtlasRuneLineup.sceneForDungeon(dungeon?.id);
+ const scene=dungeon?.id===103?AtlasRuneLineup.hun13SceneId:AtlasRuneLineup.sceneForDungeon(dungeon?.id);
  return scene!==null&&dungeon.gameSceneId===scene&&DATA.dungeonRules.source.resourceVersion===AtlasRuneLineup.resourceVersion;
 }
 function canReplayDungeon(dungeon){
@@ -215,7 +215,7 @@ function planSeedAudits(job){
  return floors.get(job.dungeonId);
 }
 function battleBusy(job){return usesDungeonInventory(job)&&!job.cancelled&&(job.running||job.activeSeedAudit||job.activeFullSeedAudit||job.rows.some(row=>row.state==='waiting'));}
-function runeBusy(){return !!(dungeonStopPending||battleBusy(dungeonBattle)||stockBusy(dungeonStock));}
+function runeBusy(){return !!(dungeonStopPending||battleBusy(dungeonBattle)||stockBusy(dungeonStock)||dungeonHun13?.running);}
 async function verifyDungeonSeeds(job,row,selector){
  if(runeBusy()||!usesDungeonInventory(job)||(row.verdict!=='pass'&&!stockPasses(row))||failedSeedAudit(row)||fullSeedPassed(row))return;
  const audit=row.seedAudit??={samples:[]};
@@ -368,6 +368,9 @@ function renderDungeonBattle(dungeon){
  if(focused!==undefined)body.querySelector(`[data-battle-samples="${CSS.escape(focused)}"] summary`)?.focus();
 }
 function stopDungeonBattle(clear=false){
+ const hun=dungeonHun13;
+ const stopHun=hun?.running;
+ if(stopHun){hun.cancelled=true;hun.stopWorker?.();}
  const jobs=[dungeonBattle,dungeonStock].filter(Boolean);
  const audit=dungeonStock?.activeRandomAudit||dungeonStock?.activeSeedAudit||dungeonBattle?.activeSeedAudit||
   dungeonStock?.activeFullSeedAudit||dungeonBattle?.activeFullSeedAudit;
@@ -376,10 +379,10 @@ function stopDungeonBattle(clear=false){
   job.cancelled=true;job.stopSearch?.();
   for(const row of job.rows)if(row.state==='waiting'||row.state==='running')row.state='cancelled';
  }
- if((audit||jobs.some(job=>job.running))&&!dungeonStopPending){
+ if((audit||jobs.some(job=>job.running)||stopHun&&hun.phase==='replay')&&!dungeonStopPending){
   dungeonStopPending=window.runeBattle.stop().catch(()=>{}).finally(()=>{dungeonStopPending=null;renderDungeonSelection();});
  }
- if(clear){dungeonBattle=null;dungeonStock=null;}
+ if(clear){dungeonBattle=null;dungeonStock=null;dungeonHun13=null;}
  renderDungeonSelection();
 }
 async function advanceDungeonBattle(){
@@ -672,6 +675,99 @@ async function searchDungeonStock(){
  }catch(error){if(!job.cancelled)job.error=error.message;}
  finally{job.running=false;job.searching=false;renderDungeonSelection();}
 }
+const hun13Seeds=[0,1,2,3,42,9999];
+const hun13Selects=()=>[$('dungeon-hun13-first'),$('dungeon-hun13-second')];
+function hun13Selection(selection,busy){
+ const options=selection.map(lineup=>[lineup.id,lineup.title]);
+ const key=JSON.stringify(options);
+ return hun13Selects().map((field,index)=>{
+  if(field.dataset.options!==key){
+   const previous=field.value;
+   field.replaceChildren(new Option('从已勾选阵容中选择',''),...options.map(([id,title])=>new Option(title,id)));
+   field.value=selection.some(lineup=>lineup.id===previous)?previous:selection[index]?.id??'';
+   field.dataset.options=key;
+  }
+  field.disabled=busy||!selection.length;
+  return selection.find(lineup=>lineup.id===field.value);
+ });
+}
+
+function renderHun13Result(dungeon){
+ const panel=$('dungeon-hun13-result'),job=dungeonHun13;
+ panel.hidden=dungeon?.id!==103||!job||!usesDungeonInventory(job);
+ if(panel.hidden)return;
+ const verdict=job.error||(!job.running&&job.cancelled?'已停止，保留已完成的场次。':
+  job.phase==='solve'?'正在共同精算两波的式神与御魂'+(job.nodes?` · 已检查 ${job.nodes.toLocaleString('zh-CN')} 个搜索状态`:''):
+   job.phase==='replay'?`正在复跑虚无 · 已核对 ${job.samples.length}/${hun13Seeds.length} 个种子`:
+    job.phase==='pass'?`原版结算通过 ${job.samples.length} 个采样种子。全部随机分支仍待核对。`:
+     job.phase==='loss'?'当前配装未通过全部采样。':'复跑结算待核对。');
+ const status=`第 1 波 ${job.titles[0]} · 第 2 波 ${job.titles[1]}。${verdict}`;
+ if($('dungeon-hun13-status').textContent!==status)$('dungeon-hun13-status').textContent=status;
+ const list=$('dungeon-hun13-samples'),key=JSON.stringify(job.samples);
+ if(list.dataset.samples===key)return;
+ list.dataset.samples=key;
+ const actor=id=>DATA.gameConfig.heroes?.[id]?.name;
+ const seconds=value=>Number.isFinite(value)?`${value.toFixed(2)} 秒`:'待核对';
+ list.innerHTML=job.samples.map(report=>{
+  const total=report.completed?(report.wavesCleared===2&&report.outcome==='win'?'两波通关':
+   report.outcome==='win'?'原版结算胜利，有波次未清场':'原版结算落败'):'结算待核对';
+  const playback=report.animationPlayback&&Number.isFinite(report.animationPlayback.combatOverlapMs)?
+   ` · 动作重叠估算 ${seconds(report.animationPlayback.combatOverlapMs/1000)}`:'';
+  return `<li class="dungeon-stock-card"><strong>种子 ${esc(report.seed)} · ${total}</strong>
+   <p class="caption">引擎全程 ${seconds(report.engineSeconds)}${playback}</p>
+   <ul>${report.rounds.map(round=>`<li>第 ${round.wave} 波 · ${esc(actor(round.onmyojiId)||'阴阳师待核对')} · ${round.cleared===true?'通关':round.cleared===false?'未清场':'待结算'} · ${seconds(round.seconds)} / 时限 ${round.availableSeconds} 秒${Number.isFinite(round.carriedSeconds)?` · 对第二波 ${round.carriedSeconds>=0?'+':''}${seconds(round.carriedSeconds)}`:''}</li>`).join('')}</ul></li>`;
+ }).join('');
+}
+
+function solveHun13Pair(pair,job){
+ return new Promise((resolve,reject)=>{
+  const task=new Worker('match-worker.js');
+  const finish=(error,value)=>{
+   task.terminate();job.stopWorker=null;
+   if(error)reject(error);else resolve(value);
+  };
+  job.stopWorker=()=>finish(Error('虚无精算已停止'));
+  task.onmessage=({data})=>{
+   if(!data.result)return;
+   if(data.result.completed){finish(null,data.result);return;}
+   job.nodes=data.result.proof?.nodes??0;
+   renderHun13Result(selectedDungeon());
+  };
+  task.onerror=event=>finish(Error(event.message||'虚无双队精算线程读取失败'));
+  try{task.postMessage({batch:1,lineups:[pair.combined],account:job.account,roster:DATA.roster,effects:DATA.effects});}
+  catch(error){finish(error);}
+ });
+}
+
+async function verifyHun13Pair(selection){
+ if(runeBusy()||!canReplayDungeon(selectedDungeon())||!account()||selection.some(lineup=>!lineup))return;
+ const job=dungeonHun13={account:account(),titles:selection.map(lineup=>lineup.title),samples:[],phase:'solve',running:true};
+ const active=()=>dungeonHun13===job&&!job.cancelled&&usesDungeonInventory(job);
+ renderDungeonSelection();$('dungeon-stop-battle').focus();
+ try{
+  const pair=AtlasRuneLineup.hun13Pair(selection),result=await solveHun13Pair(pair,job);
+  if(!active())return;
+  if(result.proof?.state==='infeasible')throw Error('库存精算已证明两波原码无法同时配装。');
+  if(!result.ready)throw Error(result.reasons?.[0]||'两波配装尚有条件待核对。');
+  const plan=AtlasRuneLineup.hun13Plan(pair,result,job.account,DATA.gameConfig);
+  job.phase='replay';renderDungeonSelection();
+  for(const seed of hun13Seeds){
+   const report=await window.runeBattle.run(plan,{dungeonId:103,seed,fixedStep:true});
+   if(!active())return;
+   job.samples.push(report);
+   if(!report.completed){job.phase='unknown';break;}
+   if(report.outcome!=='win'){job.phase='loss';break;}
+   renderHun13Result(selectedDungeon());
+  }
+  if(job.phase==='replay')job.phase='pass';
+ }catch(error){if(active())job.error=runeError(error);}
+ finally{
+  const restoreFocus=document.activeElement===$('dungeon-stop-battle');
+  job.running=false;renderDungeonSelection();
+  if(restoreFocus){await dungeonStopPending;if(selectedDungeon()?.id===103&&dungeonHun13===job)$('dungeon-match-selected').focus();}
+ }
+}
+
 function renderDungeonSelection(){
  if(!$('dungeon-workbench').open)return;
  const dungeon=selectedDungeon();
@@ -688,14 +784,18 @@ function renderDungeonSelection(){
  const canReplay=offerRune&&canReplayDungeon(dungeon);
  const busy=battleBusy(dungeonBattle);
  const workingStock=stockBusy(dungeonStock);
- $('dungeon-match-selected').disabled=!account()||!checked.length||!!busy||workingStock||!!offerRune&&(runeStatusPending||dungeonStopPending);
- $('dungeon-match-selected').textContent=canReplay?'精算并离线复跑':'精算勾选阵容';
+ const isHun13=dungeon?.id===103,workingHun13=dungeonHun13?.running;
+ $('dungeon-hun13-rounds').hidden=!isHun13||!canReplay;
+ const pair=isHun13&&canReplay?hun13Selection(checked,!!(busy||workingStock||workingHun13)):null;
+ $('dungeon-match-selected').disabled=!account()||!checked.length||!!busy||workingStock||workingHun13||
+  !!(pair&&pair.some(lineup=>!lineup))||!!offerRune&&(runeStatusPending||dungeonStopPending);
+ $('dungeon-match-selected').textContent=pair?'精算两波并复跑':canReplay?'精算并离线复跑':'精算勾选阵容';
  const rows=selectedBattleRows(selection),unknown=rows.some(row=>row?.verdict==='unknown');
- const offerStock=canReplay&&account()&&!busy&&!workingStock&&originalsFailed(selection);
+ const offerStock=canReplay&&!isHun13&&account()&&!busy&&!workingStock&&!workingHun13&&originalsFailed(selection);
  $('dungeon-search-stock').hidden=!offerStock;
  $('dungeon-search-stock').disabled=dungeonStopPending;
  const stop=$('dungeon-stop-battle');
- stop.hidden=!(workingStock||busy&&!dungeonBattle.cancelled);
+ stop.hidden=!(workingStock||busy&&!dungeonBattle.cancelled||workingHun13&&!dungeonHun13.cancelled);
  stop.textContent=dungeonBattle?.activeFullSeedAudit||dungeonStock?.activeFullSeedAudit?'暂停全种子验收':'停止离线复跑';
  $('dungeon-show-lineups').disabled=!dungeon?.gameSceneId;
  const activeFilter=dungeonStageFilter===dungeon?.gameSceneId?'已按原码副本筛选。':'';
@@ -703,9 +803,11 @@ function renderDungeonSelection(){
   `本关已勾选 ${selection.length} 个${skipped?` · ${skipped} 个需解析`:''}${finished?` · 已核对 ${finished} 个，配置达标 ${matched} 个`:''}。`)+
   (offerRune&&!canReplay&&!runeStatusPending?' '+(runeStatus?.reason||'本机未连接该副本的原版复跑资料')+'。':'')+
   (offerStock&&selection.length?' 勾选的阵容均已证明库存无解，或当前配装未通过采样。可从库存寻找备选。':
-   canReplay&&!busy&&unknown?' 部分勾选阵容尚无结论，可重试或取消勾选。':'');
+   canReplay&&!busy&&unknown?' 部分勾选阵容尚无结论，可重试或取消勾选。':'')+
+  (pair?' 从勾选项指定两波阵容。复跑按原码设置阴阳师培养和技能。':'');
  renderDungeonBattle(dungeon);
  renderDungeonStock(dungeon);
+ renderHun13Result(dungeon);
 }
 function renderDungeonRules(){
  const panel=$('dungeon-workbench'),data=DATA?.dungeonRules;
@@ -750,6 +852,7 @@ function renderDungeonRules(){
 }
 $('dungeon-workbench').ontoggle=renderDungeonRules;
 $('dungeon-rules-select').onchange=renderDungeonRules;
+for(const field of hun13Selects())field.onchange=renderDungeonSelection;
 $('dungeon-show-lineups').onclick=()=>{
  const dungeon=selectedDungeon();if(!dungeon?.gameSceneId)return;
  $('clear-filters').click();
@@ -759,6 +862,7 @@ $('dungeon-match-selected').onclick=()=>{
  const dungeon=selectedDungeon(),selection=checkedDungeonLineups(dungeon),checked=selection.filter(C.hasParsedContent);
  if(!checked.length||runeBusy())return;
  if(canReplayDungeon(dungeon)){
+  if(dungeon.id===103){void verifyHun13Pair(hun13Selection(checked,false));return;}
   dungeonStock=null;
   const rows=selection.map(lineup=>C.hasParsedContent(lineup)?{lineup,dungeonId:dungeon.id,state:'waiting',samples:[]}:
    {lineup,dungeonId:dungeon.id,state:'finished',verdict:'unknown',detail:'原码尚未解析',samples:[]});

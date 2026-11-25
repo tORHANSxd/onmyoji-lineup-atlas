@@ -62,6 +62,10 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-controls{display:flex;align-items:end;flex-wrap:wrap;gap:10px;margin:12px 0}
 .dungeon-controls label{display:grid;gap:4px}
 .dungeon-controls button{min-height:36px}
+#dungeon-hun13-rounds[hidden]{display:none}
+#dungeon-hun13-rounds label{flex:1 1 220px;min-width:0}
+#dungeon-hun13-rounds select{width:100%;min-width:0}
+#dungeon-hun13-result{margin:16px 0;overflow-wrap:anywhere}
 .dungeon-battle-list{list-style:none;margin:12px 0;padding:0;border:1px solid var(--line);border-radius:8px}
 .dungeon-battle-list>li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 18px;padding:10px 12px;overflow-wrap:anywhere}
 .dungeon-battle-list>li+li{border-top:1px solid var(--line)}

@@ -5,6 +5,7 @@
 })(globalThis,function(G,C){
 'use strict';
 const sceneId=1001001,resourceVersion='0.0.816',dungeonId=102;
+const hun13SceneId=1001000;
 const replayStages=new Map([[101,1001002],[dungeonId,sceneId]]);
 const sceneForDungeon=id=>replayStages.get(id)??null;
 
@@ -39,6 +40,11 @@ function inventorySpirit(actor,account,game){
 function team(lineup,result,account,game,floor=dungeonId){
  const scene=sceneForDungeon(floor);
  if(scene===null||Number(lineup.gameSceneId)!==scene)throw Error('该阵容码不属于当前复跑副本');
+ const plan=selectedTeam(lineup,result,account,game);
+ return {plan,conditions:['阴阳师按阵容码培养和携带技能复跑，平安志未提供其实际培养。普攻等级缺失时使用客户端最低等级。']};
+}
+
+function selectedTeam(lineup,result,account,game){
  if(!result?.ready||!result.completed||result.proof?.state!=='optimal'||!Array.isArray(result.assignment)){
   throw Error('精算未给出已核对的库存配装');
  }
@@ -58,7 +64,7 @@ function team(lineup,result,account,game,floor=dungeonId){
  const onmyoji={heroId,level:actor.level,star:actor.star,awake:0,skinfo:skills,aiSkill:autoSkill(actor,game,configured)};
  const builds=new Map(result.assignment.map(build=>[build.index,build]));
  const spirit=actor.qiling?inventorySpirit(actor,account,game):null;
- const plan={onmyoji,...(spirit?{spirit}:{}),members:members.map(member=>{
+ return {onmyoji,...(spirit?{spirit}:{}),members:members.map(member=>{
   const build=builds.get(member.index),hero=account.heroes[build?.heroId];
   const mode=C.soulMode(member.config),ids=build?.soulIds;
   if(!hero?.raw||String(member.shikigamiId)!==hero.shikigamiId||!Array.isArray(ids)||
@@ -69,8 +75,32 @@ function team(lineup,result,account,game,floor=dungeonId){
   if(souls.some(row=>!row))throw Error(`${member.name}的部分御魂已不在当前库存，请重新精算`);
   return {instanceId:hero.instanceId,hero:hero.raw,souls,aiSkill:autoSkill(member,game,hero.raw.skinfo)};
  })};
- return {plan,conditions:['阴阳师按阵容码培养和携带技能复跑，平安志未提供其实际培养。普攻等级缺失时使用客户端最低等级。']};
 }
 
-return {sceneId,resourceVersion,dungeonId,sceneForDungeon,team};
+function hun13Pair(lineups){
+ if(lineups.length!==2)throw Error('请选择虚无两波使用的阵容码');
+ const rounds=lineups.map((lineup,wave)=>{
+  if(Number(lineup?.gameSceneId)!==hun13SceneId||!C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup))
+   throw Error(`第 ${wave+1} 波需要已完整解析的虚无阵容码`);
+  const members=lineup.members.filter(member=>member.occupied!==false);
+  const actor=members.find(member=>member.kind==='onmyoji');
+  const fighters=members.filter(member=>member.kind==='shikigami').sort((a,b)=>a.index-b.index);
+  if(!actor||members.length!==6||fighters.length!==5)throw Error(`第 ${wave+1} 波原码需要一位阴阳师和五位式神`);
+  return {...lineup,members:[actor,...fighters.map((member,index)=>({...member,index:wave*5+index}))]};
+ });
+ return {rounds,combined:{id:'hun13-pair',title:'虚无双队库存精算',decodeState:'decoded-local',requirementsComplete:true,
+  members:rounds.flatMap(round=>round.members.filter(member=>member.kind==='shikigami'))}};
+}
+
+function hun13Plan({rounds},result,account,game){
+ const assignments=result?.assignment;
+ if(!Array.isArray(assignments)||assignments.length!==10||new Set(assignments.map(build=>build.heroId)).size!==10)
+  throw Error('虚无双队缺少十个不同的式神实例');
+ const souls=assignments.flatMap(build=>build.soulIds);
+ if(new Set(souls).size!==souls.length)throw Error('虚无两波的配装使用了同一件御魂');
+ return {rounds:rounds.map((round,wave)=>selectedTeam(round,{...result,
+  assignment:assignments.filter(build=>build.index>=wave*5&&build.index<(wave+1)*5)},account,game))};
+}
+
+return {sceneId,resourceVersion,dungeonId,hun13SceneId,sceneForDungeon,team,hun13Pair,hun13Plan};
 });

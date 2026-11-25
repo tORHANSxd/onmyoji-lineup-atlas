@@ -51,7 +51,7 @@ async function main(){
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
  const seedEvidence=(props={})=>({scope:'local-solo-rune',status:'incomplete',total:10000,wins:73,loss:null,
   slowest:{seed:13,engineSeconds:25.5,combatMs:14400},...props});
- local('rune-battle-status',async()=>runeEnabled?{...(await rune?.status()||{available:true,resourceVersion:'0.0.816'}),floors:[101,102]}:{available:false});
+ local('rune-battle-status',async()=>runeEnabled?{...(await rune?.status()||{available:true,resourceVersion:'0.0.816'}),floors:[101,102,103]}:{available:false});
  local('rune-battle-run',(plan,options)=>{
   replayPlan=plan;
   if(options?.dungeonId===101)floorCalls.push(options);
@@ -716,6 +716,60 @@ async function main(){
   const markup=await ui(`fullSeedAuditMarkup({samples:AtlasRuneSearch.sampleSeeds.map(seed=>({seed,completed:true,outcome:'win',wavesCleared:3,engineSeconds:13})),fullSeedAudit:{progress:${complete}}},'data-full-seeds-fixture',false,null,{id:102})`);
   assert.match(markup,/常规单人本地入口的 10,000 个种子全部通过.*最慢种子 13.*引擎全程 25\.50 秒.*开战至结算 14\.40 秒/s);
   assert.doesNotMatch(markup,/data-full-seeds-fixture|<progress/);
+ });
+ await check('虚无指定两波原码后共同精算，十个实例及六十件御魂各只使用一次',async()=>{
+  const fighters=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&
+   new Set(l.members.filter(m=>m.kind==='shikigami').map(m=>m.shikigamiId)).size===5).members.filter(m=>m.kind==='shikigami');
+  const heroes={},items=[];
+  for(let wave=1;wave<=2;wave++)for(const m of fighters){
+   const prefix=`h13-${wave}-${m.index}`;
+   const equips=Array.from({length:6},(_,i)=>`${prefix}-${i}`);
+   heroes[prefix]={heroId:Number(m.shikigamiId),level:m.level,star:m.star,awake:m.awakening,
+    skinfo:m.skills.map(s=>[s.id,s.level]),equips,
+    attrs:[[8000,0,0,0],[101,0,0,0],[.5,0,0,0],[.1,0,0,0],[500,0,0,0],[2500,0,0,0],0,0]};
+   equips.forEach((id,i)=>items.push({id,slot:i+1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:40,subAttributes:[]}));
+  }
+  const lineups=[10,13].map((id,wave)=>({id:`qa-hun13-${wave+1}`,title:wave?'虚无第二队':'虚无第一队',code:`|TA|qa-hun13-${wave+1}`,
+   gameSceneId:1001000,requirementsComplete:true,decodeState:'decoded-local',members:[
+    {index:0,name:data.gameConfig.heroes[id].name,kind:'onmyoji',onmyojiId:String(id),level:60,star:2,awakening:0,
+     skills:(wave?[1304,1302]:[1008,1011]).map(id=>({id,level:5})),aiSkill:0},
+    ...fighters.map(m=>({...m,borrowed:false,config:{keepCurrent:true},aiSkill:0}))]}));
+  const available={...raw,heroes,hero_equips:items};
+  const incomplete={...available,heroes:Object.fromEntries(Object.entries(heroes).filter(([id])=>id.startsWith('h13-1-'))),hero_equips:items.slice(0,30)};
+  async function setup(inventory){
+   await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify(lineups)},accounts:[C.parseAccount(${JSON.stringify(inventory)})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};runeStatus=null;selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-rules-select').value='103';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.clear();${lineups.map(l=>`selectedLineups.add('${l.id}');`).join('')}renderSelection()`);
+   await until('!$("dungeon-match-selected").disabled && $("dungeon-match-selected").textContent.includes("两波")');
+  }
+  let calls=0;
+  runeEnabled=true;
+  mockBattle=(plan,options)=>{
+   calls++;
+   assert.deepEqual(options,{dungeonId:103,seed:calls-1,fixedStep:true});
+   assert.deepEqual(plan.rounds.map(r=>r.onmyoji.heroId),[13,10]);
+   assert.equal(new Set(plan.rounds.flatMap(r=>r.members.map(m=>m.instanceId))).size,10);
+   assert.equal(new Set(plan.rounds.flatMap(r=>r.members.flatMap(m=>m.souls.map(q=>q.id)))).size,60);
+   const win=options.seed===0;
+   return {seed:options.seed,completed:true,outcome:win?'win':'loss',wavesCleared:win?1:0,engineSeconds:86.6,rounds:[
+    {wave:1,onmyojiId:13,cleared:false,availableSeconds:120,seconds:22.48,carriedSeconds:-72.04},
+    {wave:2,onmyojiId:10,cleared:win,availableSeconds:48,seconds:39.3}],animationPlayback:{combatOverlapMs:24139}};
+  };
+  try{
+   await setup(incomplete);await ui('$("dungeon-match-selected").click()');
+   await until('dungeonHun13&&!dungeonHun13.running',20000);
+   assert.match(await ui('$("dungeon-hun13-status").textContent'),/无法同时配装/);
+   assert.equal(calls,0);
+   await setup(available);
+   await ui('$("dungeon-hun13-first").value="qa-hun13-2";$("dungeon-hun13-second").value="qa-hun13-1";renderDungeonSelection();$("dungeon-match-selected").click()');
+   await until('dungeonHun13&&!dungeonHun13.running',20000);
+   assert.equal(calls,2);
+   assert.match(await ui('$("dungeon-hun13-status").textContent'),/第 1 波 虚无第二队.*第 2 波 虚无第一队.*未通过全部采样/);
+   assert.match(await ui('$("dungeon-hun13-samples").textContent'),/原版结算胜利，有波次未清场.*源博雅.*晴明.*时限 48 秒/s);
+   await ui('$("dungeon-hun13-rounds").scrollIntoView({block:"center",behavior:"instant"})');
+   await capture('dungeon-hun13-pair');
+   win.setContentSize(720,960);
+   try{assert.equal(await ui('$("dungeon-hun13-rounds").scrollWidth<=$("dungeon-hun13-rounds").clientWidth+2'),true);}
+   finally{win.setContentSize(1440,1000);}
+  }finally{mockBattle=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
  });
  if(process.argv.includes('--visual')){
   await ui('STATE='+JSON.stringify(blank())+';backupUndo=null;document.getElementById("undo-restore").hidden=true;document.getElementById("toast").classList.remove("show");document.getElementById("code-input").value="";updateCode();updateAccountSelect();fillFilters();selectView("library")');

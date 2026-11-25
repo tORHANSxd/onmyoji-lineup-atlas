@@ -47,6 +47,15 @@
 <button id="dungeon-search-stock" class="secondary" type="button" aria-describedby="dungeon-match-status" hidden>从库存寻找备选</button>
 <button id="dungeon-stop-battle" class="secondary" hidden>停止离线复跑</button></div>
 <p id="dungeon-match-status" class="caption" role="status"></p>
+<div id="dungeon-hun13-rounds" class="dungeon-controls" hidden>
+  <label for="dungeon-hun13-first">第 1 波阵容<select id="dungeon-hun13-first"></select></label>
+  <label for="dungeon-hun13-second">第 2 波阵容<select id="dungeon-hun13-second"></select></label>
+</div>
+<section id="dungeon-hun13-result" aria-labelledby="dungeon-hun13-title" hidden>
+  <h3 id="dungeon-hun13-title">虚无双队战报</h3>
+  <p id="dungeon-hun13-status" role="status" class="caption"></p>
+  <ul id="dungeon-hun13-samples" class="dungeon-stock-list"></ul>
+</section>
 <div id="dungeon-battle-results" aria-live="polite" hidden></div>
 <section id="dungeon-stock-results" aria-labelledby="dungeon-stock-title" hidden>
   <h3 id="dungeon-stock-title">备选队伍</h3>

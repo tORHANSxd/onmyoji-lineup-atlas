@@ -1,7 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const bundle=require('../data/bundle.json');
-const {team,sceneId}=require('../app/rune-lineup.js');
+const {team,sceneId,hun13Pair,hun13Plan}=require('../app/rune-lineup.js');
 
 function match(){
  const lineup=structuredClone(bundle.lineups.find(l=>l.gameSceneId===sceneId&&l.members.length===6&&!l.members[0].qiling));
@@ -63,4 +63,26 @@ test('魂王复跑按原版星级、等级和重复术印要求选取真实契�
  const {plan}=team(lineup,result,account,bundle.gameConfig);
  assert.deepEqual(plan.spirit,base);
  assert.equal(Object.hasOwn(plan.spirit,'uid'),false);
+});
+
+test('虚无双队精算重排十个槽位并拒绝跨波重复使用同一库存',()=>{
+ const {lineup,account,result}=match();
+ const round={...lineup,gameSceneId:1001000,requirementsComplete:true};
+ const pair=hun13Pair([round,round]);
+ assert.deepEqual(pair.combined.members.map(m=>m.index),[0,1,2,3,4,5,6,7,8,9]);
+ assert.equal(round.members[1].index,1);
+ const first=result.assignment.toSorted((a,b)=>a.index-b.index).map((build,index)=>({...build,index}));
+ const second=first.map((build,index)=>{
+  const heroId=build.heroId+'-2',soulIds=build.soulIds.map(id=>id+'-2');
+  account.heroes[heroId]={...account.heroes[build.heroId],instanceId:heroId};
+  soulIds.forEach((id,slot)=>{account.souls[id]={raw:{id,slot:slot+1}};});
+  return {index:index+5,heroId,soulIds};
+ });
+ const solve=assignment=>hun13Plan(pair,{...result,assignment},account,bundle.gameConfig);
+ const plan=solve([...first,...second]);
+ assert.equal(plan.rounds[0].members[0].instanceId,'hero-1');
+ assert.equal(plan.rounds[1].members[0].instanceId,'hero-1-2');
+ assert.throws(()=>solve([...first,...second.map((b,i)=>i?b:{...b,heroId:first[0].heroId})]),/十个不同/);
+ assert.throws(()=>solve([...first,...second.map((b,i)=>i?b:{...b,soulIds:first[0].soulIds})]),/同一件御魂/);
+ assert.throws(()=>hun13Pair([round,lineup]),/虚无阵容码/);
 });
