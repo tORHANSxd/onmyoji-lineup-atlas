@@ -1,0 +1,203 @@
+(() => {
+  const el = name => document.getElementById('client-dungeons' + (name ? '-' + name : ''));
+  const api = window.dungeonCatalog;
+  const panel = el();
+  const pageSize = 25;
+  const titles = {
+    pve_stage_data: '通用 PvE 关卡',
+    BattleMonstersInfo: '战斗编组与波次',
+    BattleScenesInfo: '战斗场景与站位',
+    normal_battle_config: '通用战斗模式',
+    dungeon_rune: '御魂副本',
+    dungeon_awake: '觉醒副本',
+    dungeon_challenge: '秘闻副本',
+    dungeon_challenge_race: '秘闻竞速',
+    dungeon_yuling: '御灵副本',
+    guild_crevice_battle: '阴阳寮狭间暗域战斗',
+    guild_boss_reward: '阴阳寮首领奖励',
+    act_team_battle: '活动组队战斗',
+    team_assist_stage: '阵容码副本目录',
+    monster: '怪物属性与免疫',
+    skill: '技能配置',
+  };
+  const labels = {
+    groupid: '敌方编组 ID', hardLv: '难度', shishentotal: '式神上阵数',
+    ssinitguihuo: '式神初始鬼火', yysinitguihuo: '阴阳师初始鬼火', gwinitguihuo: '敌方初始鬼火',
+    oneboutaddguihuo: '回合鬼火增量', strength: '体力消耗', battleTime: '战斗时限',
+    check_strength: '体力检查', tip: '关卡提示', no_yys: '阴阳师限制',
+    replace_yysid: '替换阴阳师 ID', hpaddrate: '生命调整参数', sl_file: '关卡脚本',
+    atk_alter: '攻击调整', def_alter: '防御调整', hp_alter: '生命调整',
+    sp_alter: '速度调整', spd_alter: '速度调整', crt_alter: '暴击调整',
+    menpiao: '门票配置', loot_id: '奖励表 ID', uptimes: '开放配置',
+    fbtips: '规则提示 ID', passReward: '通关奖励 ID', save_round_hp: '跨轮保留生命',
+    halt_time: '停止时间配置', group_battle: '多人战斗',
+    act_id: '活动 ID', battle_id: '关卡 ID', team_player_num: '组队人数', team_battle_type: '战斗类型',
+  };
+  const state = { token: 0, index: null, entry: null, rows: [], matches: [], page: 0, selected: -1 };
+  const option = (label, value) => new Option(label, value);
+  const node = (tag, text, className) => {
+    const result = document.createElement(tag);
+    result.textContent = text;
+    if (className) result.className = className;
+    return result;
+  };
+  const normalized = value => String(value ?? '').normalize('NFKC').trim().toLowerCase();
+  const keyText = key => typeof key === 'object' ? JSON.stringify(key) : String(key);
+  const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.floordesc, row?.typedesc, row?.skill_name]
+    .find(value => typeof value === 'string' && value.trim()) || '';
+
+  async function selectTable(name, key = '') {
+    const token = ++state.token;
+    const entry = state.index?.tables.find(row => row.name === name);
+    Object.assign(state, { entry, rows: [], matches: [], page: 0, selected: -1 });
+    el('records').hidden = true;
+    el('detail').replaceChildren();
+    el('row-query').value = key;
+    el('source').textContent = [entry?.source?.module, entry?.source?.marshalSHA256 && 'SHA-256 ' + entry.source.marshalSHA256]
+      .filter(Boolean).join(' · ');
+    el('status').textContent = '';
+    if (!entry) return;
+    if (entry.status !== 'decoded') {
+      el('status').textContent = '这张表的规则暂未提取，已保留来源以便核查。';
+      return;
+    }
+    el('status').textContent = '正在读取资料表…';
+    try {
+      const text = await api.table(entry.name);
+      if (token !== state.token) return;
+      const rows = JSON.parse(text);
+      if (!Array.isArray(rows) || rows.length !== entry.rowCount) throw new Error('记录数量与索引不一致');
+      state.rows = rows;
+      el('status').textContent = '';
+      el('records').hidden = false;
+      filterRows();
+      const exact = key && rows.findIndex(([id]) => keyText(id) === key);
+      if (key && exact >= 0) selectRow(exact);
+    } catch (error) {
+      if (token === state.token) el('status').textContent = '资料表读取失败。' + error.message;
+    }
+  }
+
+  function filterTables(preferred = '', open = true) {
+    const group = el('family').value;
+    const query = normalized(el('query').value);
+    const field = el('table');
+    const tables = state.index.tables.filter(row => (!group || group === row.family)
+      && normalized([row.name, titles[row.name], ...(row.fields ?? [])].join(' ')).includes(query));
+    const current = preferred || field.value;
+    field.replaceChildren(option(tables.length ? '选择资料表（' + tables.length + ' 张）' : '没有匹配的资料表', ''),
+      ...tables.map(row => option(
+        (titles[row.name] ? titles[row.name] + ' · ' : '') + row.name
+        + (row.status === 'decoded' ? '（' + row.rowCount.toLocaleString('zh-CN') + '）' : '（待解析）'), row.name)));
+    field.value = tables.some(row => row.name === current) ? current : '';
+    if (open && field.value !== state.entry?.name) void selectTable(field.value);
+  }
+
+  function filterRows() {
+    const query = normalized(el('row-query').value);
+    state.matches = [];
+    state.rows.forEach(([key, row], index) => {
+      if (normalized(keyText(key) + ' ' + rowTitle(row)).includes(query)) state.matches.push(index);
+    });
+    state.page = 0;
+    if (!state.matches.includes(state.selected)) {
+      state.selected = -1;
+      el('detail').replaceChildren();
+    }
+    renderRows();
+  }
+
+  function renderRows() {
+    const start = state.page * pageSize;
+    const matches = state.matches.slice(start, start + pageSize);
+    const list = matches.map(index => {
+      const [key, row] = state.rows[index];
+      const label = rowTitle(row);
+      const button = node('button', label ? label + ' · ' + keyText(key) : keyText(key), 'secondary');
+      button.type = 'button';
+      button.dataset.row = index;
+      button.setAttribute('aria-pressed', String(index === state.selected));
+      return button;
+    });
+    el('list').replaceChildren(...list);
+    el('count').textContent = matches.length ? '显示 ' + (start + 1) + '–' + (start + matches.length)
+      + ' / ' + state.matches.length.toLocaleString('zh-CN') + ' 条' : '没有匹配记录，试试记录 ID。';
+    el('prev').disabled = state.page === 0;
+    el('next').disabled = start + pageSize >= state.matches.length;
+  }
+
+  function selectRow(index) {
+    state.selected = index;
+    for (const button of el('list').children) button.setAttribute('aria-pressed', String(Number(button.dataset.row) === index));
+    const [key, row] = state.rows[index];
+    const details = el('detail');
+    const fields = document.createElement('dl');
+    for (const [field, label] of Object.entries(labels)) {
+      if (row == null || !Object.hasOwn(row, field)) continue;
+      const value = row[field];
+      fields.append(node('dt', label), node('dd', typeof value === 'string' ? value : JSON.stringify(value)));
+    }
+    const raw = document.createElement('details');
+    raw.append(node('summary', '查看全部原始字段'), node('pre', JSON.stringify(row, null, 2)));
+    details.replaceChildren(node('h3', rowTitle(row) || '记录 ' + keyText(key)));
+    if (fields.childElementCount) details.append(fields);
+    if (state.entry.name === 'pve_stage_data' && row?.groupid != null
+        && state.index.tables.some(entry => entry.name === 'BattleMonstersInfo' && entry.status === 'decoded')) {
+      const link = node('button', '查看敌方编组 ' + row.groupid, 'secondary');
+      link.type = 'button';
+      link.onclick = () => {
+        el('family').value = el('query').value = '';
+        filterTables('BattleMonstersInfo', false);
+        void selectTable('BattleMonstersInfo', String(row.groupid));
+        el('table').focus();
+      };
+      details.append(link);
+    }
+    details.append(raw);
+  }
+
+  function setIndex(index) {
+    state.index = index;
+    el('controls').hidden = !index;
+    el('version').textContent = index ? '资源 ' + index.resourceVersion + ' · '
+      + index.tables.length.toLocaleString('zh-CN') + ' 张客户端表 · 开放状态以区服和游戏内活动为准'
+      : '请选择本机解包产生的副本资料目录。';
+    if (!index) return;
+    el('status').textContent = '';
+    el('family').value = el('query').value = '';
+    state.entry = null;
+    filterTables(index.tables.some(row => row.name === 'pve_stage_data') ? 'pve_stage_data' : '');
+  }
+
+  if (!api) {
+    el('choose').hidden = true;
+    el('version').textContent = '请在御契桌面版打开离线副本资料。';
+    return;
+  }
+  panel.addEventListener('toggle', () => {
+    if (panel.open && !state.index) api.index().then(setIndex).catch(error => {
+      el('status').textContent = '无法读取副本资料。' + error.message;
+    });
+  });
+  el('choose').onclick = async () => {
+    el('choose').disabled = true;
+    try {
+      const index = await api.choose();
+      if (index) setIndex(index);
+    } catch (error) {
+      el('status').textContent = '无法打开副本资料目录。' + error.message;
+    } finally {
+      el('choose').disabled = false;
+    }
+  };
+  el('table').onchange = event => { void selectTable(event.target.value); };
+  el('family').onchange = () => filterTables();
+  el('query').oninput = () => filterTables();
+  el('row-query').oninput = filterRows;
+  el('list').onclick = event => {
+    const button = event.target.closest('button[data-row]');
+    if (button) selectRow(Number(button.dataset.row));
+  };
+  el('prev').onclick = () => { state.page--; renderRows(); };
+  el('next').onclick = () => { state.page++; renderRows(); };
+})();

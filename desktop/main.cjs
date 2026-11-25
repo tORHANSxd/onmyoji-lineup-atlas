@@ -10,6 +10,7 @@ const { TASession } = require('./ta-session.cjs');
 const { TAQueryQueue } = require('./ta-query-queue.cjs');
 const { TACredentials } = require('./ta-credentials.cjs');
 const { TAResponseCache } = require('./ta-response-cache.cjs');
+const { readIndex: readDungeonIndex, readTable: readDungeonTable } = require('./dungeon-catalog.cjs');
 let win, official, taSession, queryQueue, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
 const isSmoke = process.argv.includes('--smoke');
 // Branding changes must never create a different personal inventory directory.
@@ -42,6 +43,28 @@ app.whenReady().then(async () => {
   official=await new OfficialData({baseData:JSON.parse(await fs.readFile(path.join(__dirname,'../data/bundle.json'),'utf8')),appRoot:path.join(__dirname,'..'),cacheRoot:path.join(app.getPath('userData'),'official-cache'),inspectImage:(bytes,info)=>{const image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw new Error('图片不能完整解码');const size=image.getSize();if(size.width!==info.width||size.height!==info.height||image.toBitmap().length!==size.width*size.height*4)throw new Error('图片解码尺寸不匹配');},onProgress:status=>{if(win&&!win.isDestroyed())win.webContents.send('official-progress',status);}}).init();
   protocol.handle('atlas-asset',request=>{const u=new URL(request.url),file=u.pathname.slice(1);if(u.hostname!=='cache'||u.search||!validFile(file))return new Response('Not found',{status:404});return net.fetch(pathToFileURL(path.join(official.root,'images',file)).href);});
   background=new Background({statePath:statePath()});
+  const dungeonPath = path.join(app.getPath('userData'), 'dungeon-catalog-path.json');
+  let dungeonCatalog = (async () => {
+    const chosen = await fs.readFile(dungeonPath, 'utf8').then(JSON.parse).catch(() => null);
+    for (const root of [chosen, path.join(__dirname, '../data/dungeon-catalog')]) {
+      if (typeof root !== 'string' || !path.isAbsolute(root)) continue;
+      try { return await readDungeonIndex(root); } catch (error) {
+        if (error.code !== 'ENOENT') console.warn('Cannot open dungeon catalog:', error.message);
+      }
+    }
+    return null;
+  })();
+  handleLocal('dungeon-catalog-index', async () => (await dungeonCatalog)?.index ?? null);
+  handleLocal('dungeon-catalog-table', async (_check, name) => readDungeonTable(await dungeonCatalog, name));
+  handleLocal('dungeon-catalog-choose', async check => {
+    const selection = await dialog.showOpenDialog(win, { title: '选择包含 index.json 的副本资料目录', properties: ['openDirectory'] });
+    if (selection.canceled) return null;
+    check();
+    const next = await readDungeonIndex(selection.filePaths[0]);
+    await atomicWrite(dungeonPath, JSON.stringify(next.root), check);
+    dungeonCatalog = Promise.resolve(next);
+    return next.index;
+  });
   const credentials=new TACredentials({file:path.join(app.getPath('userData'),'remembered-accounts.bin'),safeStorage});
   const responseCache=new TAResponseCache(path.join(app.getPath('userData'),'ta-responses'),{parse:text=>background.run('parse-json',text),stringify:value=>background.run('stringify',value)});
   taSession=new TASession({credentials,helperPath:app.isPackaged?path.join(process.resourcesPath,'ta-runtime','atlas-ta-helper.exe'):path.join(__dirname,'../release/ta-runtime/atlas-ta-helper/atlas-ta-helper.exe'),onStatus:state=>{

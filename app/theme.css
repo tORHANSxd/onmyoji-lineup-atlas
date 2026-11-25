@@ -71,3 +71,24 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-wave li strong{font-size:13px}
 .dungeon-wave li small,.dungeon-wave li span{color:var(--muted);font-size:12px;text-wrap:pretty}
 .dungeon-wave li small{font-variant-numeric:tabular-nums}
+.dungeon-catalog-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:8px}
+#client-dungeons .dungeon-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+#client-dungeons label{display:grid;gap:5px;min-width:0}
+#client-dungeons select,#client-dungeons input{width:100%;min-width:0}
+#client-dungeons-status:empty,#client-dungeons-source:empty{display:none}
+#client-dungeons-source{overflow-wrap:anywhere}
+.dungeon-catalog-records{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,2fr);gap:16px;align-items:start}
+.dungeon-catalog-list{display:grid;gap:5px}
+.dungeon-catalog-list button{text-align:left;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.dungeon-catalog-list button[aria-pressed=true]{color:var(--ink);outline:2px solid currentColor;outline-offset:-2px}
+#client-dungeons-detail{min-width:0;overflow-wrap:anywhere}
+#client-dungeons-detail h3{margin:0 0 10px;text-wrap:balance}
+#client-dungeons-detail dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 14px;margin:0 0 12px}
+#client-dungeons-detail dt{color:var(--muted)}
+#client-dungeons-detail dd{margin:0;white-space:pre-wrap;font-variant-numeric:tabular-nums}
+#client-dungeons-detail details{margin-top:12px}
+#client-dungeons-detail pre{max-height:440px;overflow:auto;white-space:pre-wrap;padding:10px;border:1px solid var(--line);border-radius:8px}
+@media(max-width:700px){
+ #client-dungeons .dungeon-controls,.dungeon-catalog-records{grid-template-columns:minmax(0,1fr)}
+ .dungeon-catalog-list{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+}

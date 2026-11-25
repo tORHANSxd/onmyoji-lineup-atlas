@@ -1,6 +1,7 @@
 // Production Electron UI with synthetic state, credentials and disk failures.
 const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
+const {readIndex,readTable}=require('../desktop/dungeon-catalog.cjs');
 const root=path.resolve(__dirname,'..'),profile=path.join(root,'user-data','optimization-ui');
 app.setPath('userData',profile);
 app.disableHardwareAcceleration();
@@ -26,9 +27,28 @@ async function main(){
  local('copy-code',()=>({copied:true}));local('import-files',()=>[]);
  for(const channel of ['official-status','official-auto','official-refresh','official-cancel'])local(channel,()=>({autoUpdate:false}));
  local('ta-query',()=>{throw Error('synthetic offline');});local('decode',()=>{throw Error('synthetic offline');});
+ const catalog=await readIndex(path.join(root,'data/dungeon-catalog')).catch(error=>{if(error.code!=='ENOENT')throw error;return null;});
+ local('dungeon-catalog-index',()=>catalog?.index||null);
+ local('dungeon-catalog-table',name=>readTable(catalog,name));
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
  win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
  await win.loadFile(path.join(root,'app/index.html'));win.webContents.setZoomFactor(1);await sleep(80);await until('!!DATA && document.getElementById("loading").hidden');await ui('TALogin.ready()');
+ if(catalog)await check('全副本目录搜索关卡、跳转敌方编组和查看活动规则',async()=>{
+  await ui('selectView("library");document.getElementById("client-dungeons").open=true');
+  await until('!document.getElementById("client-dungeons-records").hidden');
+  await ui('window.qaCatalogInput=(id,value)=>{const el=document.getElementById("client-dungeons-"+id);el.value=value;el.dispatchEvent(new Event(el.tagName==="SELECT"?"change":"input"));};qaCatalogInput("row-query","3345301");document.querySelector("#client-dungeons-list button").click()');
+  assert.match(await ui('document.getElementById("client-dungeons-detail").textContent'),/礁石.*敌方初始鬼火/s);
+  await ui('document.querySelector("#client-dungeons-detail button").click()');
+  await until('document.getElementById("client-dungeons-detail").textContent.includes("3345301")');
+  assert.equal(await ui('document.getElementById("client-dungeons-table").value'),'BattleMonstersInfo');
+  await ui('qaCatalogInput("family","event");qaCatalogInput("query","组队战斗");qaCatalogInput("table","act_team_battle")');
+  await until('!document.getElementById("client-dungeons-records").hidden');
+  await ui('qaCatalogInput("row-query","将魂试炼");document.querySelector("#client-dungeons-list button").click()');
+  assert.match(await ui('document.getElementById("client-dungeons-detail").textContent'),/将魂试炼.*team_player_num/s);
+  await ui('document.getElementById("client-dungeons").scrollIntoView({block:"start",behavior:"instant"});document.querySelector("#client-dungeons-detail details").open=true');
+  await capture('client-dungeon-catalog');
+  await ui('document.getElementById("client-dungeons").open=false');
+ });
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
  const file=json=>'[{name:"synthetic.json",size:1024,text:async()=>'+JSON.stringify(JSON.stringify(json))+'}]';
  await check('账号导入失败保持原账号和原库存',async()=>{

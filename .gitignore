@@ -23,4 +23,5 @@ __pycache__/
 研究资料/
 output/
 tmp/
+data/dungeon-catalog/
 /.tools/

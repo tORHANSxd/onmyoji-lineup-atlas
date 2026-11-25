@@ -47,6 +47,31 @@
 <p id="dungeon-match-status" class="caption" role="status"></p>
 <div id="dungeon-rules-details"></div>
 </details>
+<details id="client-dungeons" class="panel dungeon-workbench">
+<summary>全客户端副本与规则</summary>
+<div class="dungeon-catalog-tools">
+  <p id="client-dungeons-version" class="caption"></p>
+  <button id="client-dungeons-choose" type="button" class="secondary">选择副本资料目录</button>
+</div>
+<div id="client-dungeons-controls" hidden>
+  <div class="dungeon-controls">
+    <label>玩法类型<select id="client-dungeons-family"><option value="">全部玩法</option><option value="daily">日常、探索与挑战</option><option value="guild">阴阳寮</option><option value="event">限时与历史活动</option><option value="battle">通用战斗规则</option><option value="other">其他客户端配置</option></select></label>
+    <label>搜索资料表<input id="client-dungeons-query" type="search" placeholder="御魂、逢魔、活动或表名"></label>
+    <label>资料表<select id="client-dungeons-table"></select></label>
+  </div>
+  <p id="client-dungeons-source" class="caption"></p>
+  <div id="client-dungeons-records" hidden>
+    <label>搜索当前表<input id="client-dungeons-row-query" type="search" placeholder="名称或记录 ID"></label>
+    <p id="client-dungeons-count" class="caption" role="status"></p>
+    <div class="dungeon-catalog-records">
+      <div id="client-dungeons-list" class="dungeon-catalog-list"></div>
+      <div id="client-dungeons-detail"></div>
+    </div>
+    <div class="pagination"><button id="client-dungeons-prev" type="button" class="secondary">上一页</button><button id="client-dungeons-next" type="button" class="secondary">下一页</button></div>
+  </div>
+</div>
+<p id="client-dungeons-status" class="caption" role="status"></p>
+</details>
 <details class="parse-disclosure"><summary>阵容解析 <span data-parse-summary>准备中</span></summary><div class="parse-panel"><p data-parse-progress role="status">正在读取阵容库…</p><div class="actions"><button class="secondary" data-parse-action="start">解析剩余内容</button><button class="ghost" data-parse-action="pause" hidden>暂停解析</button></div></div></details>
 <div class="result-heading"><span id="results-count" aria-live="polite"></span><div><button id="gap-statistics" class="secondary">缺口统计</button><button id="match-all" class="secondary">精算全部阵容</button><button id="cancel-match" class="ghost" hidden>暂停精算</button></div></div><div id="match-progress" class="notice" hidden></div><div class="selection-bar" role="group" aria-label="批量选择当前筛选结果"><div class="selection-controls"><label><input id="select-filtered" type="checkbox">全选筛选结果</label><button id="select-invert" class="ghost">反选</button><button id="select-clear" class="ghost">全部取消</button><span id="selection-count" role="status"></span></div><div class="selection-actions"><button id="target-add" class="secondary">设为目标</button><button id="target-remove" class="ghost">移出目标</button><button id="match-selected" class="primary">精算选中项</button></div></div><div id="lineup-grid" class="lineup-grid"></div><div class="pagination"><button id="previous-page" class="secondary">上一页</button><span id="page-indicator"></span><button id="next-page" class="secondary">下一页</button></div><div id="parse-failures"></div></section>
 <section id="view-decode" class="view" hidden><div class="split-layout"><div class="panel decode-editor"><p class="section-kicker">01 / 阵容输入</p><h2><label for="code-input">粘贴阵容码</label></h2><textarea id="code-input" rows="5" placeholder="|TA|…、#TA#… 或完整 Base64 lineup_data" spellcheck="false"></textarea><p id="code-status" class="small" aria-live="polite">等待输入</p><div class="form-grid"><label>名称<input id="code-title" placeholder="例如：魂土 · 低配速刷"></label><label>副本 / 用途<input id="code-dungeon" placeholder="魂土、契灵…"></label></div><label>备注<textarea id="code-notes" rows="3" placeholder="配速、操作、替代要求…"></textarea></label><div class="actions"><button id="save-code" class="primary">保存阵容</button><button id="remote-decode" class="secondary">解析</button><button id="clear-code" class="ghost">清空</button></div><div class="actions"><button id="import-qr" class="secondary">导入二维码</button><button id="import-ta" class="secondary">导入阵容文件</button></div><details><summary>高级导入 / 手工配置</summary><p class="caption">支持完整阵容内容、查询响应或本工具导出的 JSON。手工配置需填写原始阵容码。</p><div class="actions"><button id="import-lineup" class="secondary">选择阵容 JSON</button><button id="new-manual" class="ghost">打开模板</button></div><label for="manual-json">配置内容</label><textarea id="manual-json" rows="12" spellcheck="false" placeholder="角色使用官方 shikigamiId"></textarea><button id="save-manual" class="secondary">保存手工配置</button></details></div><div id="decode-result" class="panel code-preview"><p class="section-kicker">02 / 解析结果</p><h2>在这里核对阵容</h2><p class="muted">粘贴阵容码后，查看成员、技能和御魂要求。需要联网查询的原码会提示登录。</p></div></div></section>
@@ -68,4 +93,4 @@
 </div><div class="bulk-footer"><p id="bulk-summary" role="status">粘贴后显示导入预览</p><label class="check"><input id="bulk-auto-parse" type="checkbox" checked>添加后自动解析新码，并继续库内剩余内容</label><p id="bulk-status" role="status" aria-live="polite"></p><div class="actions"><button id="bulk-apply" class="primary" disabled>添加 0 条有效阵容</button><button id="bulk-view" class="secondary" hidden>查看已添加阵容</button></div></div>
 <input id="bulk-file" type="file" accept=".txt,.tsv,text/plain,text/tab-separated-values" hidden>
 </dialog>
-<input id="file-input" type="file" accept=".json,application/json" multiple hidden></div><script src="vendor/jsQR.js"></script><script src="qr-reader.js"></script><script src="solver.js"></script><script src="game-config.js"></script><script src="core.js"></script><script src="library-model.js"></script><script src="exact-solver.js"></script><script src="lineup-tools.js"></script><script src="bulk-import.js"></script><script src="parse-errors.js"></script><script src="library-parser.js"></script><script src="categories.js"></script><script src="app.js"></script><script src="revision.js"></script><script src="ta-login.js"></script><script src="skills.js"></script><script src="builder.js"></script></body></html>
+<input id="file-input" type="file" accept=".json,application/json" multiple hidden></div><script src="vendor/jsQR.js"></script><script src="qr-reader.js"></script><script src="solver.js"></script><script src="game-config.js"></script><script src="core.js"></script><script src="library-model.js"></script><script src="exact-solver.js"></script><script src="lineup-tools.js"></script><script src="bulk-import.js"></script><script src="parse-errors.js"></script><script src="library-parser.js"></script><script src="categories.js"></script><script src="app.js"></script><script src="dungeon-catalog.js"></script><script src="revision.js"></script><script src="ta-login.js"></script><script src="skills.js"></script><script src="builder.js"></script></body></html>

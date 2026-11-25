@@ -1,0 +1,21 @@
+# 全客户端副本资料
+
+御契桌面版在「阵容库 → 全客户端副本与规则」按需读取本地资料。打包前将生成的目录放在 `data/dungeon-catalog`，即可随桌面版打开。运行时也可以在这个面板选择已有的副本资料目录。
+
+《阴阳师》2.8.87 的 `0.0.816` 资源包中，已从 3,850 个客户端配置模块读取 3,846 张表，共 659,344 条记录。主要资料包括 17,617 条通用 PvE 关卡、17,563 条战斗编组、491 条场景站位、217 条通用战斗模式以及御魂、觉醒、秘闻、阴阳寮狭间暗域、活动组队等玩法专表。表项保留来源模块和校验值，读取资料表时核对压缩文件的 SHA-256。
+
+`__init__`、`bindict_proxy`、`deco_skin_index` 和 `skin_bg_index` 的静态记录未提取。玩法筛选根据客户端表名归类，可在全部玩法中搜索每张表。客户端表含历史活动和内部记录，区服开放、入场资格和服务器结算须以实机为准。静态表可供核对规则与输入，100% 通关和动画耗时仍需战斗回放及可达分支证据。
+
+## 从本机解包资源生成
+
+使用「阴阳师解包」导出的安装包及云资源，保留 `raw/extra/thd`、`raw/extra/script3.zip` 和 `raw/extra/update.ini`。从「阴阳师培育」的本地分析项目指定 `tools` 和含已验证 opcode 映射的目录。提取工具需要 CPython 3.11.6 及该分析项目的依赖。若原生库校验值与 opcode 证据不符，须使用该版本对应的证据。
+
+```powershell
+& $YuqiPython tools/extract-dungeon-catalog.py $YuqiSnapshot --game-tools $YuqiGameTools --opcode-proof $YuqiOpcodeProof --apk-version 2.8.87 --tables tmp/dungeon-tables --output data/dungeon-catalog
+```
+
+已提取的 JSON 表也可以直接打包。
+
+```powershell
+python tools/build_dungeon_catalog.py tmp/dungeon-tables data/dungeon-catalog
+```
