@@ -211,10 +211,12 @@ def run(args):
     if args.audit_random:
         if type(variant_rng) is not Random:
             raise ValueError("The random audit needs the verified standard Random generator")
-        run_key = sha256(json.dumps([resource_version, native_hash, sha256(script_bytes),
+        run_key = sha256(json.dumps([3, resource_version, native_hash, sha256(script_bytes),
                                       sha256(team_bytes), sha256(suit_bytes), args.seed,
                                       args.fixed_step_ms]).encode())
-        random_audit = RandomAudit(variant_rng, run_key, random_reference, args.flip_random)
+        random_audit = RandomAudit(variant_rng, run_key, random_reference, args.flip_random,
+                                   lambda: (engine.battleState == const.BattleState.BS_STARTED,
+                                            getattr(engine, "finishedWaveCount", 0) + 1))
     random_record = RandomRecord(random_audit or variant_rng)
     for method in ("seed", "getstate", "setstate"):
         setattr(random_record, method, getattr(variant_rng, method))

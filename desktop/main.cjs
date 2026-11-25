@@ -67,6 +67,12 @@ app.whenReady().then(async () => {
   });
   handleLocal('rune-battle-status',()=>runeRunner.status());
   handleLocal('rune-battle-run',(_check,plan,options)=>runeRunner.run(plan,options));
+  handleLocal('rune-battle-verify-random',(_check,plan,seed,requestId)=>{
+    if(!Number.isSafeInteger(requestId)||requestId<1)throw Error('无效的复跑请求');
+    return runeRunner.verifyRandom(plan,seed,progress=>{
+      if(win&&!win.isDestroyed())win.webContents.send('rune-battle-random-progress',requestId,progress);
+    });
+  });
   handleLocal('rune-battle-stop',()=>runeRunner.stop());
   handleLocal('dungeon-catalog-choose', async check => {
     const selection = await dialog.showOpenDialog(win, { title: '选择包含 index.json 的副本资料目录', properties: ['openDirectory'] });

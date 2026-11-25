@@ -10,6 +10,13 @@ contextBridge.exposeInMainWorld('dungeonCatalog', Object.freeze({
 contextBridge.exposeInMainWorld('runeBattle',Object.freeze({
   status:()=>ipcRenderer.invoke('rune-battle-status'),
   run:(plan,options)=>ipcRenderer.invoke('rune-battle-run',plan,options),
+  verifyRandom:(plan,seed,requestId)=>ipcRenderer.invoke('rune-battle-verify-random',plan,seed,requestId),
+  onRandomProgress:callback=>{
+    if(typeof callback!=='function')throw Error('Invalid callback');
+    const listener=(_event,requestId,progress)=>callback(requestId,progress);
+    ipcRenderer.on('rune-battle-random-progress',listener);
+    return ()=>ipcRenderer.removeListener('rune-battle-random-progress',listener);
+  },
   stop:()=>ipcRenderer.invoke('rune-battle-stop'),
 }));
 contextBridge.exposeInMainWorld('taLogin',Object.freeze({status:()=>ipcRenderer.invoke('ta-status'),action:(action,params={})=>ipcRenderer.invoke('ta-action',action,params),query:(code,options={})=>ipcRenderer.invoke('ta-query',code,options),share:code=>ipcRenderer.invoke('ta-share',code),logout:()=>ipcRenderer.invoke('ta-logout'),onQueryProgress:callback=>{if(typeof callback!=='function')throw new Error('Invalid callback');const listener=(_event,progress)=>callback(progress);ipcRenderer.on('ta-query-progress',listener);return ()=>ipcRenderer.removeListener('ta-query-progress',listener);},onStatus:callback=>{if(typeof callback!=='function')throw new Error('Invalid callback');const listener=(_event,state)=>callback(state);ipcRenderer.on('ta-status-changed',listener);return ()=>ipcRenderer.removeListener('ta-status-changed',listener);}}));

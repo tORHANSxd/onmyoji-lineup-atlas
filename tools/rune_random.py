@@ -53,13 +53,14 @@ class ObservedFloat(float):
 
 
 class RandomAudit:
-    def __init__(self, original, run_key, reference=None, flip=None):
+    def __init__(self, original, run_key, reference=None, flip=None, context=None):
         self.original = original
         self.run_key = run_key
         self.draws = []
         self.reference = reference
         self.flip = flip
         self.flipped = None
+        self.context = context
         if flip is not None:
             if (reference.get("scope") != SCOPE or reference.get("runKey") != run_key or reference.get("flipped") is not None
                     or not isinstance(reference.get("draws"), list) or not 1 <= flip <= len(reference["draws"])):
@@ -79,6 +80,8 @@ class RandomAudit:
             site = [frame.f_code.co_filename.replace("\\", "/"), frame.f_code.co_qualname, frame.f_lineno, frame.f_lasti]
             result = original(*args, **kwargs)
             draw = {"method": name, "site": site}
+            if self.context is not None:
+                draw["inCombat"], draw["wave"] = self.context()
             if (type(result) in (bool, int, str) or result is None or
                     type(result) is float and math.isfinite(result)):
                 draw["value"] = result
@@ -90,7 +93,7 @@ class RandomAudit:
                 if index == self.flip:
                     baseline = self.reference["draws"][index - 1]
                     if self.draws != self.reference["draws"][:index - 1] or any(
-                            draw[key] != baseline.get(key) for key in ("method", "site", "value")):
+                            draw.get(key) != baseline.get(key) for key in ("method", "site", "value", "inCombat", "wave")):
                         raise ValueError("The original random trace diverged before the selected draw")
                     result = alternative(baseline)
                     if result == draw["value"] or result is None:

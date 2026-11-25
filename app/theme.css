@@ -85,6 +85,7 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-stock-health li{display:grid;gap:2px;margin:4px 0}
 .dungeon-stock-health span{color:var(--muted)}
 .dungeon-stock-card>button{margin-top:10px}
+.dungeon-stock-card [data-stock-audit]{margin:4px 0 8px}
 #detail-dialog:has(.rune-code-preview){width:min(890px,95vw)}
 .rune-code-preview{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,330px);gap:24px;align-items:start}
 .rune-code-preview textarea{display:block;box-sizing:border-box;width:100%;margin:6px 0 12px}

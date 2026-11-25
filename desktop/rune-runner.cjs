@@ -29,7 +29,9 @@ function waitForExit(python,args,dir,signal){
  });
 }
 
-function summary(report,seed,fixedStep){
+const MAX_BRANCH_TRIALS=8;
+
+function summary(report,seed,fixedStep,flip=null){
  if(report.resourceVersion!==resourceVersion||report.dungeonId!==dungeonId||report.fixture!=='selected-inventory'||
   report.seed!==seed||
   typeof report.completed!=='boolean'||!['win','loss','unknown'].includes(report.outcome)||
@@ -46,7 +48,7 @@ function summary(report,seed,fixedStep){
  let randomObservations=null;
  if(fixedStep){
   const observed=audit?.observedComparisonDraws,other=audit?.unclassifiedDraws,alternatives=audit?.reversibleDraws?.length;
-  if(audit?.scope!=='engine-rng-observed-comparisons'||audit.flipped!==null||
+  if(audit?.scope!=='engine-rng-observed-comparisons'||(flip===null?audit.flipped!==null:audit.flipped?.index!==flip)||
    ![observed,other,alternatives].every(value=>Number.isSafeInteger(value)&&value>=0)||
    observed+other!==report.randomCalls||alternatives>observed)throw Error('客户端复跑没有返回可识别的随机调用记录');
   randomObservations={observed,other,alternatives};
@@ -58,49 +60,111 @@ function summary(report,seed,fixedStep){
   spirit:spirit?{id:spirit.id,star:spirit.star,level:spirit.level}:null};
 }
 
+function planRandomTrials(audit){
+ const bySite=new Map();
+ for(const index of audit.reversibleDraws){
+  const draw=audit.draws[index-1],site=draw?.site,comparison=draw?.comparisons?.[0];
+  if(!Number.isSafeInteger(index)||index<1||draw?.method!=='random'||!Array.isArray(site)||site.length!==4||
+    typeof site[0]!=='string'||typeof site[1]!=='string'||![site[2],site[3]].every(Number.isSafeInteger)||
+    !Array.isArray(comparison)||!['lt','le','gt','ge'].includes(comparison[0])||!Number.isFinite(comparison[1])||
+    typeof comparison[2]!=='boolean')throw Error('无效的原版随机分支记录');
+  const key=JSON.stringify(site),variants=bySite.get(key)||new Map();
+  const wave=[1,2,3].includes(draw.wave)?draw.wave:null;
+  const candidate={index,file:site[0],method:site[1],line:site[2],comparison:comparison[0],threshold:comparison[1],
+   before:comparison[2],inCombat:draw.inCombat===true,wave};
+  const context=JSON.stringify([wave,candidate.before]),previous=variants.get(context);
+  if(!previous||!previous.inCombat&&candidate.inCombat)variants.set(context,candidate);
+  bySite.set(key,variants);
+ }
+ // In 0.0.816 these two methods schedule opening SFX or a renderer scene flag.
+ const priority=d=>d.inCombat&&!(d.file==='battleengine/BattleEngine.py'&&['BattleEngine.eggs','BattleEngine.new_eggs'].includes(d.method));
+ const groups=[...bySite.values()].map(variants=>[...variants.values()]);
+ const targets=[];
+ for(const preferred of [true,false]){
+  const choices=groups.map(g=>g.filter(d=>priority(d)===preferred)).filter(g=>g.length);
+  for(let depth=0;targets.length<MAX_BRANCH_TRIALS&&choices.some(g=>g.length>depth);depth++){
+   for(const group of choices)if(group[depth]&&targets.length<MAX_BRANCH_TRIALS)targets.push(group[depth]);
+  }
+ }
+ return {sites:groups.length,eligible:audit.reversibleDraws.length,targets};
+}
+
 function createRuneRunner({configPath,scriptRoot,suits}){
  let current=null;
+ async function withRun(plan,seed,fixedStep,execute){
+  if(current)throw Error('已有魂王复跑正在运行');
+  if(!plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length!==5)throw Error('复跑需要一位阴阳师及五位式神');
+  if(!Number.isSafeInteger(seed)||seed<0||seed>=2**32||typeof fixedStep!=='boolean')throw Error('无效的复跑种子或时钟');
+  const input=JSON.stringify(plan);
+  if(Buffer.byteLength(input)>256*1024)throw Error('复跑输入超过大小限制');
+  const action=new AbortController();
+  let release;
+  const job=current={action,done:new Promise(resolve=>{release=resolve;})};
+  let dir;
+  try{
+   const config=await readConfig(configPath);
+   action.signal.throwIfAborted();
+   dir=await fs.mkdtemp(path.join(os.tmpdir(),'yuqi-rune-'));
+   const team=path.join(dir,'team.json'),suitIndex=path.join(dir,'suits.json');
+   await Promise.all([fs.writeFile(team,input,'utf8'),fs.writeFile(suitIndex,JSON.stringify(suits),'utf8')]);
+   const argv=['-X','utf8',path.join(scriptRoot,'verify-rune-runtime.py'),
+    '--snapshot',config.snapshot,'--game-tools',config.gameTools,'--opcode-proof',config.opcodeProof,
+    '--script-index',config.scriptIndex,'--suit-index',suitIndex,'--team',team,'--timeout','75','--seed',String(seed)];
+   if(fixedStep)argv.push('--fixed-step-ms','20','--audit-random');
+   const reference=path.join(dir,'baseline.json');
+   async function replay(flip=null){
+    action.signal.throwIfAborted();
+    const out=flip===null?reference:path.join(dir,`trial-${flip}.json`);
+    const flags=flip===null?[]:['--random-reference',reference,'--flip-random',String(flip)];
+    const deadline=AbortSignal.timeout(100000);
+    let code;
+    try{code=await waitForExit(config.python,[...argv,'--output',out,...flags],dir,AbortSignal.any([action.signal,deadline]));}
+    catch(error){if(deadline.aborted&&!action.signal.aborted)throw Error('单次魂王复跑超时');throw error;}
+    action.signal.throwIfAborted();
+    if(code!==0&&code!==1)throw Error('原版引擎未能完成复跑');
+    const report=await fs.readFile(out,'utf8').then(JSON.parse).catch(()=>null);
+    if(!report)throw Error('原版引擎未生成结算，请核对客户端资料和阵容配置');
+    return {raw:report,result:summary(report,seed,fixedStep,flip)};
+   }
+   return await execute(replay,action.signal);
+  }catch(error){
+   if(action.signal.aborted)throw Error('魂王复跑已停止');
+   throw error;
+  }finally{
+   try{if(dir)await fs.rm(dir,{recursive:true,force:true,maxRetries:2});}finally{if(current===job)current=null;release();}
+  }
+ }
  return {
   async status(){
    try{await Promise.all([readConfig(configPath),fs.access(path.join(scriptRoot,'verify-rune-runtime.py'))]);return {available:true,resourceVersion};}
    catch(error){return {available:false,reason:error.code==='ENOENT'?'未连接本机魂王复跑资料':'本机魂王复跑配置无效'};}
   },
   async run(plan,{seed=0,fixedStep=false}={}){
-   if(current)throw Error('已有魂王复跑正在运行');
-   if(!plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length!==5)throw Error('复跑需要一位阴阳师及五位式神');
-   if(!Number.isSafeInteger(seed)||seed<0||seed>=2**32||typeof fixedStep!=='boolean')throw Error('无效的复跑种子或时钟');
-   const input=JSON.stringify(plan);
-   if(Buffer.byteLength(input)>256*1024)throw Error('复跑输入超过大小限制');
-   const action=new AbortController();
-   let release;
-   const job=current={action,done:new Promise(resolve=>{release=resolve;})};
-   const alarm=setTimeout(()=>action.abort(),100000);
-   let dir;
-   try{
-    const config=await readConfig(configPath);
-    action.signal.throwIfAborted();
-    dir=await fs.mkdtemp(path.join(os.tmpdir(),'yuqi-rune-'));
-    const team=path.join(dir,'team.json'),suitIndex=path.join(dir,'suits.json'),out=path.join(dir,'report.json');
-    await Promise.all([fs.writeFile(team,input,'utf8'),fs.writeFile(suitIndex,JSON.stringify(suits),'utf8')]);
-    const argv=['-X','utf8',path.join(scriptRoot,'verify-rune-runtime.py'),
-     '--snapshot',config.snapshot,'--game-tools',config.gameTools,'--opcode-proof',config.opcodeProof,
-     '--script-index',config.scriptIndex,'--output',out,'--suit-index',suitIndex,'--team',team,'--timeout','75','--seed',String(seed)];
-    if(fixedStep)argv.push('--fixed-step-ms','20','--audit-random');
-    const code=await waitForExit(config.python,argv,dir,action.signal);
-    if(code!==0&&code!==1)throw Error('原版引擎未能完成复跑');
-    const report=await fs.readFile(out,'utf8').then(JSON.parse).catch(()=>null);
-    if(!report)throw Error('原版引擎未生成结算，请核对客户端资料和阵容配置');
-    return summary(report,seed,fixedStep);
-   }catch(error){
-    if(action.signal.aborted)throw Error('魂王复跑已停止或超时');
-    throw error;
-   }finally{
-    clearTimeout(alarm);
-    try{if(dir)await fs.rm(dir,{recursive:true,force:true,maxRetries:2});}finally{if(current===job)current=null;release();}
-   }
+   return withRun(plan,seed,fixedStep,async replay=>(await replay()).result);
+  },
+  verifyRandom(plan,seed,onProgress=()=>{}){
+   return withRun(plan,seed,true,async (replay,signal)=>{
+    const {raw,result:baseline}=await replay();
+    if(!baseline.completed||baseline.outcome!=='win'||baseline.wavesCleared!==3)throw Error('基准种子未能再次通关');
+    const {targets,eligible,sites}=planRandomTrials(raw.randomAudit);
+    const batch={seed,eligible,sites,planned:targets.length,baseline:{bouts:baseline.bouts,engineSeconds:baseline.engineSeconds},trials:[]};
+    const snapshot=()=>({...batch,trials:[...batch.trials]});
+    onProgress(snapshot());
+    for(const target of targets){
+     let trial;
+     try{
+      const {raw:flipped,result}=await replay(target.index);
+      trial={...target,completed:result.completed,outcome:result.outcome,wavesCleared:result.wavesCleared,
+       bouts:result.bouts,engineSeconds:result.engineSeconds,replayChanged:raw.recordSHA256!==flipped.recordSHA256};
+     }catch(error){signal.throwIfAborted();trial={...target,error:error.message};}
+     batch.trials.push(trial);
+     onProgress(snapshot());
+    }
+    return snapshot();
+   });
   },
   stop(){current?.action.abort();return current?.done;}
  };
 }
 
-module.exports={createRuneRunner};
+module.exports={createRuneRunner,planRandomTrials};

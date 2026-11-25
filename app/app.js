@@ -135,7 +135,7 @@ function filteredLineups(){const query=$('search').value.trim().toLowerCase().sp
  if(!selectedMembers.every(id=>l.members?.some(m=>m.shikigamiId===id)))return false;
   return !query.length||query.every(q=>searchText(l).includes(q));
 });}
-let dungeonRulesSource=null,dungeonStageFilter=null,runeStatus=null,runeStatusPending=false,dungeonBattle=null,dungeonStock=null,dungeonStopPending=false,dungeonBattleRenderKey='',dungeonStockRenderKey='';
+let dungeonRulesSource=null,dungeonStageFilter=null,runeStatus=null,runeStatusPending=false,dungeonBattle=null,dungeonStock=null,dungeonStopPending=null,dungeonBattleRenderKey='',dungeonStockRenderKey='';
 function selectedDungeon(){
  return DATA?.dungeonRules?.dungeons.find(row=>row.id===Number($('dungeon-rules-select').value));
 }
@@ -185,13 +185,14 @@ function renderDungeonBattle(dungeon){
 }
 function stopDungeonBattle(clear=false){
  const jobs=[dungeonBattle,dungeonStock].filter(Boolean);
- for(const job of jobs){
+ const audit=dungeonStock?.activeRandomAudit;
+ if(audit)audit.cancelled=true;
+ if(clear||!audit)for(const job of jobs){
   job.cancelled=true;job.stopSearch?.();
   for(const row of job.rows)if(row.state==='waiting'||row.state==='running')row.state='cancelled';
  }
- if(jobs.some(job=>job.running)&&!dungeonStopPending){
-  dungeonStopPending=true;
-  void window.runeBattle.stop().catch(()=>{}).finally(()=>{dungeonStopPending=false;renderDungeonSelection();});
+ if((audit||jobs.some(job=>job.running))&&!dungeonStopPending){
+  dungeonStopPending=window.runeBattle.stop().catch(()=>{}).finally(()=>{dungeonStopPending=null;renderDungeonSelection();});
  }
  if(clear){dungeonBattle=null;dungeonStock=null;}
  renderDungeonSelection();
@@ -241,9 +242,43 @@ function originalsTried(selection){
  const allChecked=new Set(selection.map(l=>l.id));
  return job.rows.every(row=>allChecked.has(row.lineup.id)&&row.state==='finished'&&row.report?.outcome!=='win');
 }
-function stockBusy(job){return usesDungeonInventory(job)&&job.running&&!job.cancelled;}
+function stockBusy(job){return usesDungeonInventory(job)&&!job.cancelled&&(job.running||!!job.activeRandomAudit);}
 const stockPasses=row=>AtlasRuneCandidate.passed(row.samples);
 const runeError=error=>error.message.replace(/^Error invoking remote method '[^']+': Error: /,'');
+
+function randomAuditMarkup({running,cancelled,error,result}={}){
+ if(!result){
+  const pending=error||(cancelled?'已停止':running?'正在复跑基准种子…':'');
+  return pending?`<p class="caption" role="status">${esc(pending)}</p>`:'';
+ }
+ const {seed,planned,eligible,sites,baseline,trials}=result;
+ const settled=trials.filter(t=>t.completed&&['win','loss'].includes(t.outcome));
+ const wins=settled.filter(t=>t.outcome==='win'&&t.wavesCleared===3).length;
+ const losses=settled.length-wins;
+ const status=cancelled?'已停止':running?'正在测试':'已结束';
+ const coverage=`种子 ${seed} · ${status} ${trials.length}/${planned} 次 · ${wins} 次通关，${losses} 次未通关`;
+ const signs={lt:'<',le:'≤',gt:'>',ge:'≥'};
+ const rows=trials.map(trial=>{
+  const change=trial.error||(!trial.completed||trial.outcome==='unknown'?'结算待核对':
+   `${trial.outcome==='win'&&trial.wavesCleared===3?'通关':'未通关'} · ${trial.wavesCleared} 波 · ${trial.bouts} 回合 · ${trial.engineSeconds.toFixed(2)} 秒`);
+  const prob=`随机值 ${signs[trial.comparison]} ${trial.threshold}，${trial.before?'成立改为不成立':'不成立改为成立'}`;
+  const difference=trial.completed&&trial.outcome==='win'&&trial.wavesCleared===3?describeRandomDifference(trial,baseline):'';
+  const source=[trial.wave?`第 ${trial.wave} 波`:'',trial.method,`第 ${trial.line} 行`].filter(Boolean).join(' · ');
+  return `<li><strong>第 ${trial.index} 次 · ${esc(change)}</strong>${difference?`<span>${difference}</span>`:''}<span>${esc(prob)}</span><span>${esc(source)}</span></li>`;
+ }).join('');
+ return `<p class="caption" role="status">${coverage}</p><p class="caption">基准 ${baseline.bouts} 回合 · ${baseline.engineSeconds.toFixed(2)} 秒。
+ ${eligible?`从 ${sites} 处、${eligible} 次可翻转判断中选取 ${planned} 次。`:'本次基准没有可翻转的判断。'}${trials.length>settled.length?` ${trials.length-settled.length} 次未取得可核对的结算。`:''}</p>
+ ${error?`<p class="caption">${esc(error)}</p>`:''}${rows?`<ul class="dungeon-stock-builds">${rows}</ul>`:''}
+ <p class="caption">每次只翻转一个判断。全随机分支和实机计时仍待验证。</p>`;
+}
+
+function describeRandomDifference(trial,baseline){
+ const rounds=trial.bouts-baseline.bouts,seconds=(trial.engineSeconds-baseline.engineSeconds).toFixed(2);
+ const delta=[rounds?`${rounds>0?'增加':'减少'} ${Math.abs(rounds)} 回合`:'',
+  Number(seconds)?`${seconds>0?'慢':'快'} ${Math.abs(Number(seconds)).toFixed(2)} 秒`:''].filter(Boolean);
+ return delta.length?`较基准${delta.join('，')}`:trial.replayChanged?'回放有变化，回合与用时相同':'回放与基准一致';
+}
+
 function renderDungeonStock(dungeon){
  const panel=$('dungeon-stock-results'),job=dungeonStock;
  panel.hidden=!hasRuneRuntime(dungeon)||!usesDungeonInventory(job);
@@ -253,12 +288,13 @@ function renderDungeonStock(dungeon){
   job.searching?'正在按输出、供火和辅助技能挑选式神与御魂…':
   !job.rows.length?'当前库存未找到可组成的备选队伍。':
   `已复跑 ${completed} / ${job.rows.length} 队 · ${passes} 队通过全部 ${AtlasRuneSearch.sampleSeeds.length} 个采样种子${job.running?'':'。'}`);
- const key=JSON.stringify([status,job.rows.map(row=>[row.index,row.heroIds,row.state,row.samples,row.error,row.encoding,row.codeError,row.output?.code])]);
+ const busy=stockBusy(job)||!!dungeonStopPending;
+ const key=JSON.stringify([status,busy,job.rows.map(row=>[row.index,row.heroIds,row.state,row.samples,row.error,row.encoding,row.codeError,row.output?.code,row.randomAudit])]);
  if(key===dungeonStockRenderKey)return;
  dungeonStockRenderKey=key;$('dungeon-stock-status').textContent=status;
  const list=$('dungeon-stock-list'),opened=new Set([...list.querySelectorAll('details[open]')].map(el=>el.dataset.stockSection));
  const focused=document.activeElement,focus=focused.closest('summary')?.parentElement?.dataset.stockSection;
- const preview=focused.dataset.stockPreview??focused.dataset.stockEncode;
+ const focusedAction=[...focused.attributes].find(a=>['data-stock-preview','data-stock-encode','data-stock-audit'].includes(a.name));
  const names=DATA.gameConfig.heroes;
  const worstSample=row=>Math.max(...row.samples.map(sample=>sample.engineSeconds));
  const rows=[...job.rows].sort((a,b)=>Number(stockPasses(b))-Number(stockPasses(a))||
@@ -293,12 +329,38 @@ function renderDungeonStock(dungeon){
    ${summary?`<p class="caption">${esc(summary)}</p>`:''}
    <details ${section('gear')}><summary>查看御魂搭配</summary><ul class="dungeon-stock-builds">${builds}</ul></details>
    ${health?`<details ${section('health')}><summary>查看各波敌方生命</summary><ul class="dungeon-stock-health">${health}</ul></details>`:''}
-   ${observations?`<details ${section('random')}><summary>查看随机调用记录</summary><p class="caption">各项计数来自对应种子的复跑。可达随机分支仍待验证。</p><ul class="dungeon-stock-samples">${observations}</ul></details>`:''}
+   ${observations?`<details ${section('random')}><summary>查看随机调用记录</summary><p class="caption">各项计数来自对应种子的复跑。可达随机分支仍待验证。</p><ul class="dungeon-stock-samples">${observations}</ul>
+    ${stockPasses(row)&&row.samples.some(s=>s.randomObservations?.alternatives>0)?`<button class="secondary" type="button" data-stock-audit="${row.index}" ${busy?'disabled':''}>${row.randomAudit?.running?'正在测试随机判断':row.randomAudit?'重新测试随机判断':'测试随机判断'}</button>`:''}
+    ${randomAuditMarkup(row.randomAudit)}</details>`:''}
    ${row.output?`<button class="secondary" type="button" data-stock-preview="${row.index}">查看阵容码和保存</button>`:
      row.encoding?'<p class="caption">正在生成阵容码…</p>':row.codeError?`<p class="caption">${esc(row.codeError)}</p><button class="secondary" type="button" data-stock-encode="${row.index}">重试生成阵容码</button>`:''}</li>`;
  }).join('');
  if(focus!==undefined)list.querySelector(`[data-stock-section="${CSS.escape(focus)}"] summary`)?.focus();
- if(preview!==undefined)list.querySelector(`[data-stock-preview="${CSS.escape(preview)}"],[data-stock-encode="${CSS.escape(preview)}"]`)?.focus();
+ if(focusedAction)list.querySelector(`[${focusedAction.name}="${CSS.escape(focusedAction.value)}"]`)?.focus();
+}
+
+let nextRandomAudit=0;
+async function verifyStockRandom(job,row){
+ if(stockBusy(job)||dungeonStopPending||!stockPasses(row))return;
+ const reference=row.samples.find(s=>s.randomObservations?.alternatives>0);
+ if(!reference)return;
+ const requestId=++nextRandomAudit, audit=row.randomAudit={running:true,cancelled:false,result:null,error:null};
+ job.activeRandomAudit=audit;
+ const active=()=>dungeonStock===job&&usesDungeonInventory(job)&&job.activeRandomAudit===audit;
+ const update=result=>{if(active()&&!audit.cancelled){audit.result=result;renderDungeonSelection();}};
+ const unsubscribe=window.runeBattle.onRandomProgress((id,progress)=>{if(id===requestId)update(progress);});
+ renderDungeonSelection();$('dungeon-stop-battle').focus();
+ try{update(await window.runeBattle.verifyRandom(row.plan,reference.seed,requestId));}
+ catch(error){if(active()&&!audit.cancelled)audit.error=runeError(error);}
+ finally{
+  const restoreFocus=document.activeElement===$('dungeon-stop-battle');
+  unsubscribe();audit.running=false;job.activeRandomAudit=null;renderDungeonSelection();
+  if(restoreFocus){
+   await dungeonStopPending;
+   if(dungeonStock===job&&usesDungeonInventory(job)&&[document.body,$('dungeon-stop-battle')].includes(document.activeElement))
+    document.querySelector(`[data-stock-audit="${row.index}"]`)?.focus();
+  }
+ }
 }
 async function encodeStockCandidate(job,row){
  if(row.encoding||row.output||!stockPasses(row))return;
@@ -498,10 +560,11 @@ $('dungeon-match-selected').onclick=()=>{
 };
 $('dungeon-search-stock').onclick=()=>void searchDungeonStock();
 $('dungeon-stock-list').onclick=event=>{
- const button=event.target.closest('[data-stock-preview],[data-stock-encode]'),job=dungeonStock;
+ const button=event.target.closest('[data-stock-preview],[data-stock-encode],[data-stock-audit]'),job=dungeonStock;
  if(!button||!usesDungeonInventory(job))return;
- const row=job.rows[Number(button.dataset.stockPreview??button.dataset.stockEncode)];
- if(row){if(button.dataset.stockEncode!=null)void encodeStockCandidate(job,row);else openStockCandidate(job,row);}
+ const row=job.rows[Number(button.dataset.stockPreview??button.dataset.stockEncode??button.dataset.stockAudit)];
+ if(row){if(button.dataset.stockAudit!=null)void verifyStockRandom(job,row);
+  else if(button.dataset.stockEncode!=null)void encodeStockCandidate(job,row);else openStockCandidate(job,row);}
 };
 $('dungeon-stop-battle').onclick=()=>stopDungeonBattle();
 function renderLibrary(){

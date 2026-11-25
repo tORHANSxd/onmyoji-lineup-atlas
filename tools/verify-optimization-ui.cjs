@@ -44,13 +44,17 @@ async function main(){
  local('dungeon-catalog-encounters',()=>readEncounters(catalog));
  local('dungeon-catalog-records',(table,keys)=>readRecords(catalog,table,keys));
  const rune=process.env.ATLAS_RUNE_RUNTIME?createRuneRunner({configPath:process.env.ATLAS_RUNE_RUNTIME,scriptRoot:path.join(root,'tools'),suits:data.suits}):null;
- let runeEnabled=false,replayPlan=null,mockBattle=null;
+ let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null;
  local('rune-battle-status',()=>runeEnabled?(rune?.status()||{available:true,resourceVersion:'0.0.816'}):{available:false});
  local('rune-battle-run',(plan,options)=>{
   replayPlan=plan;
   return mockBattle?.(plan,options)||rune?.run(plan,options)||{completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};
  });
- local('rune-battle-stop',()=>rune?.stop());
+ local('rune-battle-verify-random',(plan,seed,id)=>{
+  const progress=update=>win.webContents.send('rune-battle-random-progress',id,update);
+  return mockRandom?mockRandom(plan,seed,progress):rune?.verifyRandom(plan,seed,progress);
+ });
+ local('rune-battle-stop',()=>stopRandom?stopRandom():rune?.stop());
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
  win.webContents.on('console-message',d=>{if(d.level==='error')errors.push(d.message);});
  await win.loadFile(path.join(root,'app/index.html'));win.webContents.setZoomFactor(1);await sleep(80);await until('!!DATA && document.getElementById("loading").hidden');await ui('TALogin.ready()');
@@ -379,6 +383,31 @@ async function main(){
    assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health][open]").textContent'),/日和坊.*最低 5,000.*生命回升 135,000/s);
    await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random] summary").click()');
    assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random][open]").textContent'),/可达随机分支仍待验证.*75 次概率判断.*9 次可以翻转.*12 次其他随机调用/s);
+   const result={seed:0,eligible:9,sites:3,planned:2,baseline:{bouts:8,engineSeconds:20},trials:[
+    {index:4,method:'randomAttack',line:84,comparison:'lt',threshold:.5,before:true,completed:true,outcome:'win',wavesCleared:3,bouts:6,engineSeconds:18},
+    {index:9,method:'randomBuff',line:19,comparison:'lt',threshold:.4,before:false,completed:true,outcome:'loss',wavesCleared:2,bouts:9,engineSeconds:24},
+   ]};
+   const startAudit=()=>ui('document.querySelector("[data-stock-audit]").click()');
+   mockRandom=(_plan,seed,progress)=>{
+    assert.equal(seed,0);progress({...result,trials:result.trials.slice(0,1)});
+    return new Promise((_resolve,reject)=>{stopRandom=()=>reject(Error('已停止'));});
+   };
+   await startAudit();
+   await until('document.querySelector("[data-stock-section$=random][open]").textContent.includes("正在测试 1/2")');
+   assert.equal(await ui('document.querySelector("[data-stock-audit]").disabled'),true);
+   await ui('$("dungeon-stop-battle").click()');
+   await until('!dungeonStopPending&&!document.querySelector("[data-stock-audit]").disabled');
+   assert.match(await ui('document.querySelector("[data-stock-section$=random][open]").textContent'),/已停止 1\/2.*减少 2 回合.*快 2\.00 秒/s);
+   assert.equal(await ui('document.activeElement.dataset.stockAudit'),'0');
+   mockRandom=(_plan,seed,progress)=>{
+    assert.equal(seed,0);progress({...result,trials:[]});return result;
+   };
+   await startAudit();
+   await until('document.querySelector("[data-stock-section$=random][open]").textContent.includes("已结束 2/2")');
+   assert.match(await ui('document.querySelector("[data-stock-section$=random][open]").textContent'),/1 次通关，1 次未通关.*第 9 次 · 未通关 · 2 波/s);
+   await ui('document.querySelector("[data-stock-section$=random][open]").scrollIntoView({block:"start",behavior:"instant"})');
+   await capture('dungeon-stock-random-trials');
+   stopRandom=null;mockRandom=null;
    await ui('$("dungeon-stock-results").scrollIntoView({block:"start"})');await capture('dungeon-stock-search');
    win.setContentSize(720,960);
    try{assert.equal(await ui('$("dungeon-stock-results").scrollWidth<=$("dungeon-stock-results").clientWidth+2'),true);}
@@ -422,7 +451,7 @@ async function main(){
    assert.match(await ui('$("dungeon-battle-results").textContent'),/按已保存配装.*本次复跑通关/s);
    assert.equal(calls.at(-1).ids,winner);
    assert.deepEqual(replayPlan.onmyoji.skinfo,[[1003,5],[1008,5],[1011,5]]);
-  }finally{mockBattle=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
+  }finally{mockBattle=null;mockRandom=null;stopRandom=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
  });
  if(process.argv.includes('--visual')){
   await ui('STATE='+JSON.stringify(blank())+';backupUndo=null;document.getElementById("undo-restore").hidden=true;document.getElementById("toast").classList.remove("show");document.getElementById("code-input").value="";updateCode();updateAccountSelect();fillFilters();selectView("library")');
