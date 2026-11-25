@@ -10,7 +10,7 @@ const { TASession } = require('./ta-session.cjs');
 const { TAQueryQueue } = require('./ta-query-queue.cjs');
 const { TACredentials } = require('./ta-credentials.cjs');
 const { TAResponseCache } = require('./ta-response-cache.cjs');
-const { readIndex: readDungeonIndex, readTable: readDungeonTable } = require('./dungeon-catalog.cjs');
+const { readIndex: readDungeonIndex, readTable: readDungeonTable, readEncounters, readRecords } = require('./dungeon-catalog.cjs');
 const {createRuneRunner}=require('./rune-runner.cjs');
 let win, official, taSession, queryQueue, runeRunner, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
 const isSmoke = process.argv.includes('--smoke');
@@ -58,6 +58,8 @@ app.whenReady().then(async () => {
   })();
   handleLocal('dungeon-catalog-index', async () => (await dungeonCatalog)?.index ?? null);
   handleLocal('dungeon-catalog-table', async (_check, name) => readDungeonTable(await dungeonCatalog, name));
+  handleLocal('dungeon-catalog-encounters', async () => readEncounters(await dungeonCatalog));
+  handleLocal('dungeon-catalog-records', async (_check, name, keys) => readRecords(await dungeonCatalog, name, keys));
   runeRunner=createRuneRunner({
     configPath:process.env.ATLAS_RUNE_RUNTIME||path.join(app.isPackaged?process.resourcesPath:app.getPath('userData'),'rune-runtime.json'),
     scriptRoot:app.isPackaged?path.join(process.resourcesPath,'rune-runner'):path.join(__dirname,'../tools'),

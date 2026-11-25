@@ -62,6 +62,22 @@
   <p id="client-dungeons-version" class="caption"></p>
   <button id="client-dungeons-choose" type="button" class="secondary">选择副本资料目录</button>
 </div>
+<div id="client-dungeons-modes" class="actions" role="group" aria-label="副本资料查看方式" hidden>
+  <button id="client-dungeons-mode-encounters" type="button" class="secondary">按关卡查找</button>
+  <button id="client-dungeons-mode-tables" type="button" class="secondary">查资料表</button>
+</div>
+<div id="client-dungeons-encounters" hidden>
+  <div class="dungeon-controls">
+    <label>玩法类型<select id="client-dungeons-encounter-family"><option value="">全部玩法</option><option value="daily">日常、探索与挑战</option><option value="guild">阴阳寮</option><option value="event">限时与历史活动</option><option value="battle">通用战斗关卡</option><option value="other">其他关卡配置</option></select></label>
+    <label>关卡搜索<input id="client-dungeons-encounter-query" type="search" placeholder="魂王、狭间暗域、将魂试炼或关卡 ID"></label>
+  </div>
+  <p id="client-dungeons-encounter-count" class="caption" role="status"></p>
+  <div class="dungeon-catalog-records">
+    <div id="client-dungeons-encounter-list" class="dungeon-catalog-list"></div>
+    <div id="client-dungeons-encounter-detail" aria-live="polite"></div>
+  </div>
+  <div class="pagination"><button id="client-dungeons-encounter-prev" type="button" class="secondary">上一页</button><button id="client-dungeons-encounter-next" type="button" class="secondary">下一页</button></div>
+</div>
 <div id="client-dungeons-controls" hidden>
   <div class="dungeon-controls">
     <label>玩法类型<select id="client-dungeons-family"><option value="">全部玩法</option><option value="daily">日常、探索与挑战</option><option value="guild">阴阳寮</option><option value="event">限时与历史活动</option><option value="battle">通用战斗规则</option><option value="other">其他客户端配置</option></select></label>

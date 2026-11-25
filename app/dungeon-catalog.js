@@ -23,6 +23,10 @@
     MZB_fengmo: '逢魔首领',
     lbs_world_boss_type: '逢魔首领战斗规则',
     shilian_stage_detail: '六道之门试炼',
+    shilian_event_battles: '六道之门战斗配置',
+    shilian_event_exam: '六道之门试炼关卡',
+    activity: '活动开放配置',
+    storyChapter: '探索章节',
     hunling_noraml_boss_battle: '契灵之境首领奖励',
     hunling_jijie_boss_battle: '契灵集结首领奖励',
     SuperGhost_bossmission: '超鬼王历史首领挑战',
@@ -46,6 +50,15 @@
     act_id: '活动 ID', battle_id: '关卡 ID', team_player_num: '组队人数', team_battle_type: '战斗类型',
     rule: '玩法规则', boss_rule: '首领机制', attack_tip: '战斗提示', challenge_time: '挑战时限',
     begin_time: '开放时间', end_time: '关闭时间', reward_id: '奖励 ID',
+    openTime: '开放星期', activity_time: '开放配置 ID', open_type: '开放方式', level_limit: '等级限制',
+    need_team: '组队要求', notice: '机制说明', fb1_defs: '秘闻竞速规则', spec_skill: '首领特殊技能',
+    remain_time: '存在时限', private_time: '私人挑战时限', crazy_time: '狂暴时限',
+    atk_chng: '攻击调整', def_chng: '防御调整', hp_chng: '生命调整',
+    spd_chng: '速度调整', crt_chng: '暴击调整', drop_effect: '掉落机制',
+    baseSpeed: '基础速度', baseCritRate: '基础暴击率', atkDelta: '攻击系数',
+    attackDelta: '攻击系数', defenseDelta: '防御系数', hpDelta: '生命系数',
+    immuDebuff: '减益免疫', immuHitBack: '退条免疫', immunity: '免疫类型',
+    skill: '技能 ID', skillLv: '技能等级', skill_id: '技能 ID', cn: '规则原文',
   };
   const links = {
     pve_stage_data: ['groupid', 'BattleMonstersInfo', '查看敌方编组'],
@@ -54,6 +67,7 @@
     Combinesceneinfo: ['battlesceneinfo', 'BattleScenesInfo', '查看战斗站位'],
   };
   const state = { token: 0, index: null, entry: null, rows: [], matches: [], page: 0, selected: -1 };
+  const stage = { token: 0, loading: false, rows: null, matches: [], page: 0, selected: null, mode: 'tables' };
   const option = (label, value) => new Option(label, value);
   const node = (tag, text, className) => {
     const result = document.createElement(tag);
@@ -65,6 +79,237 @@
   const keyText = key => typeof key === 'object' ? JSON.stringify(key) : String(key);
   const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.chapter_name, row?.floordesc, row?.typedesc, row?.skill_name]
     .find(value => typeof value === 'string' && value.trim()) || '';
+
+  function fieldsFor(row) {
+    const fields = document.createElement('dl');
+    for (const [field, label] of Object.entries(labels)) {
+      if (row == null || !Object.hasOwn(row, field)) continue;
+      const value = row[field];
+      let text = typeof value === 'string' ? value : JSON.stringify(value);
+      if (['begin_time', 'end_time'].includes(field) && Array.isArray(value)
+          && value.length >= 5 && value.slice(0, 5).every(Number.isSafeInteger)) {
+        const [y,m,d,h,min] = value.map(n => String(n).padStart(2, '0'));
+        text = y + '-' + m + '-' + d + ' ' + h + ':' + min;
+      }
+      fields.append(node('dt', label), node('dd', text));
+    }
+    return fields;
+  }
+
+  function openRecord(table, key) {
+    setMode('tables');
+    el('family').value = el('query').value = '';
+    filterTables(table, false);
+    void selectTable(table, keyText(key));
+    el('table').focus();
+  }
+
+  function setMode(mode) {
+    const showStages = mode === 'encounters' && !!state.index?.encounters;
+    stage.mode = showStages ? 'encounters' : 'tables';
+    el('encounters').hidden = !showStages;
+    el('controls').hidden = showStages || !state.index;
+    el('mode-encounters').setAttribute('aria-pressed', String(showStages));
+    el('mode-tables').setAttribute('aria-pressed', String(!showStages));
+    if (showStages) {
+      el('status').textContent = '';
+      if (!stage.rows && !stage.loading) void loadEncounters();
+    }
+  }
+
+  async function loadEncounters() {
+    const snapshot = state.index;
+    stage.loading = true;
+    el('encounter-count').textContent = '正在读取关卡索引…';
+    try {
+      const payload = JSON.parse(await api.encounters());
+      if (snapshot !== state.index) return;
+      if (payload?.schema !== 1 || payload.resourceVersion !== snapshot.resourceVersion ||
+          !Array.isArray(payload.entries) || payload.entries.length !== snapshot.encounters.rowCount) {
+        throw Error('关卡索引与客户端资料版本不一致');
+      }
+      const order = ['daily', 'guild', 'event', 'battle', 'other'];
+      stage.rows = payload.entries.map(entry => ({...entry, search: normalized(
+        [entry.title, entry.kind, titles[entry.table], entry.table, keyText(entry.key), ...entry.refs.map(ref => keyText(ref.key))].join(' ')
+      )})).sort((a,b) => order.indexOf(a.family) - order.indexOf(b.family));
+      filterEncounters();
+    } catch (error) {
+      if (snapshot === state.index) el('encounter-count').textContent = '关卡索引读取失败。' + error.message;
+    } finally {
+      if (snapshot === state.index) stage.loading = false;
+    }
+  }
+
+  function filterEncounters() {
+    if (!stage.rows) return;
+    const family = el('encounter-family').value;
+    const words = normalized(el('encounter-query').value).split(/\s+/);
+    stage.matches = stage.rows.filter(record => (!family || record.family === family) &&
+      words.every(word => record.search.includes(word)));
+    stage.page = 0;
+    if (!stage.matches.includes(stage.selected)) {
+      stage.token++;
+      stage.selected = null;
+      el('encounter-detail').replaceChildren();
+    }
+    renderEncounters();
+  }
+
+  function renderEncounters() {
+    const start = stage.page * pageSize;
+    const records = stage.matches.slice(start, start + pageSize);
+    el('encounter-list').replaceChildren(...records.map((entry, index) => {
+      const button = node('button', entry.title || titles[entry.table] || entry.kind, 'secondary');
+      button.append(node('small', (titles[entry.table] || entry.kind) + ' · ' + keyText(entry.key)));
+      button.type = 'button';
+      button.dataset.index = start + index;
+      button.setAttribute('aria-pressed', String(entry === stage.selected));
+      return button;
+    }));
+    const count = stage.matches.length.toLocaleString('zh-CN') + ' 条关卡配置';
+    el('encounter-count').textContent = records.length
+      ? (stage.matches.length > pageSize ? '显示 ' + (start + 1) + '–' + (start + records.length) + ' / ' : '') + count
+      : '没有匹配的关卡配置。';
+    el('encounter-prev').disabled = start === 0;
+    el('encounter-next').disabled = start + pageSize >= stage.matches.length;
+  }
+
+  function enemyWaves(table, row) {
+    if (table === 'BattleMonstersInfo' && Array.isArray(row.MonstersInfos)) {
+      return row.MonstersInfos.map(wave => Array.isArray(wave) ? wave.flatMap(slot =>
+        Array.isArray(slot) && Number.isSafeInteger(slot[1]) && slot[1] > 0
+          ? [{position: slot[0], id: slot[1], level: slot[2]}] : []) : []);
+    }
+    if (Array.isArray(row.monsterWaves) && row.monsterWaves.every(wave => Array.isArray(wave) &&
+        wave.every(item => item == null || Array.isArray(item) && item.length === 2 && Number.isSafeInteger(item[0])))) {
+      return row.monsterWaves.map(wave => wave.flatMap((unit, position) =>
+        unit && unit[0] > 0 ? [{position: position + 1, id: unit[0], level: unit[1]}] : []));
+    }
+    if (table === 'dungeon_awake_monster' && Array.isArray(row.monsterids)) {
+      return [row.monsterids.flatMap((id, i) => Number.isSafeInteger(id) && id > 0 ? [{id, position:i+1}] : [])];
+    }
+    return [];
+  }
+
+  async function monsterSkills(monster, target) {
+    const skillIds = Array.isArray(monster.skill) ? monster.skill : [];
+    const pairs = skillIds.flatMap((id, i) =>
+      Number.isSafeInteger(id) && id > 0 && Number.isSafeInteger(monster.skillLv?.[i]) && monster.skillLv[i] > 0
+        ? [[id, monster.skillLv[i]]] : []);
+    if (!pairs.length) {target.textContent = '此怪物没有配置技能记录。';return;}
+    const refs = pairs.flatMap(pair => [2, -1].map(mode => ({$tuple:[...pair,mode]})));
+    try {
+      const rows = await api.records('skill',refs);
+      const memo = new Map(refs.map((key,i) => [keyText(key),rows[i]]));
+      async function inherit(key, depth = 0) {
+        const serialized = keyText(key);
+        if (!memo.has(serialized)) memo.set(serialized, (await api.records('skill',[key]))[0]);
+        const row = memo.get(serialized);
+        if (!row || depth === 20 || !Array.isArray(row._proto_key)) return row;
+        const result = {...await inherit({$tuple:row._proto_key}, depth+1), ...row};
+        for (const field of row.__nullkeys__ ?? []) delete result[field];
+        return result;
+      }
+      const entries = await Promise.all(pairs.map(async ([id,level],i) => {
+        const row = await inherit(rows[i*2] ? refs[i*2] : refs[i*2+1]);
+        const entry = node('div','','encounter-skill');
+        entry.append(node('strong',(row?.skill_name || '技能 '+id) + ' · ' + level + ' 级'));
+        const text = row?.combatDesc || row?.desc;
+        if (typeof text === 'string' && text.trim()) entry.append(node('p',text));
+        return entry;
+      }));
+      target.replaceChildren(...entries);
+    } catch (error) {target.textContent = '技能资料读取失败。' + error.message;}
+  }
+
+  function appendWaves(block, waves, monsters) {
+    if (!waves.some(wave => wave.length)) return;
+    const grid = node('div', '', 'dungeon-encounter-waves');
+    for (const [i, units] of waves.entries()) {
+      if (!units.length) continue;
+      const card = document.createElement('section'), list = document.createElement('ul');
+      card.append(node('strong', '编组 ' + (i + 1)), list);
+      for (const unit of units) {
+        const monster = monsters.get(unit.id);
+        const label = [rowTitle(monster) || '怪物 ' + unit.id];
+        if (Number.isSafeInteger(unit.level) && unit.level > 0) label.push(unit.level + ' 级');
+        if (Number.isSafeInteger(unit.position)) label.push(unit.position + ' 号位');
+        const item = document.createElement('li');
+        if (monster) {
+          const detail = document.createElement('details');
+          const skills = node('div','', 'encounter-skills');
+          detail.append(node('summary', label.join(' · ')),fieldsFor(monster),skills);
+          detail.addEventListener('toggle', () => {
+            if (!detail.open || skills.hasChildNodes()) return;
+            skills.textContent = '正在读取技能…';
+            void monsterSkills(monster,skills);
+          });
+          const full = node('button','查看怪物配置','secondary');
+          full.type='button';
+          full.onclick=()=>openRecord('monster',unit.id);
+          detail.append(full);
+          item.append(detail);
+        } else item.textContent=label.join(' · ');
+        list.append(item);
+      }
+      grid.append(card);
+    }
+    block.append(grid);
+  }
+
+  async function showEncounter(entry) {
+    if (!entry) return;
+    const token = ++stage.token, destination = el('encounter-detail');
+    stage.selected = entry;
+    for (const button of el('encounter-list').children) {
+      button.setAttribute('aria-pressed', String(stage.matches[Number(button.dataset.index)] === entry));
+    }
+    const header = node('h3', entry.title || titles[entry.table] || entry.kind);
+    destination.replaceChildren(header, node('p', '正在读取关卡与关联资料…', 'caption'));
+    const refs = [{table:entry.table,key:entry.key,label:'关卡配置',primary:true,found:true}, ...entry.refs];
+    const records = await Promise.allSettled(refs.map(ref => ref.found ? api.records(ref.table, [ref.key]) : null));
+    if (token !== stage.token) return;
+    const groups = refs.map((ref,i) => {
+      const row = records[i].value?.[0];
+      return {ref, row, error:records[i].reason?.message, waves:row ? enemyWaves(ref.table,row) : []};
+    });
+    const ids = [...new Set(groups.flatMap(group => group.waves.flat(2).map(unit => unit.id)))];
+    const monsters = new Map();
+    if (state.index.tables.some(t => t.name === 'monster' && t.status === 'decoded')) {
+      await Promise.all(Array.from({length:Math.ceil(ids.length/64)}, async (_,index) => {
+        const chunk = ids.slice(index*64,index*64+64);
+        try {
+          const rows = await api.records('monster', chunk);
+          chunk.forEach((id,i) => {if (rows[i]) monsters.set(id,rows[i]);});
+        } catch { /* numeric identities remain available in the source */ }
+      }));
+    }
+    if (token !== stage.token) return;
+    destination.replaceChildren(header, node('p', (titles[entry.table] || entry.kind) + ' · ' + keyText(entry.key), 'caption'));
+    for (const {ref,row,error,waves} of groups) {
+      const block = node('section', '', 'encounter-source');
+      const heading = ref.primary?[ref.label]:[ref.label, rowTitle(row), keyText(ref.key)].filter(Boolean);
+      block.append(node('h4', heading.join(' · ')));
+      if (!row) {
+        block.append(node('p', error ? '资料读取失败。' + error : '本资源中未找到对应记录。', 'caption'));
+        destination.append(block);
+        continue;
+      }
+      const fields = fieldsFor(row);
+      if (fields.childElementCount) block.append(fields);
+      appendWaves(block,waves,monsters);
+      const details = document.createElement('details');
+      const source = state.index.tables.find(t => t.name === ref.table)?.source;
+      details.append(node('summary', '全部原始字段'),
+        node('p', [source?.module, source?.marshalSHA256].filter(Boolean).join(' · '), 'caption'),
+        node('pre', JSON.stringify(row,null,2)));
+      const browse = node('button', '在资料表中查看', 'secondary');
+      browse.type = 'button';
+      browse.onclick = () => openRecord(ref.table, ref.key);
+      block.append(details, browse);
+      destination.append(block);
+    }
+  }
 
   async function selectTable(name, key = '') {
     const token = ++state.token;
@@ -157,12 +402,7 @@
     for (const button of el('list').children) button.setAttribute('aria-pressed', String(Number(button.dataset.row) === index));
     const [key, row] = state.rows[index];
     const details = el('detail');
-    const fields = document.createElement('dl');
-    for (const [field, label] of Object.entries(labels)) {
-      if (row == null || !Object.hasOwn(row, field)) continue;
-      const value = row[field];
-      fields.append(node('dt', label), node('dd', typeof value === 'string' ? value : JSON.stringify(value)));
-    }
+    const fields = fieldsFor(row);
     const raw = document.createElement('details');
     raw.append(node('summary', '查看全部原始字段'), node('pre', JSON.stringify(row, null, 2)));
     details.replaceChildren(node('h3', rowTitle(row) || '记录 ' + keyText(key)));
@@ -172,12 +412,7 @@
     if (related != null && state.index.tables.some(entry => entry.name === destination && entry.status === 'decoded')) {
       const link = node('button', label + ' ' + related, 'secondary');
       link.type = 'button';
-      link.onclick = () => {
-        el('family').value = el('query').value = '';
-        filterTables(destination, false);
-        void selectTable(destination, String(related));
-        el('table').focus();
-      };
+      link.onclick = () => openRecord(destination, related);
       details.append(link);
     }
     details.append(raw);
@@ -185,15 +420,24 @@
 
   function setIndex(index) {
     state.index = index;
-    el('controls').hidden = !index;
+    ++state.token;
+    Object.assign(stage,{token:stage.token+1,loading:false,rows:null,matches:[],page:0,selected:null});
+    el('encounter-detail').replaceChildren();
+    el('encounter-list').replaceChildren();
+    el('encounter-family').value = el('encounter-query').value = '';
+    el('modes').hidden = !index?.encounters;
     el('version').textContent = index ? '资源 ' + index.resourceVersion + ' · '
-      + index.tables.length.toLocaleString('zh-CN') + ' 张客户端表 · 开放状态以区服和游戏内活动为准'
+      + index.tables.length.toLocaleString('zh-CN') + ' 张客户端表'
+      + (index.encounters ? ' · ' + index.encounters.rowCount.toLocaleString('zh-CN') + ' 条关卡配置（含历史与内部配置）' : '')
+      + ' · 开放状态以区服和游戏内活动为准'
       : '请选择本机解包产生的副本资料目录。';
-    if (!index) return;
+    if (!index) {setMode('tables');return;}
     el('status').textContent = '';
     el('family').value = el('query').value = '';
     state.entry = null;
-    filterTables(index.tables.some(row => row.name === 'pve_stage_data') ? 'pve_stage_data' : '');
+    el('records').hidden = true;
+    filterTables(index.tables.some(row => row.name === 'pve_stage_data') ? 'pve_stage_data' : '', !index.encounters);
+    setMode(index.encounters?'encounters':'tables');
   }
 
   if (!api) {
@@ -217,6 +461,19 @@
       el('choose').disabled = false;
     }
   };
+  el('mode-encounters').onclick = () => setMode('encounters');
+  el('mode-tables').onclick = () => {
+    setMode('tables');
+    if (!state.entry && el('table').value) void selectTable(el('table').value);
+  };
+  el('encounter-family').onchange = filterEncounters;
+  el('encounter-query').oninput = filterEncounters;
+  el('encounter-list').onclick = event => {
+    const button = event.target.closest('button[data-index]');
+    if (button) void showEncounter(stage.matches[Number(button.dataset.index)]);
+  };
+  el('encounter-prev').onclick = () => {stage.page--;renderEncounters();};
+  el('encounter-next').onclick = () => {stage.page++;renderEncounters();};
   el('table').onchange = event => { void selectTable(event.target.value); };
   el('family').onchange = () => filterTables();
   el('query').oninput = () => filterTables();

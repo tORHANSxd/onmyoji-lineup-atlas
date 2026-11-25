@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld('dungeonCatalog', Object.freeze({
   index: () => ipcRenderer.invoke('dungeon-catalog-index'),
   choose: () => ipcRenderer.invoke('dungeon-catalog-choose'),
   table: name => ipcRenderer.invoke('dungeon-catalog-table', name),
+  encounters: () => ipcRenderer.invoke('dungeon-catalog-encounters'),
+  records: (name, keys) => ipcRenderer.invoke('dungeon-catalog-records', name, keys),
 }));
 contextBridge.exposeInMainWorld('runeBattle',Object.freeze({
   status:()=>ipcRenderer.invoke('rune-battle-status'),

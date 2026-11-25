@@ -1,7 +1,7 @@
 // Production Electron UI with synthetic state, credentials and disk failures.
 const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
-const {readIndex,readTable}=require('../desktop/dungeon-catalog.cjs');
+const {readIndex,readTable,readEncounters,readRecords}=require('../desktop/dungeon-catalog.cjs');
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
 const {Background}=require('../desktop/background.cjs');
 const root=path.resolve(__dirname,'..'),profile=path.join(root,'user-data','optimization-ui');
@@ -41,6 +41,8 @@ async function main(){
  const catalog=await readIndex(path.join(root,'data/dungeon-catalog')).catch(error=>{if(error.code!=='ENOENT')throw error;return null;});
  local('dungeon-catalog-index',()=>catalog?.index||null);
  local('dungeon-catalog-table',name=>readTable(catalog,name));
+ local('dungeon-catalog-encounters',()=>readEncounters(catalog));
+ local('dungeon-catalog-records',(table,keys)=>readRecords(catalog,table,keys));
  const rune=process.env.ATLAS_RUNE_RUNTIME?createRuneRunner({configPath:process.env.ATLAS_RUNE_RUNTIME,scriptRoot:path.join(root,'tools'),suits:data.suits}):null;
  let runeEnabled=false,replayPlan=null,mockBattle=null;
  local('rune-battle-status',()=>runeEnabled?(rune?.status()||{available:true,resourceVersion:'0.0.816'}):{available:false});
@@ -54,6 +56,26 @@ async function main(){
  await win.loadFile(path.join(root,'app/index.html'));win.webContents.setZoomFactor(1);await sleep(80);await until('!!DATA && document.getElementById("loading").hidden');await ui('TALogin.ready()');
  if(catalog)await check('全副本目录搜索关卡、跳转敌方编组和查看活动规则',async()=>{
   await ui('selectView("library");document.getElementById("client-dungeons").open=true');
+  if(catalog.index.encounters){
+   await until('!!document.querySelector("#client-dungeons-encounter-list button")');
+   await ui('window.qaEncounterInput=(family,query)=>{$("client-dungeons-encounter-family").value=family;const input=$("client-dungeons-encounter-query");input.value=query;input.dispatchEvent(new Event("input"));document.querySelector("#client-dungeons-encounter-list button").click();};qaEncounterInput("daily","魂王")');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("御魂本p3-大蛇神")');
+   assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/神罚.*攻击调整.*战斗站位/s);
+   await ui('[...document.querySelectorAll(".dungeon-encounter-waves summary")].find(el=>el.textContent.includes("御魂本p3-大蛇神")).click()');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("单次受到伤害最多不超过100000")');
+   await ui('qaEncounterInput("guild","贪婪的铁鼠")');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("不能被复活")');
+   await ui('qaEncounterInput("guild","狭间暗域 鬼童丸")');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("击败副将后，首领战中的同名怪物血量减少50%")');
+   await ui('qaEncounterInput("event","将魂试炼")');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("2025-10-30 23:59")');
+   assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/活动开放配置.*敌方初始鬼火.*敌方编组/s);
+   await ui('$("client-dungeons").scrollIntoView({block:"start",behavior:"instant"})');
+   await capture('client-dungeon-encounter');
+   await ui('document.querySelector("#client-dungeons-encounter-detail .encounter-source button").click()');
+   await until('$("client-dungeons-table").value==="act_team_battle"&&!$("client-dungeons-records").hidden');
+   await ui('$("client-dungeons-table").value="pve_stage_data";$("client-dungeons-table").dispatchEvent(new Event("change"))');
+  }
   await until('!document.getElementById("client-dungeons-records").hidden');
   await ui('window.qaCatalogInput=(id,value)=>{const el=document.getElementById("client-dungeons-"+id);el.value=value;el.dispatchEvent(new Event(el.tagName==="SELECT"?"change":"input"));};qaCatalogInput("row-query","3345301");document.querySelector("#client-dungeons-list button").click()');
   assert.match(await ui('document.getElementById("client-dungeons-detail").textContent'),/礁石.*敌方初始鬼火/s);
