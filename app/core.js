@@ -176,6 +176,24 @@ const COMPARISON_SCOPES={items:'items',realm:'realmCards'};
 const SNAPSHOT_OBJECT_SECTIONS=new Set([
  'currency','heroShardBinding','heroStoryProgress','taskRecords','guild','collections','lineupPresets','accountComparison','mergeSources'
 ]);
+function readLineupPresets(raw,warnings){
+ if(!object(raw)||raw.version!==1)return null;
+ const rows=(section,key,referenceKey)=>{
+  if(section==null)return null;
+  const records=object(section)?section[key]:null;
+  if(!Array.isArray(records)){
+   warnings.push('部分游戏阵容预设格式待核对，原始记录已保留');
+   return null;
+  }
+  const entries=records.filter(row=>object(row)&&typeof row.name==='string'&&Array.isArray(row[referenceKey])&&
+   row[referenceKey].every(ref=>ref==null||typeof ref==='string'));
+  if(entries.length!==records.length)warnings.push('部分游戏阵容预设格式待核对，原始记录已保留');
+  return entries.map(row=>({name:row.name,references:row[referenceKey]}));
+ };
+ const teams=rows(raw.teamPresets,'teams','heroIds');
+ const plans=rows(raw.soulPlans,'plans','equipIds');
+ return {teams,plans};
+}
 function snapshotInfo(raw,warnings){
  const scope=object(raw.scope)?raw.scope:{},sections={};
  if(raw.scope!=null&&!object(raw.scope))warnings.push('采集范围格式异常，请重新导出库存');
@@ -203,7 +221,8 @@ function snapshotInfo(raw,warnings){
   &&Array.isArray(row.marks)&&row.marks.every(mark=>Number.isSafeInteger(mark)&&mark>0)
  ).map(({id,lv,star,marks})=>({id,lv,star,marks})):null;
  if(spirits&&spirits.length!==raw.hunlings.length)warnings.push('部分契灵格式待核对，原始记录已保留');
- return {version:1,scope,sections,stackedHeroes,spirits};
+ const lineupPresets=readLineupPresets(raw.lineupPresets,warnings);
+ return {version:1,scope,sections,stackedHeroes,spirits,lineupPresets};
 }
 function inventoryComplete(account,kind){
  if(account.completeness!=='complete'||account.merged)return false;

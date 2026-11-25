@@ -172,6 +172,26 @@ test('增量档案省略御魂预设时继续使用旧预设，明确导出的�
  assert.deepEqual(cleared.presets,[]);
 });
 
+test('平安志版本 1 游戏阵容预设按原生字段读取队伍和方案，原始分组与绑定随备份保留',()=>{
+ const lineupPresets={version:1,teamPresets:{groups:[{id:1,name:'分组',teamIds:[5]}],teams:[
+  {id:5,name:'合成队伍',heroIds:['example',null,'missing'],lastUsedAt:null},
+  {id:6,name:'结构异常',heroIds:{example:true}}
+ ]},soulPlans:{groups:[{name:'方案分组',boxIds:[8]}],plans:[
+  {boxId:8,name:'合成方案',equipIds:['soul-0','','missing'],bindings:[],usedAt:null}
+ ]}};
+ const raw=desktopSnapshot(snapshot({lineupPresets}));
+ const account=C.parseAccount(raw);
+ assert.deepEqual(account.snapshot.lineupPresets,{
+  teams:[{name:'合成队伍',references:['example',null,'missing']}],
+  plans:[{name:'合成方案',references:['soul-0','','missing']}]
+ });
+ assert.ok(account.warnings.some(message=>message.includes('部分游戏阵容预设格式待核对')));
+ const restored=C.restoreAccount(JSON.parse(JSON.stringify(account)));
+ assert.deepEqual(restored.snapshot.lineupPresets,account.snapshot.lineupPresets);
+ assert.deepEqual(restored.raw.lineupPresets,lineupPresets);
+ assert.equal(C.parseAccount({...raw,lineupPresets:{...lineupPresets,version:2}}).snapshot.lineupPresets,null);
+});
+
 test('按平安志原版类别保留未采集的契灵、预设和账号概况子项，备份恢复后保留来源',()=>{
  const old=C.parseAccount(snapshot({
   hunlings:[{id:1,star:1,lv:1,marks:[]}],

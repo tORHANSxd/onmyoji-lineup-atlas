@@ -921,6 +921,25 @@ const ACCOUNT_CURRENCIES={
  mystery_amulet:'神秘的符咒',ofuda:'御札',ar_amulet:'现世符咒'
 };
 const accountNumber=new Intl.NumberFormat('zh-CN');
+function accountLineupPresets(a){
+ const {teams,plans}=a.snapshot.lineupPresets||{};
+ if(teams==null&&plans==null)return '';
+ const records=(rows,label,detail)=>rows==null?'':`<section><h4>${label} · ${rows.length} 条</h4>${rows.length?
+  `<ul>${rows.slice(0,120).map(row=>`<li><strong>${esc(row.name||'未命名')}</strong> <span>${esc(detail(row.references))}</span></li>`).join('')}</ul>`:
+  '<p class="caption">无记录</p>'}${rows.length>120?'<p class="caption">显示前 120 条，其余保留在账号备份中。</p>':''}</section>`;
+ const heroLabels=refs=>refs.map(ref=>{
+  if(!ref)return '空位';
+  const id=Object.hasOwn(a.heroes,ref)?a.heroes[ref].shikigamiId:null;
+  return id?DATA.gameConfig?.heroes?.[id]?.name||`未收录式神 ${id}`:'库存未提供该式神';
+ }).join('、')||'空阵容';
+ const soulLabels=refs=>{
+  const described=refs.filter(Boolean),available=described.filter(id=>Object.hasOwn(a.souls,id));
+  return `引用 ${described.length} 件御魂 · 库存中可找到 ${available.length} 件`;
+ };
+ const retained=Object.hasOwn(a.retainedSections||{},'lineupPresets')?
+  `<p class="caption">沿用 ${esc(a.retainedSections.lineupPresets||'时间未知')} 的旧记录。</p>`:'';
+ return `<details class="inventory-notes" id="account-game-lineup-presets"><summary>游戏阵容预设</summary>${retained}${records(teams,'队伍',heroLabels)}${records(plans,'御魂方案',soulLabels)}</details>`;
+}
 function accountAssets(a){
  const balances=a.snapshot.sections.currency==null?[]:
   Object.entries(ACCOUNT_CURRENCIES).filter(([key])=>Number.isFinite(a.raw.currency[key]));
@@ -937,7 +956,7 @@ function accountAssets(a){
   }).join('');
   return `<li><div class="account-spirit-heading">${gameImage(asset)}<div><strong>${esc(name)}</strong><p>${q.star} 星 · ${q.lv} 级</p></div></div>${marks?`<ul class="account-spirit-marks">${marks}</ul>`:'<p class="caption">无术印</p>'}</li>`;
  }).join('')}</ul>${spirits.length>120?'<p class="caption">显示前 120 个，其余保留在账号备份中。</p>':''}</details>`:'';
- return resourceStrip+spiritList;
+ return resourceStrip+spiritList+accountLineupPresets(a);
 }
 function renderAccounts(recommendations=true){if(view!=='accounts')return;if(recommendations)renderRecommendations();
  const a=account();$('account-pagination').hidden=!a;
