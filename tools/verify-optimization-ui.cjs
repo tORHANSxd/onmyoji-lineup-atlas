@@ -106,6 +106,22 @@ async function main(){
   assert.match(await ui('document.getElementById("client-dungeons-detail").textContent'),/首领机制.*不能被复活/s);
   await ui('document.getElementById("client-dungeons").open=false');
  });
+ if(catalog?.index.encounters&&JSON.parse(await readEncounters(catalog)).entries.some(entry=>entry.table==='story_room')){
+  await check('按原版路径从探索入口跳转战斗点和主线单场战斗',async()=>{
+   await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click();qaEncounterInput("daily","阴阳之理 地图探索入口")');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("大天狗挑战难度1")');
+   assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/玩法入口 ID18.*探索战斗点 · 大天狗挑战难度1 · 1801/s);
+   await ui('[...$("client-dungeons-encounter-detail").querySelectorAll(".encounter-source")].find(el=>el.querySelector("h4").textContent.endsWith(" · 1801")).querySelector("button:last-child").click()');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("探索敌方编组 · 31811")');
+   const detail=await ui('$("client-dungeons-encounter-detail").textContent');
+   assert.match(detail,/阴阳之理 · 大天狗挑战难度1.*探索 PvE 关卡.*31811.*探索敌方编组 · 31811.*战斗站位/s);
+   await capture('client-exploration-room');
+   await ui('qaEncounterInput("daily","主线剧情进程 犬神战斗")');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("主线单场战斗")');
+   assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/剧情目标.*找出故弄玄虚者的蛛丝马迹.*主线单场战斗.*30101/s);
+   await ui('$("client-dungeons").open=false');
+  });
+ }
  if(catalog?.index.encounters&&catalog.entries.has('tipsInfoData_cn'))await check('通用关卡默认场景、站位以及原版战斗和秘闻规则可查',async()=>{
   await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
   await ui('qaEncounterInput("battle","3345301")');

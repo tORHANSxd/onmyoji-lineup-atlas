@@ -22,6 +22,9 @@ ROOTS = {
     "hunling_boss": ("daily", "契灵之境"),
     "rpg_chapter": ("daily", "剧情副本"),
     "storyChapter": ("daily", "探索章节"),
+    "story_room": ("daily", "探索战斗点"),
+    "DramaProcess": ("daily", "主线剧情进程"),
+    "BossTower": ("daily", "探索式神挑战"),
     "guild_boss_show": ("guild", "首领退治"),
     "guild_crevice_area": ("guild", "狭间暗域"),
     "guild_crevice_battle": ("guild", "狭间暗域"),
@@ -37,6 +40,8 @@ ROOTS = {
 # used by the corresponding client table.
 EDGES = {
     "pve_stage_data": (("groupid", "BattleMonstersInfo", "敌方编组"),),
+    "story_room": (("MonsterID", "pve_stage_data", "探索 PvE 关卡"),
+                   ("MonsterID", "BattleMonstersInfo", "探索敌方编组")),
     "dungeon_rune": (("scene", "Combinesceneinfo", "关卡场景"),),
     "dungeon_awake": (("monsterid", "dungeon_awake_monster", "觉醒敌方配置"),
                       ("scene", "dungeon_awake_scene", "觉醒场景配置")),
@@ -114,6 +119,18 @@ def encounter_index(source, load_rows):
     teams_by_mode = {}
     for key, row in table("battle_team_routes").values():
         teams_by_mode.setdefault(row["battleMode"], []).append(key)
+    rooms_by_map = {}
+    for key, row in table("story_room").values():
+        map_id = numeric_key(row.get("MapEntryID"))
+        if map_id is not None:
+            rooms_by_map.setdefault(map_id, []).append(key)
+    for keys in rooms_by_map.values():
+        keys.sort(key=int)
+    chapter_entrances = {
+        map_id: (key, table("storyChapter")[numeric_key(key)][1])
+        for key, row in table("mapnpc").values()
+        if (map_id := numeric_key(row.get("battle_id"))) in rooms_by_map and numeric_key(key) in table("storyChapter")
+    }
 
     def explicit(name, row):
         links = []
@@ -121,6 +138,41 @@ def encounter_index(source, load_rows):
             resolved = relation(destination, row.get(field), label, True)
             if resolved:
                 links.append(resolved)
+        if name == "storyChapter":
+            entrance = relation("mapnpc", row.get("id"), "地图探索入口", False)
+            if entrance:
+                links.append(entrance)
+            for boss in row.get("BossList") or ():
+                ref = relation("BossTower", boss, "探索式神挑战", False)
+                if ref:
+                    links.append(ref)
+            for index, group in enumerate(row.get("guanKaProcess") or (), 1):
+                for process in (group if isinstance(group, list) else ()):
+                    ref = relation("DramaProcess", process, f"第 {index} 节剧情", False)
+                    if ref:
+                        links.append(ref)
+        if name == "mapnpc":
+            for key in rooms_by_map.get(numeric_key(row.get("battle_id")), ()):
+                links.append({"table": "story_room", "key": key, "label": "探索战斗点", "found": True})
+        if name == "story_room":
+            entrance = chapter_entrances.get(numeric_key(row.get("MapEntryID")))
+            if entrance:
+                links.append({"table": "mapnpc", "key": entrance[0], "label": "地图探索入口", "found": True})
+        if name == "DramaProcess":
+            level = relation("DramaLevel", row.get("RelatedStory"), "剧情关卡", True)
+            if level:
+                links.append(level)
+                if row.get("type") == 3 and level["found"]:
+                    _, data = table("DramaLevel")[numeric_key(level["key"])]
+                    elements = data.get("ElementList")
+                    if isinstance(elements, list) and elements and isinstance(elements[0], list) and elements[0]:
+                        battle = relation("pve_stage_data", elements[0][0], "主线单场战斗", True)
+                        if battle:
+                            links.append(battle)
+        if name == "BossTower":
+            hero = relation("hero", row.get("HeroID"), "探索挑战式神", False)
+            if hero:
+                links.append(hero)
         if name == "act_team_battle" and "battle_team_routes" in manifests:
             route = relation("battle_team_routes", row.get("team_battle_type"), "原版组队战斗入口", True)
             if route:
@@ -200,14 +252,26 @@ def encounter_index(source, load_rows):
         for key, row in load_rows(table_name):
             if not isinstance(row, dict):
                 continue
+            entrance = table_name == "mapnpc" and numeric_key(key) in table("storyChapter") \
+                and numeric_key(row.get("battle_id")) in rooms_by_map
             linked_battles = [
                 linked for field in generic_edges
                 if (linked := relation("pve_stage_data", row.get(field), "通用 PvE 关卡", False))
-            ]
-            if not root and not linked_battles and not row.get("monsterWaves"):
+            ] if not entrance else []
+            if not root and not entrance and not linked_battles and not row.get("monsterWaves"):
                 continue
             references = related(table_name, key, row, linked_battles)
+            entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
             title = name(row)
+            if table_name == "story_room":
+                chapter = chapter_entrances.get(numeric_key(row.get("MapEntryID")))
+                description = row.get("desc") if isinstance(row.get("desc"), str) else ""
+                title = " · ".join(part for part in ((name(chapter[1]) if chapter else ""), description) if part)
+            if table_name in {"DramaProcess", "BossTower"}:
+                detail_table, detail_key, label = ("DramaLevel", row.get("RelatedStory"), "StoryName") \
+                    if table_name == "DramaProcess" else ("hero", row.get("HeroID"), "name")
+                _, detail = table(detail_table).get(numeric_key(detail_key), (None, {}))
+                title = detail.get(label) or title
             if table_name == "normal_battle_config":
                 symbol = next((table(ref["table"])[numeric_key(ref["key"])][1].get("mode_symbol")
                                for ref in references if ref["table"] in {"battle_mode_routes", "battle_team_routes"}), None)
@@ -225,10 +289,10 @@ def encounter_index(source, load_rows):
                 alias = {101: "魂土", 102: "魂王", 103: "虚无"}.get(key)
                 if alias and alias not in title:
                     title += " · " + alias
-            categories[family] += 1
+            categories[entry_family] += 1
             unresolved += sum(not ref["found"] for ref in references)
-            entries.append({"table": table_name, "key": key, "title": title, "family": family,
-                            "kind": kind, "refs": references})
+            entries.append({"table": table_name, "key": key, "title": title, "family": entry_family,
+                            "kind": entry_kind, "refs": references})
 
     return {"schema": 1, "resourceVersion": source["resourceVersion"], "entries": entries,
             "counts": dict(categories), "unresolvedReferences": unresolved}

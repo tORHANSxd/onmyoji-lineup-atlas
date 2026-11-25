@@ -32,6 +32,11 @@
     shilian_event_exam: '六道之门试炼关卡',
     activity: '活动开放配置',
     storyChapter: '探索章节',
+    mapnpc: '地图探索入口',
+    story_room: '探索战斗点',
+    BossTower: '探索式神挑战',
+    DramaProcess: '主线剧情进程',
+    DramaLevel: '剧情关卡',
     hunling_noraml_boss_battle: '契灵之境首领奖励',
     hunling_jijie_boss_battle: '契灵集结首领奖励',
     SuperGhost_bossmission: '超鬼王历史首领挑战',
@@ -74,6 +79,13 @@
     attackDelta: '攻击系数', defenseDelta: '防御系数', hpDelta: '生命系数',
     immuDebuff: '减益免疫', immuHitBack: '退条免疫', immunity: '免疫类型',
     skill: '技能 ID', skillLv: '技能等级', skill_id: '技能 ID', cn: '规则原文',
+    chapterID: '章节 ID', diff_unlock_level: '困难解锁等级', energy_cost: '体力消耗',
+    MapEntryID: '探索地图 ID', MonsterEntryID: '地图敌人位置标记', MonsterID: '探索战斗 ID',
+    difficulty: '难度', soulPoint: '御魂点数', wander: '巡游', wave: '配置波次',
+    scene: '场景', BattleScene: '剧情场景资源', RelatedStory: '剧情关卡 ID',
+    RelatedToStoryChapter: '关联剧情章节 ID', LevelGoalDesc: '剧情目标', KeyCount: '钥匙数量',
+    LevelLimitDeep: '关卡层数', PaperGuyNum: '小纸人数量', RewardBoxID: '奖励箱 ID',
+    HeroID: '挑战式神 ID', LevelID: '探索挑战入口 ID', cost: '挑战消耗', currencyID: '消耗物品 ID',
   };
   const links = {
     pve_stage_data: ['groupid', 'BattleMonstersInfo', '查看敌方编组'],
@@ -82,9 +94,11 @@
     battle_team_routes: ['battleMode', 'normal_battle_config', '查看战斗模式默认规则'],
     dungeon_rune: ['scene', 'Combinesceneinfo', '查看关卡场景'],
     Combinesceneinfo: ['battlesceneinfo', 'BattleScenesInfo', '查看战斗站位'],
+    story_room: ['MonsterID', 'pve_stage_data', '查看探索 PvE 关卡'],
+    DramaProcess: ['RelatedStory', 'DramaLevel', '查看剧情关卡'],
   };
   const state = { token: 0, index: null, entry: null, rows: [], matches: [], page: 0, selected: -1 };
-  const stage = { token: 0, loading: false, rows: null, matches: [], page: 0, selected: null, mode: 'tables' };
+  const stage = { token: 0, loading: false, rows: null, byKey: new Map(), matches: [], page: 0, selected: null, mode: 'tables' };
   const option = (label, value) => new Option(label, value);
   const node = (tag, text, className) => {
     const result = document.createElement(tag);
@@ -94,10 +108,12 @@
   };
   const normalized = value => String(value ?? '').normalize('NFKC').trim().toLowerCase();
   const keyText = key => typeof key === 'object' ? JSON.stringify(key) : String(key);
-  const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.chapter_name, row?.floordesc, row?.typedesc, row?.skill_name]
+  const entryKey = ({table, key}) => JSON.stringify([table, key]);
+  const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.chapter_name, row?.floordesc,
+    row?.typedesc, row?.skill_name, row?.StoryName, row?.MapEntryID != null ? row.desc : null]
     .find(value => typeof value === 'string' && value.trim()) || '';
 
-  function fieldsFor(row) {
+  function fieldsFor(row, table) {
     const fields = document.createElement('dl');
     for (const [field, label] of Object.entries(labels)) {
       if (row == null || !Object.hasOwn(row, field)) continue;
@@ -110,7 +126,7 @@
         const [y,m,d,h,min] = value.map(n => String(n).padStart(2, '0'));
         text = y + '-' + m + '-' + d + ' ' + h + ':' + min;
       }
-      fields.append(node('dt', label), node('dd', text));
+      fields.append(node('dt', table === 'mapnpc' && field === 'battle_id' ? '玩法入口 ID' : label), node('dd', text));
     }
     return fields;
   }
@@ -151,6 +167,7 @@
       stage.rows = payload.entries.map(entry => ({...entry, search: normalized(
         [entry.title, entry.kind, titles[entry.table], entry.table, keyText(entry.key), ...entry.refs.map(ref => keyText(ref.key))].join(' ')
       )})).sort((a,b) => order.indexOf(a.family) - order.indexOf(b.family));
+      stage.byKey = new Map(stage.rows.map(entry => [entryKey(entry), entry]));
       filterEncounters();
     } catch (error) {
       if (snapshot === state.index) el('encounter-count').textContent = '关卡索引读取失败。' + error.message;
@@ -191,6 +208,18 @@
       : '没有匹配的关卡配置。';
     el('encounter-prev').disabled = start === 0;
     el('encounter-next').disabled = start + pageSize >= stage.matches.length;
+  }
+
+  function openEncounter(entry) {
+    el('encounter-family').value = entry.family;
+    el('encounter-query').value = keyText(entry.key);
+    filterEncounters();
+    const index = stage.matches.indexOf(entry);
+    if (index < 0) return;
+    stage.page = Math.floor(index / pageSize);
+    renderEncounters();
+    void showEncounter(entry);
+    el('encounter-list').querySelector('[aria-pressed="true"]')?.focus();
   }
 
   function enemyWaves(table, row) {
@@ -341,7 +370,7 @@
         destination.append(block);
         continue;
       }
-      const fields = fieldsFor(row);
+      const fields = fieldsFor(row, ref.table);
       if (fields.childElementCount) block.append(fields);
       appendSpecialDetails(block, ref.table, row);
       appendWaves(block,waves,monsters);
@@ -354,6 +383,13 @@
       browse.type = 'button';
       browse.onclick = () => openRecord(ref.table, ref.key);
       block.append(details, browse);
+      const linkedEncounter = !ref.primary && stage.byKey.get(entryKey(ref));
+      if (linkedEncounter) {
+        const view = node('button', '查看关联关卡', 'secondary');
+        view.type = 'button';
+        view.onclick = () => openEncounter(linkedEncounter);
+        block.append(view);
+      }
       destination.append(block);
     }
   }
@@ -449,7 +485,7 @@
     for (const button of el('list').children) button.setAttribute('aria-pressed', String(Number(button.dataset.row) === index));
     const [key, row] = state.rows[index];
     const details = el('detail');
-    const fields = fieldsFor(row);
+    const fields = fieldsFor(row, state.entry.name);
     const raw = document.createElement('details');
     raw.append(node('summary', '查看全部原始字段'), node('pre', JSON.stringify(row, null, 2)));
     details.replaceChildren(node('h3', rowTitle(row) || '记录 ' + keyText(key)));
@@ -469,7 +505,7 @@
   function setIndex(index) {
     state.index = index;
     ++state.token;
-    Object.assign(stage,{token:stage.token+1,loading:false,rows:null,matches:[],page:0,selected:null});
+    Object.assign(stage,{token:stage.token+1,loading:false,rows:null,byKey:new Map(),matches:[],page:0,selected:null});
     el('encounter-detail').replaceChildren();
     el('encounter-list').replaceChildren();
     el('encounter-family').value = el('encounter-query').value = '';

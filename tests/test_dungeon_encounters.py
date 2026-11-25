@@ -59,3 +59,42 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertFalse(by_key["pve_stage_data", "88"]["refs"][0]["found"])
         self.assertFalse(by_key["guild_boss_show", 1]["refs"][0]["found"])
         self.assertEqual(result["unresolvedReferences"], 2)
+
+    def test_exploration_room_and_story_process_use_distinct_id_namespaces(self):
+        tables = {
+            "storyChapter": [[18, {"id": 18, "name": "阴阳之理", "BossList": [39], "guanKaProcess": [[1, 2]]}]],
+            "mapnpc": [[18, {"id": 18, "name": "阴阳之理", "battle_id": 18}]],
+            "story_room": [[1801, {"MapEntryID": 18, "MonsterID": 31811, "desc": "大天狗挑战难度1"}]],
+            "BossTower": [[39, {"HeroID": 230, "LevelID": 21230}]],
+            "hero": [[230, {"name": "独眼小僧"}]],
+            "DramaProcess": [[1, {"type": 3, "RelatedStory": 1}], [2, {"type": 1, "RelatedStory": 2}]],
+            "DramaLevel": [[1, {"StoryName": "犬神战斗", "ElementList": [[30101]]}],
+                           [2, {"StoryName": "剧情探索", "ElementList": [[30101]]}]],
+            "pve_stage_data": [["18", {"id": "18", "groupid": 18}],
+                               ["31811", {"id": "31811", "groupid": 31811}],
+                               ["30101", {"id": "30101", "groupid": 30101}]],
+            "BattleMonstersInfo": [[31811, {"resindex": 11032}], [30101, {"resindex": 11032}]],
+            "Combinesceneinfo": [[11032, {}]],
+        }
+        manifests = [
+            {"name": name, "status": "decoded", "family": "other",
+             "fields": list({field for _, row in rows for field in row})}
+            for name, rows in tables.items()
+        ]
+        data = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], entry["key"]): entry for entry in data["entries"]}
+
+        def refs(table_name, key):
+            return [(ref["table"], ref["key"]) for ref in entries[table_name, key]["refs"]]
+
+        self.assertEqual(refs("storyChapter", 18), [("mapnpc", 18), ("BossTower", 39), ("DramaProcess", 1), ("DramaProcess", 2)])
+        self.assertEqual(refs("mapnpc", 18), [("story_room", 1801)])
+        self.assertEqual(entries["mapnpc", 18]["family"], "daily")
+        self.assertEqual(entries["story_room", 1801]["title"], "阴阳之理 · 大天狗挑战难度1")
+        self.assertEqual(refs("story_room", 1801), [("pve_stage_data", "31811"), ("BattleMonstersInfo", 31811),
+                                                   ("mapnpc", 18), ("Combinesceneinfo", 11032)])
+        self.assertEqual(refs("DramaProcess", 1), [("DramaLevel", 1), ("pve_stage_data", "30101"),
+                                                 ("BattleMonstersInfo", 30101), ("Combinesceneinfo", 11032)])
+        self.assertEqual(refs("DramaProcess", 2), [("DramaLevel", 2)])
+        self.assertEqual(refs("BossTower", 39), [("hero", 230)])
+        self.assertEqual(data["unresolvedReferences"], 1)
