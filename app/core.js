@@ -161,14 +161,14 @@ const SNAPSHOT_SECTIONS={
  currency:'资源余额',heroesBagEntries:'堆叠素材',heroBookShards:'式神碎片',
  heroShardBinding:'碎片绑定',hunlings:'契灵',realmCards:'结界卡',
  storyTasks:'剧情任务',heroStoryProgress:'式神传记',taskRecords:'任务记录',
- guild:'阴阳寮',collections:'收藏',accountComparison:'账号概况',diagnostics:'采集诊断'
+ guild:'阴阳寮',collections:'收藏',accountComparison:'账号概况',diagnostics:'采集诊断',mergeSources:'档案合并来源'
 };
 const SNAPSHOT_SCOPES={
  currency:'items',heroesBagEntries:'heroes',heroesBagCount:'heroes',
  realmCards:'realmCards',guild:'guild',taskRecords:'taskRecords'
 };
 const SNAPSHOT_OBJECT_SECTIONS=new Set([
- 'currency','heroShardBinding','heroStoryProgress','taskRecords','guild','collections','accountComparison'
+ 'currency','heroShardBinding','heroStoryProgress','taskRecords','guild','collections','accountComparison','mergeSources'
 ]);
 function snapshotInfo(raw,warnings){
  const scope=object(raw.scope)?raw.scope:{},sections={};
@@ -202,22 +202,35 @@ function inventoryComplete(account,kind){
  if(account.completeness!=='complete'||account.merged)return false;
  return (kind?[kind]:['heroes','souls']).every(key=>account.coverage?.[key]!==false);
 }
-function snapshotSoulKey(raw){return raw?.format==='mumu-snapshot-v1'?'hero_equips':raw?.format==='yys-desktop-cache-v1'?'souls':null;}
+const ARCHIVE_MERGE_FORMAT='yys-archive-merge-v1';
+function snapshotSoulKey(raw){
+ if(raw?.format==='mumu-snapshot-v1')return 'hero_equips';
+ if(raw?.format==='yys-desktop-cache-v1'||raw?.format===ARCHIVE_MERGE_FORMAT)return 'souls';
+ return null;
+}
 function accountSnapshot(file){
   if(!object(file)||snapshotSoulKey(file)||!Object.hasOwn(file,'sourcePayload')||
     typeof file.rawSha256!=='string'||!/^[a-f0-9]{64}$/i.test(file.rawSha256))return file;
   if(file.version!==2)throw new Error('当前平安志缓存版本未核验，请从角色档案导出 JSON');
   const payload=file.sourcePayload;
-  if(['desktop','mumu','ldplayer','bluestacks'].includes(file.sourceKind)&&snapshotSoulKey(payload))return payload;
+  const validSource=payload?.format===ARCHIVE_MERGE_FORMAT?file.sourceKind==='native':
+    ['desktop','mumu','ldplayer','bluestacks'].includes(file.sourceKind);
+  if(validSource&&snapshotSoulKey(payload))return payload;
   throw new Error('平安志缓存缺少受支持的原始库存，请从角色档案导出 JSON');
 }
 function parseAccount(raw,fileName='账号'){
   raw=accountSnapshot(raw);
-  const soulKey=snapshotSoulKey(raw),soulRows=soulKey?raw[soulKey]:null;
-  if(!object(raw)||!soulKey||!object(raw.heroes)||!Array.isArray(soulRows)||!object(raw.player))throw new Error('仅支持已核验的平安志 JSON（mumu-snapshot-v1 或 yys-desktop-cache-v1）；未导入任何数据');
-  if(Object.keys(raw.heroes).length>100000||soulRows.length>100000)throw new Error('账号数据规模超出100000条限制');
+  const soulKey=snapshotSoulKey(raw);
+  if(!object(raw)||!soulKey||!object(raw.player))throw new Error('仅支持已核验的平安志角色档案 JSON；未导入任何数据');
+  const combined=raw.format===ARCHIVE_MERGE_FORMAT;
+  if(combined&&(raw.schemaVersion!==1||raw.source!=='archive-merge'))throw new Error('平安志合并档案版本或来源未核验');
+  // The archive exporter can omit fields outside the requested categories.
+  const heroRows=raw.scope?.heroes===false&&!Object.hasOwn(raw,'heroes')?{}:raw.heroes;
+  const soulRows=raw.scope?.souls===false&&!Object.hasOwn(raw,soulKey)?[]:raw[soulKey];
+  if(!object(heroRows)||!Array.isArray(soulRows))throw new Error('平安志角色档案缺少有效的式神或御魂库存；未导入任何数据');
+  if(Object.keys(heroRows).length>100000||soulRows.length>100000)throw new Error('账号数据规模超出100000条限制');
   const heroes=Object.create(null); let warnings=[];
-  for(const [key,h] of Object.entries(raw.heroes)){
+  for(const [key,h] of Object.entries(heroRows)){
     if(!/^[a-zA-Z0-9_-]{1,80}$/.test(key)||!object(h)||!id(h.heroId)||!finite(h.level)||!finite(h.star)||![0,1].includes(h.awake))throw new Error('式神实例数据格式不正确');
     if(['__proto__','constructor','prototype'].includes(key))throw new Error('不合法的实例ID');
     if(!Array.isArray(h.skinfo)||h.skinfo.some(s=>!Array.isArray(s)||s.length!==2||!Number.isInteger(s[0])||!Number.isInteger(s[1])))throw new Error('技能记录损坏，未导入账号');
@@ -232,7 +245,8 @@ function parseAccount(raw,fileName='账号'){
     for(const a of [{type:q.mainAttrType,value:q.mainAttrValue},...q.subAttributes]){const type=object(a)&&typeof a.type==='string'?a.type:'无效属性';const k=Object.hasOwn(STAT_TYPES,type)?STAT_TYPES[type]:null;if(!k||!finite(a.value))unknown.push(type);else stats[k]=(stats[k]||0)+a.value;}
     souls[q.id]={id:q.id,slot:q.slot,set:q.setId==='涅槃之火'?'涅槃火':q.setId,level:q.level,star:q.quality,mainStat:Object.hasOwn(STAT_TYPES,q.mainAttrType)?STAT_TYPES[q.mainAttrType]:q.mainAttrType,stats,unknown,equippedState:q.equippedState,raw:q};
   }
-  const snapshot=snapshotInfo(raw,warnings),coverage={heroes:raw.completeness==='complete',souls:raw.completeness==='complete'};
+  if(combined)warnings.push('平安志按类别选取版本合并了此档案，请用同一次完整采集确认账号库存。');
+  const snapshot=snapshotInfo(raw,warnings),coverage={heroes:!combined&&raw.completeness==='complete',souls:!combined&&raw.completeness==='complete'};
   for(const [key,label] of [['heroes','式神'],['souls','御魂']]){
    if(raw.scope!=null&&(!object(raw.scope)||Object.hasOwn(snapshot.scope,key)&&snapshot.scope[key]!==true)){
     coverage[key]=false;warnings.push(snapshot.scope[key]===false?`本次未采集${label}，不能据此判断缺少`:`${label}采集范围不明确，请重新导出`);
@@ -257,9 +271,10 @@ function mergeAccount(old,incoming){
   const heroes={...old.heroes,...incoming.heroes},souls={...old.souls,...incoming.souls},soulKey=snapshotSoulKey(incoming.raw),raw={...old.raw,...incoming.raw,heroes:Object.fromEntries(Object.entries(heroes).map(([k,h])=>[k,h.raw])),[soulKey]:Object.values(souls).map(q=>q.raw),heroCount:Object.keys(heroes).length};
   // Keep the incoming format's canonical list so reloads cannot pick stale rows.
   delete raw[soulKey==='souls'?'hero_equips':'souls'];
+  if(!Object.hasOwn(incoming.raw,'mergeSources'))delete raw.mergeSources;
  const retainedSections={};
  for(const key of [...Object.keys(SNAPSHOT_SECTIONS),'heroesBagCount']){
-  if(Object.hasOwn(old.raw,key)&&(!Object.hasOwn(incoming.raw,key)||incoming.raw.scope?.[SNAPSHOT_SCOPES[key]]===false)){
+  if(key!=='mergeSources'&&Object.hasOwn(old.raw,key)&&(!Object.hasOwn(incoming.raw,key)||incoming.raw.scope?.[SNAPSHOT_SCOPES[key]]===false)){
    raw[key]=old.raw[key];retainedSections[key]=old.retainedSections?.[key]||old.capturedAt||null;
   }
  }

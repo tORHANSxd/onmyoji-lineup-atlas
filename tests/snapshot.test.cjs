@@ -15,6 +15,8 @@ const snapshot=(extra={})=>({
  taskRecords:{},guild:{level:8,members:[{id:'synthetic-member'}]},warnings:['导出器提供的提醒'],diagnostics:[],...extra
 });
 const desktopSnapshot=(raw=snapshot())=>{const {hero_equips,scope,...rest}=raw;return {...rest,format:'yys-desktop-cache-v1',souls:hero_equips};};
+const archiveSnapshot=()=>({...desktopSnapshot(),format:'yys-archive-merge-v1',schemaVersion:1,source:'archive-merge',
+ scope:{heroes:true,souls:true},mergeSources:{heroes:{snapshotId:'synthetic-heroes'},souls:{snapshotId:'synthetic-souls'}}});
 const roster=[{id:'1',name:'合成式神',gameRules:{baseHit:0,baseResist:0,awakeBonus:{}},assets:{baseAttrs40:{1:{attack:100,defense:100,maxHp:1000,speed:100,critRate:.1,critPower:.5,debuffEnhance:0,debuffResist:0}}}}];
 const lineup={code:'|TA|synthetic',decodeState:'decoded-local',requirementsComplete:true,members:[{index:1,kind:'shikigami',shikigamiId:'1',name:'合成式神',awakening:1,skills:[],config:{suitRequirements:[],suitSelectionComplete:true,mainStats:{},ranges:[],scope:'all',metricId:null}}]};
 const effects=[{name:'防御加成',stat:'defensePercent',value:.3,suitNames:['招财猫']}];
@@ -28,6 +30,37 @@ test('平安志版本 2 MuMu 缓存使用原始快照，忽略派生库存',()=>
  assert.deepEqual(C.restoreAccount(JSON.parse(JSON.stringify(parsed))).raw,raw);
  assert.throws(()=>C.parseAccount({...wrapper,version:3}),/平安志/);
  assert.throws(()=>C.parseAccount({...wrapper,sourcePayload:{...raw,hero_equips:undefined}}),/平安志/);
+});
+
+test('平安志分类合并档案可导入式神和御魂，记录来源并保留备份',()=>{
+ const raw=archiveSnapshot();
+ const parsed=C.parseAccount(raw);
+ assert.equal(parsed.snapshot.sections.mergeSources,2);
+ assert.equal(Object.keys(parsed.heroes).length,1);
+ assert.equal(Object.keys(parsed.souls).length,6);
+ assert.equal(C.inventoryComplete(parsed),false);
+ assert.deepEqual(C.restoreAccount(JSON.parse(JSON.stringify(parsed))).raw,raw);
+ const wrapper={version:2,sourceKind:'native',sourcePayload:raw,rawSha256:'0'.repeat(64),normalizedSouls:[]};
+ assert.deepEqual(C.parseAccount(wrapper),parsed);
+ assert.throws(()=>C.parseAccount({...wrapper,sourceKind:'cbg'}),/平安志/);
+ assert.throws(()=>C.parseAccount({...raw,schemaVersion:2}),/版本或来源/);
+ assert.throws(()=>C.parseAccount({...raw,source:'native'}),/版本或来源/);
+ const merged=C.mergeAccount(parsed,C.parseAccount(desktopSnapshot()));
+ assert.equal(Object.hasOwn(merged.raw,'mergeSources'),false);
+ assert.equal(C.restoreAccount(merged).snapshot.sections.mergeSources,null);
+});
+
+test('角色档案仅在明确排除类别时允许省略对应库存',()=>{
+ const heroesOnly=archiveSnapshot();delete heroesOnly.souls;
+ assert.throws(()=>C.parseAccount(heroesOnly),/缺少有效/);
+ heroesOnly.scope.souls=false;
+ assert.deepEqual(Object.keys(C.parseAccount(heroesOnly).souls),[]);
+ assert.deepEqual(C.parseAccount(heroesOnly).raw,heroesOnly);
+ assert.throws(()=>C.parseAccount({...heroesOnly,souls:null}),/缺少有效/);
+ const soulsOnly=snapshot({scope:{heroes:false,souls:true}});delete soulsOnly.heroes;
+ assert.equal(C.inventoryComplete(C.parseAccount(soulsOnly),'souls'),true);
+ assert.equal(C.inventoryComplete(C.parseAccount(soulsOnly),'heroes'),false);
+ assert.throws(()=>C.parseAccount({...soulsOnly,scope:{souls:true}}),/缺少有效/);
 });
 
 test('平安志桌面缓存只用原始库存，拒绝藏宝阁和由派生字段冒充的库存',()=>{
