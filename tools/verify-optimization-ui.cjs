@@ -3,6 +3,7 @@ const {app,BrowserWindow,ipcMain}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
 const {readIndex,readTable,readEncounters,readRecords}=require('../desktop/dungeon-catalog.cjs');
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
+const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
 const {Background}=require('../desktop/background.cjs');
 const root=path.resolve(__dirname,'..'),profile=path.join(root,'user-data','optimization-ui');
 app.setPath('userData',profile);
@@ -400,11 +401,11 @@ async function main(){
     await ui('$("dungeon-match-selected").click()');
     await until(`dungeonBattle?.rows[0]?.verdict===${JSON.stringify(verdict)}&&!dungeonBattle.running`);
     const all=verdict==='pass';
-    assert.deepEqual(seeds,all?[0,1,2,3,7,42]:[0,1]);
+    assert.deepEqual(seeds,all?commonSeeds:[0,1]);
     assert.equal(await ui('$("dungeon-search-stock").hidden'),verdict!=='loss');
     const status=await ui('$("dungeon-battle-results").textContent');
     assert.match(status,/种子 0.*本次复跑通关/s);
-    if(all)assert.match(status,/已通过 6 个采样种子.*种子 42/s);
+    if(all)assert.match(status,/已通过 8 个采样种子.*种子 2016.*种子 7698/s);
     else if(verdict==='unknown')assert.match(status,/复跑结算待核对/);
     else assert.match(status,/种子 1 未通关/);
     if(all){
@@ -468,7 +469,7 @@ async function main(){
      nextOutcome='loss';await startExtra();
      await until('!$("dungeon-search-stock").hidden');
      assert.match(await ui('$("dungeon-battle-results").textContent'),/补测种子 5 未通关.*种子 4.*种子 5.*本次复跑失败/s);
-     assert.deepEqual(seeds.slice(6),[4,5,5,5]);
+     assert.deepEqual(seeds.slice(commonSeeds.length),[4,5,5,5]);
      await ui('$("dungeon-match-selected").click()');
      await until('!$("dungeon-search-stock").hidden');
      assert.match(await ui('$("dungeon-battle-results").textContent'),/补测种子 5 未通关/);
@@ -487,14 +488,16 @@ async function main(){
   const hero_equips=['海月火玉','针女','火灵','元兴寺','心眼','网切'].flatMap((setId,i)=>stats.map(([mainAttrType,mainAttrValue],j)=>({
    id:`stock-${i}-${j}`,slot:j+1,quality:6,level:15,setId,mainAttrType,mainAttrValue,subAttributes:[{type:'crit_rate',value:.1}]
   })));
-  const calls=[];let winner;
+  const calls=[];let winner,lateLoser;
   mockBattle=(plan,options)=>{
    const ids=JSON.stringify(plan.members.map(m=>[m.instanceId,m.souls.map(q=>q.id)]));
-   winner??=ids;calls.push({ids,options});
-   const win=winner===ids;
-   return {seed:options.seed,engineSeconds:13+options.seed,completed:true,outcome:win?'win':'loss',
+   winner??=ids;
+   if(ids!==winner)lateLoser??=ids;
+   calls.push({ids,options});
+   const win=winner===ids||lateLoser===ids&&options.seed!==7698;
+   return {seed:options.seed,engineSeconds:options.seed>42?35:13+options.seed,completed:true,outcome:win?'win':'loss',
     wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,
-    animationPlayback:{combatElapsedMs:11234,combatOverlapMs:1250,overlapMs:3000,interruptedClips:5,unresolved:2},
+    animationPlayback:{combatElapsedMs:options.seed===7698?18234:11234,combatOverlapMs:1250,overlapMs:3000,interruptedClips:5,unresolved:2},
     randomObservations:{observed:75,other:12,alternatives:9},monsterHealth:[
      {wave:2,cleared:win,startMs:1300,endMs:4000,monsters:[{id:4741297,initialHp:198501,lowestHp:5000,lastHp:win?0:120000,regainedHp:135000,zeroToAlive:0}]}
     ]};
@@ -508,14 +511,18 @@ async function main(){
    assert.match(await ui('$("dungeon-match-status").textContent'),/勾选的阵容均已证明库存无解/);
    await ui('$("dungeon-search-stock").click()');
    await until('dungeonStock&&!dungeonStock.running',20000);
-   assert.deepEqual(calls.filter(x=>x.ids===winner).map(x=>x.options),[0,1,2,3,7,42].map(seed=>({seed,fixedStep:true})));
-   assert.ok(calls.some(x=>x.ids!==winner),'需要至少一个落败的合成候选');
+   const expectedCalls=commonSeeds.map(seed=>({seed,fixedStep:true}));
+   assert.deepEqual(calls.filter(x=>x.ids===winner).map(x=>x.options),expectedCalls);
+   assert.deepEqual(calls.filter(x=>x.ids===lateLoser).map(x=>x.options),expectedCalls,'排除只在最后一个共同种子落败的候选');
    const top=await ui('document.querySelector(".dungeon-stock-card").textContent');
    assert.match(top,/种子 0.*本次复跑通关.*种子 42.*本次复跑通关/s);
+   assert.match(top,/共同种子中最慢 · 种子 7698 · 开战至结算 18\.23 秒/);
    assert.match(top,/引擎开战至结算 11\.23 秒.*交战动作重叠估算 1\.25 秒（5 段提前结束，2 项待核对）.*引擎全程 13\.00 秒/s);
    assert.match(await ui('$("dungeon-stock-list").textContent'),/本次复跑失败/);
+   assert.match(await ui('$("dungeon-stock-list").textContent'),/种子 7698 未通关/);
+   assert.equal(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=samples]").open'),false);
    assert.match(await ui('$("dungeon-stock-results").textContent'),/所有随机分支仍待验证/);
-   await ui('document.querySelector(".dungeon-stock-card summary").click()');
+   await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=gear] summary").click()');
    assert.match(await ui('document.querySelector(".dungeon-stock-card details[open]").textContent'),/速度.*暴击.*×/s);
    await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health] summary").click()');
    assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health][open]").textContent'),/敌方进场至清场 2\.70 秒.*日和坊.*最低 5,000.*生命回升 135,000/s);
@@ -565,6 +572,7 @@ async function main(){
    await ui('$("stock-candidate-save").click()');
    await until('$("stock-candidate-status").textContent.includes("已保存")');
    const saved=stored.lineups.find(l=>l.code===code);assert.equal(saved.runeReceipts.length,1);
+   assert.deepEqual(saved.runeReceipts[0].samples.map(r=>r.seed),commonSeeds);
    await ui('$("detail-dialog").close()');
    const offline=status;
    status={...status,authenticated:true,risk_accepted:true,query_ready:true,selected_server:String(raw.player.serverId),selected_avatar:'synthetic',
@@ -593,7 +601,7 @@ async function main(){
    await ui('$("detail-dialog").close();document.querySelector("[data-stock-full]").click()');
    await until('$("dungeon-stock-list").textContent.includes("种子 3167 未通关")');
    assert.equal(await ui('document.querySelectorAll("[data-stock-preview]").length'),0);
-   assert.match(await ui('$("dungeon-stock-status").textContent'),/0 队已通过采样且无已知原生种子失败/);
+   assert.match(await ui('$("dungeon-stock-status").textContent'),/0 队已通过 8 个共同种子/);
    savedEvidence=()=>observedLoss;
    await win.loadFile(path.join(root,'app/index.html'));
    await until('!!DATA && $("loading").hidden');

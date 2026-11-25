@@ -25,6 +25,18 @@ function passed(samples){
  return samples.length===S.sampleSeeds.length&&samples.every((r,i)=>sampleVerdict(r,S.sampleSeeds[i])==='pass');
 }
 
+function commonSampleTiming(rows){
+ const combat=rows.every(row=>row.samples.every(sample=>{
+  const ms=sample.animationPlayback?.combatElapsedMs;
+  return Number.isSafeInteger(ms)&&ms>=0;
+ }));
+ const seconds=sample=>combat?sample.animationPlayback.combatElapsedMs/1000:sample.engineSeconds;
+ return new Map(rows.map(row=>{
+  const longest=row.samples.reduce((worst,trial)=>seconds(trial)>seconds(worst)?trial:worst);
+  return [row,{combat,seed:longest.seed,seconds:seconds(longest)}];
+ }));
+}
+
 function spiritConfig(game,spirit){
  if(!spirit)return undefined;
  const {id,star,lv,marks}=spirit;
@@ -122,5 +134,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,passed,template,receipt,receiptFor,restore};
+return {sampleVerdict,passed,commonSampleTiming,template,receipt,receiptFor,restore};
 });

@@ -53,7 +53,7 @@ test('魂王有可用群疗式神时优先试能抵消低生命惩罚的配搭',
  assert.match(first.title,/^群疗/);
  assert.ok(first.heroIds.includes(238));
  assert.equal(first.plan.members[first.heroIds.indexOf(238)].aiSkill,3);
- assert.deepEqual(sampleSeeds,[0,1,2,3,7,42]);
+ assert.deepEqual(sampleSeeds,[0,1,2,3,7,42,2016,7698]);
 });
 
 test('不足五名可用式神时不补造角色和配装',()=>{
@@ -71,7 +71,21 @@ test('只有同种子的有效结算可以判为通关或落败',()=>{
   assert.equal(R.sampleVerdict(report,0),'unknown');
  }
  assert.equal(R.passed(sampleSeeds.map(seed=>({...win,seed}))),true);
+ assert.equal(R.passed(sampleSeeds.slice(0,-2).map(seed=>({...win,seed}))),false);
  assert.equal(R.passed([win]),false);
+});
+
+test('共同种子计时包含慢场次，并为所有可比队伍选用同一时钟',()=>{
+ const trials=(combat,engine,hardSeed)=>sampleSeeds.map(seed=>({seed,engineSeconds:seed===hardSeed?engine:160,
+  animationPlayback:{combatElapsedMs:seed===hardSeed?combat:140000}}));
+ const a={samples:trials(416800,427.9,7698)},b={samples:trials(152480,164.5,2016)};
+ const comparable=R.commonSampleTiming([a,b]);
+ assert.deepEqual(comparable.get(a),{combat:true,seed:7698,seconds:416.8});
+ assert.deepEqual(comparable.get(b),{combat:true,seed:2016,seconds:152.48});
+ delete b.samples[0].animationPlayback;
+ const fallback=R.commonSampleTiming([a,b]);
+ assert.deepEqual(fallback.get(a),{combat:false,seed:7698,seconds:427.9});
+ assert.deepEqual(fallback.get(b),{combat:false,seed:2016,seconds:164.5});
 });
 
 test('采样候选的游戏码带条件，本机配装经过持久化后可以精确复跑',async()=>{
@@ -95,6 +109,8 @@ test('采样候选的游戏码带条件，本机配装经过持久化后可以�
  }
  const restored=C.restoreAccount(account);
  assert.deepEqual(await R.restore(lineup,restored),row.plan);
+ const older={...lineup,runeReceipts:[{...saved,samples:saved.samples.slice(0,6)}]};
+ assert.deepEqual(await R.restore(older,restored),row.plan);
  assert.equal(await R.restore(lineup,{...restored,id:'other'}),null);
  await assert.rejects(R.restore({...lineup,code:code+'a'},restored),/有变化/);
  const soul=row.plan.members[0].souls[0].id;

@@ -467,11 +467,11 @@ function renderDungeonStock(dungeon){
  const panel=$('dungeon-stock-results'),job=dungeonStock;
  panel.hidden=!hasRuneRuntime(dungeon)||!usesDungeonInventory(job);
  if(panel.hidden)return;
- const completed=job.rows.filter(row=>row.state==='finished').length,passes=job.rows.filter(stockPasses).length;
+ const completed=job.rows.filter(row=>row.state==='finished').length,passing=job.rows.filter(stockPasses);
  const status=job.cancelled?'已停止，保留已完成的复跑。':job.error||(
   job.searching?'正在按输出、供火和辅助技能挑选式神与御魂…':
   !job.rows.length?'当前库存未找到可组成的备选队伍。':
-  `已复跑 ${completed} / ${job.rows.length} 队 · ${passes} 队已通过采样且无已知原生种子失败${job.running?'':'。'}`);
+  `已复跑 ${completed} / ${job.rows.length} 队 · ${passing.length} 队已通过 ${AtlasRuneSearch.sampleSeeds.length} 个共同种子${job.running?'':'。'}`);
  const busy=runeBusy();
  const key=JSON.stringify([status,busy,job.rows.map(row=>[row.index,row.heroIds,row.state,row.samples,row.error,row.encoding,row.codeError,row.output?.code,row.randomAudit,row.seedAudit,row.fullSeedAudit])]);
  if(key===dungeonStockRenderKey)return;
@@ -480,12 +480,17 @@ function renderDungeonStock(dungeon){
  const focused=document.activeElement,focus=focused.closest('summary')?.parentElement?.dataset.stockSection;
  const focusedAction=[...focused.attributes].find(a=>['data-stock-preview','data-stock-encode','data-stock-audit','data-stock-extra','data-stock-full','data-stock-wave-report'].includes(a.name));
  const names=DATA.gameConfig.heroes;
- const worstSample=row=>fullSeedPassed(row)?row.fullSeedAudit.progress.slowest.engineSeconds:Math.max(...row.samples.map(sample=>sample.engineSeconds));
+ const sampleTimes=AtlasRuneCandidate.commonSampleTiming(passing.filter(row=>!fullSeedPassed(row)));
+ const worstSample=row=>fullSeedPassed(row)?row.fullSeedAudit.progress.slowest.engineSeconds:sampleTimes.get(row)?.seconds;
  const rows=[...job.rows].sort((a,b)=>Number(stockPasses(b))-Number(stockPasses(a))||
   (stockPasses(a)&&stockPasses(b)?Number(fullSeedPassed(b))-Number(fullSeedPassed(a))||worstSample(a)-worstSample(b):0));
  list.innerHTML=rows.map(row=>{
   const section=name=>`data-stock-section="${row.index}-${name}"${opened.has(`${row.index}-${name}`)?' open':''}`;
-  const summary=row.error||{waiting:'等待复跑',running:'正在原版引擎复跑',cancelled:'已停止'}[row.state]||'';
+  const last=row.samples.at(-1);
+  const verdict=last&&AtlasRuneCandidate.sampleVerdict(last,AtlasRuneSearch.sampleSeeds[row.samples.length-1]);
+  const settled=verdict==='loss'?`种子 ${last.seed} 未通关`:verdict==='unknown'?`种子 ${last.seed} 结算待核对`:'';
+  const summary=row.error||{waiting:'等待复跑',running:`已复跑 ${row.samples.length}/${AtlasRuneSearch.sampleSeeds.length} 个共同种子`,cancelled:'已停止',finished:settled}[row.state]||'';
+  const timing=sampleTimes.get(row);
   const members=row.heroIds.map((id,index)=>{
    const m={kind:'shikigami',name:names[id]?.name,shikigamiId:String(id),awakening:row.plan.members[index].hero.awake};
    return `<li>${thumb(m)}<span>${esc(m.name)}</span></li>`;
@@ -506,8 +511,9 @@ function renderDungeonStock(dungeon){
    return `<li><strong>${esc(names[row.heroIds[index]]?.name)}</strong><span>速度 ${speed} · 暴击 ${crit}%</span><span>${esc(suits)}</span></li>`;
   }).join('');
   return `<li class="dungeon-stock-card"><strong>${esc(row.title)}</strong><ul class="dungeon-stock-members" aria-label="式神">${members}</ul>
-   ${samples?`<ul class="dungeon-stock-samples" aria-label="复跑结果">${samples}</ul>`:''}
+   ${timing?`<p class="caption">共同种子中最慢 · 种子 ${timing.seed} · ${timing.combat?'开战至结算':'引擎全程'} ${timing.seconds.toFixed(2)} 秒</p>`:''}
    ${summary?`<p class="caption">${esc(summary)}</p>`:''}
+   ${samples?`<details ${section('samples')}><summary>查看 ${row.samples.length} 个种子的战报</summary><ul class="dungeon-stock-samples">${samples}</ul></details>`:''}
    <details ${section('gear')}><summary>查看御魂搭配</summary><ul class="dungeon-stock-builds">${builds}</ul></details>
    ${health?`<details ${section('health')}><summary>查看各波用时和敌方生命</summary><ul class="dungeon-stock-health">${health}</ul></details>`:''}
    ${observations?`<details ${section('random')}><summary>查看随机调用记录</summary><p class="caption">各项计数来自对应种子的复跑。可达随机分支仍待验证。</p><ul class="dungeon-stock-samples">${observations}</ul>
