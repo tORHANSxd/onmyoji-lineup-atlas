@@ -1,9 +1,10 @@
 importScripts('solver.js','core.js','rune-openings.js','game-config.js','rune-search.js');
 
-onmessage=({data:{account,gameConfig,roster,effects,alternatives,dungeonId}})=>{
+onmessage=({data:{account,gameConfig,roster,effects,alternatives,dungeonId,pveMemberCount}})=>{
  try{
   const catalog={gameConfig,roster,effects};
-  const candidates=dungeonId===103?AtlasRuneSearch.hun13Candidates(account,catalog,alternatives):
+  const candidates=pveMemberCount?AtlasRuneSearch.pveCandidates(account,catalog,pveMemberCount,alternatives):
+   dungeonId===103?AtlasRuneSearch.hun13Candidates(account,catalog,alternatives):
    AtlasRuneSearch.candidates(account,catalog,alternatives,dungeonId);
   postMessage({candidates});
  }catch(error){

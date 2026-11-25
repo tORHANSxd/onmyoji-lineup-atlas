@@ -4,6 +4,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),assert=require('n
 const {readIndex,readTable,readEncounters,readRecords}=require('../desktop/dungeon-catalog.cjs');
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
 const {createRuneFloorRunner}=require('../desktop/rune-floor-runner.cjs');
+const {createPveStageRunner}=require('../desktop/pve-stage-runner.cjs');
 const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
 const game=require('../app/game-config.js');
 const {Background}=require('../desktop/background.cjs');
@@ -49,6 +50,11 @@ async function main(){
  const runtime={configPath:process.env.ATLAS_RUNE_RUNTIME,scriptRoot:path.join(root,'tools'),suits:data.suits};
  const rune=runtime.configPath?createRuneRunner(runtime):null;
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
+ const pve=runtime.configPath?createPveStageRunner(runtime):null;
+ let mockPve=null,stopPve=null;
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816'}));
+ local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
+ local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
  const seedEvidence=(props={})=>({scope:'local-solo-rune',status:'incomplete',total:10000,wins:73,loss:null,
   slowest:{seed:13,engineSeconds:25.5,combatMs:14400},...props});
@@ -186,6 +192,81 @@ async function main(){
   await ui('$("client-dungeons").open=false');
  });
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
+ if(catalog?.index.encounters)await check('通用 PvE 按勾选顺序精算原码，失败后从库存找备选，可用键盘停止',async()=>{
+  const ids=[591,389,596,554,379,557],heroes={},items=[];
+  for(const id of ids){
+   const prototype=data.gameConfig.heroes[id],prefix='pve-'+id;
+   const skinfo=prototype.skills.map(skill=>[skill,game.levels(data.gameConfig,skill,1).at(-1).level]);
+   const equips=Array.from({length:6},(_,i)=>prefix+'-soul-'+i);
+   heroes[prefix]={heroId:id,level:40,star:6,awake:1,skinfo,equips,
+    attrs:[[8000,0,0,0],[101,0,0,0],[.5,0,0,0],[.1,0,0,0],[500,0,0,0],[2500,0,0,0],0,0]};
+   equips.forEach((id,i)=>items.push({id,slot:i+1,quality:6,level:15,setId:'招财猫',
+    mainAttrType:['attack_flat','speed','defense_flat','attack_rate','hp_flat','crit_rate'][i],
+    mainAttrValue:[486,57,104,.55,2052,.55][i],subAttributes:[{type:'crit_rate',value:.1}]}));
+  }
+  const fighters=ids.slice(0,3).map((id,index)=>({index:index+1,kind:'shikigami',name:data.gameConfig.heroes[id].name,
+   shikigamiId:String(id),level:40,star:6,awakening:1,skills:heroes['pve-'+id].skinfo.map(([id,level])=>({id,level})),
+   aiSkill:0,config:{keepCurrent:true}}));
+  const selected=[10,13].map((id,i)=>({id:'qa-pve-'+id,title:'复跑原码 '+i,code:'|TA|qa-pve-'+id,
+   gameSceneId:1001001,requirementsComplete:true,decodeState:'decoded-local',members:[
+    {index:0,kind:'onmyoji',name:data.gameConfig.heroes[id].name,onmyojiId:String(id),level:60,star:2,awakening:0,aiSkill:0,
+     skills:(i?[1304,1302]:[1008,1011]).map(id=>({id,level:5}))},...fighters]}));
+  const boot=await ui('JSON.stringify(STATE)');
+  const calls=[],sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
+   animationPlayback:{combatElapsedMs:6910,combatOverlapMs:1100,interruptedClips:0,unresolved:0}};
+  let mode='loss';
+  mockPve=(plan,options)=>{
+   const {stageId,groupId,seed}=options;
+   assert.equal(stageId,31811);assert.equal(groupId,31811);
+   assert.equal(plan.members.length,3);
+   assert.equal(new Set(plan.members.map(row=>row.instanceId)).size,3);
+   const souls=plan.members.flatMap(row=>row.souls.map(q=>q.id));
+   assert.equal(new Set(souls).size,souls.length);
+   assert.ok(souls.every(id=>items.some(q=>q.id===id)));
+   calls.push({actor:plan.onmyoji.heroId,seed});
+   if(mode==='hold')return new Promise(resolve=>{stopPve=()=>resolve({...sample,seed});});
+   return mode==='loss'?{...sample,seed,outcome:'loss',wavesCleared:0}:{...sample,seed};
+  };
+  const reports='document.querySelector("[data-pve-results]")';
+  const status='document.querySelector("[data-pve-status]")';
+  const stock='document.querySelector("[data-pve-stock]")';
+  try{
+   await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify(selected)},accounts:[C.parseAccount(${JSON.stringify({...raw,heroes,hero_equips:items})})]};
+    STATE.activeAccount=STATE.accounts[0].id;selectView('library');$('client-dungeons').open=true;
+    $('client-dungeons-mode-encounters').click();qaEncounterInput('battle','31811');
+    selectedLineups=new Set(['qa-pve-13','qa-pve-10']);renderSelection();`);
+   await until('!!document.querySelector("[data-pve-start]:not([disabled])")');
+   assert.equal(await ui(stock+'.hidden'),true);
+   await ui('document.querySelector("[data-pve-start]").click()');
+   await until('!!document.querySelector("[data-pve-stock]:not([hidden]):not([disabled])")',15000);
+   assert.deepEqual(calls,[{actor:13,seed:0},{actor:10,seed:0}]);
+   assert.match(await ui(reports+'.textContent'),/复跑原码 1.*种子 0 未通关.*复跑原码 0.*种子 0 未通关/s);
+   mode='win';await ui(stock+'.click()');
+   await until(status+'.textContent.includes("全随机分支待验证")',18000);
+   assert.match(await ui(reports+'.textContent'),/通过 6 个采样种子.*开战至结算 6\.91 秒/s);
+   assert.match(await ui(reports+'.textContent'),/复跑原码 1.*种子 0 未通关.*复跑原码 0.*种子 0 未通关/s);
+   assert.deepEqual(calls.slice(2,8).map(row=>row.seed),[0,1,2,3,7,42]);
+   await ui(reports+'.querySelector("details").open=true;'+status+'.scrollIntoView({block:"start",behavior:"instant"})');
+   await capture('pve-stock-samples');
+   win.setContentSize(720,960);
+   try{assert.equal(await ui(reports+'.scrollWidth<='+reports+'.clientWidth+2'),true);}
+   finally{win.setContentSize(1440,1000);}
+   mode='hold';
+   await ui('document.querySelector("[data-pve-start]").focus();document.querySelector("[data-pve-start]").click()');
+   await until(status+'.textContent.includes("种子 0")',12000);
+   assert.equal(await ui('document.activeElement.matches("[data-pve-stop]")'),true);
+   await ui('document.activeElement.click()');
+   await until(status+'.textContent.includes("复跑已停止")');
+   assert.equal(await ui('document.activeElement.matches("[data-pve-start]")'),true);
+   assert.doesNotMatch(await ui(reports+'.textContent'),/本次复跑通关/);
+   await ui('qaEncounterInput("battle","30101 剧情：晴明单挑犬神")');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("剧情：晴明单挑犬神")');
+   assert.equal(await ui('document.querySelector("[data-pve-start]")===null'),true);
+  }finally{
+   mockPve=null;stopPve=null;
+   await ui(`stopMatch();STATE=${boot};selectedLineups.clear();$('client-dungeons').open=false;renderSelection();`);
+  }
+ });
  const file=json=>'[{name:"synthetic.json",size:1024,text:async()=>'+JSON.stringify(JSON.stringify(json))+'}]';
  await check('账号导入失败保持原账号和原库存',async()=>{
   const before=await ui('JSON.stringify(STATE)');failSave=true;

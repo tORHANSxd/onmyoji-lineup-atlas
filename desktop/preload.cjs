@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld('dungeonCatalog', Object.freeze({
   table: name => ipcRenderer.invoke('dungeon-catalog-table', name),
   encounters: () => ipcRenderer.invoke('dungeon-catalog-encounters'),
   records: (name, keys) => ipcRenderer.invoke('dungeon-catalog-records', name, keys),
+  pveStatus: () => ipcRenderer.invoke('pve-stage-status'),
+  runPve: (plan, options) => ipcRenderer.invoke('pve-stage-run',plan,options),
+  stopPve: () => ipcRenderer.invoke('pve-stage-stop'),
 }));
 contextBridge.exposeInMainWorld('runeBattle',Object.freeze({
   status:()=>ipcRenderer.invoke('rune-battle-status'),

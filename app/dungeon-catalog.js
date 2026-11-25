@@ -164,7 +164,7 @@
     if (showStages) {
       el('status').textContent = '';
       if (!stage.rows && !stage.loading) void loadEncounters();
-    }
+    } else window.AtlasPveWorkbench?.cancel();
   }
 
   async function loadEncounters() {
@@ -199,6 +199,7 @@
       words.every(word => record.search.includes(word)));
     stage.page = 0;
     if (!stage.matches.includes(stage.selected)) {
+      window.AtlasPveWorkbench?.unmount();
       stage.token++;
       stage.selected = null;
       el('encounter-detail').replaceChildren();
@@ -355,6 +356,7 @@
 
   async function showEncounter(entry) {
     if (!entry) return;
+    window.AtlasPveWorkbench?.unmount();
     const token = ++stage.token, destination = el('encounter-detail');
     stage.selected = entry;
     for (const button of el('encounter-list').children) {
@@ -382,6 +384,15 @@
     }
     if (token !== stage.token) return;
     destination.replaceChildren(header, node('p', (titles[entry.table] || entry.kind) + ' · ' + keyText(entry.key), 'caption'));
+    if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
+      const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
+      const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
+      if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
+          Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&
+          formation?.row?.MonstersInfos?.length&&!['no_yys','replace_yysid','isplot','sl_file'].some(field=>row[field])) {
+        window.AtlasPveWorkbench?.mount(destination,{stageId,groupId,memberCount,version:state.index.resourceVersion});
+      }
+    }
     for (const {ref,row,error,waves} of groups) {
       const block = node('section', '', 'encounter-source');
       const heading = ref.primary?[ref.label]:[ref.label, rowTitle(row), keyText(ref.key)].filter(Boolean);
@@ -524,6 +535,7 @@
   }
 
   function setIndex(index) {
+    window.AtlasPveWorkbench?.unmount();
     state.index = index;
     ++state.token;
     Object.assign(stage,{token:stage.token+1,loading:false,rows:null,byKey:new Map(),matches:[],page:0,selected:null});
@@ -551,6 +563,7 @@
     return;
   }
   panel.addEventListener('toggle', () => {
+    if (!panel.open) window.AtlasPveWorkbench?.cancel();
     if (panel.open && !state.index) api.index().then(setIndex).catch(error => {
       el('status').textContent = '无法读取副本资料。' + error.message;
     });

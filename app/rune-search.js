@@ -152,7 +152,7 @@ function buildCandidates(account,{gameConfig:game,roster,effects},profile,altern
     if(!row)break;
     chosen.push({name,...row});species.add(row.id);
    }
-   if(chosen.length!==5)continue;
+   if(chosen.length!==strategy.roles.length)continue;
    const members=[],panels=[],used=new Set();
    for(const {name,hero,id,aiSkill} of chosen){
     const remaining=inventory.filter(q=>!used.has(q.id));
@@ -171,7 +171,7 @@ function buildCandidates(account,{gameConfig:game,roster,effects},profile,altern
     members.push({instanceId:hero.instanceId,hero:hero.raw,souls,aiSkill});
     panels.push(build.rawPanel);
    }
-   if(members.length!==5)continue;
+   if(members.length!==strategy.roles.length)continue;
    const plan={onmyoji,...(spirit?{spirit}:{}),members};
    const key=teamKey(plan);
    if(seen.has(key))continue;
@@ -181,6 +181,43 @@ function buildCandidates(account,{gameConfig:game,roster,effects},profile,altern
   }
  }
  return sampled;
+}
+
+function pveCandidates(account,data,memberCount,alternatives=[]){
+ const {gameConfig:game,roster}=data;
+ const strategies=[
+  [{name:'单式神输出',roles:['opener']},{name:'单式神持续输出',roles:['finisher']}],
+  [{name:'输出与供火',roles:['opener','orbs']},{name:'输出与治疗',roles:['finisher','healer']}],
+  [{name:'双输出与供火',roles:['opener','finisher','orbs']},{name:'输出供火与续航',roles:['opener','orbs','healer']},
+   {name:'拉条增伤与输出',roles:['accelerate','markAmp','lightDamage']}],
+  [{name:'供火增伤与双输出',roles:['orbs','markAmp','opener','finisher']},
+   {name:'拉条供火与治疗',roles:['accelerate','orbs','lightDamage','healer']}],
+  [hun13Pace,hun13Hold,groupBuff,turnAdvance,openingDamage,sustain],
+ ][memberCount-1];
+ if(!strategies)throw Error('当前关卡的上阵人数未接入库存备选');
+ const candidates=buildCandidates(account,data,{strategies,openingSpeed:0,bossSpeed:0,earlySpeed:0},alternatives,null,limit-1);
+ const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
+ const {byHero}=C.equipmentOwnership(account),kinds=game.heroes;
+ const equipped=Object.values(account.heroes).flatMap(hero=>{
+  const gear=byHero.get(hero.instanceId),id=hero.shikigamiId,skills=hero.raw?.skinfo;
+  if(!gear||gear.some(soul=>soul.unknown.length)||kinds[id]?.kind!=='shikigami'||!C.baseFromRoster(hero,roster)||
+     !skills?.length||skills.some(([skill,level])=>!G.skill(game,skill,level,hero.awake)))return [];
+  return [{hero,gear,quality:gear.reduce((score,soul)=>score+soul.star*4+soul.level,0)}];
+ }).sort((a,b)=>b.hero.star-a.hero.star||b.hero.level-a.hero.level||b.quality-a.quality||
+  a.hero.instanceId.localeCompare(b.hero.instanceId));
+ const distinct=new Set(),team=equipped.filter(({hero})=>{
+  if(distinct.has(hero.shikigamiId))return false;
+  distinct.add(hero.shikigamiId);return true;
+ }).slice(0,memberCount);
+ if(team.length===memberCount){
+  const plan={onmyoji,...(spirit?{spirit}:{}),members:team.map(({hero,gear})=>({
+   instanceId:hero.instanceId,hero:hero.raw,souls:gear.map(soul=>soul.raw),aiSkill:0,
+  }))};
+  const key=teamKey(plan);
+  if(!alternatives.includes(key)&&!candidates.some(row=>teamKey(row.plan)===key))
+   candidates.unshift({title:'当前穿戴',heroIds:team.map(({hero})=>Number(hero.shikigamiId)),plan});
+ }
+ return candidates;
 }
 
 const hun13Key=plan=>JSON.stringify(plan.rounds.map(teamKey));
@@ -213,5 +250,5 @@ function hun13Candidates(account,data,alternatives=[]){
  return rows;
 }
 
-return {candidates,teamKey,hun13Candidates,hun13Key,hun13SampleSeeds,baseSampleSeeds,sampleSeeds,extraSeeds,samplesForDungeon};
+return {candidates,teamKey,pveCandidates,hun13Candidates,hun13Key,hun13SampleSeeds,baseSampleSeeds,sampleSeeds,extraSeeds,samplesForDungeon};
 });

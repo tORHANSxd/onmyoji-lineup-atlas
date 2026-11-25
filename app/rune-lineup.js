@@ -44,14 +44,14 @@ function team(lineup,result,account,game,floor=dungeonId){
  return {plan,conditions:['阴阳师按阵容码培养和携带技能复跑，平安志未提供其实际培养。普攻等级缺失时使用客户端最低等级。']};
 }
 
-function selectedTeam(lineup,result,account,game){
+function selectedTeam(lineup,result,account,game,memberCount=5){
  if(!result?.ready||!result.completed||result.proof?.state!=='optimal'||!Array.isArray(result.assignment)){
   throw Error('精算未给出已核对的库存配装');
  }
  const occupied=lineup.members.filter(member=>member.occupied!==false);
  const actors=occupied.filter(member=>member.kind==='onmyoji');
  const members=occupied.filter(member=>member.kind==='shikigami').sort((a,b)=>a.index-b.index);
- if(actors.length!==1||members.length!==5||result.assignment.length!==members.length)throw Error('阵容码缺少战斗所需的完整阵容');
+ if(actors.length!==1||members.length!==memberCount||result.assignment.length!==members.length)throw Error('阵容码缺少战斗所需的完整阵容');
  const actor=actors[0],heroId=Number(actor.onmyojiId),actorRules=game.heroes[heroId];
  if(actorRules?.kind!=='onmyoji'||!Array.isArray(actor.skills)||!Number.isInteger(actor.level)||!Number.isInteger(actor.star)||actor.awakening!==0){
   throw Error('阵容码没有提供完整的阴阳师培养与技能配置');
@@ -102,5 +102,5 @@ function hun13Plan({rounds},result,account,game){
   assignment:assignments.filter(build=>build.index>=wave*5&&build.index<(wave+1)*5)},account,game))};
 }
 
-return {sceneId,resourceVersion,dungeonId,hun13SceneId,sceneForDungeon,team,hun13Pair,hun13Plan};
+return {sceneId,resourceVersion,dungeonId,hun13SceneId,sceneForDungeon,team,selectedTeam,hun13Pair,hun13Plan};
 });

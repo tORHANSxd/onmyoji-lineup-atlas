@@ -77,7 +77,7 @@ async function copyCode(button,code){
 }
 function selectView(name){
  const pages={builder:['阵容制作器','按游戏规则配置成员、技能和御魂，生成阵容码。'],library:['阵容库','按副本找阵容，用自己的库存核对差距。'],decode:['阵容码查看','解析原码，核对成员、技能与御魂要求。'],accounts:['我的账号','查看本地库存，为阵容匹配选择账号。'],manage:['阵容库管理','整理原码、分类与备注，处理失败和失效记录。'],audit:['来源与覆盖','核对资料来源、资源覆盖和计算范围。']};
- if(!pages[name]||!DATA)return;view=name;if(name==='builder')renderBuilder();
+ if(!pages[name]||!DATA)return;view=name;if(name!=='library')window.AtlasPveWorkbench?.cancel();if(name==='builder')renderBuilder();
  document.querySelectorAll('.view').forEach(el=>el.hidden=el.id!=='view-'+name);
  document.querySelectorAll('[data-view]').forEach(el=>{el.classList.toggle('active',el.dataset.view===name);if(el.matches('.nav')){if(el.dataset.view===name)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');}});
  $('add-code').hidden=name!=='library';$('add-bulk').hidden=name!=='library';$('account-selector').hidden=!['library','accounts','manage'].includes(name);
@@ -216,7 +216,7 @@ function planSeedAudits(job){
 }
 function battleBusy(job){return usesDungeonInventory(job)&&!job.cancelled&&(job.running||job.activeSeedAudit||job.activeFullSeedAudit||job.rows.some(row=>row.state==='waiting'));}
 function hun13Busy(){return !!(dungeonHun13?.running||dungeonHun13?.activeFullSeedAudit||dungeonHun13?.activeSeedAudit);}
-function runeBusy(){return !!(dungeonStopPending||battleBusy(dungeonBattle)||stockBusy(dungeonStock)||hun13Busy());}
+function runeBusy(){return !!(dungeonStopPending||battleBusy(dungeonBattle)||stockBusy(dungeonStock)||hun13Busy()||window.AtlasPveWorkbench?.busy());}
 async function verifyDungeonSeeds(job,row,selector){
  if(runeBusy()||!usesDungeonInventory(job)||(row.verdict!=='pass'&&!stockPasses(row))||failedSeedAudit(row)||fullSeedPassed(row))return;
  const audit=row.seedAudit??={samples:[]};
@@ -660,7 +660,8 @@ function generateDungeonStock(job){
   job.stopSearch=()=>resolve([]);
   candidates.onmessage=({data})=>data.error?reject(Error(data.error)):resolve(data.candidates);
   candidates.onerror=event=>reject(Error(event.message||'备选搜索未完成'));
-  candidates.postMessage({account:job.account,roster,effects,gameConfig,alternatives:job.alternatives,dungeonId:job.dungeonId});
+  candidates.postMessage({account:job.account,roster,effects,gameConfig,alternatives:job.alternatives,
+   dungeonId:job.dungeonId,pveMemberCount:job.pveMemberCount});
  }).finally(()=>{candidates.terminate();delete job.stopSearch;});
 }
 async function searchDungeonStock(){
@@ -763,23 +764,29 @@ function renderHun13Result(dungeon){
  if(focused)list.querySelector(`[${focused.name}="${CSS.escape(focused.value)}"]`)?.focus();
 }
 
-function solveHun13Pair(pair,job){
+function solveInventoryLineup(lineup,job,onProgress){
  return new Promise((resolve,reject)=>{
   const task=new Worker('match-worker.js');
   const finish=(error,value)=>{
    task.terminate();job.stopWorker=null;
    if(error)reject(error);else resolve(value);
   };
-  job.stopWorker=()=>finish(Error('虚无精算已停止'));
+  job.stopWorker=()=>finish(Error('库存精算已停止'));
   task.onmessage=({data})=>{
    if(!data.result)return;
    if(data.result.completed){finish(null,data.result);return;}
-   job.nodes=data.result.proof?.nodes??0;
-   renderHun13Result(selectedDungeon());
+   onProgress?.(data.result.proof?.nodes??0);
   };
-  task.onerror=event=>finish(Error(event.message||'虚无双队精算线程读取失败'));
-  try{task.postMessage({batch:1,lineups:[pair.combined],account:job.account,roster:DATA.roster,effects:DATA.effects});}
+  task.onerror=event=>finish(Error(event.message||'库存精算线程读取失败'));
+  try{task.postMessage({batch:1,lineups:[lineup],account:job.account,roster:DATA.roster,effects:DATA.effects});}
   catch(error){finish(error);}
+ });
+}
+
+function solveHun13Pair(pair,job){
+ return solveInventoryLineup(pair.combined,job,nodes=>{
+  job.nodes=nodes;
+  renderHun13Result(selectedDungeon());
  });
 }
 
@@ -954,6 +961,7 @@ function openHun13Codes(job,row){
 }
 
 function renderDungeonSelection(){
+ window.AtlasPveWorkbench?.refresh();
  if(!$('dungeon-workbench').open)return;
  const dungeon=selectedDungeon();
  const selection=checkedDungeonLineups(dungeon);
@@ -972,13 +980,14 @@ function renderDungeonSelection(){
  const isHun13=dungeon?.id===103,workingHun13=hun13Busy();
  $('dungeon-hun13-rounds').hidden=!isHun13||!canReplay;
  const pair=isHun13&&canReplay?hun13Selection(checked,!!(busy||workingStock||workingHun13)):null;
- $('dungeon-match-selected').disabled=!account()||!checked.length||!!busy||workingStock||workingHun13||
+ const pveBusy=window.AtlasPveWorkbench?.busy();
+ $('dungeon-match-selected').disabled=!account()||!checked.length||!!busy||workingStock||workingHun13||pveBusy||
   !!(pair&&pair.some(lineup=>!lineup))||!!offerRune&&(runeStatusPending||dungeonStopPending);
  $('dungeon-match-selected').textContent=pair?'精算两波并复跑':canReplay?'精算并离线复跑':'精算勾选阵容';
  const rows=selectedBattleRows(selection),unknown=rows.some(row=>row?.verdict==='unknown');
  const offerStock=canReplay&&account()&&!busy&&!workingStock&&!workingHun13&&(isHun13?canSearchHun13(selection):originalsFailed(selection));
  $('dungeon-search-stock').hidden=!offerStock;
- $('dungeon-search-stock').disabled=dungeonStopPending;
+ $('dungeon-search-stock').disabled=!!(dungeonStopPending||pveBusy);
  const stop=$('dungeon-stop-battle');
  stop.hidden=!(workingStock||busy&&!dungeonBattle.cancelled||workingHun13&&!dungeonHun13.cancelled);
  stop.textContent=dungeonBattle?.activeFullSeedAudit||dungeonStock?.activeFullSeedAudit||dungeonHun13?.activeFullSeedAudit?'暂停全种子验收':'停止离线复跑';
@@ -1479,6 +1488,7 @@ function renderSelection(ls=filteredLineups()){
  if(account()&&count&&!targetSaving){const targets=targetIds();$('target-add').disabled=[...selectedLineups].every(id=>targets.has(id));$('target-remove').disabled=![...selectedLineups].some(id=>targets.has(id));}
  $('gap-statistics').disabled=!account()||!ls.length;
  document.querySelectorAll('[data-select-lineup]').forEach(input=>{input.checked=selectedLineups.has(input.dataset.selectLineup);input.closest('.lineup-card').classList.toggle('is-selected',input.checked);});
+ window.AtlasPveWorkbench?.refresh();
 }
 async function saveTargets(remove=false){
  const active=account();if(!active||targetSaving||!selectedLineups.size)return;
@@ -1642,7 +1652,7 @@ function stopMatch({keepDungeon=false}={}){
  for(const id of matchJobIds){const r=matchResults[id];if(r&&!r.completed)r.proof={...r.proof,state:'stopped'};}
  matchJobIds.clear();$('cancel-match').hidden=true;$('match-all').disabled=!account();
  if(!$('match-progress').hidden)$('match-progress').textContent='精算已停止，已有结果保留';
- if(!keepDungeon)stopDungeonBattle(true);
+ if(!keepDungeon){window.AtlasPveWorkbench?.reset();stopDungeonBattle(true);}
  renderGapStatistics();
 }
 function showSamples(){openDialog('官方图片小样','采集后已核对资源类型；没有把立绘、头像或书签当作原生卡面',`<div class="sample-grid">${[['608','art-before','png','石长姬 · 未觉醒官方立绘','830 × 696'],['608','art-after','png','石长姬 · 觉醒官方立绘','830 × 696'],['217','portrait-before','jpg','大天狗 · 官方头像','90 × 90'],['217','bookmark','png','大天狗 · 官方书签','73 × 240']].map(([id,f,ext,name,size])=>`<div><img src="../data/images/${id}/${f}.${ext}" alt="${name}"><h3>${name}</h3><p>${size}</p></div>`).join('')}</div><div class="notice">透明立绘在矩形容器中完整展示，原图未裁切、未拉伸。原生卡面覆盖为 0；双形态图片没有互相复制填补。</div>`);}

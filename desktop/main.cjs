@@ -15,7 +15,8 @@ const {createRuneRunner}=require('./rune-runner.cjs');
 const {createRuneFloorRunner}=require('./rune-floor-runner.cjs');
 const {createSeedEvidenceRunner}=require('./rune-seed-evidence.cjs');
 const {createHun13Runner}=require('./hun13-runner.cjs');
-let win, official, taSession, queryQueue, runeRunner, runeFloor, hun13, seedEvidence, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
+const {createPveStageRunner}=require('./pve-stage-runner.cjs');
+let win, official, taSession, queryQueue, runeRunner, runeFloor, hun13, pveStage, seedEvidence, loginEpoch=0, loggedIn=false, selectedRole='', loginRiskAccepted=false;
 const isSmoke = process.argv.includes('--smoke');
 // Branding changes must never create a different personal inventory directory.
 if (!isSmoke) app.setPath('userData',path.join(app.getPath('appData'),'onmyoji-lineup-atlas'));
@@ -71,6 +72,7 @@ app.whenReady().then(async () => {
   runeRunner=createRuneRunner(runeRuntime);
   runeFloor=createRuneFloorRunner(runeRuntime);
   hun13=createHun13Runner(runeRuntime);
+  pveStage=createPveStageRunner(runeRuntime);
   const evidenceDirectory=path.join(app.getPath('userData'),'rune-seed-evidence');
   const seedRunners=new Map([[101,runeFloor],[102,runeRunner],[103,hun13]].map(([dungeonId,runner])=>[dungeonId,
     createSeedEvidenceRunner({...runeRuntime,dungeonId,runner,directory:evidenceDirectory}),
@@ -103,6 +105,9 @@ app.whenReady().then(async () => {
     if(options?.dungeonId!=null&&options.dungeonId!==102)throw Error('当前副本未接入原版复跑');
     return runeRunner.run(plan,options);
   }));
+  handleLocal('pve-stage-status',()=>pveStage.status());
+  handleLocal('pve-stage-run',(_check,plan,options)=>runNativeReplay(()=>pveStage.run(plan,options)));
+  handleLocal('pve-stage-stop',()=>pveStage.stop());
   handleLocal('rune-battle-verify-random',(_check,plan,seed,requestId)=>{
     if(!Number.isSafeInteger(requestId)||requestId<1)throw Error('无效的复跑请求');
     return runNativeReplay(()=>runeRunner.verifyRandom(plan,seed,progress=>{
@@ -119,7 +124,7 @@ app.whenReady().then(async () => {
   });
   const stopBattle=()=>seedEvidence.stop()||hun13.stop()||runeFloor.stop()||runeRunner.stop();
   handleLocal('rune-battle-stop',stopBattle);
-  win.webContents.on('dom-ready',()=>{void stopBattle();});
+  win.webContents.on('dom-ready',()=>{void (pveStage.stop()||stopBattle());});
   handleLocal('dungeon-catalog-choose', async check => {
     const selection = await dialog.showOpenDialog(win, { title: '选择包含 index.json 的副本资料目录', properties: ['openDirectory'] });
     if (selection.canceled) return null;
@@ -217,7 +222,7 @@ app.whenReady().then(async () => {
 });
 app.on('before-quit',event=>{
   official?.cancel();taSession?.stop();background?.close();
-  const pending=seedEvidence?.stop()||hun13?.stop()||runeFloor?.stop()||runeRunner?.stop();
+  const pending=pveStage?.stop()||seedEvidence?.stop()||hun13?.stop()||runeFloor?.stop()||runeRunner?.stop();
   if(pending){event.preventDefault();void pending.then(()=>app.quit());}
 });
 app.on('window-all-closed',()=>app.quit());
