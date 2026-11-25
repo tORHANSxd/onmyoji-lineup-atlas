@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const C=require('../app/core.js');
 const G=require('../app/game-config.js');
-const {candidates,teamKey}=require('../app/rune-search.js');
+const {candidates,teamKey,sampleSeeds}=require('../app/rune-search.js');
 const data=require('../data/bundle.json');
 
 function inventory(){
@@ -37,10 +37,21 @@ test('魂王独立于阵容码生成队伍，只使用互不重复的库存实�
  assert.ok(souls.every(row=>row===account.souls[row.id].raw));
  assert.ok(members.every(row=>new Set(row.souls.map(q=>q.slot)).size===6));
  assert.deepEqual(candidate.plan.onmyoji.skinfo,[[1003,5],[1008,5],[1011,5]]);
+ assert.equal(candidate.plan.onmyoji.aiSkill,2);
  assert.equal(candidate.plan.spirit.id,100);
  assert.equal(Object.hasOwn(candidate.plan.spirit,'uid'),false);
  const existing=found.map(row=>teamKey(row.plan));
  assert.ok(candidates(account,data,existing).every(row=>!existing.includes(teamKey(row.plan))));
+});
+
+test('魂王有可用群疗式神时优先试能抵消低生命惩罚的配搭',()=>{
+ const raw=inventory();
+ raw.heroes['hero-238']={heroId:238,level:40,star:6,awake:1,equips:[],skinfo:[[2381,5],[2382,5],[2383,5]]};
+ const [first]=candidates(C.parseAccount(raw),data);
+ assert.match(first.title,/^群疗/);
+ assert.ok(first.heroIds.includes(238));
+ assert.equal(first.plan.members[first.heroIds.indexOf(238)].aiSkill,3);
+ assert.deepEqual(sampleSeeds,[0,1,2,3,7,42]);
 });
 
 test('不足五名可用式神时不补造角色和配装',()=>{

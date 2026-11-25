@@ -19,7 +19,7 @@ def run(args):
     from game_resources import Bindict, decode_module, sha256, write_json
     from original_battle import RuntimeModules, no_transport
     from original_host import Host
-    from rune_replay import read_models, sync_windows
+    from rune_replay import monster_waves, read_models, sync_windows
     from rune_team import battle_spirit, selected_team
 
     catalog = run_path(str(Path(__file__).with_name("extract-dungeon-catalog.py")))
@@ -321,6 +321,10 @@ def run(args):
         "moduleSHA256": {row["module"]: row["marshalSHA256"] for row in modules.trace},
     }
     if replay:
+        try:
+            report["monsterHealth"] = monster_waves(replay)
+        except (KeyError, IndexError, TypeError, ValueError) as error:
+            report["monsterHealthError"] = str(error)
         try:
             report["animationSync"] = sync_windows(replay, entity_models, read_models(models, model_hashes))
         except (OSError, ValueError) as error:

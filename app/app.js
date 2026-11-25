@@ -152,6 +152,19 @@ function describeBattle(report){
  return [outcome,`通过 ${report.wavesCleared} 波`,`共 ${report.bouts} 回合`,...time,
   ...(spirit?[`已佩戴 ${template?.name||'契灵 '+spirit.id} ${spirit.star} 星 ${spirit.level} 级`]:[])].join(' · ');
 }
+function monsterHealthMarkup(waves,dungeon){
+ const display=new Intl.NumberFormat('zh-CN',{maximumFractionDigits:0});
+ const value=hp=>Number.isFinite(hp)?display.format(hp):'—';
+ return waves.map(wave=>{
+  const named=dungeon.waves[wave.wave-1]||[];
+  const entries=wave.monsters.map(monster=>{
+   const name=named.find(unit=>unit.id===monster.id)?.name||`怪物 ${monster.id}`;
+   return `<li><strong>${esc(name)}</strong><span>开场 ${value(monster.initialHp)} · 最低 ${value(monster.lowestHp)} · 结束 ${value(monster.lastHp)}</span>
+    ${monster.regainedHp?`<span>生命回升 ${value(monster.regainedHp)}${monster.zeroToAlive?` · 回到正值 ${monster.zeroToAlive} 次`:''}</span>`:''}</li>`;
+  }).join('');
+  return `<li><strong>第 ${wave.wave} 波 · ${wave.cleared?'通过':'截至本次记录'}</strong><ul>${entries}</ul></li>`;
+ }).join('');
+}
 function renderDungeonBattle(dungeon){
  const body=$('dungeon-battle-results'),job=dungeonBattle;
  const shown=hasRuneRuntime(dungeon)&&job&&job.account===account();
@@ -206,7 +219,7 @@ function originalsTried(selection){
  return job.rows.every(row=>allChecked.has(row.lineup.id)&&row.state==='finished'&&row.report?.outcome!=='win');
 }
 function stockBusy(job){return !!job&&job.account===account()&&job.running&&!job.cancelled;}
-function stockPasses(row){return row.samples.length===2&&row.samples.every(sample=>sample.completed&&sample.outcome==='win');}
+function stockPasses(row){return row.samples.length===AtlasRuneSearch.sampleSeeds.length&&row.samples.every(sample=>sample.completed&&sample.outcome==='win');}
 function renderDungeonStock(dungeon){
  const panel=$('dungeon-stock-results'),job=dungeonStock;
  panel.hidden=!hasRuneRuntime(dungeon)||!job||job.account!==account();
@@ -215,17 +228,18 @@ function renderDungeonStock(dungeon){
  const status=job.cancelled?'已停止，保留已完成的复跑。':job.error||(
   job.searching?'正在按输出、供火和辅助技能挑选式神与御魂…':
   !job.rows.length?'当前库存未找到可组成的备选队伍。':
-  `已复跑 ${completed} / ${job.rows.length} 队 · ${passes} 队通过两组种子${job.running?'':'。'}`);
+  `已复跑 ${completed} / ${job.rows.length} 队 · ${passes} 队通过全部 ${AtlasRuneSearch.sampleSeeds.length} 个采样种子${job.running?'':'。'}`);
  const key=JSON.stringify([status,job.rows.map(row=>[row.index,row.heroIds,row.state,row.samples,row.error])]);
  if(key===dungeonStockRenderKey)return;
  dungeonStockRenderKey=key;$('dungeon-stock-status').textContent=status;
- const list=$('dungeon-stock-list'),opened=new Set([...list.querySelectorAll('details[open]')].map(el=>el.dataset.stockGear));
- const focus=document.activeElement.closest('summary')?.parentElement?.dataset.stockGear;
+ const list=$('dungeon-stock-list'),opened=new Set([...list.querySelectorAll('details[open]')].map(el=>el.dataset.stockSection));
+ const focus=document.activeElement.closest('summary')?.parentElement?.dataset.stockSection;
  const names=DATA.gameConfig.heroes;
  const worstSample=row=>Math.max(...row.samples.map(sample=>sample.engineSeconds));
  const rows=[...job.rows].sort((a,b)=>Number(stockPasses(b))-Number(stockPasses(a))||
   (stockPasses(a)&&stockPasses(b)?worstSample(a)-worstSample(b):0));
  list.innerHTML=rows.map(row=>{
+  const section=name=>`data-stock-section="${row.index}-${name}"${opened.has(`${row.index}-${name}`)?' open':''}`;
   const summary=row.error||{waiting:'等待复跑',running:'正在原版引擎复跑',cancelled:'已停止'}[row.state]||'';
   const members=row.heroIds.map((id,index)=>{
    const m={kind:'shikigami',name:names[id]?.name,shikigamiId:String(id),awakening:row.plan.members[index].hero.awake};
@@ -235,6 +249,8 @@ function renderDungeonStock(dungeon){
    const time=sample.completed?` · 引擎 ${sample.engineSeconds.toFixed(2)} 秒`:'';
    return `<li>种子 ${sample.seed} · ${esc(describeBattle(sample)+time)}</li>`;
   }).join('');
+  const health=row.samples.filter(sample=>sample.monsterHealth?.length).map(sample=>
+   `<li><strong>种子 ${sample.seed}</strong><ul>${monsterHealthMarkup(sample.monsterHealth,dungeon)}</ul></li>`).join('');
   const builds=row.plan.members.map((member,index)=>{
    const panel=row.panels[index],speed=panel.speed.toFixed(2),crit=(panel.crit*100).toFixed(1);
    const sets=new Map();
@@ -248,9 +264,10 @@ function renderDungeonStock(dungeon){
   return `<li class="dungeon-stock-card"><strong>${esc(row.title)}</strong><ul class="dungeon-stock-members" aria-label="式神">${members}</ul>
    ${samples?`<ul class="dungeon-stock-samples" aria-label="复跑结果">${samples}</ul>`:''}
    ${summary?`<p class="caption">${esc(summary)}</p>`:''}
-   <details data-stock-gear="${row.index}"${opened.has(String(row.index))?' open':''}><summary>查看御魂搭配</summary><ul class="dungeon-stock-builds">${builds}</ul></details></li>`;
+   <details ${section('gear')}><summary>查看御魂搭配</summary><ul class="dungeon-stock-builds">${builds}</ul></details>
+   ${health?`<details ${section('health')}><summary>查看各波敌方生命</summary><ul class="dungeon-stock-health">${health}</ul></details>`:''}</li>`;
  }).join('');
- if(focus!==undefined)list.querySelector(`[data-stock-gear="${focus}"] summary`)?.focus();
+ if(focus!==undefined)list.querySelector(`[data-stock-section="${CSS.escape(focus)}"] summary`)?.focus();
 }
 function generateDungeonStock(job){
  const candidates=new Worker('rune-search-worker.js');
@@ -278,7 +295,7 @@ async function searchDungeonStock(){
    if(job.cancelled)break;
    row.state='running';renderDungeonSelection();
    try{
-    for(const seed of [0,1]){
+    for(const seed of AtlasRuneSearch.sampleSeeds){
      const report=await window.runeBattle.run(row.plan,{seed,fixedStep:true});
      if(job.cancelled)break;
      row.samples.push(report);renderDungeonSelection();

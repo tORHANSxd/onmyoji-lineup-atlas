@@ -39,8 +39,11 @@ function summary(report,seed,fixedStep){
  const clock=report.clock;
  if(clock?.mode!==(fixedStep?'client-record-step':'host-wall')||clock.stepMs!==(fixedStep?20:null)||
   !Number.isFinite(clock.elapsedEngineSeconds)||clock.elapsedEngineSeconds<0)throw Error('客户端复跑时钟与所选条件不符');
+ const health=report.monsterHealth;
+ const monsterHealth=health?.scope==='original-monster-hp-updates'&&health.total===3&&Array.isArray(health.waves)&&
+  health.waves.filter(wave=>wave.cleared).length===report.wavesCleared?health.waves:null;
  return {seed,completed:report.completed,outcome:report.outcome,wavesCleared:report.wavesCleared,bouts:report.bouts,
-  engineSeconds:clock.elapsedEngineSeconds,
+  engineSeconds:clock.elapsedEngineSeconds,monsterHealth,
   randomBranchesVerified:false,overlapMs:Number.isFinite(sync?.overlapMs)?sync.overlapMs:null,
   unresolvedActions:Array.isArray(sync?.unresolved)?sync.unresolved.length:null,
   spirit:spirit?{id:spirit.id,star:spirit.star,level:spirit.level}:null};

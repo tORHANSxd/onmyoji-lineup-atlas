@@ -319,7 +319,9 @@ async function main(){
    winner??=ids;calls.push({ids,options});
    const win=winner===ids;
    return {seed:options.seed,engineSeconds:13+options.seed,completed:true,outcome:win?'win':'loss',
-    wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0};
+    wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,monsterHealth:[
+     {wave:2,cleared:win,monsters:[{id:4741297,initialHp:198501,lowestHp:5000,lastHp:win?0:120000,regainedHp:135000,zeroToAlive:0}]}
+    ]};
   };
   try{
    await ui(`stopMatch();STATE={...${JSON.stringify(blank())},lineups:[${JSON.stringify(lineup)}],accounts:[C.parseAccount(${JSON.stringify({...raw,heroes,hero_equips})})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-stock-search');renderSelection();`);
@@ -330,14 +332,16 @@ async function main(){
    assert.match(await ui('$("dungeon-match-status").textContent'),/勾选的阵容均未取得通关结果/);
    await ui('$("dungeon-search-stock").click()');
    await until('dungeonStock&&!dungeonStock.running',20000);
-   assert.deepEqual(calls.slice(0,2).map(x=>x.options),[{seed:0,fixedStep:true},{seed:1,fixedStep:true}]);
+   assert.deepEqual(calls.filter(x=>x.ids===winner).map(x=>x.options),[0,1,2,3,7,42].map(seed=>({seed,fixedStep:true})));
    assert.ok(calls.some(x=>x.ids!==winner),'需要至少一个落败的合成候选');
    const top=await ui('document.querySelector(".dungeon-stock-card").textContent');
-   assert.match(top,/种子 0.*本次复跑通关.*种子 1.*本次复跑通关/s);
+   assert.match(top,/种子 0.*本次复跑通关.*种子 42.*本次复跑通关/s);
    assert.match(await ui('$("dungeon-stock-list").textContent'),/本次复跑失败/);
    assert.match(await ui('$("dungeon-stock-results").textContent'),/所有随机分支仍待验证/);
    await ui('document.querySelector(".dungeon-stock-card summary").click()');
    assert.match(await ui('document.querySelector(".dungeon-stock-card details[open]").textContent'),/速度.*暴击.*×/s);
+   await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health] summary").click()');
+   assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health][open]").textContent'),/日和坊.*最低 5,000.*生命回升 135,000/s);
    await ui('$("dungeon-stock-results").scrollIntoView({block:"start"})');await capture('dungeon-stock-search');
    win.setContentSize(720,960);
    try{assert.equal(await ui('$("dungeon-stock-results").scrollWidth<=$("dungeon-stock-results").clientWidth+2'),true);}
