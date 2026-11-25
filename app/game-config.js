@@ -97,5 +97,5 @@ function validate(data,input){
   }
  });return input;
 }
-return {levels,skill,slots,defaultMember,memberSkills,skillLabel,aiChoices,aiName,markLevels,spiritAttributes,runeOpeningStats,validate};
+return {levels,skill,slots,defaultMember,memberSkills,skillOrder,skillLabel,aiChoices,aiName,markLevels,spiritAttributes,runeOpeningStats,validate};
 });

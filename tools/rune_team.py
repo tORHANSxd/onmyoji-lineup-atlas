@@ -30,7 +30,12 @@ def hero_data(row, *, onmyoji):
             or any(not isinstance(skill, list) or len(skill) != 2 or not integer(skill[0], 1, 99999999)
                    or not integer(skill[1], 1, 10) for skill in skills)):
         raise ValueError("The battle selection needs the exact level, star, awakening and skill levels")
-    return {"heroId": hero_id, "equips": [], "level": level, "star": star, "awake": awake, "skinfo": skills}
+    skill_ids = [skill[0] for skill in skills]
+    selected = row.get("selectSkills", skill_ids)
+    if not isinstance(selected, list) or any(type(skill) is not int or skill not in skill_ids for skill in selected):
+        raise ValueError("Selected skills must appear in the skill inventory")
+    return {"heroId": hero_id, "equips": [], "level": level, "star": star, "awake": awake,
+            "skinfo": skills, "selectSkills": selected}
 
 
 def equip_data(row, suit_ids):
@@ -65,7 +70,8 @@ def selected_team(plan, suits):
     members = plan["members"]
     if not isinstance(members, list) or not 1 <= len(members) <= 5:
         raise ValueError("Select one to five shikigami")
-    fighters, equips = {}, {}
+    fighters, equips, auto_skills = {}, {}, {}
+    auto_skills["selected-onmyoji"] = auto_setting(plan["onmyoji"])
     seen_heroes, seen_souls = set(), set()
     for member_index, member in enumerate(members, 1):
         instance_id = member["instanceId"]
@@ -84,5 +90,14 @@ def selected_team(plan, suits):
             alias = f"member-{member_index}-soul-{slot}"
             equips[alias] = equip
             hero["equips"].append(alias)
-        fighters[f"member-{member_index}"] = hero
-    return actor, fighters, equips
+        alias = f"member-{member_index}"
+        fighters[alias] = hero
+        auto_skills[alias] = auto_setting(member)
+    return actor, fighters, equips, auto_skills
+
+
+def auto_setting(row):
+    setting = row.get("aiSkill", 0)
+    if not integer(setting, 0, 11) and not integer(setting, 33831, 33844):
+        raise ValueError("Unknown automatic skill selection")
+    return setting

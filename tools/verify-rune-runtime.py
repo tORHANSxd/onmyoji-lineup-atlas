@@ -35,9 +35,12 @@ def run(args):
     team_scope = "synthetic-qingming-zhoushen"
     team = None
     if args.team:
-        bundle_path = Path(__file__).resolve().parent.parent / "data/bundle.json"
-        bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
-        team = selected_team(json.loads(args.team.read_text(encoding="utf-8-sig")), bundle["suits"])
+        if args.suit_index:
+            suits = json.loads(args.suit_index.read_text(encoding="utf-8"))
+        else:
+            bundle_path = Path(__file__).resolve().parent.parent / "data/bundle.json"
+            suits = json.loads(bundle_path.read_text(encoding="utf-8"))["suits"]
+        team = selected_team(json.loads(args.team.read_text(encoding="utf-8-sig")), suits)
         team_scope = "selected-inventory"
     work = output.parent / (output.stem + "-work")
     models = work / "src/model_info"
@@ -140,10 +143,11 @@ def run(args):
         return {"heroId": hero_id, "heroUid": uid, "level": level, "attr": [0] * 8, "suit": []}
 
     avatar = BattleAvatar()
+    auto_skills = {}
     if team:
         from DynamicConfigData import DATA_HERO
 
-        actor, fighters, equipment = team
+        actor, fighters, equipment, auto_skills = team
         if any(hero["heroId"] not in DATA_HERO.data for hero in (actor, *fighters.values())):
             raise ValueError("Unknown hero in this client's resources")
         avatar.init_from_dict({"heroes": {**fighters, "selected-onmyoji": actor}, "yysid": actor["heroId"]})
@@ -154,6 +158,15 @@ def run(args):
         avatar.init_from_dict({"heroes_gamble": {**fighters, "fixture-qingming": actor}, "yysid": 10})
     avatar.defaultHeros = list(fighters)
     engine = RuneFbEngine({"fbId": 102, "seed": 0})
+    winner = None
+    battle_ended = engine.doBattleEnded
+
+    def observe_end(win_camp):
+        nonlocal winner
+        battle_ended(win_camp)
+        winner = win_camp
+
+    engine.doBattleEnded = observe_end
     entity_models = {}
     create_entity = engine.onEntityCreated
 
@@ -183,6 +196,7 @@ def run(args):
 
     deadline = time.monotonic() + args.timeout
     phases = [engine.battleState]
+    selected_settings = []
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
         if host.oracle.unsupported:
@@ -190,6 +204,22 @@ def run(args):
         if phases[-1] != engine.battleState:
             phases.append(engine.battleState)
         if engine.battleState == const.BattleState.BS_SELETING_HERO and not controller.selectHeroOk:
+            pending = dict(auto_skills)
+            for entity in engine.heroEntities.values():
+                if entity.ownerController is not controller:
+                    continue
+                alias = entity.HeroComp.heroData.heroUid
+                if alias not in pending:
+                    continue
+                setting = pending.pop(alias)
+                if setting:
+                    engine.op_setAutoSkill(controller, entity.uid, setting)
+                    if controller.autoSkill.get(entity.uid) != setting:
+                        raise RuntimeError("The original engine did not apply the selected automatic skill")
+                selected_settings.append({"member": alias, "heroId": entity.protoid,
+                                          "skills": list(entity.SkillMgrComp.skillList), "aiSkill": setting})
+            if pending:
+                raise RuntimeError("The original engine did not create every selected team member")
             engine.op_setAuto(controller, True)
             engine.op_selectHeroOk(controller)
         time.sleep(.02)
@@ -204,6 +234,8 @@ def run(args):
         "resourceVersion": resource_version, "nativeSHA256": native_hash, "dungeonId": 102,
         "fixture": team_scope, "seed": engine.seed,
         "completed": completed, "phases": [names[state] for state in phases],
+        "outcome": "win" if winner == const.CampFlag.CAMP1 else "loss" if winner == const.CampFlag.CAMP2 else "unknown",
+        "selectedSettings": selected_settings,
         "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,
         "remainingPlayers": len(engine.heroEntities), "remainingEnemies": len(engine.monsterEntities),
         "randomCalls": engine.random_count, "recordLines": len(replay.splitlines()), "recordSHA256": sha256(replay),
@@ -227,6 +259,7 @@ if __name__ == "__main__":
     parser.add_argument("--script-index", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--team", type=Path, help="Explicit selected roster and soul rows (see DUNGEON_CATALOG.md)")
+    parser.add_argument("--suit-index", type=Path, help="Override the repository's suit ID to name mapping")
     parser.add_argument("--timeout", type=int, default=75)
     args = parser.parse_args()
     if args.timeout < 1:

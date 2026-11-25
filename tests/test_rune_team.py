@@ -19,10 +19,13 @@ def plan():
 class SelectedTeamTests(unittest.TestCase):
     def test_preserves_reported_stats_and_uses_local_aliases(self):
         raw = plan()
+        raw['members'][0]['aiSkill'] = 11
         before = copy.deepcopy(raw)
-        actor, fighters, equips = selected_team(raw, {'300006': '涅槃火'})
+        actor, fighters, equips, auto_skills = selected_team(raw, {'300006': '涅槃火'})
         self.assertEqual(actor['heroId'], 11)
         self.assertEqual(fighters['member-1']['heroId'], 408)
+        self.assertEqual(fighters['member-1']['selectSkills'], [40801])
+        self.assertEqual(auto_skills, {'selected-onmyoji': 0, 'member-1': 11})
         self.assertEqual(fighters['member-1']['equips'], ['member-1-soul-2'])
         soul = equips['member-1-soul-2']
         self.assertEqual(soul.suitId, 300006)
