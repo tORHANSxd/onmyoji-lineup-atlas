@@ -69,7 +69,7 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 #dungeon-stock-results{border-top:1px solid var(--line);margin:14px 0;padding-top:12px}
 #dungeon-stock-title{margin:0 0 6px;font-size:16px}
 .dungeon-stock-list,.dungeon-stock-members,.dungeon-stock-samples{list-style:none;padding:0}
-.dungeon-stock-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:10px;margin:10px 0}
+.dungeon-stock-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));align-items:start;gap:10px;margin:10px 0}
 .dungeon-stock-card{padding:12px;border:1px solid var(--line);border-radius:8px;min-width:0}
 .dungeon-stock-members{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .dungeon-stock-members li{display:grid;justify-items:center;gap:3px;font-size:12px}

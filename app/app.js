@@ -159,7 +159,8 @@ function monsterHealthMarkup(waves,dungeon){
   const named=dungeon.waves[wave.wave-1]||[];
   const entries=wave.monsters.map(monster=>{
    const name=named.find(unit=>unit.id===monster.id)?.name||`怪物 ${monster.id}`;
-   return `<li><strong>${esc(name)}</strong><span>开场 ${value(monster.initialHp)} · 最低 ${value(monster.lowestHp)} · 结束 ${value(monster.lastHp)}</span>
+   const position=Number.isSafeInteger(monster.position)?` · ${monster.position} 号位`:'';
+   return `<li><strong>${esc(name+position)}</strong><span>开场 ${value(monster.initialHp)} · 最低 ${value(monster.lowestHp)} · 结束 ${value(monster.lastHp)}</span>
     ${monster.regainedHp?`<span>生命回升 ${value(monster.regainedHp)}${monster.zeroToAlive?` · 回到正值 ${monster.zeroToAlive} 次`:''}</span>`:''}</li>`;
   }).join('');
   return `<li><strong>第 ${wave.wave} 波 · ${wave.cleared?'通过':'截至本次记录'}</strong><ul>${entries}</ul></li>`;

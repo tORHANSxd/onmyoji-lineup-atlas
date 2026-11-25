@@ -53,7 +53,7 @@ def monster_waves(record):
                 raise ValueError("The replay reused a recorded monster identity")
             wave = waves.setdefault(current, {"wave": current, "cleared": False, "startMs": timestamp,
                                               "endMs": None, "monsters": []})
-            monster = {"id": info["id"], "position": info["IndexCamp"], "initialHp": None,
+            monster = {"id": info["id"], "position": info["Index"], "initialHp": None,
                        "lowestHp": None, "lastHp": None, "regainedHp": 0, "zeroToAlive": 0}
             monsters[uid] = monster
             wave["monsters"].append(monster)
