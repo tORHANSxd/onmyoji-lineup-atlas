@@ -1,4 +1,4 @@
-"""Replay selected inventory through the client's default single-player MODE_PVE engine."""
+"""Replay selected inventory in the client's ordinary solo PvE or Awakening engine."""
 
 import argparse
 import faulthandler
@@ -40,21 +40,29 @@ def replay(args, runtime, work):
     from battleengine.BattleController import LocalBattleController
     from battleengine.BattleRecorder import BattleRecorderRune
     from battleengine.battle_tools.RandomRecord import RandomRecord
-    from battleengine.engine.MonstarGuanKaEngine import MonstarGuanKaEngine, const
-    from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA
+    if args.mode == 29:
+        from awake_stage import awake_stage
+        from battleengine.engine.AwakeFbEngine import const
+        from DynamicConfigData import DATA_HERO
 
-    stage_id = str(args.stage)
-    stage = DATA_PVE_STAGE_DATA.data.get(stage_id)
-    if stage is None:
-        raise ValueError(f"Unknown native PvE stage {stage_id}")
-    group_id = stage.get("groupid")
-    group = BattleMonstersInfo.data.get(group_id)
-    if not group or not group.get("MonstersInfos"):
-        raise ValueError(f"Stage {stage_id} has no usable original enemy formation ({group_id})")
-    if any(stage.get(field) for field in ("no_yys", "replace_yysid", "isplot", "sl_file")):
-        raise ValueError(f"Stage {stage_id} uses a scripted or restricted roster")
-    if stage.get("shishentotal") != len(fighters):
-        raise ValueError(f"Stage {stage_id} requires exactly {stage.get('shishentotal')} shikigami")
+        if len(fighters) != 5:
+            raise ValueError("Ordinary solo Awakening requires five shikigami")
+    else:
+        from battleengine.engine.MonstarGuanKaEngine import MonstarGuanKaEngine, const
+        from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA
+
+        stage_id = str(args.stage)
+        stage = DATA_PVE_STAGE_DATA.data.get(stage_id)
+        if stage is None:
+            raise ValueError(f"Unknown native PvE stage {stage_id}")
+        group_id = stage.get("groupid")
+        group = BattleMonstersInfo.data.get(group_id)
+        if not group or not group.get("MonstersInfos"):
+            raise ValueError(f"Stage {stage_id} has no usable original enemy formation ({group_id})")
+        if any(stage.get(field) for field in ("no_yys", "replace_yysid", "isplot", "sl_file")):
+            raise ValueError(f"Stage {stage_id} uses a scripted or restricted roster")
+        if stage.get("shishentotal") != len(fighters):
+            raise ValueError(f"Stage {stage_id} requires exactly {stage.get('shishentotal')} shikigami")
     if any(hero["heroId"] not in DATA_HERO.data for hero in (actor, *fighters.values())):
         raise ValueError("Unknown inventory character")
 
@@ -77,10 +85,17 @@ def replay(args, runtime, work):
     avatar.inventory.update(inventory)
     avatar.defaultHeros = list(fighters)
 
-    engine = MonstarGuanKaEngine({"pve_data_flag": stage_id})
-    if engine.isDramaGuanKa or not engine.selectHeroEnabled:
-        raise ValueError(f"Stage {stage_id} requires the original story roster")
-    engine.battleMode = const.BattleMode.MODE_PVE
+    if args.mode == 29:
+        engine, stage, enemy_ids = awake_stage(args.stage)
+        group_id, wave_count = stage["monsterid"], 1
+        route = "awake-ordinary-solo"
+    else:
+        engine = MonstarGuanKaEngine({"pve_data_flag": stage_id})
+        if engine.isDramaGuanKa or not engine.selectHeroEnabled:
+            raise ValueError(f"Stage {stage_id} requires the original story roster")
+        engine.battleMode = const.BattleMode.MODE_PVE
+        wave_count = len(group["MonstersInfos"])
+        route = "mode-pve-default-solo"
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
     engine.seed = args.seed
     generator = engine.random
@@ -121,10 +136,11 @@ def replay(args, runtime, work):
     engine.onEntityCreated = observe_created
     engine._time, engine.delta_time = 1000.0, .020
     engine.init()
-    if (engine.seed != args.seed or engine.random is not random_record or engine.monstergroup != group_id
-            or engine.monsterWaveCount != len(group["MonstersInfos"])):
+    formation_matches = engine.bossId == enemy_ids if args.mode == 29 else engine.monstergroup == group_id
+    if (engine.seed != args.seed or engine.random is not random_record or engine.battleMode != args.mode
+            or engine.monsterWaveCount != wave_count or not formation_matches):
         raise RuntimeError("The original engine initialized a different battle")
-    recorder = BattleRecorderRune(engine, controller)
+    recorder = engine.battleRecorder or BattleRecorderRune(engine, controller)
     engine.battleRecorder = recorder
     engine.op_init(controller, actor["heroId"], list(fighters), [])
     engine.battleState = const.BattleState.BS_LOADING
@@ -170,8 +186,8 @@ def replay(args, runtime, work):
     record = "".join(recorder.data_list).encode("utf-8")
     outcome = {const.CampFlag.CAMP1: "win", const.CampFlag.CAMP2: "loss"}.get(winner, "unknown")
     completed = engine.battleState == const.BattleState.BS_OVER and outcome != "unknown"
-    module = "battleengine.engine.MonstarGuanKaEngine"
-    report = {**evidence, "route": "mode-pve-default-solo", "stageId": args.stage, "groupId": group_id,
+    module = "battleengine.engine." + type(engine).__name__
+    report = {**evidence, "route": route, "stageId": args.stage, "groupId": group_id,
               "engineClass": type(engine).__name__, "engineSHA256": modules.rows[module]["marshalSHA256"],
               "battleMode": engine.battleMode, "sceneId": engine.combineSceneInfoId, "seed": engine.seed,
               "fixedStepMs": 20, "teamSHA256": sha256(team_bytes), "suitIndexSHA256": sha256(suit_bytes),
@@ -199,6 +215,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
+    parser.add_argument("--mode", type=int, choices=(3, 29), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     args = parser.parse_args()

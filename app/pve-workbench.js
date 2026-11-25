@@ -17,21 +17,23 @@
  const exhausted=selected=>job?.originalsComplete&&matchesCurrentSelection(selected);
  const busy=()=>!!(job?.running||stopping);
  const active=run=>job===run&&pane===run.pane&&!run.cancelled&&DATA===run.data&&usesDungeonInventory(run);
+ const ready=()=>runtime?.available&&runtime.resourceVersion===pane.version&&
+  (runtime.battleModes??[3]).includes(pane.battleMode??3);
 
  function update(){
   if(!pane)return;
   const selected=checkedLineups(),hasAccount=!!account(),blocked=runeBusy();
-  const ready=runtime?.available&&runtime.resourceVersion===pane.version;
+  const supported=ready();
   const running=job?.running===true;
   pane.start.hidden=!selected.length;
-  pane.start.disabled=!ready||!hasAccount||blocked;
+  pane.start.disabled=!supported||!hasAccount||blocked;
   pane.stock.hidden=selected.length>0&&!exhausted(selected);
-  pane.stock.disabled=!ready||!hasAccount||blocked;
+  pane.stock.disabled=!supported||!hasAccount||blocked;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
   pane.hint.textContent=running?(job.cancelled?'正在停止复跑…':job.message):
-   !ready?(runtime?.reason||(runtime?.available?'副本资料与复跑资源版本不一致。':'正在核对本机复跑资料…')):
+   !supported?(runtime?.reason||(runtime?.available?'本机运行时不支持此版本或战斗模式。':'正在核对本机复跑资料…')):
    !hasAccount?'先导入并选择库存账号。':
    blocked?'已有原版复跑或正在停止，请等待其结束。':
    job?.notice?job.notice:
@@ -68,7 +70,7 @@
   const section=document.createElement('section');
   section.className='encounter-source';
   section.innerHTML=`<h4>用库存离线复跑</h4>
-   <p class="caption">通用 PvE 模式 3 · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子</p>
+   <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子</p>
    <p class="caption" data-pve-status role="status"></p>
    <div class="actions">
     <button class="secondary" type="button" data-pve-start>复跑勾选原码</button>
@@ -110,7 +112,8 @@
    update();
    let report;
    run.native=true;
-   try{report=await api.runPve(plan,{stageId:run.pane.stageId,groupId:run.pane.groupId,seed});}
+   const {stageId,groupId,battleMode}=run.pane;
+   try{report=await api.runPve(plan,{stageId,groupId,seed,...(battleMode?{battleMode}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
    row.samples.push(report);
@@ -164,6 +167,38 @@
   }
  }
 
+ function offerCode(run,row,output){
+  const action=document.createElement('button');
+  action.type='button';
+  action.className='secondary';
+  action.dataset.pveCode='';
+  action.textContent='查看阵容码';
+  const valid=()=>pane===run.pane&&usesDungeonInventory(run)&&
+   !!(job?.rows.includes(row)||job?.previous.includes(row));
+  async function save({create}){
+   if(libraryBusy||bulkBusy)return false;
+   const current=()=>create?valid():STATE.lineups.some(lineup=>lineup.code===output.code);
+   if(!current())return false;
+   const saved=await commitState(state=>{
+    const old=state.lineups.find(lineup=>lineup.code===output.code);
+    if(!create)return {...state,lineups:state.lineups.map(lineup=>
+     lineup===old?{...old,shortCode:output.shortCode}:lineup)};
+    const now=new Date().toISOString();
+    const lineup={...output.lineup,...old,id:old?.id||'user-'+crypto.randomUUID(),sourceKind:'user',
+     shortCode:output.shortCode||old?.shortCode,createdAt:old?.createdAt||now,updatedAt:now};
+    return {...state,lineups:old?state.lineups.map(item=>item===old?lineup:item):[...state.lineups,lineup]};
+   },sessionRevision,null,null,current);
+   if(saved){fillFilters();renderManage();}
+   return saved;
+  }
+  action.onclick=()=>{
+   if(valid())openCandidateCode(output.lineup.title,'觉醒离线采样通过 · 全随机分支待验证',output,{
+    valid,save,savedMessage:'阵容码已保存到阵容库。',
+   });
+  };
+  row.el.append(action);
+ }
+
  async function stockCandidates(run){
   run.message='正在从已导出的库存生成配装…';
   update();
@@ -176,11 +211,24 @@
    row.details.insertAdjacentHTML('beforeend','<p class="caption">备选使用 60 级晴明、满级言灵·星和言灵·守。</p>');
    try{await replay(run,row,item.plan);}
    catch(error){if(active(run))row.state.textContent=runeError(error);}
+   if(!active(run)||row.verdict!=='pass'||!run.pane.codeStageId)continue;
+   try{
+    const request=await AtlasRuneCandidate.awakeTemplate({...item,samples:row.samples},run.data,run.pane);
+    if(!active(run))return;
+    const output=await window.atlas.buildLineup(request);
+    if(!active(run))return;
+    if(output.payload?.code!==output.code)throw Error('阵容码与本地解析结果不一致');
+    const lineup=C.adaptTA(output.payload,run.data);
+    if(Number(lineup.gameSceneId)!==run.pane.codeStageId)throw Error('生成的阵容码未对应本层');
+    offerCode(run,row,{...output,lineup});
+   }catch(error){
+    if(active(run))row.details.insertAdjacentHTML('beforeend',`<p class="caption">${esc(runeError(error))}</p>`);
+   }
   }
  }
 
  async function run(useStock){
-  if(!pane||runeBusy()||!account()||runtime?.resourceVersion!==pane.version)return;
+  if(!pane||runeBusy()||!account()||!ready())return;
   const selected=checkedLineups();
   if(useStock&&selected.length&&!exhausted(selected))return;
   if(!useStock&&!selected.length)return;
@@ -189,7 +237,8 @@
   const previous=reuse?[...job.previous,...job.rows].filter(row=>row.verdict!=='unknown'):[];
   const alternatives=reuse?[...new Set(job.alternatives)]:[];
   const next=job={pane,data:DATA,account:account(),selected,alternatives,previous,rows:[],running:true,cancelled:false,
-   originalsComplete:useStock&&exhausted(selected),pveMemberCount:pane.memberCount,message:'正在准备库存…'};
+   originalsComplete:useStock&&exhausted(selected),pveMemberCount:pane.memberCount,
+   pveOpeningSpeed:pane.openingSpeed,message:'正在准备库存…'};
   pane.results.replaceChildren(...previous.map(row=>row.el));
   update();
   if(focus)pane.stop.focus();

@@ -52,7 +52,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816'}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
@@ -192,7 +192,7 @@ async function main(){
   await ui('$("client-dungeons").open=false');
  });
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
- if(catalog?.index.encounters)await check('通用 PvE 按勾选顺序精算原码，失败后从库存找备选，可用键盘停止',async()=>{
+ if(catalog?.index.encounters)await check('通用 PvE 优先复跑勾选原码，觉醒按原版编组和开场数据找库存备选',async()=>{
   const ids=[591,389,596,554,379,557],heroes={},items=[];
   for(const id of ids){
    const prototype=data.gameConfig.heroes[id],prefix='pve-'+id;
@@ -262,6 +262,37 @@ async function main(){
    await ui('qaEncounterInput("battle","30101 剧情：晴明单挑犬神")');
    await until('$("client-dungeons-encounter-detail").textContent.includes("剧情：晴明单挑犬神")');
    assert.equal(await ui('document.querySelector("[data-pve-start]")===null'),true);
+   const awakeCalls=[];
+   mockPve=(plan,options)=>{
+    assert.deepEqual(options,{stageId:40,groupId:4,battleMode:29,seed:options.seed});
+    assert.equal(plan.members.length,5);
+    assert.equal(new Set(plan.members.map(row=>row.instanceId)).size,5);
+    awakeCalls.push(options.seed);
+    return {...sample,...options};
+   };
+   await ui('selectedLineups.clear();renderSelection();qaEncounterInput("daily","天雷鼓 拾层")');
+   await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+   const awake=await ui('$("client-dungeons-encounter-detail").textContent');
+   assert.match(awake,/天雷鼓 · 拾层.*我方鬼火 2 · 敌方鬼火 4 · 阴阳师等级要求 30.*第十层.*觉醒普通单人编组/s);
+   assert.match(awake,/雷麒麟 · 40 级 · 1 号位 · 开场速度 160.*原版开场 · 生命 58,445\.17 · 攻击 6,483\.18 · 防御 711\.04 · 暴击 60%/s);
+   assert.match(awake,/雷麒麟小怪 · 40 级 · 6 号位 · 开场速度 155/s);
+   await ui('[...document.querySelectorAll(".dungeon-encounter-waves summary")].find(el=>el.textContent.includes("雷麒麟 · 40 级")).click()');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("10%的概率眩晕目标")');
+   await ui(stock+'.click()');
+   await until(status+'.textContent.includes("全随机分支待验证")',20000);
+   assert.deepEqual(awakeCalls.slice(0,6),[0,1,2,3,7,42]);
+   await ui('const opening=$("client-dungeons-encounter-detail");opening.scrollIntoView({block:"start",behavior:"instant"});');
+   await capture('client-awake-solo');
+   await ui('document.querySelector("[data-pve-code]").click()');
+   assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
+   assert.equal(await ui('!!document.querySelector(".rune-code-preview img")'),true);
+   assert.match(await ui('$("detail-heading").textContent'),/雷麒麟·拾层/);
+   await ui('$("stock-candidate-save").click()');
+   await until('$("stock-candidate-status").textContent.includes("已保存到阵容库")');
+   const saved=stored.lineups.find(lineup=>lineup.title.startsWith('雷麒麟·拾层'));
+   assert.equal(Number(saved?.gameSceneId),10023001);
+   assert.equal(saved.members.filter(member=>member.kind==='shikigami').length,5);
+   await ui('$("close-dialog").click()');
   }finally{
    mockPve=null;stopPve=null;
    await ui(`stopMatch();STATE=${boot};selectedLineups.clear();$('client-dungeons').open=false;renderSelection();`);

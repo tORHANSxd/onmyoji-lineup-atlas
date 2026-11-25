@@ -88,6 +88,17 @@ async function hun13Templates(row,data){
  return Promise.all(row.rounds.map((round,index)=>draft(round,data,R.hun13SceneId,`虚无第 ${index+1} 波`,row.samples.length)));
 }
 
+async function awakeTemplate(row,data,{stageId,groupId,codeStageId,codeLabel}){
+ const seeds=S.baseSampleSeeds;
+ if(row.samples.length!==seeds.length||!row.samples.every((report,index)=>
+  report.battleMode===29&&report.stageId===stageId&&report.groupId===groupId&&report.seed===seeds[index]&&
+  report.completed&&report.outcome==='win'&&report.waveCount===1&&report.wavesCleared===1))
+  throw Error('完成本层觉醒的全部采样复跑后才可生成此阵容码');
+ if(!row.panels?.every(Boolean)||row.plan.members.some(member=>member.souls.length!==6))
+  throw Error('御魂条件需要每位式神穿齐六个位置并能够计算面板');
+ return draft(row,data,codeStageId,codeLabel,row.samples.length);
+}
+
 async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples){
  const {onmyoji,spirit,members}=row.plan;
  const basic=game.heroes[onmyoji.heroId]?.skills[0];
@@ -155,5 +166,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,template,hun13Templates,receipt,receiptFor,restore};
+return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,template,hun13Templates,awakeTemplate,receipt,receiptFor,restore};
 });

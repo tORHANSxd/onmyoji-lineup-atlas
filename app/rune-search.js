@@ -183,7 +183,7 @@ function buildCandidates(account,{gameConfig:game,roster,effects},profile,altern
  return sampled;
 }
 
-function pveCandidates(account,data,memberCount,alternatives=[]){
+function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpeed=0){
  const {gameConfig:game,roster}=data;
  const strategies=[
   [{name:'单式神输出',roles:['opener']},{name:'单式神持续输出',roles:['finisher']}],
@@ -195,7 +195,8 @@ function pveCandidates(account,data,memberCount,alternatives=[]){
   [hun13Pace,hun13Hold,groupBuff,turnAdvance,openingDamage,sustain],
  ][memberCount-1];
  if(!strategies)throw Error('当前关卡的上阵人数未接入库存备选');
- const candidates=buildCandidates(account,data,{strategies,openingSpeed:0,bossSpeed:0,earlySpeed:0},alternatives,null,limit-1);
+ const speed=Number.isFinite(openingEnemySpeed)&&openingEnemySpeed>0?Math.floor(openingEnemySpeed)+1:0;
+ const candidates=buildCandidates(account,data,{strategies,openingSpeed:speed,bossSpeed:speed,earlySpeed:speed},alternatives,null,limit-1);
  const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
  const {byHero}=C.equipmentOwnership(account),kinds=game.heroes;
  const equipped=Object.values(account.heroes).flatMap(hero=>{
@@ -214,8 +215,12 @@ function pveCandidates(account,data,memberCount,alternatives=[]){
    instanceId:hero.instanceId,hero:hero.raw,souls:gear.map(soul=>soul.raw),aiSkill:0,
   }))};
   const key=teamKey(plan);
+  const panels=team.map(({hero,gear})=>{
+   const panel=C.panel(C.baseFromRoster(hero,roster),gear,data.effects);
+   return panel.unsupported.length?null:panel.values;
+  });
   if(!alternatives.includes(key)&&!candidates.some(row=>teamKey(row.plan)===key))
-   candidates.unshift({title:'当前穿戴',heroIds:team.map(({hero})=>Number(hero.shikigamiId)),plan});
+   candidates.unshift({title:'当前穿戴',heroIds:team.map(({hero})=>Number(hero.shikigamiId)),plan,panels});
  }
  return candidates;
 }

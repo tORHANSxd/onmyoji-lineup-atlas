@@ -121,6 +121,7 @@
   };
   const normalized = value => String(value ?? '').normalize('NFKC').trim().toLowerCase();
   const keyText = key => typeof key === 'object' ? JSON.stringify(key) : String(key);
+  const openingNumber = new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2});
   const entryKey = ({table, key}) => JSON.stringify([table, key]);
   const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.chapter_name, row?.floordesc,
     row?.typedesc, row?.skill_name, row?.StoryName, row?.MapEntryID != null ? row.desc : null]
@@ -278,7 +279,7 @@
         const row = await inherit(rows[i*2] ? refs[i*2] : refs[i*2+1]);
         const entry = node('div','','encounter-skill');
         entry.append(node('strong',(row?.skill_name || '技能 '+id) + ' · ' + level + ' 级'));
-        const text = row?.combatDesc || row?.desc;
+        const text = row?.desc && /\[s_.+?\]/.test(row.combatDesc) ? row.desc : row?.combatDesc || row?.desc;
         if (typeof text === 'string' && text.trim()) entry.append(node('p',text));
         return entry;
       }));
@@ -298,11 +299,19 @@
         const label = [rowTitle(monster) || '怪物 ' + unit.id];
         if (Number.isSafeInteger(unit.level) && unit.level > 0) label.push(unit.level + ' 级');
         if (Number.isSafeInteger(unit.position)) label.push(unit.position + ' 号位');
+        if (unit.opening) label.push('开场速度 ' + openingNumber.format(unit.opening.speed));
         const item = document.createElement('li');
         if (monster) {
           const detail = document.createElement('details');
           const skills = node('div','', 'encounter-skills');
-          detail.append(node('summary', label.join(' · ')),fieldsFor(monster),skills);
+          detail.append(node('summary', label.join(' · ')));
+          if (unit.opening) {
+            const stats = unit.opening;
+            const text = [['生命',stats.hp],['攻击',stats.attack],['防御',stats.defense],['暴击',100*stats.critRate]]
+              .map(([key,value])=>key+' '+openingNumber.format(value)+(key==='暴击'?'%':'')).join(' · ');
+            detail.append(node('p','原版开场 · '+text,'caption'));
+          }
+          detail.append(fieldsFor(monster),skills);
           detail.addEventListener('toggle', () => {
             if (!detail.open || skills.hasChildNodes()) return;
             skills.textContent = '正在读取技能…';
@@ -354,6 +363,22 @@
     }
   }
 
+  function awakeOpening(entry,groups) {
+    const source = window.AtlasAwakeOpenings;
+    if (entry.table!=='dungeon_awake'||source?.resourceVersion!==state.index.resourceVersion||
+        !Object.entries(source.tableSHA256).every(([name,hash])=>
+          state.index.tables.find(table=>table.name===name)?.source?.marshalSHA256===hash)) return null;
+    const opening=source.floors[entry.key],config=groups[0].row;
+    const formation=groups.find(group=>group.ref.table==='dungeon_awake_monster');
+    const scene=groups.find(group=>group.ref.table==='dungeon_awake_scene');
+    if (!opening||config?.monsterid!==opening.groupId||formation?.ref.key!==opening.groupId||
+        scene?.row?.sceneid!==opening.sceneId||!Array.isArray(formation.row?.monsterids)||
+        formation.row.monsterids.length!==opening.enemies.length||
+        !opening.enemies.every((unit,i)=>unit.id===formation.row.monsterids[i]&&unit.position===i+1&&unit.level===config.level)) return null;
+    formation.waves=[opening.enemies.map(unit=>({...unit,opening:unit}))];
+    return opening;
+  }
+
   async function showEncounter(entry) {
     if (!entry) return;
     window.AtlasPveWorkbench?.unmount();
@@ -384,6 +409,17 @@
     }
     if (token !== stage.token) return;
     destination.replaceChildren(header, node('p', (titles[entry.table] || entry.kind) + ' · ' + keyText(entry.key), 'caption'));
+    const awake=awakeOpening(entry,groups);
+    if (awake) {
+      const codeScene=DATA.gameConfig.stages[awake.codeStageId];
+      const note='普通编组开场 · 我方鬼火 '+awake.allyOrbs+' · 敌方鬼火 '+awake.enemyOrbs+' · 阴阳师等级要求 '+awake.minPlayerLevel+
+        (groups[0].row.floor_num===10?' · 第十层的实机单人队伍入口另行结算。':'');
+      destination.append(node('p',note,'caption'));
+      window.AtlasPveWorkbench?.mount(destination,{stageId:Number(entry.key),groupId:awake.groupId,memberCount:5,
+        battleMode:29,label:'觉醒普通单人编组',version:state.index.resourceVersion,
+        codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?awake.codeStageId:null,codeLabel:codeScene?.name,
+        openingSpeed:Math.max(...awake.enemies.map(unit=>unit.speed))});
+    }
     if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);

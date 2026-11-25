@@ -621,13 +621,21 @@ async function saveStockCandidate(job,row,{create=true}={}){
 function openStockCandidate(job,row){
  const output=row?.output;
  if(!output||runeBusy()||!stockPasses(row))return;
+ const title=(isSoulKing(job.dungeonId)?'魂王':'魂土')+' · '+row.heroIds.map(id=>DATA.gameConfig.heroes[id]?.name).join('、');
+ openCandidateCode(title,fullSeedPassed(row)?'常规单人本地 10,000 个种子全部通过':'离线采样通过 · 全随机分支待验证',output,{
+  valid:()=>dungeonStock===job&&stockPasses(row),
+  save:options=>saveStockCandidate(job,row,options),
+  savedMessage:'阵容与本机复跑配装已保存。',
+  savedDetail:'保存到阵容库后，可用同一库存重新复跑这套配装。',
+ });
+}
+function openCandidateCode(title,subtitle,output,{valid,save:saveCode,savedMessage,savedDetail}){
  currentDialog=null;
  const auth=TALogin.status(),canUpload=auth.authenticated&&auth.risk_accepted&&auth.query_ready!==false&&!!auth.selected_avatar;
  output.shortCode??=STATE.lineups.find(l=>l.code===output.code)?.shortCode;
- const title=(isSoulKing(job.dungeonId)?'魂王':'魂土')+' · '+row.heroIds.map(id=>DATA.gameConfig.heroes[id]?.name).join('、');
- openDialog(title,fullSeedPassed(row)?'常规单人本地 10,000 个种子全部通过':'离线采样通过 · 全随机分支待验证',`
+ openDialog(title,subtitle,`
   <div class="rune-code-preview"><div><p>二维码包含阵容和御魂条件。游戏自动配装后，请核对使用的御魂和阴阳师普攻等级。</p>
-  <p>保存到阵容库后，可用同一库存重新复跑这套配装。</p>
+  ${savedDetail?`<p>${esc(savedDetail)}</p>`:''}
   <label for="stock-candidate-code">完整阵容码</label><textarea id="stock-candidate-code" rows="3" readonly>${esc(output.code)}</textarea>
   <p id="stock-candidate-short" class="mono" ${output.shortCode?'':'hidden'}>${esc(output.shortCode)}</p>
   <div class="actions"><button id="stock-candidate-save" class="primary" type="button">保存到阵容库</button>
@@ -638,16 +646,20 @@ function openStockCandidate(job,row){
   <p id="stock-candidate-status" class="caption" role="status"></p></div>
   ${output.image?`<img alt="阴阳师阵容码" src="${esc(output.image)}">`:output.qrError?`<p class="caption">${esc(output.qrError)}</p>`:''}</div>`);
  const save=$('stock-candidate-save'),status=$('stock-candidate-status'),upload=$('stock-candidate-upload'),short=$('stock-candidate-short'),copyShort=$('stock-candidate-copy-short');
- save.onclick=async()=>{save.disabled=true;try{status.textContent=await saveStockCandidate(job,row)?'阵容与本机复跑配装已保存。':'暂时无法保存，请重试。';}finally{save.disabled=false;}};
+ save.onclick=async()=>{
+  save.disabled=true;
+  try{status.textContent=valid()&&await saveCode({create:true})?savedMessage:'暂时无法保存，请重试。';}
+  finally{save.disabled=false;}
+ };
  $('stock-candidate-copy').onclick=event=>copyCode(event.currentTarget,output.code);
  copyShort.onclick=event=>copyCode(event.currentTarget,output.shortCode);
  if(upload)upload.onclick=async()=>{
-  if(output.shortCode||upload.disabled||runeBusy()||!stockPasses(row))return;
+  if(output.shortCode||upload.disabled||runeBusy()||!valid())return;
   upload.disabled=true;status.textContent='正在上传并核对官方返回…';
   try{
    const result=await window.taLogin.share(output.code);
    output.shortCode=result.code;short.textContent=result.code;short.hidden=false;copyShort.hidden=false;upload.hidden=true;
-   const stored=await saveStockCandidate(job,row,{create:false});
+   const stored=await saveCode({create:false});
    status.textContent=result.warning||(!stored?'短码已生成，可复制留存或保存到阵容库。':'官方短码已生成。');
   }catch(error){status.textContent=runeError(error);}
   finally{upload.disabled=false;}
@@ -661,7 +673,7 @@ function generateDungeonStock(job){
   candidates.onmessage=({data})=>data.error?reject(Error(data.error)):resolve(data.candidates);
   candidates.onerror=event=>reject(Error(event.message||'备选搜索未完成'));
   candidates.postMessage({account:job.account,roster,effects,gameConfig,alternatives:job.alternatives,
-   dungeonId:job.dungeonId,pveMemberCount:job.pveMemberCount});
+   dungeonId:job.dungeonId,pveMemberCount:job.pveMemberCount,pveOpeningSpeed:job.pveOpeningSpeed});
  }).finally(()=>{candidates.terminate();delete job.stopSearch;});
 }
 async function searchDungeonStock(){
