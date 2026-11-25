@@ -144,6 +144,22 @@ test('增量导入旧版或未采集集合时保留旧扩展数据；明确采�
  assert.equal(empty.retainedSections.currency,undefined);
 });
 
+test('平安志旧版原生格式按原程序分支读取 souls，原始格式随备份保留',()=>{
+ for(const format of ['yys-analysis-snapshot','yys-analysis-snapshot-v1','yys-snapshot']){
+  const raw={...desktopSnapshot(),format};
+  const cache={version:2,rawSha256:'a'.repeat(64),sourceKind:'native',sourcePayload:raw};
+  for(const input of [raw,cache]){
+   const parsed=C.parseAccount(input);
+   assert.equal(Object.keys(parsed.souls).length,6);
+   assert.equal(Object.keys(parsed.heroes).length,1);
+   assert.deepEqual(C.restoreAccount(JSON.parse(JSON.stringify(parsed))).raw,raw);
+  }
+  assert.throws(()=>C.parseAccount({...cache,sourceKind:'cbg'}),/缺少受支持/);
+  const {souls,...invalid}=raw;
+  assert.throws(()=>C.parseAccount({...invalid,hero_equips:souls}),/缺少有效/);
+ }
+});
+
 test('增量档案省略御魂预设时继续使用旧预设，明确导出的空列表可以清空',()=>{
  const initial=C.parseAccount(snapshot());
  const restricted=snapshot({scope:{heroes:true,souls:false}});

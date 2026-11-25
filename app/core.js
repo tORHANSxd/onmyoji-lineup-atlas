@@ -204,9 +204,10 @@ function inventoryComplete(account,kind){
  return (kind?[kind]:['heroes','souls']).every(key=>account.coverage?.[key]!==false);
 }
 const ARCHIVE_MERGE_FORMAT='yys-archive-merge-v1';
+const LEGACY_NATIVE_FORMATS=new Set(['yys-analysis-snapshot','yys-analysis-snapshot-v1','yys-snapshot']);
 function snapshotSoulKey(raw){
  if(raw?.format==='mumu-snapshot-v1')return 'hero_equips';
- if(raw?.format==='yys-desktop-cache-v1'||raw?.format===ARCHIVE_MERGE_FORMAT)return 'souls';
+ if(raw?.format==='yys-desktop-cache-v1'||raw?.format===ARCHIVE_MERGE_FORMAT||LEGACY_NATIVE_FORMATS.has(raw?.format))return 'souls';
  return null;
 }
 function accountSnapshot(file){
@@ -214,7 +215,8 @@ function accountSnapshot(file){
     typeof file.rawSha256!=='string'||!/^[a-f0-9]{64}$/i.test(file.rawSha256))return file;
   if(file.version!==2)throw new Error('当前平安志缓存版本未核验，请从角色档案导出 JSON');
   const payload=file.sourcePayload;
-  const validSource=payload?.format===ARCHIVE_MERGE_FORMAT?file.sourceKind==='native':
+  const nativeFormat=payload?.format===ARCHIVE_MERGE_FORMAT||LEGACY_NATIVE_FORMATS.has(payload?.format);
+  const validSource=nativeFormat?file.sourceKind==='native':
     ['desktop','mumu','ldplayer','bluestacks'].includes(file.sourceKind);
   if(validSource&&snapshotSoulKey(payload))return payload;
   throw new Error('平安志缓存缺少受支持的原始库存，请从角色档案导出 JSON');
