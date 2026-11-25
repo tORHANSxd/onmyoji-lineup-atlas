@@ -34,6 +34,14 @@ ROOTS = {
     "act_team_battle": ("event", "活动组队战斗"),
     "SuperGhost_mission": ("event", "超鬼王"),
     "SuperGhost_bossmission": ("event", "超鬼王首领挑战"),
+    "journey_hardbattle": ("event", "京畿净化首领挑战"),
+}
+
+JOURNEY_BATTLE_VARIANTS = {
+    "journey_normalbattle_jinbi": "金币",
+    "journey_normalbattle_jingyan": "经验",
+    "journey_normalbattle_yuhun": "御魂",
+    "journey_normalbattle_juexing": "觉醒",
 }
 
 # The raw fields remain available. Each relation below names the ID namespace
@@ -53,6 +61,7 @@ EDGES = {
     "dungeon_yuling": (("scene", "Combinesceneinfo", "关卡场景"),),
     "MZB_fengmo": (("boss_id", "monster", "首领"),),
     "act_team_battle": (("act_id", "activity", "活动开放配置"),),
+    "journey_hardbattle": (("battle_id", "pve_stage_data", "首领挑战关卡"),),
     "SuperGhost_mission": (("actid", "activity", "活动开放配置"), ("sceneid", "Combinesceneinfo", "关卡场景")),
     "SuperGhost_bossmission": (("sceneid", "Combinesceneinfo", "关卡场景"),),
     "guild_boss_show": (("bossID", "monster", "首领"),),
@@ -115,6 +124,10 @@ def encounter_index(source, load_rows):
         if match is None:
             return None if not unresolved else {"table": destination, "key": value, "label": label, "found": False}
         return {"table": destination, "key": match[0], "label": label, "found": True}
+
+    def rule_reference(key, label):
+        dest = legacy_tips if key not in rules and key in tips else rule_table
+        return {"table": dest, "key": key, "label": label, "found": key in rules or key in tips}
 
     teams_by_mode = {}
     for key, row in table("battle_team_routes").values():
@@ -196,13 +209,14 @@ def encounter_index(source, load_rows):
             scene = relation("Combinesceneinfo", row.get("resindex", 11032), "通用 PvE 默认场景", True)
             if scene:
                 links.append(scene)
+        if name == "journey_hardbattle":
+            links.append(rule_reference("defence_hard_battle", "京畿净化首领挑战规则"))
         panel_field = PANEL_RULE_FIELDS.get(name)
         if panel_field:
             field, label = panel_field
             key = row.get(field)
             if isinstance(key, str) and key:
-                dest = legacy_tips if key not in rules and key in tips else rule_table
-                links.append({"table": dest, "key": key, "label": label, "found": key in rules or key in tips})
+                links.append(rule_reference(key, label))
         if name == "lbs_world_boss_area":
             for choice in row.get("weighted_battles", ()):
                 if isinstance(choice, list) and choice:
@@ -240,15 +254,23 @@ def encounter_index(source, load_rows):
 
     candidates = [
         name for name, row in manifests.items()
-        if name in ROOTS or set(row["fields"]).intersection((*BATTLE_ID_FIELDS, "monsterWaves"))
+        if name in ROOTS or name in JOURNEY_BATTLE_VARIANTS
+        or set(row["fields"]).intersection((*BATTLE_ID_FIELDS, "monsterWaves"))
     ]
     entries, unresolved = [], 0
     categories = Counter()
     for table_name in sorted(candidates):
         manifest = manifests[table_name]
-        root = table_name in ROOTS
+        variant = JOURNEY_BATTLE_VARIANTS.get(table_name)
+        root = table_name in ROOTS or variant is not None
         family, kind = ROOTS.get(table_name, (manifest["family"], table_name))
-        generic_edges = [field for field in BATTLE_ID_FIELDS if field in manifest["fields"]]
+        if variant:
+            family, kind = "event", "京畿净化战斗参数"
+        # The four resource tables are registered separately from the normal
+        # fight panel's journey_normalbattle lookup. A numeric match is insufficient.
+        generic_edges = [] if variant or table_name == "journey_hardbattle" else [
+            field for field in BATTLE_ID_FIELDS if field in manifest["fields"]
+        ]
         for key, row in load_rows(table_name):
             if not isinstance(row, dict):
                 continue
@@ -263,6 +285,11 @@ def encounter_index(source, load_rows):
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
             title = name(row)
+            if variant:
+                board = numeric_key(row.get("board_index"))
+                battle = numeric_key(row.get("battle_id"))
+                parts = (variant, f"棋盘 {board}" if board else "", f"战斗参数 {battle}" if battle else "")
+                title = " · ".join(filter(None, parts))
             if table_name == "story_room":
                 chapter = chapter_entrances.get(numeric_key(row.get("MapEntryID")))
                 description = row.get("desc") if isinstance(row.get("desc"), str) else ""

@@ -24,6 +24,8 @@ FAMILIES = (
 def family(name):
     if name.startswith(("shilian_", "hunling_")):
         return "daily"
+    if name.startswith(("journey_", "circle_journey_")):
+        return "event"
     matches = {key for key, pattern in FAMILIES if re.search(pattern, name, re.I)}
     return next((key for key in ("guild", "event", "daily", "battle") if key in matches), "other")
 

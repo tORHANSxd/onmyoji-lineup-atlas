@@ -7,6 +7,35 @@ from dungeon_encounters import encounter_index
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_journey_variants_keep_resource_namespaces_and_bosses_keep_the_original_links(self):
+        tables = {
+            "journey_normalbattle_jinbi": [[2, {"battle_id": 18, "board_index": 4}]],
+            "journey_normalbattle_jingyan": [[3, {"battle_id": 51, "board_index": 4}]],
+            "journey_normalbattle_yuhun": [[4, {"battle_id": 101, "board_index": 4}]],
+            "journey_normalbattle_juexing": [[5, {"battle_id": 151, "board_index": 4}]],
+            "journey_hardbattle": [[1, {"battle_id": 731001, "title": "七人岬·扇"}]],
+            "pve_stage_data": [["18", {"groupid": 18}], ["731001", {"groupid": 900}]],
+            "BattleMonstersInfo": [[900, {"resindex": 11032}]],
+            "Combinesceneinfo": [[11032, {}]],
+            "system_rule_dsc": [["defence_hard_battle", {"rule_dsc": "首领挑战规则"}]],
+        }
+        manifests = [
+            {"name": name, "status": "decoded", "family": "other",
+             "fields": list({field for _, row in rows for field in row})}
+            for name, rows in tables.items()
+        ]
+        data = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], entry["key"]): entry for entry in data["entries"]}
+        variants = [entry for entry in entries.values() if entry["kind"] == "京畿净化战斗参数"]
+        self.assertEqual(len(variants), 4)
+        self.assertTrue(all(entry["family"] == "event" and not entry["refs"] for entry in variants))
+        self.assertEqual(entries["journey_normalbattle_jinbi", 2]["title"], "金币 · 棋盘 4 · 战斗参数 18")
+        hard = entries["journey_hardbattle", 1]
+        self.assertEqual([(row["table"], row["key"], row["found"]) for row in hard["refs"]],
+                         [("pve_stage_data", "731001", True), ("system_rule_dsc", "defence_hard_battle", True),
+                          ("BattleMonstersInfo", 900, True), ("Combinesceneinfo", 11032, True)])
+        self.assertEqual(data["unresolvedReferences"], 1)
+
     def test_links_activity_to_stage_and_battle_using_original_key_types(self):
         tables = {
             "act_team_battle": [[4, {"title_name": "将魂试炼", "act_id": 10771, "battle_id": 3504732,

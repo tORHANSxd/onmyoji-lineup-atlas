@@ -154,6 +154,24 @@ async function main(){
   await capture('client-dungeon-verified-rule');
   await ui('$("client-dungeons").open=false');
  });
+ if(catalog?.index.encounters&&catalog.entries.has('journey_hardbattle'))await check('京畿净化区分资源参数和首领挑战，首领显示原版波次和规则',async()=>{
+  await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
+  await ui('qaEncounterInput("event","京畿净化战斗参数 金币 棋盘 11 战斗参数 20 300")');
+  await until('$("client-dungeons-encounter-detail").textContent.includes("战斗参数编号20")');
+  const parameters=await ui('$("client-dungeons-encounter-detail").textContent');
+  assert.match(parameters,/金币 · 棋盘 11 · 战斗参数 20.*攻击参数.*速度参数.*权重23/s);
+  assert.doesNotMatch(parameters,/敌方编组|通用 PvE 关卡|未找到对应记录/);
+  await ui('qaEncounterInput("event","京畿净化战斗参数 御魂")');
+  await until('$("client-dungeons-encounter-detail").textContent.includes("御魂 · 棋盘")');
+  await ui('qaEncounterInput("event","京畿净化首领挑战 七人岬·扇")');
+  await until('$("client-dungeons-encounter-detail").textContent.includes("每层首领挑战祝福")');
+  const challenge=await ui('$("client-dungeons-encounter-detail").textContent');
+  assert.match(challenge,/七人岬·扇.*首领挑战关卡.*731001.*体力消耗3.*每层首领挑战祝福.*敌方编组 · 731001/s);
+  assert.equal(await ui('$("client-dungeons-encounter-detail").querySelectorAll(".dungeon-encounter-waves ul").length'),1);
+  await ui('document.querySelector(".encounter-rule-text").closest("section").scrollIntoView({block:"start",behavior:"instant"})');
+  await capture('client-journey-challenge');
+  await ui('$("client-dungeons").open=false');
+ });
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
  const file=json=>'[{name:"synthetic.json",size:1024,text:async()=>'+JSON.stringify(JSON.stringify(json))+'}]';
  await check('账号导入失败保持原账号和原库存',async()=>{

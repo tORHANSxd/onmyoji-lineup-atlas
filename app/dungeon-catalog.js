@@ -25,6 +25,11 @@
     guild_boss_reward: '阴阳寮首领奖励',
     guild_dinner_monster: '阴阳寮宴会首领',
     act_team_battle: '活动组队战斗',
+    journey_hardbattle: '京畿净化首领挑战',
+    journey_normalbattle_jinbi: '京畿净化战斗参数 · 金币',
+    journey_normalbattle_jingyan: '京畿净化战斗参数 · 经验',
+    journey_normalbattle_yuhun: '京畿净化战斗参数 · 御魂',
+    journey_normalbattle_juexing: '京畿净化战斗参数 · 觉醒',
     MZB_fengmo: '逢魔首领',
     lbs_world_boss_type: '逢魔首领战斗规则',
     shilian_stage_detail: '六道之门试炼',
@@ -63,6 +68,7 @@
     show_countdown: '显示倒计时', show_group_dps: '显示组队伤害', show_total_damage: '显示累计伤害',
     real_time_sync_dmg: '实时同步伤害', assist_hero_list: '支援式神 ID', replace_yys_id: '替换阴阳师 ID',
     act_id: '活动 ID', battle_id: '关卡 ID', team_player_num: '组队人数', team_battle_type: '组队类型 ID',
+    board_index: '棋盘编号',
     team_type: '组队类型 ID', team_symbol: '组队类型常量',
     battleMode: '战斗模式 ID', mode_symbol: '战斗模式常量',
     map_path: '注册场景资源', scene_class: '场景类', engine_class: '战斗引擎类', route_module: '组队注册脚本',
@@ -96,7 +102,13 @@
     Combinesceneinfo: ['battlesceneinfo', 'BattleScenesInfo', '查看战斗站位'],
     story_room: ['MonsterID', 'pve_stage_data', '查看探索 PvE 关卡'],
     DramaProcess: ['RelatedStory', 'DramaLevel', '查看剧情关卡'],
+    journey_hardbattle: ['battle_id', 'pve_stage_data', '查看首领挑战关卡'],
   };
+  const journeyVariantFields = {
+    battle_id: '战斗参数编号', attack: '攻击参数', defence: '防御参数',
+    hp: '生命参数', critical: '暴击参数', speed: '速度参数', weight: '权重',
+  };
+  const journeyBossFields = {hero_id: '首领编号', reward: '奖励编号', time: '时限参数', unlocked: '解锁参数'};
   const state = { token: 0, index: null, entry: null, rows: [], matches: [], page: 0, selected: -1 };
   const stage = { token: 0, loading: false, rows: null, byKey: new Map(), matches: [], page: 0, selected: null, mode: 'tables' };
   const option = (label, value) => new Option(label, value);
@@ -115,7 +127,9 @@
 
   function fieldsFor(row, table) {
     const fields = document.createElement('dl');
-    for (const [field, label] of Object.entries(labels)) {
+    const displayLabels = table?.startsWith('journey_normalbattle_') ? {...labels, ...journeyVariantFields} :
+      table === 'journey_hardbattle' ? {...labels, ...journeyBossFields} : labels;
+    for (const [field, label] of Object.entries(displayLabels)) {
       if (row == null || !Object.hasOwn(row, field)) continue;
       const value = row[field];
       let text = typeof value === 'boolean' ? (value ? '是' : '否') :
