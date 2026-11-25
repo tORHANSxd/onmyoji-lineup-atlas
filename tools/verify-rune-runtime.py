@@ -17,6 +17,7 @@ def run(args):
     from game_resources import Bindict, decode_module, sha256, write_json
     from original_battle import RuntimeModules, no_transport
     from original_host import Host
+    from rune_replay import read_models, sync_windows
 
     catalog = run_path(str(Path(__file__).with_name("extract-dungeon-catalog.py")))
     client = catalog["open_catalog_client"](args.snapshot.resolve())
@@ -136,6 +137,19 @@ def run(args):
     avatar.init_from_dict({"heroes_gamble": {**fighters, "fixture-qingming": actor}, "yysid": 10})
     avatar.defaultHeros = list(fighters)
     engine = RuneFbEngine({"fbId": 102, "seed": 0})
+    entity_models = {}
+    create_entity = engine.onEntityCreated
+
+    def observe_created(entity):
+        create_entity(entity)
+        model = getattr(entity, "modelName", None)
+        if isinstance(model, str):
+            filename = model.replace(chr(92), "/").replace("/", "_").replace(".gim", ".json")
+            uid = str(entity.uid)
+            if entity_models.setdefault(uid, filename) != filename:
+                entity_models[uid] = None
+
+    engine.onEntityCreated = observe_created
     engine.battleMode = const.BattleMode.MODE_RUNE_FB
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
     engine.seed = 0
@@ -178,8 +192,11 @@ def run(args):
         "randomCalls": engine.random_count, "recordLines": len(replay.splitlines()), "recordSHA256": sha256(replay),
         "clientRenderingMeasured": False, "allRandomBranchesVerified": False,
         "staticTableAdapter": "decoded-client-bindict", "modelSHA256": model_hashes,
+        "entityModels": entity_models,
         "moduleSHA256": {row["module"]: row["marshalSHA256"] for row in modules.trace},
     }
+    if replay:
+        report["animationSync"] = sync_windows(replay, entity_models, read_models(models, model_hashes))
     write_json(output, report)
     print(json.dumps({key: report[key] for key in ("completed", "phases", "wavesCleared", "bouts", "recordLines")}))
     return 0 if completed else 1
@@ -196,7 +213,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.timeout < 1:
         parser.error("--timeout must be positive")
-    sys.path.insert(0, str(args.game_tools.resolve()))
+    sys.path[:0] = [str(Path(__file__).resolve().parent), str(args.game_tools.resolve())]
     args.opcode_proof = args.opcode_proof.resolve()
     faulthandler.dump_traceback_later(args.timeout + 60, exit=True)
     status = run(args)
