@@ -81,6 +81,7 @@ def extract(snapshot, proof, apk_version, output, battle_index=None, script_inde
     import game_resources as resources
     from literal_tables import read_literal_table
     from original_modules import OriginalModules
+    from dungeon_battle_routes import extract_routes, is_route_script
 
     client = open_catalog_client(snapshot)
     _, elf_hash = verify_native_library(client, proof)
@@ -91,6 +92,7 @@ def extract(snapshot, proof, apk_version, output, battle_index=None, script_inde
     index = client.names["script3"]
     digests = sorted({row[8:24].hex() for row in index.rows.values()})
     tables = {}
+    route_modules = {}
     failures = []
     battle_modules = 0
     battle_evidence = []
@@ -113,16 +115,20 @@ def extract(snapshot, proof, apk_version, output, battle_index=None, script_inde
                     **{key: evidence[key] for key in ("digest", "origin", "source", "offset", "rawSHA256", "decodedSHA256")},
                     "module": module, "marshalSHA256": resources.sha256(marshalled),
                 })
-        if not module.startswith("com/data/cdata/") and module != CLIENT_TIP_MODULE:
+        routing = is_route_script(module)
+        if not routing and not module.startswith("com/data/cdata/") and module != CLIENT_TIP_MODULE:
             continue
-        name = module.split("/")[-1].removesuffix(".py")
-        if not re.fullmatch(r"[A-Za-z0-9_]+", name) or name in tables:
-            raise ValueError(f"Unexpected or duplicate configuration module: {module}")
         origin = evidence["origin"]
         if evidence["source"].startswith("raw/external/cloud_resources/"):
             origin = "cloud"
         source = {key: evidence[key] for key in ("digest", "rawSHA256", "decodedSHA256")}
         source.update(module=module, origin=origin, marshalSHA256=resources.sha256(marshalled))
+        if routing:
+            route_modules[module] = (code, source)
+            continue
+        name = module.split("/")[-1].removesuffix(".py")
+        if not re.fullmatch(r"[A-Za-z0-9_]+", name) or name in tables:
+            raise ValueError(f"Unexpected or duplicate configuration module: {module}")
         entry = tables[name] = {"name": name, "source": source}
 
         rows = None
@@ -149,6 +155,11 @@ def extract(snapshot, proof, apk_version, output, battle_index=None, script_inde
         fields = sorted({key for row in rows.values() if isinstance(row, dict)
                          for key in row if isinstance(key, str)})
         entry.update(status="decoded", storage=storage, rowCount=len(rows), fields=fields)
+        resources.write_json(output / f"{name}.json", {**entry, "rows": resources.portable(rows)})
+
+    for name, rows, source in extract_routes(route_modules, decoder):
+        entry = tables[name] = {"name": name, "source": source, "status": "decoded", "storage": "literal-routes",
+                                "rowCount": len(rows), "fields": sorted({field for row in rows.values() for field in row})}
         resources.write_json(output / f"{name}.json", {**entry, "rows": resources.portable(rows)})
 
     counts = dict(Counter(row["status"] for row in tables.values()))

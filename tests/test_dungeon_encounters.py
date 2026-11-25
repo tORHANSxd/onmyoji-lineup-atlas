@@ -9,8 +9,14 @@ from dungeon_encounters import encounter_index
 class EncounterIndexTests(unittest.TestCase):
     def test_links_activity_to_stage_and_battle_using_original_key_types(self):
         tables = {
-            "act_team_battle": [[4, {"title_name": "将魂试炼", "act_id": 10771, "battle_id": 3504732, "tip": "native_rule"}]],
+            "act_team_battle": [[4, {"title_name": "将魂试炼", "act_id": 10771, "battle_id": 3504732,
+                                      "team_battle_type": 3507, "tip": "native_rule"}]],
             "activity": [[10771, {"name": "狩日之决"}]],
+            "battle_team_routes": [[3507, {"battleMode": 2507, "engine_class": "FakeGod7GeneralSoulBattleEngine",
+                                            "mode_symbol": "MODE_FAKE_GOD7_GENERAL_SOUL_BATTLE"}]],
+            "battle_mode_routes": [[2507, {"battleMode": 2507, "mode_symbol": "MODE_FAKE_GOD7_GENERAL_SOUL_BATTLE",
+                                            "scene_class": "InitialBattleScene"}]],
+            "normal_battle_config": [[2507, {"battleMode": 2507, "halt_time": 180}]],
             "languageData_cn": [["native_rule", {"cn": "原版规则"}]],
             "pve_stage_data": [["3504732", {"id": "3504732", "name": "试炼", "groupid": 80}], ["88", {"groupid": 404}]],
             "BattleMonstersInfo": [[80, {"ID": 80}]],
@@ -36,11 +42,15 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertEqual(entry["family"], "event")
         self.assertEqual(
             [(ref["table"], ref["key"], ref["found"]) for ref in entry["refs"]],
-            [("activity", 10771, True), ("languageData_cn", "native_rule", True),
-             ("pve_stage_data", "3504732", True), ("BattleMonstersInfo", 80, True),
+            [("activity", 10771, True), ("battle_team_routes", 3507, True), ("languageData_cn", "native_rule", True),
+             ("pve_stage_data", "3504732", True), ("normal_battle_config", 2507, True), ("BattleMonstersInfo", 80, True),
              ("normal_battle_tips", "3504732", True), ("Combinesceneinfo", 11032, True),
              ("system_rule_dsc", "shared_tip", True), ("BattleScenesInfo", 301, True)],
         )
+        mode = by_key["normal_battle_config", 2507]
+        self.assertEqual(mode["title"], "战斗模式 2507 · MODE_FAKE_GOD7_GENERAL_SOUL_BATTLE")
+        self.assertEqual([(ref["table"], ref["key"]) for ref in mode["refs"]],
+                         [("battle_mode_routes", 2507), ("battle_team_routes", 3507)])
         self.assertEqual([(ref["table"], ref["key"]) for ref in by_key["dungeon_challenge_series", 66]["refs"]],
                          [("Combinesceneinfo", 17), ("tipsInfoData_cn", "legacy_tip"), ("BattleScenesInfo", 302)])
         self.assertEqual(by_key["dungeon_challenge_series", 66]["title"], "虫师 · 流萤之夏 · 拾·归处")

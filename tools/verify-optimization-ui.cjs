@@ -74,6 +74,11 @@ async function main(){
    await ui('qaEncounterInput("event","将魂试炼")');
    await until('$("client-dungeons-encounter-detail").textContent.includes("2025-10-30 23:59")');
    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/活动开放配置.*敌方初始鬼火.*敌方编组/s);
+   if(catalog.entries.has('battle_team_routes')){
+    const detail=await ui('$("client-dungeons-encounter-detail").textContent');
+    assert.match(detail,/原版组队战斗入口 · 3507.*战斗模式 ID2507.*战斗引擎类FakeGod7GeneralSoulBattleEngine/s);
+    assert.match(detail,/战斗模式默认规则 · 2507.*跨轮保留敌方生命否.*默认战斗时限（秒）180.*共享敌方生命是/s);
+   }
    await ui('$("client-dungeons").scrollIntoView({block:"start",behavior:"instant"})');
    await capture('client-dungeon-encounter');
    await ui('document.querySelector("#client-dungeons-encounter-detail .encounter-source button").click()');

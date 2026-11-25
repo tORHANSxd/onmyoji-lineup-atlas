@@ -9,6 +9,8 @@
     BattleScenesInfo: '战斗场景与站位',
     Combinesceneinfo: '关卡场景配置',
     normal_battle_config: '通用战斗模式',
+    battle_mode_routes: '客户端初始场景注册',
+    battle_team_routes: '客户端组队战斗注册',
     normal_battle_tips: '通用战斗规则索引',
     system_rule_dsc: '战斗与玩法规则原文',
     tipsInfoData_cn: '简体中文旧版玩法提示',
@@ -50,9 +52,17 @@
     atk_alter: '攻击调整', def_alter: '防御调整', hp_alter: '生命调整',
     sp_alter: '速度调整', spd_alter: '速度调整', crt_alter: '暴击调整',
     menpiao: '门票配置', loot_id: '奖励表 ID', uptimes: '开放配置',
-    fbtips: '规则提示 ID', passReward: '通关奖励 ID', save_round_hp: '跨轮保留生命',
-    halt_time: '停止时间配置', group_battle: '多人战斗',
-    act_id: '活动 ID', battle_id: '关卡 ID', team_player_num: '组队人数', team_battle_type: '战斗类型',
+    fbtips: '规则提示 ID', passReward: '通关奖励 ID', save_round_hp: '跨轮保留敌方生命',
+    halt_time: '默认战斗时限（秒）', group_battle: '共享敌方生命',
+    select_hero_time_out: '默认选角时限（秒）', accumulate_damage_type: '伤害累计方式 ID',
+    show_countdown: '显示倒计时', show_group_dps: '显示组队伤害', show_total_damage: '显示累计伤害',
+    real_time_sync_dmg: '实时同步伤害', assist_hero_list: '支援式神 ID', replace_yys_id: '替换阴阳师 ID',
+    act_id: '活动 ID', battle_id: '关卡 ID', team_player_num: '组队人数', team_battle_type: '组队类型 ID',
+    team_type: '组队类型 ID', team_symbol: '组队类型常量',
+    battleMode: '战斗模式 ID', mode_symbol: '战斗模式常量',
+    map_path: '注册场景资源', scene_class: '场景类', engine_class: '战斗引擎类', route_module: '组队注册脚本',
+    can_single_fight: '允许单人', show_left_time: '显示剩余时间', show_wave_count: '显示波次',
+    show_current_score: '显示当前积分',
     rule: '玩法规则', boss_rule: '首领机制', attack_tip: '战斗提示', challenge_time: '挑战时限',
     begin_time: '开放时间', end_time: '关闭时间', reward_id: '奖励 ID',
     openTime: '开放星期', activity_time: '开放配置 ID', open_type: '开放方式', level_limit: '等级限制',
@@ -69,6 +79,7 @@
     pve_stage_data: ['groupid', 'BattleMonstersInfo', '查看敌方编组'],
     BattleMonstersInfo: ['resindex', 'Combinesceneinfo', '查看默认场景'],
     act_team_battle: ['battle_id', 'pve_stage_data', '查看活动关卡'],
+    battle_team_routes: ['battleMode', 'normal_battle_config', '查看战斗模式默认规则'],
     dungeon_rune: ['scene', 'Combinesceneinfo', '查看关卡场景'],
     Combinesceneinfo: ['battlesceneinfo', 'BattleScenesInfo', '查看战斗站位'],
   };
@@ -91,7 +102,9 @@
     for (const [field, label] of Object.entries(labels)) {
       if (row == null || !Object.hasOwn(row, field)) continue;
       const value = row[field];
-      let text = typeof value === 'string' ? value : JSON.stringify(value);
+      let text = typeof value === 'boolean' ? (value ? '是' : '否') :
+        typeof value === 'string' ? value : JSON.stringify(value);
+      if (field === 'halt_time' && value === 0) text = '0（未设默认时限）';
       if (['begin_time', 'end_time'].includes(field) && Array.isArray(value)
           && value.length >= 5 && value.slice(0, 5).every(Number.isSafeInteger)) {
         const [y,m,d,h,min] = value.map(n => String(n).padStart(2, '0'));
@@ -264,12 +277,18 @@
   }
 
   function appendSpecialDetails(block, table, row) {
-    const rule = table === 'system_rule_dsc' ? row.rule_dsc : table === 'tipsInfoData_cn' ? row : null;
+    if (table === 'normal_battle_config') {
+      block.append(node('p', '关卡时限和独立引擎可覆盖模式默认参数。', 'caption'));
+    }
+    if (table === 'battle_mode_routes') {
+      block.append(node('p', '客户端初始化场景表时的注册项。组队与玩法逻辑可改写场景。', 'caption'));
+    }
+    const rule = table === 'system_rule_dsc' ? row?.rule_dsc : table === 'tipsInfoData_cn' ? row : null;
     if (typeof rule === 'string' && rule.trim()) {
       const text = rule.replace(/<\/?(?:green|orange|red|yellow|blue|white|purple)>|<\/>/gi,'').trim();
       block.append(node('p', text, 'encounter-rule-text'));
     }
-    if (table !== 'BattleScenesInfo') return;
+    if (table !== 'BattleScenesInfo' || !row) return;
     const details = document.createElement('details');
     const slots = document.createElement('dl');
     for (const [prefix, side] of [['My','我方'],['Mon','敌方']]) {
@@ -329,7 +348,7 @@
       const details = document.createElement('details');
       const source = state.index.tables.find(t => t.name === ref.table)?.source;
       details.append(node('summary', '全部原始字段'),
-        node('p', [source?.module, source?.marshalSHA256].filter(Boolean).join(' · '), 'caption'),
+        node('p', [row.route_module ?? source?.module, row.route_sha256 ?? source?.marshalSHA256].filter(Boolean).join(' · '), 'caption'),
         node('pre', JSON.stringify(row,null,2)));
       const browse = node('button', '在资料表中查看', 'secondary');
       browse.type = 'button';
@@ -435,6 +454,7 @@
     raw.append(node('summary', '查看全部原始字段'), node('pre', JSON.stringify(row, null, 2)));
     details.replaceChildren(node('h3', rowTitle(row) || '记录 ' + keyText(key)));
     if (fields.childElementCount) details.append(fields);
+    appendSpecialDetails(details, state.entry.name, row);
     const [field, destination, label] = links[state.entry.name] ?? [];
     const related = row?.[field];
     if (related != null && state.index.tables.some(entry => entry.name === destination && entry.status === 'decoded')) {
@@ -455,7 +475,7 @@
     el('encounter-family').value = el('encounter-query').value = '';
     el('modes').hidden = !index?.encounters;
     el('version').textContent = index ? '资源 ' + index.resourceVersion + ' · '
-      + index.tables.length.toLocaleString('zh-CN') + ' 张客户端表'
+      + index.tables.length.toLocaleString('zh-CN') + ' 张资料表'
       + (index.encounters ? ' · ' + index.encounters.rowCount.toLocaleString('zh-CN') + ' 条关卡配置（含历史与内部配置）' : '')
       + ' · 开放状态以区服和游戏内活动为准'
       : '请选择本机解包产生的副本资料目录。';

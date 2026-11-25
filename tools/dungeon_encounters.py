@@ -5,6 +5,7 @@ from collections import Counter
 
 ROOTS = {
     "pve_stage_data": ("battle", "通用 PvE 关卡"),
+    "normal_battle_config": ("battle", "战斗模式默认规则"),
     "dungeon_rune": ("daily", "御魂"),
     "dungeon_awake": ("daily", "觉醒"),
     "dungeon_challenge": ("daily", "秘闻"),
@@ -57,7 +58,8 @@ EDGES = {
     "hunling_boss": (("catch_battle_id", "pve_stage_data", "收服关卡"),),
     "Combinesceneinfo": (("battlesceneinfo", "BattleScenesInfo", "战斗站位"),),
 }
-FOLLOWED_TABLES = {"pve_stage_data", "BattleMonstersInfo", "Combinesceneinfo", "dungeon_awake_scene", "normal_battle_tips"}
+FOLLOWED_TABLES = {"pve_stage_data", "BattleMonstersInfo", "Combinesceneinfo", "dungeon_awake_scene",
+                   "normal_battle_tips", "battle_team_routes"}
 BATTLE_ID_FIELDS = ("battle_id", "battleId", "pve_stage_id", "pve_id")
 RULE_TEXT_FIELDS = {"tip": "关卡提示", "fbtips": "副本规则", "attack_tip": "战斗提示",
                     "rule": "玩法规则", "boss_rule": "首领机制", "notice": "机制说明", "fb1_defs": "竞速规则"}
@@ -109,16 +111,35 @@ def encounter_index(source, load_rows):
             return None if not unresolved else {"table": destination, "key": value, "label": label, "found": False}
         return {"table": destination, "key": match[0], "label": label, "found": True}
 
+    teams_by_mode = {}
+    for key, row in table("battle_team_routes").values():
+        teams_by_mode.setdefault(row["battleMode"], []).append(key)
+
     def explicit(name, row):
         links = []
         for field, destination, label in EDGES.get(name, ()):
             resolved = relation(destination, row.get(field), label, True)
             if resolved:
                 links.append(resolved)
+        if name == "act_team_battle" and "battle_team_routes" in manifests:
+            route = relation("battle_team_routes", row.get("team_battle_type"), "原版组队战斗入口", True)
+            if route:
+                links.append(route)
         if name == "pve_stage_data":
             tip = relation("normal_battle_tips", row.get("id"), "通用战斗规则", False)
             if tip:
                 links.append(tip)
+        if name == "normal_battle_config":
+            mode = row.get("battleMode")
+            scene = relation("battle_mode_routes", mode, "客户端初始场景注册", False)
+            if scene:
+                links.append(scene)
+            for key in teams_by_mode.get(mode, ()):
+                links.append({"table": "battle_team_routes", "key": key, "label": "原版组队战斗入口", "found": True})
+        if name == "battle_team_routes":
+            config = relation("normal_battle_config", row.get("battleMode"), "战斗模式默认规则", False)
+            if config:
+                links.append(config)
         if name == "BattleMonstersInfo":
             scene = relation("Combinesceneinfo", row.get("resindex", 11032), "通用 PvE 默认场景", True)
             if scene:
@@ -149,9 +170,10 @@ def encounter_index(source, load_rows):
                 links.append({"table": language, "key": key, "label": label, "found": True})
         return links
 
-    def related(table_name, row, direct):
+    def related(table_name, key, row, direct):
         pending = [*explicit(table_name, row), *direct]
-        references, seen = [], set()
+        references = []
+        seen = {(table_name, key)} if type(key) in (int, str) else set()
         for link in pending:
             dest, key = link["table"], link["key"]
             identity = (dest, key)
@@ -184,8 +206,12 @@ def encounter_index(source, load_rows):
             ]
             if not root and not linked_battles and not row.get("monsterWaves"):
                 continue
-            references = related(table_name, row, linked_battles)
+            references = related(table_name, key, row, linked_battles)
             title = name(row)
+            if table_name == "normal_battle_config":
+                symbol = next((table(ref["table"])[numeric_key(ref["key"])][1].get("mode_symbol")
+                               for ref in references if ref["table"] in {"battle_mode_routes", "battle_team_routes"}), None)
+                title = "战斗模式 " + str(key) + (" · " + symbol if symbol else "")
             if not title and linked_battles:
                 _, battle = table("pve_stage_data")[numeric_key(linked_battles[0]["key"])]
                 title = name(battle)
