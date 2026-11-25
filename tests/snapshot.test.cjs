@@ -144,6 +144,17 @@ test('增量导入旧版或未采集集合时保留旧扩展数据；明确采�
  assert.equal(empty.retainedSections.currency,undefined);
 });
 
+test('增量档案省略御魂预设时继续使用旧预设，明确导出的空列表可以清空',()=>{
+ const initial=C.parseAccount(snapshot());
+ const restricted=snapshot({scope:{heroes:true,souls:false}});
+ delete restricted.equipPresets;
+ const merged=C.mergeAccount(initial,C.parseAccount(restricted));
+ assert.deepEqual(merged.presets,initial.presets);
+ assert.deepEqual(C.restoreAccount(JSON.parse(JSON.stringify(merged))).presets,merged.presets);
+ const cleared=C.mergeAccount(merged,C.parseAccount(snapshot({equipPresets:[]})));
+ assert.deepEqual(cleared.presets,[]);
+});
+
 test('桌面缓存快照保留技能、五条副属性、空预设和全部原始扩展数据',()=>{
  const raw=desktopSnapshot();raw.player={...raw.player,shortId:7,serverName:null,platform:null,playerMeta:null};
  raw.souls[0].initialSubstatCount=null;

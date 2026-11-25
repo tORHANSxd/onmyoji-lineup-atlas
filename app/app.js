@@ -1,5 +1,6 @@
 'use strict';
 const C=AtlasCore,$=id=>document.getElementById(id), esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const accountInventorySolver=AtlasSolver(C);
 const safeURL=x=>{try{const u=new URL(x);return u.protocol==='https:'?u.href:'#';}catch{return '#';}};
 const link=(url,label)=>`<a href="${esc(safeURL(url))}" target="_blank" rel="noreferrer">${esc(label)}</a>`;
 let DATA,STATE={schemaVersion:1,lineups:[],deletedPresetIds:[],accounts:[],activeAccount:''},view='library',page=1,accountPage=1,selectedMembers=[],worker=null,matchResults={},currentCodeResult=null,currentDialog=null,detailState='unawakened',toastTimer,sessionRevision=0,libraryBusy=false,appBoot=Promise.resolve();
@@ -646,7 +647,11 @@ function renderAccounts(recommendations=true){if(view!=='accounts')return;if(rec
  const expanded=accountInventoryCache?.account.id===a.id?[...$('account-summary').querySelectorAll('details[open]')].map(el=>el.id):[];
  if(accountInventoryCache?.account!==a){const heroes=Object.values(a.heroes).sort((a,b)=>b.level-a.level||Number(b.shikigamiId)-Number(a.shikigamiId)||a.instanceId.localeCompare(b.instanceId)),souls=Object.values(a.souls),suitCounts=new Map();for(const s of souls){const count=suitCounts.get(s.set)||{total:0,maxed:0};count.total++;if(s.star===6&&s.level===15)count.maxed++;suitCounts.set(s.set,count);}accountInventoryCache={account:a,heroes,souls,suitCounts};}
  const {heroes,souls,suitCounts}=accountInventoryCache;
- $('account-summary').innerHTML=`<div class="overview"><div><strong>${heroes.length}</strong><span>角色实例（含素材）</span></div><div><strong>${new Set(heroes.map(h=>h.shikigamiId)).size}</strong><span>角色类型</span></div><div><strong>${souls.length}</strong><span>御魂</span></div><div><strong>${a.presets.length}</strong><span>御魂预设</span></div></div><details class="inventory-notes" id="account-inventory-notes"><summary>库存信息${a.warnings.length?' · '+a.warnings.length+' 项提醒':''}</summary><p>采集时间：${esc(a.capturedAt)}。${Number.isFinite(a.raw?.player?.level)?'账号等级：'+esc(a.raw.player.level)+'。':''}式神：${C.inventoryComplete(a,'heroes')?'完整':'待核对'}；御魂：${C.inventoryComplete(a,'souls')?'完整':'待核对'}。当前穿戴归属未提供，配装使用全仓库库存。</p>${a.warnings.slice(0,30).map(w=>'<p>'+esc(w)+'</p>').join('')}${a.warnings.length>30?'<p>其余提醒保留在原始导出与备份中。</p>':''}</details>${accountAssets(a)}${snapshotDetails(a)}`;
+ const ownership=accountInventorySolver.equipmentOwnership(a);
+ const equipmentStatus=ownership.complete
+  ? `已核对当前穿戴。${souls.length-ownership.unworn.size} 件已穿戴，${ownership.unworn.size} 件未穿戴。`
+  : '全仓库的穿戴归属待核对。';
+ $('account-summary').innerHTML=`<div class="overview"><div><strong>${heroes.length}</strong><span>角色实例（含素材）</span></div><div><strong>${new Set(heroes.map(h=>h.shikigamiId)).size}</strong><span>角色类型</span></div><div><strong>${souls.length}</strong><span>御魂</span></div><div><strong>${a.presets.length}</strong><span>御魂预设</span></div></div><details class="inventory-notes" id="account-inventory-notes"><summary>库存信息${a.warnings.length?' · '+a.warnings.length+' 项提醒':''}</summary><p>采集时间：${esc(a.capturedAt)}。${Number.isFinite(a.raw?.player?.level)?'账号等级：'+esc(a.raw.player.level)+'。':''}式神：${C.inventoryComplete(a,'heroes')?'完整':'待核对'}。御魂：${C.inventoryComplete(a,'souls')?'完整':'待核对'}。</p><p>${equipmentStatus}</p>${a.warnings.slice(0,30).map(w=>'<p>'+esc(w)+'</p>').join('')}${a.warnings.length>30?'<p>其余提醒保留在原始导出与备份中。</p>':''}</details>${accountAssets(a)}${snapshotDetails(a)}`;
  for(const id of expanded)if(id&&$(id))$(id).open=true;
  const q=$('account-search').value.trim(),kind=$('account-kind').value;
  const filtered=heroes.filter(h=>{const r=rosterById(h.shikigamiId);return `${accountHeroName(h,r)} ${h.shikigamiId}`.includes(q)&&(!kind||(kind==='material'?r?.isMaterial:!r?.isMaterial));});

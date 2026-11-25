@@ -280,7 +280,8 @@ function mergeAccount(old,incoming){
   }
  }
  const warnings=[...incoming.warnings,'按实例ID覆盖并保留未再次导入的旧记录；已删除资产可能仍存在，请用完整快照替换清理。'];
- return {...incoming,heroes,souls,raw,snapshot:snapshotInfo(raw,warnings),retainedSections,presets:incoming.presets,merged:true,previousCapturedAt:old.capturedAt,warnings};
+ const presets=Array.isArray(raw.equipPresets)?raw.equipPresets:[];
+ return {...incoming,heroes,souls,raw,snapshot:snapshotInfo(raw,warnings),retainedSections,presets,merged:true,previousCapturedAt:old.capturedAt,warnings};
 }
 function restoreAccount(saved){const a=parseAccount(saved.raw,saved.name);if(saved.merged){a.merged=true;a.previousCapturedAt=saved.previousCapturedAt;a.retainedSections=object(saved.retainedSections)?Object.fromEntries(Object.entries(saved.retainedSections).filter(([key,time])=>(Object.hasOwn(SNAPSHOT_SECTIONS,key)||key==='heroesBagCount')&&(time==null||typeof time==='string'))):{};a.warnings.push('此备份包含增量合并的旧记录，请确认资产仍在仓库。');}return a;}
 function validateLineup(l){

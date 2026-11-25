@@ -277,7 +277,7 @@ async function main(){
   await ui('selectView("accounts");document.getElementById("account-snapshot-extra").open=true');win.setContentSize(720,960);
    assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);await ui('document.getElementById("toast").classList.remove("show");document.getElementById("account-snapshot-extra").scrollIntoView({block:"start",behavior:"instant"})');await capture('snapshot-v094-narrow');win.setContentSize(1440,960);
   });
-  const desktopRaw={...raw,format:'yys-desktop-cache-v1',heroCount:1,inventoryCount:1,retainedCount:1,excludedCount:0,souls:[{id:'desktop-first',slot:1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:25,subAttributes:[{type:'crit_rate',value:.03}],equippedState:null}],equipPresets:[['合成桌面预设',['desktop-first']]]};
+  const desktopRaw={...raw,format:'yys-desktop-cache-v1',heroCount:1,inventoryCount:1,retainedCount:1,excludedCount:0,heroes:{a:{...raw.heroes.a,equips:['desktop-first']}},souls:[{id:'desktop-first',slot:1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:25,subAttributes:[{type:'crit_rate',value:.03}],equippedState:null}],equipPresets:[['合成桌面预设',['desktop-first']]]};
   delete desktopRaw.hero_equips;
   const desktopCache={version:2,rawSha256:'a'.repeat(64),sourceKind:'desktop',sourcePayload:desktopRaw,normalizedSouls:[]};
   await check('桌面版本 2 缓存经后台导入后显示实际式神、御魂和预设',async()=>{
@@ -286,12 +286,15 @@ async function main(){
    assert.equal(Object.hasOwn(stored.accounts[0].raw,'hero_equips'),false);
    await ui('selectView("accounts");window.scrollTo(0,0)');
    assert.deepEqual(await ui('[...document.querySelectorAll("#account-summary .overview strong")].map(e=>e.textContent)'),['1','1','1','1']);
-   assert.match(await ui('document.getElementById("account-summary").textContent'),/御魂：完整/);await capture('snapshot-desktop-cache');
+   const summary=await ui('document.getElementById("account-summary").textContent');
+   assert.match(summary,/御魂：完整/);assert.match(summary,/1 件已穿戴，0 件未穿戴/);await capture('snapshot-desktop-cache');
   });
   await check('桌面与旧版库存交叉合并，导出备份、重启和恢复均保留旧御魂',async()=>{
    await ui('document.getElementById("merge-import").checked=true;importMode="accounts";handleFiles('+file(raw)+')');
    assert.equal(stored.accounts[0].raw.format,'mumu-snapshot-v1');assert.equal(stored.accounts[0].raw.hero_equips.length,1);
    assert.equal(Object.hasOwn(stored.accounts[0].raw,'souls'),false);
+   assert.equal(await ui('STATE.accounts[0].presets.length'),1);
+   assert.match(await ui('document.getElementById("account-summary").textContent'),/全仓库的穿戴归属待核对/);
    const latest={...desktopRaw,souls:[{...desktopRaw.souls[0],id:'desktop-second',mainAttrValue:40}]};
    await ui('importMode="accounts";handleFiles('+file(latest)+')');
    assert.equal(stored.accounts[0].raw.souls.length,2);assert.equal(Object.hasOwn(stored.accounts[0].raw,'hero_equips'),false);
