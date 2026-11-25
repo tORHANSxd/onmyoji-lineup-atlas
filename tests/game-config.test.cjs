@@ -2,6 +2,16 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const G=require('../app/game-config.js'),D=require('../data/game-config.json');
 const stage=Number(Object.keys(D.stages).find(id=>D.stages[id].shikigami===5));
+test('魂王的原版开场属性只适用于已核验版本和关卡',()=>{
+ const {source,dungeons}=require('../data/dungeon-rules.json');
+ const stage=dungeons.find(row=>row.id===102);
+ const stats=stage.waves.flat().map(unit=>G.runeOpeningStats(source.resourceVersion,stage.id,unit.id));
+ assert.equal(stats.length,9);
+ assert.deepEqual(stats.map(row=>row.speed),[141,132,145,137,148,152,135,127,127]);
+ assert.equal(Math.round(stats[6].hp),800001);
+ assert.equal(G.runeOpeningStats('0.0.817',stage.id,4740062),null);
+ assert.equal(G.runeOpeningStats(source.resourceVersion,101,4740062),null);
+});
 function lineup(){return {title:'官方结构测试',desc:'',select_stage_id:stage,hconf:[G.defaultMember(D,10),...[554,554,554,554,554].map(id=>G.defaultMember(D,id))]};}
 test('客户端技能与原图覆盖每个可用角色，等级和标签按数据读取',()=>{
  for(const hero of Object.values(D.heroes))for(const id of hero.choices){const levels=G.levels(D,id,1);assert.ok(levels.length,hero.name);for(const s of levels){assert.ok(s.name);assert.ok(D.icons[s.icon]?.fileSHA256);assert.ok(s.tags.every(t=>D.tags[t]));}}

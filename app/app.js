@@ -171,6 +171,7 @@ function renderDungeonRules(){
  if(details.dataset.dungeon!==key){
   details.dataset.dungeon=key;
   const waveRules=[['atk_alter','攻击加成率',true],['def_alter','防御加成率',true],['hp_alter','生命加成率',true],['crt_alter','暴击加值',true],['sp_alter','速度加值',false]];
+  const enemyPanel=new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2});
   const waves=dungeon.waves.map((wave,index)=>{
    const modifiers=waveRules.flatMap(([field,label,percent])=>{
     const value=dungeon.waveModifiers?.[field]?.[index];
@@ -179,9 +180,12 @@ function renderDungeonRules(){
      Intl.NumberFormat('zh-CN',{maximumFractionDigits:4,signDisplay:'always'}).format(value);
     return [label+' '+display];
    });
-   return `<section class="dungeon-wave"><h3>第 ${index+1} 波</h3>${modifiers.length?`<p class="caption">敌方调整 · ${esc(modifiers.join(' · '))}</p>`:''}<ul>${wave.map(unit=>
-    `<li><strong>${esc(unit.name||`怪物 ${unit.id}`)}</strong><small>${unit.level} 级 · 槽位 ${unit.position}${unit.attributes?.baseSpeed!=null?` · 基础速度 ${unit.attributes.baseSpeed}`:''}</small><span>${esc(unit.skills?.map(s=>`${s.name||s.id} Lv.${s.level}`).join('、')||'技能待核对')}</span></li>`
-   ).join('')}</ul></section>`;
+   return `<section class="dungeon-wave"><h3>第 ${index+1} 波</h3>${modifiers.length?`<p class="caption">敌方调整 · ${esc(modifiers.join(' · '))}</p>`:''}<ul>${wave.map(unit=>{
+    const stats=AtlasGame.runeOpeningStats(data.source.resourceVersion,dungeon.id,unit.id);
+    const speed=stats?` · 开场速度 ${stats.speed}`:unit.attributes?.baseSpeed!=null?` · 基础速度 ${unit.attributes.baseSpeed}`:'';
+    const panel=stats?`<small>生命 ${enemyPanel.format(stats.hp)} · 攻击 ${enemyPanel.format(stats.attack)} · 防御 ${enemyPanel.format(stats.defense)}</small>`:'';
+    return `<li><strong>${esc(unit.name||`怪物 ${unit.id}`)}</strong><small>${unit.level} 级 · 槽位 ${unit.position}${speed}</small>${panel}<span>${esc(unit.skills?.map(s=>`${s.name||s.id} Lv.${s.level}`).join('、')||'技能待核对')}</span></li>`;
+   }).join('')}</ul></section>`;
   }).join('');
   const verifiedSoulKing=dungeon.id===102&&data.source.resourceVersion==='0.0.816';
   details.innerHTML=`<p class="caption">客户端资源 ${esc(data.source.resourceVersion)} · ${dungeon.stamina} 体力 · ${dungeon.waves.length} 波${verifiedSoulKing?' · 初始鬼火 我方 3 / 敌方 2':''}</p><div class="dungeon-waves">${waves}</div><p class="caption">精算核对原码的库存与面板要求。实战胜率和动画耗时待验证。</p>`;

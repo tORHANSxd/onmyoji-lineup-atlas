@@ -219,6 +219,7 @@ async function main(){
   await ui('const row=filteredLineups().find(C.hasParsedContent);selectedLineups.add(row.id);renderSelection();document.getElementById("dungeon-workbench").scrollIntoView({block:"start"})');
   assert.equal(await ui('document.getElementById("dungeon-match-selected").disabled'),false);
   assert.match(await ui('document.getElementById("dungeon-rules-details").textContent'),/我方 3 \/ 敌方 2.*攻击加成率 \+200%.*攻击加成率 \+240%.*攻击加成率 \+220%/s);
+  assert.match(await ui('document.getElementById("dungeon-rules-details").textContent'),/开场速度 135.*生命 800,001.*攻击 6,858\.24.*防御 580/s);
   await capture('dungeon-soul-12');
   await ui('document.getElementById("dungeon-match-selected").click()');
   await until('matchJobIds.size===0');
