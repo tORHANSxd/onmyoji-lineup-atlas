@@ -4,7 +4,9 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from rune_replay import APPEND, CREATE_MONSTER, ENTITY_ATTR, PLAY, REMAP, SCENE_ATTR, UNREMAP, monster_waves, sync_windows
+from rune_replay import (APPEND, BATTLE_ENDED, BATTLE_STARTED, BATTLE_STATE, CREATE_MONSTER, ENTITY_ATTR,
+                         FREEZE, PLAY, REMAP, REMOVE, SCENE_ATTR, STOP, UNREMAP, monster_waves,
+                         project_playback, sync_windows)
 
 
 def replay(*frames):
@@ -47,6 +49,48 @@ class ReplayAnimationTests(unittest.TestCase):
     def test_rejects_out_of_order_animation_frames(self):
         with self.assertRaisesRegex(ValueError, 'timestamps'):
             sync_windows(replay((1, PLAY, [1, 'attack']), (0, PLAY, [1, 'attack'])), {}, {})
+
+    def test_projects_rate_queue_alias_at_clip_start_and_interruption(self):
+        result = project_playback(replay(
+            (0, PLAY, [1, ['attack', 'tail'], 2]),
+            (1, APPEND, [1, 'queued']),
+            (2, REMAP, [1, 'tail', 'alternative']),
+            (3, PLAY, [2, 'attack']),
+            (4, BATTLE_STATE, [BATTLE_STARTED]),
+            (8, STOP, [1]),
+            (10, REMOVE, [2]),
+            (11, BATTLE_ENDED, [1]),
+            (12, PLAY, [1, 'missing']),
+        ), {'1': 'model', '2': 'model'},
+            {'model': {'attack': {'len': 8}, 'alternative': {'len': 6}, 'queued': {'len': 4}}})
+        self.assertEqual([(w['entity'], w['clip'], w['startMs'], w['endMs']) for w in result['windows']],
+                         [('1', 'attack', 0, 4), ('2', 'attack', 3, 10),
+                          ('1', 'alternative', 4, 7), ('1', 'queued', 7, 8)])
+        self.assertEqual(result['queuedClipsPlayed'], 2)
+        self.assertEqual(result['interruptedClips'], 2)
+        self.assertEqual(result['overlapMs'], 5)
+        self.assertEqual(result['combatOverlapMs'], 4)
+        self.assertEqual(result['combatElapsedMs'], 7)
+        self.assertEqual(result['unresolved'], [])
+
+    def test_replacement_loop_and_unobserved_callbacks(self):
+        result = project_playback(replay(
+            (0, APPEND, [1, 'unknown']),
+            (1, PLAY, [1, 'loop', 1, True]),
+            (2, APPEND, [1, 'unknown']),
+            (4, PLAY, [1, 'attack']),
+            (5, FREEZE, [1, 1]),
+            (6, PLAY, [1, 'attack']),
+            (7, FREEZE, [1, 0]),
+            (8, PLAY, [1, 'missing']),
+            (9, BATTLE_ENDED, [1]),
+        ), {'1': 'model'}, {'model': {'loop': {'len': 1}, 'attack': {'len': 3}}})
+        self.assertEqual([(w['clip'], w['startMs'], w['endMs'], w['endReason']) for w in result['windows']],
+                         [('loop', 1, 4, 'replaced'), ('attack', 4, 5, 'frozen')])
+        self.assertEqual(result['appendWithoutAction'], 1)
+        self.assertEqual([r['reason'] for r in result['unresolved']],
+                         ['unobserved-append', 'frozen', 'frozen-action', 'missing-clip'])
+        self.assertIsNone(result['combatElapsedMs'])
 
 
 class ReplayMonsterHealthTests(unittest.TestCase):

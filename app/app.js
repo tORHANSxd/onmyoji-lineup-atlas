@@ -152,14 +152,20 @@ function usesDungeonInventory(job){
 function describeBattle(report){
  if(!report.completed)return '复跑超时，未取得结算';
  const outcome={win:'本次复跑通关',loss:'本次复跑失败',unknown:'胜负待核对'}[report.outcome];
- const time=report.overlapMs==null||report.unresolvedActions?[]:[`动作窗口重叠 ${(report.overlapMs/1000).toFixed(2)} 秒`];
+ const playback=report.animationPlayback;
+ const playbackNotes=playback?[playback.interruptedClips?`${playback.interruptedClips} 段提前结束`:'',
+  playback.unresolved?`${playback.unresolved} 项待核对`:''].filter(Boolean):[];
+ const time=playback?[
+  ...(playback.combatElapsedMs==null?[]:[`引擎开战至结算 ${(playback.combatElapsedMs/1000).toFixed(2)} 秒`]),
+  `${playback.combatOverlapMs==null?'':'交战'}动作重叠估算 ${((playback.combatOverlapMs??playback.overlapMs)/1000).toFixed(2)} 秒${playbackNotes.length?`（${playbackNotes.join('，')}）`:''}`,
+ ]:report.overlapMs==null||report.unresolvedActions?[]:[`动作请求重叠 ${(report.overlapMs/1000).toFixed(2)} 秒`];
  const spirit=report.spirit,template=DATA.gameConfig.spirits?.[spirit?.id];
  return [outcome,`通过 ${report.wavesCleared} 波`,`共 ${report.bouts} 回合`,...time,
   ...(spirit?[`已佩戴 ${template?.name||'契灵 '+spirit.id} ${spirit.star} 星 ${spirit.level} 级`]:[])].join(' · ');
 }
 function sampleBattleMarkup(samples){
  return samples.map(sample=>{
-  const time=sample.completed&&Number.isFinite(sample.engineSeconds)?` · 引擎 ${sample.engineSeconds.toFixed(2)} 秒`:'';
+  const time=sample.completed&&Number.isFinite(sample.engineSeconds)?` · 引擎全程 ${sample.engineSeconds.toFixed(2)} 秒`:'';
   return `<li>种子 ${esc(sample.seed)} · ${esc(describeBattle(sample)+time)}</li>`;
  }).join('');
 }

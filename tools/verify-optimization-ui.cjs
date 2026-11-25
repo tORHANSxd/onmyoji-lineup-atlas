@@ -407,7 +407,9 @@ async function main(){
    winner??=ids;calls.push({ids,options});
    const win=winner===ids;
    return {seed:options.seed,engineSeconds:13+options.seed,completed:true,outcome:win?'win':'loss',
-    wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,randomObservations:{observed:75,other:12,alternatives:9},monsterHealth:[
+    wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,
+    animationPlayback:{combatElapsedMs:11234,combatOverlapMs:1250,overlapMs:3000,interruptedClips:5,unresolved:2},
+    randomObservations:{observed:75,other:12,alternatives:9},monsterHealth:[
      {wave:2,cleared:win,monsters:[{id:4741297,initialHp:198501,lowestHp:5000,lastHp:win?0:120000,regainedHp:135000,zeroToAlive:0}]}
     ]};
   };
@@ -424,6 +426,7 @@ async function main(){
    assert.ok(calls.some(x=>x.ids!==winner),'需要至少一个落败的合成候选');
    const top=await ui('document.querySelector(".dungeon-stock-card").textContent');
    assert.match(top,/种子 0.*本次复跑通关.*种子 42.*本次复跑通关/s);
+   assert.match(top,/引擎开战至结算 11\.23 秒.*交战动作重叠估算 1\.25 秒（5 段提前结束，2 项待核对）.*引擎全程 13\.00 秒/s);
    assert.match(await ui('$("dungeon-stock-list").textContent'),/本次复跑失败/);
    assert.match(await ui('$("dungeon-stock-results").textContent'),/所有随机分支仍待验证/);
    await ui('document.querySelector(".dungeon-stock-card summary").click()');

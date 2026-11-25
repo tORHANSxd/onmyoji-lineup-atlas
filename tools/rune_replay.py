@@ -1,17 +1,20 @@
-"""Project recorded action requests onto the client model's nominal durations."""
+"""Apply the client's animation rules to recorded engine timestamps."""
 
 import argparse
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, deque
 import hashlib
 import json
 from math import isfinite
 from pathlib import Path
 
 
-PLAY, REMAP, UNREMAP, APPEND = 727, 734, 743, 778
+PLAY, REMAP, REMOVE, FREEZE, STOP, UNREMAP, APPEND = 727, 734, 736, 737, 741, 743, 778
 TRACKED_COMMANDS = {PLAY, REMAP, UNREMAP, APPEND}
 # BattleMsgConst in resource 0.0.816.
 ENTITY_ATTR, CREATE_MONSTER, SCENE_ATTR = 101, 712, 801
+BATTLE_STATE, BATTLE_ENDED, BATTLE_STARTED = 201, 1102, 5
+PLAYBACK_COMMANDS = TRACKED_COMMANDS | {STOP, REMOVE, FREEZE}
+PLAY_DEFAULTS = (1.0, False, True, False, False)
 
 
 def replay_frames(record):
@@ -119,8 +122,18 @@ def sync_windows(record, entity_models, models):
             "endMs": round(timestamp + sum(durations), 3),
         })
 
-    # Sweep by distinct entity. Two overlapping requests for the same entity
-    # cannot count as overlap between combatants.
+    peak, overlap = overlap_stats(windows)
+    return {
+        "scope": "renderer-action-sync-requests",
+        "clientRenderingMeasured": False,
+        "actionRequests": counts[PLAY], "queuedActions": counts[APPEND],
+        "maxOverlappingEntities": peak, "overlapMs": overlap,
+        "unresolved": unresolved, "windows": windows,
+    }
+
+
+def overlap_stats(windows):
+    """Sweep by distinct entity so two requests for one model count once."""
     events = defaultdict(Counter)
     for window in windows:
         if window["endMs"] > window["startMs"]:
@@ -136,11 +149,151 @@ def sync_windows(record, entity_models, models):
         peak = max(peak, len(active))
         previous = timestamp
 
+    return peak, round(overlap, 3)
+
+
+def project_playback(record, entity_models, models):
+    """Project action occupancy without a device's model/render callbacks."""
+    aliases = defaultdict(dict)
+    actions, frozen = {}, set()
+    windows, unresolved = [], []
+    counts = Counter()
+    combat_start = settlement = None
+    latest = last_event = 0
+
+    def missing(time, uid, reason, clip=None):
+        unresolved.append({"atMs": time, "entity": uid, "reason": reason, "clip": clip})
+
+    def start(uid, action, time, loop=False):
+        name, queued = action["pending"].popleft()
+        clip = aliases[uid].get(name, name)
+        model = entity_models.get(uid)
+        duration = models.get(model, {}).get(clip, {}).get("len")
+        if type(duration) not in (int, float) or not isfinite(duration) or duration < 0:
+            missing(time, uid, "missing-clip", clip)
+            # An unobserved completion callback can prevent later clips from playing.
+            action["window"] = None
+            return
+        end = None if loop else time + duration / action["rate"]
+        if end is not None and not isfinite(end):
+            missing(time, uid, "invalid-duration", clip)
+            action["window"] = None
+            return
+        window = {"entity": uid, "model": model, "clip": clip, "startMs": time,
+                  "endMs": end,
+                  "rate": action["rate"], "queued": queued, "loop": loop}
+        windows.append(window)
+        action["window"] = window
+        if loop and action["pending"]:
+            missing(time, uid, "loop-completion", clip)
+
+    def advance(uid, time):
+        action = actions.get(uid)
+        while action and action["window"] is not None:
+            end = action["window"]["endMs"]
+            if end is None or end > time:
+                break
+            if action["pending"]:
+                # _playNextAnim resolves the alias when the previous clip ends.
+                start(uid, action, end)
+            elif action["autoStop"]:
+                del actions[uid]
+                break
+            else:
+                action["held"] = True
+                break
+
+    def finish(uid, time, reason):
+        action = actions.pop(uid, None)
+        window = action["window"] if action else None
+        if window is not None and (window["endMs"] is None or window["endMs"] > time):
+            if time > window["startMs"]:
+                counts[reason] += 1
+            window.update(endMs=time, endReason=reason)
+
+    for stamp, command, params in replay_frames(record):
+        latest = max(latest, stamp)
+        if command == BATTLE_STATE and params and params[0] == BATTLE_STARTED and combat_start is None:
+            combat_start = stamp
+        if command == BATTLE_ENDED and settlement is None:
+            settlement = stamp
+            break
+        if command not in PLAYBACK_COMMANDS:
+            continue
+        if stamp < last_event:
+            raise ValueError("Replay animation timestamps must advance in order")
+        last_event = stamp
+        uid = str(params[0])
+        advance(uid, stamp)
+        if command in (STOP, REMOVE, FREEZE):
+            finish(uid, stamp, {STOP: "stopped", REMOVE: "removed", FREEZE: "frozen"}[command])
+            if command == REMOVE:
+                frozen.discard(uid)
+                aliases.pop(uid, None)
+            if command == FREEZE:
+                if params[1] > 0:
+                    frozen.add(uid)
+                    missing(stamp, uid, "frozen")
+                else:
+                    frozen.discard(uid)
+            continue
+        name = params[1]
+        if command == REMAP:
+            aliases[uid][name] = params[2]
+        elif command == UNREMAP:
+            aliases[uid].pop(name, None)
+        elif command == APPEND:
+            action = actions.get(uid)
+            if action is None:
+                counts["appendWithoutAction"] += 1
+            elif action["window"] is None or action["window"]["loop"] or action["held"]:
+                missing(stamp, uid, "unobserved-append", name)
+            else:
+                action["pending"].append((name, True))
+        else:
+            finish(uid, stamp, "replaced")
+            supplied = params[2:]
+            rate, loop, auto_stop, *_ = (*supplied, *PLAY_DEFAULTS[len(supplied):])
+            if uid in frozen:
+                missing(stamp, uid, "frozen-action")
+                continue
+            if type(rate) not in (int, float) or not isfinite(rate) or rate <= 0:
+                missing(stamp, uid, "invalid-rate")
+                continue
+            names = name if isinstance(name, list) else [name]
+            if not names or any(not isinstance(clip, str) for clip in names):
+                missing(stamp, uid, "invalid-action")
+                continue
+            action = actions[uid] = {"pending": deque((clip, i > 0) for i, clip in enumerate(names)),
+                                     "rate": rate, "autoStop": auto_stop, "held": False}
+            start(uid, action, stamp, loop=bool(loop))
+
+    end = settlement if settlement is not None else latest
+    if end < last_event:
+        raise ValueError("Replay settlement precedes an animation frame")
+    for uid in list(actions):
+        advance(uid, end)
+        finish(uid, end, "replay-end")
+    windows = [window for window in windows if window["endMs"] > window["startMs"]]
+    for window in windows:
+        window["startMs"] = round(window["startMs"], 3)
+        window["endMs"] = round(window["endMs"], 3)
+    windows.sort(key=lambda window: window["startMs"])
+    peak, overlap = overlap_stats(windows)
+    combat_elapsed = (settlement - combat_start
+                      if combat_start is not None and settlement is not None and settlement >= combat_start else None)
+    combat_overlap = None
+    if combat_elapsed is not None:
+        _, combat_overlap = overlap_stats([{**window, "startMs": max(window["startMs"], combat_start)} for window in windows])
     return {
-        "scope": "renderer-action-sync-requests",
+        "scope": "model-playback-projection-on-engine-clock",
         "clientRenderingMeasured": False,
-        "actionRequests": counts[PLAY], "queuedActions": counts[APPEND],
-        "maxOverlappingEntities": peak, "overlapMs": round(overlap, 3),
+        "combatStartMs": combat_start, "settlementMs": settlement,
+        "combatElapsedMs": combat_elapsed, "combatOverlapMs": combat_overlap,
+        "maxOverlappingEntities": peak, "overlapMs": overlap,
+        "queuedClipsPlayed": sum(window["queued"] for window in windows),
+        "appendWithoutAction": counts["appendWithoutAction"],
+        "interruptedClips": sum(counts[reason] for reason in ("stopped", "removed", "frozen", "replaced")),
         "unresolved": unresolved, "windows": windows,
     }
 
@@ -161,7 +314,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", type=Path)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--monster-health", action="store_true", help="Summarize wave and monster HP state")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--monster-health", action="store_true", help="Summarize wave and monster HP state")
+    mode.add_argument("--animation-playback", action="store_true", help="Project individual clip starts, endings and interruptions")
     args = parser.parse_args()
     report = json.loads(args.report.read_text(encoding="utf-8"))
     record = args.report.with_suffix(".replay.txt").read_bytes()
@@ -171,5 +326,6 @@ if __name__ == "__main__":
         result = monster_waves(record)
     else:
         directory = args.report.parent / (args.report.stem + "-work") / "src/model_info"
-        result = sync_windows(record, report["entityModels"], read_models(directory, report["modelSHA256"]))
+        project = project_playback if args.animation_playback else sync_windows
+        result = project(record, report["entityModels"], read_models(directory, report["modelSHA256"]))
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

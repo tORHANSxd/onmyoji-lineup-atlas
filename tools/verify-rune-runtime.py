@@ -20,7 +20,7 @@ def run(args):
     from game_resources import Bindict, decode_module, sha256, write_json
     from original_battle import RuntimeModules, no_transport
     from original_host import Host
-    from rune_replay import monster_waves, read_models, sync_windows
+    from rune_replay import monster_waves, project_playback, read_models, sync_windows
     from rune_random import RandomAudit
     from rune_team import battle_spirit, selected_team
 
@@ -351,9 +351,15 @@ def run(args):
         except (KeyError, IndexError, TypeError, ValueError) as error:
             report["monsterHealthError"] = str(error)
         try:
-            report["animationSync"] = sync_windows(replay, entity_models, read_models(models, model_hashes))
+            animation_models = read_models(models, model_hashes)
         except (OSError, ValueError) as error:
-            report["animationSyncError"] = str(error)
+            report["animationSyncError"] = report["animationPlaybackError"] = str(error)
+        else:
+            for name, project in (("animationSync", sync_windows), ("animationPlayback", project_playback)):
+                try:
+                    report[name] = project(replay, entity_models, animation_models)
+                except (KeyError, IndexError, TypeError, ValueError) as error:
+                    report[name + "Error"] = str(error)
     write_json(output, report)
     print(json.dumps({key: report[key] for key in ("completed", "phases", "wavesCleared", "bouts", "recordLines")}))
     return 0 if completed else 1

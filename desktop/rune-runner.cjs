@@ -37,6 +37,14 @@ function summary(report,seed,fixedStep,flips){
   typeof report.completed!=='boolean'||!['win','loss','unknown'].includes(report.outcome)||
   !Number.isSafeInteger(report.wavesCleared)||!Number.isSafeInteger(report.bouts))throw Error('客户端复跑没有返回可识别的结算');
  const sync=report.animationSync;
+ const playback=report.animationPlayback;
+ const projected=playback?.scope==='model-playback-projection-on-engine-clock'&&
+  Number.isFinite(playback.overlapMs)&&playback.overlapMs>=0&&
+  Number.isSafeInteger(playback.interruptedClips)&&playback.interruptedClips>=0&&Array.isArray(playback.unresolved)
+  ?{overlapMs:playback.overlapMs,interruptedClips:playback.interruptedClips,unresolved:playback.unresolved.length,
+    combatOverlapMs:Number.isFinite(playback.combatOverlapMs)&&playback.combatOverlapMs>=0?playback.combatOverlapMs:null,
+    combatElapsedMs:Number.isSafeInteger(playback.combatElapsedMs)&&playback.combatElapsedMs>=0?playback.combatElapsedMs:null}
+  :null;
  const spirit=report.equippedSpirit;
  const clock=report.clock;
  if(clock?.mode!==(fixedStep?'client-record-step':'host-wall')||clock.stepMs!==(fixedStep?20:null)||
@@ -57,6 +65,7 @@ function summary(report,seed,fixedStep,flips){
  }
  return {seed,completed:report.completed,outcome:report.outcome,wavesCleared:report.wavesCleared,bouts:report.bouts,
   engineSeconds:clock.elapsedEngineSeconds,monsterHealth,randomObservations,
+  animationPlayback:projected,
   randomBranchesVerified:false,overlapMs:Number.isFinite(sync?.overlapMs)?sync.overlapMs:null,
   unresolvedActions:Array.isArray(sync?.unresolved)?sync.unresolved.length:null,
   spirit:spirit?{id:spirit.id,star:spirit.star,level:spirit.level}:null};
