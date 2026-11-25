@@ -276,6 +276,8 @@ function renderDungeonStock(dungeon){
   }).join('');
   const health=row.samples.filter(sample=>sample.monsterHealth?.length).map(sample=>
    `<li><strong>种子 ${sample.seed}</strong><ul>${monsterHealthMarkup(sample.monsterHealth,dungeon)}</ul></li>`).join('');
+  const observations=row.samples.filter(sample=>sample.randomObservations).map(({seed,randomObservations:observed})=>
+   `<li>种子 ${seed} · 观察到 ${observed.observed} 次概率判断，其中 ${observed.alternatives} 次可以翻转 · ${observed.other} 次其他随机调用</li>`).join('');
   const builds=row.plan.members.map((member,index)=>{
    const panel=row.panels[index],speed=panel.speed.toFixed(2),crit=(panel.crit*100).toFixed(1);
    const sets=new Map();
@@ -291,6 +293,7 @@ function renderDungeonStock(dungeon){
    ${summary?`<p class="caption">${esc(summary)}</p>`:''}
    <details ${section('gear')}><summary>查看御魂搭配</summary><ul class="dungeon-stock-builds">${builds}</ul></details>
    ${health?`<details ${section('health')}><summary>查看各波敌方生命</summary><ul class="dungeon-stock-health">${health}</ul></details>`:''}
+   ${observations?`<details ${section('random')}><summary>查看随机调用记录</summary><p class="caption">各项计数来自对应种子的复跑。可达随机分支仍待验证。</p><ul class="dungeon-stock-samples">${observations}</ul></details>`:''}
    ${row.output?`<button class="secondary" type="button" data-stock-preview="${row.index}">查看阵容码和保存</button>`:
      row.encoding?'<p class="caption">正在生成阵容码…</p>':row.codeError?`<p class="caption">${esc(row.codeError)}</p><button class="secondary" type="button" data-stock-encode="${row.index}">重试生成阵容码</button>`:''}</li>`;
  }).join('');

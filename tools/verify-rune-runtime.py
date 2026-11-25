@@ -7,6 +7,7 @@ import json
 import math
 import os
 from pathlib import Path
+from random import Random
 import re
 from runpy import run_path
 import struct
@@ -20,6 +21,7 @@ def run(args):
     from original_battle import RuntimeModules, no_transport
     from original_host import Host
     from rune_replay import monster_waves, read_models, sync_windows
+    from rune_random import RandomAudit
     from rune_team import battle_spirit, selected_team
 
     catalog = run_path(str(Path(__file__).with_name("extract-dungeon-catalog.py")))
@@ -29,7 +31,8 @@ def run(args):
     resource_version = re.search(r"^version\s*=\s*([\d.]+)\s*$", update, re.M)[1]
     if resource_version != "0.0.816":
         raise ValueError("This encounter fixture is pinned to resource 0.0.816")
-    index = json.loads(args.script_index.read_text(encoding="utf-8"))
+    script_bytes = args.script_index.read_bytes()
+    index = json.loads(script_bytes)
     if index.get("nativeSHA256", native_hash) != native_hash or index.get("resourceVersion", resource_version) != resource_version:
         raise ValueError("The script index belongs to another client")
 
@@ -37,16 +40,26 @@ def run(args):
     team_scope = "synthetic-qingming-zhoushen"
     team = None
     spirit = None
+    team_bytes = b""
+    suit_bytes = b""
     if args.team:
         if args.suit_index:
-            suits = json.loads(args.suit_index.read_text(encoding="utf-8"))
+            suit_bytes = args.suit_index.read_bytes()
+            suits = json.loads(suit_bytes)
         else:
             bundle_path = Path(__file__).resolve().parent.parent / "data/bundle.json"
-            suits = json.loads(bundle_path.read_text(encoding="utf-8"))["suits"]
-        plan = json.loads(args.team.read_text(encoding="utf-8-sig"))
+            suits = json.loads(bundle_path.read_bytes())["suits"]
+            suit_bytes = json.dumps(suits, sort_keys=True).encode()
+        team_bytes = args.team.read_bytes()
+        plan = json.loads(team_bytes)
         team = selected_team(plan, suits)
         spirit = plan.get("spirit")
         team_scope = "selected-inventory"
+    random_reference = None
+    if args.random_reference:
+        random_reference = json.loads(args.random_reference.read_bytes())["randomAudit"]
+        if not isinstance(random_reference, dict):
+            raise ValueError("Invalid random audit reference")
     work = output.parent / (output.stem + "-work")
     models = work / "src/model_info"
     models.mkdir(parents=True, exist_ok=True)
@@ -194,7 +207,15 @@ def run(args):
     avatar.defaultHeros = list(fighters)
     engine = RuneFbEngine({"fbId": 102, "seed": args.seed})
     variant_rng = engine.random
-    random_record = RandomRecord(variant_rng)
+    random_audit = None
+    if args.audit_random:
+        if type(variant_rng) is not Random:
+            raise ValueError("The random audit needs the verified standard Random generator")
+        run_key = sha256(json.dumps([resource_version, native_hash, sha256(script_bytes),
+                                      sha256(team_bytes), sha256(suit_bytes), args.seed,
+                                      args.fixed_step_ms]).encode())
+        random_audit = RandomAudit(variant_rng, run_key, random_reference, args.flip_random)
+    random_record = RandomRecord(random_audit or variant_rng)
     for method in ("seed", "getstate", "setstate"):
         setattr(random_record, method, getattr(variant_rng, method))
     engine._random = random_record
@@ -320,6 +341,8 @@ def run(args):
         "entityModels": entity_models,
         "moduleSHA256": {row["module"]: row["marshalSHA256"] for row in modules.trace},
     }
+    if random_audit is not None:
+        report["randomAudit"] = random_audit.report()
     if replay:
         try:
             report["monsterHealth"] = monster_waves(replay)
@@ -345,6 +368,9 @@ if __name__ == "__main__":
     parser.add_argument("--suit-index", type=Path, help="Override the repository's suit ID to name mapping")
     parser.add_argument("--seed", type=int, default=0, help="Explicit random seed for one offline replay")
     parser.add_argument("--fixed-step-ms", type=int, help="Use the original recording clock with a fixed time step")
+    parser.add_argument("--audit-random", action="store_true", help="Record direct comparisons on engine random draws")
+    parser.add_argument("--random-reference", type=Path, help="Unmodified report from --audit-random")
+    parser.add_argument("--flip-random", type=int, help="Flip one 1-based random draw from the reference report")
     parser.add_argument("--timeout", type=int, default=75)
     args = parser.parse_args()
     if args.timeout < 1:
@@ -353,6 +379,10 @@ if __name__ == "__main__":
         parser.error("--seed must be in the 32-bit unsigned range")
     if args.fixed_step_ms is not None and not 1 <= args.fixed_step_ms <= 80:
         parser.error("--fixed-step-ms must be between 1 and 80")
+    if args.audit_random and args.fixed_step_ms is None:
+        parser.error("--audit-random requires a fixed recording clock")
+    if bool(args.random_reference) != (args.flip_random is not None) or args.random_reference and not args.audit_random:
+        parser.error("--random-reference and --flip-random require --audit-random and each other")
     sys.path[:0] = [str(Path(__file__).resolve().parent), str(args.game_tools.resolve())]
     args.opcode_proof = args.opcode_proof.resolve()
     faulthandler.dump_traceback_later(args.timeout + 60, exit=True)

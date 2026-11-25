@@ -354,7 +354,7 @@ async function main(){
    winner??=ids;calls.push({ids,options});
    const win=winner===ids;
    return {seed:options.seed,engineSeconds:13+options.seed,completed:true,outcome:win?'win':'loss',
-    wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,monsterHealth:[
+    wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,randomObservations:{observed:75,other:12,alternatives:9},monsterHealth:[
      {wave:2,cleared:win,monsters:[{id:4741297,initialHp:198501,lowestHp:5000,lastHp:win?0:120000,regainedHp:135000,zeroToAlive:0}]}
     ]};
   };
@@ -377,6 +377,8 @@ async function main(){
    assert.match(await ui('document.querySelector(".dungeon-stock-card details[open]").textContent'),/速度.*暴击.*×/s);
    await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health] summary").click()');
    assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health][open]").textContent'),/日和坊.*最低 5,000.*生命回升 135,000/s);
+   await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random] summary").click()');
+   assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random][open]").textContent'),/可达随机分支仍待验证.*75 次概率判断.*9 次可以翻转.*12 次其他随机调用/s);
    await ui('$("dungeon-stock-results").scrollIntoView({block:"start"})');await capture('dungeon-stock-search');
    win.setContentSize(720,960);
    try{assert.equal(await ui('$("dungeon-stock-results").scrollWidth<=$("dungeon-stock-results").clientWidth+2'),true);}

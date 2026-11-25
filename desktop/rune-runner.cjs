@@ -42,8 +42,17 @@ function summary(report,seed,fixedStep){
  const health=report.monsterHealth;
  const monsterHealth=health?.scope==='original-monster-hp-updates'&&health.total===3&&Array.isArray(health.waves)&&
   health.waves.filter(wave=>wave.cleared).length===report.wavesCleared?health.waves:null;
+ const audit=report.randomAudit;
+ let randomObservations=null;
+ if(fixedStep){
+  const observed=audit?.observedComparisonDraws,other=audit?.unclassifiedDraws,alternatives=audit?.reversibleDraws?.length;
+  if(audit?.scope!=='engine-rng-observed-comparisons'||audit.flipped!==null||
+   ![observed,other,alternatives].every(value=>Number.isSafeInteger(value)&&value>=0)||
+   observed+other!==report.randomCalls||alternatives>observed)throw Error('客户端复跑没有返回可识别的随机调用记录');
+  randomObservations={observed,other,alternatives};
+ }
  return {seed,completed:report.completed,outcome:report.outcome,wavesCleared:report.wavesCleared,bouts:report.bouts,
-  engineSeconds:clock.elapsedEngineSeconds,monsterHealth,
+  engineSeconds:clock.elapsedEngineSeconds,monsterHealth,randomObservations,
   randomBranchesVerified:false,overlapMs:Number.isFinite(sync?.overlapMs)?sync.overlapMs:null,
   unresolvedActions:Array.isArray(sync?.unresolved)?sync.unresolved.length:null,
   spirit:spirit?{id:spirit.id,star:spirit.star,level:spirit.level}:null};
@@ -76,7 +85,7 @@ function createRuneRunner({configPath,scriptRoot,suits}){
     const argv=['-X','utf8',path.join(scriptRoot,'verify-rune-runtime.py'),
      '--snapshot',config.snapshot,'--game-tools',config.gameTools,'--opcode-proof',config.opcodeProof,
      '--script-index',config.scriptIndex,'--output',out,'--suit-index',suitIndex,'--team',team,'--timeout','75','--seed',String(seed)];
-    if(fixedStep)argv.push('--fixed-step-ms','20');
+    if(fixedStep)argv.push('--fixed-step-ms','20','--audit-random');
     const code=await waitForExit(config.python,argv,dir,action.signal);
     if(code!==0&&code!==1)throw Error('原版引擎未能完成复跑');
     const report=await fs.readFile(out,'utf8').then(JSON.parse).catch(()=>null);
