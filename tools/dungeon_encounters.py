@@ -9,6 +9,7 @@ from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from guild_forest_stage import FOREST_MODE, FOREST_STAGES, FOREST_TEAM
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
+from journey_hard_stage import YINYANG_BOSS_MODE, YINYANG_BOSS_STAGE
 from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS, LBS_HISTORY_ENTRIES,
                             LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MEITUAN_SKILLS, MEITUAN_STAGES,
                             NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, QINFEI_ARCHIVED_FOOD,
@@ -85,6 +86,7 @@ ROOTS = {
     "super_ghost_hjs_special_attack": ("event", "超鬼王特攻日期"),
     "super_ghost_hjs_special_attack_group": ("event", "超鬼王特攻式神"),
     "journey_hardbattle": ("event", "京畿净化首领挑战"),
+    "defence_dungeon_multiple_buff": ("event", "秘境强力加成"),
     "ten_anni_2026_event": ("event", "巡于黄金之河事件"),
     "ten_anni_2026_dungeon_battle": ("event", "巡于黄金之河战斗配置"),
 }
@@ -699,6 +701,18 @@ def encounter_index(source, load_rows):
                 if ref := relation("battle_team_routes", FOREST_TEAM, "单队战斗入口", False):
                     links.append(ref)
             stage_number = int(stage_id or 0)
+            if stage_number == YINYANG_BOSS_STAGE:
+                links.extend(ref for dest, key, label in (
+                    ("battle_mode_routes", YINYANG_BOSS_MODE, "秘境鬼王原版战斗场景"),
+                    ("activity", 1136, "阴阳之守活动日期"),
+                    ("activity", 1137, "活动入口开放日期"),
+                    ("Constant", 1174, "秘境鬼王关卡编号"),
+                    ("Constant", 992, "基础挑战时限"),
+                    ("Constant", 993, "每个剩余烽鼓增加的秒数"),
+                    ("defence_dungeon_multiple_buff", 29, "延长挑战时间的加成"),
+                ) if (ref := relation(dest, key, label, False)))
+                links.extend((rule_reference("defence_normal_battle_roguelike_tips1", "秘境鬼王战斗规则"),
+                              rule_reference("defence_normal_battle_roguelike", "秘境入口与强力加成规则")))
             if stage_id in devil_feast_by_stage:
                 source, key = devil_feast_by_stage[stage_id]
                 links.extend(ref for dest, target, label in (
@@ -1332,7 +1346,10 @@ def encounter_index(source, load_rows):
                 title = f"{entry_kind} · 新服首次" if numeric_key(key) == "2111" else f"{entry_kind} · 编组 {row['groupid']}"
             if table_name == "pve_stage_data":
                 stage_id = int(numeric_key(key) or 0)
-                if numeric_key(key) in dojo_area_by_stage:
+                if stage_id == YINYANG_BOSS_STAGE:
+                    entry_family, entry_kind = "event", "秘境鬼王"
+                    title = "阴阳之守 · 秘境鬼王 · 大岳丸"
+                elif numeric_key(key) in dojo_area_by_stage:
                     entry_family, entry_kind = "event", "八百八狸战斗"
                 elif stage_id in FOREST_STAGES:
                     entry_family, entry_kind = "guild", "青森之秘战斗"

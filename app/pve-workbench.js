@@ -3,6 +3,7 @@
  const api=window.dungeonCatalog;
  const seeds=AtlasRuneSearch.baseSampleSeeds;
  const isDamageMode=AtlasRuneCandidate.damageMode;
+ const yinYang=AtlasJourneyHard.boss;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -124,6 +125,16 @@
    Number.isSafeInteger(journeyHard.blessingCount)&&journeyHard.blessingCount>=0;
   pane.journeySettings=journeyReady?journeyHard:null;
   if(pane.journeyDeadline)for(const field of [pane.journeyDeadline,pane.journeyBlessings])field.disabled=blocked;
+  const yinYangSettings=pane.yinYangDrums?{remainingDrums:pane.yinYangDrums.valueAsNumber,buffIds:pane.yinYangBuffIds}:null;
+  const yinYangReady=!yinYangSettings||yinYang.validSettings(yinYangSettings);
+  pane.yinYangSettings=yinYangReady?yinYangSettings:null;
+  if(pane.yinYangDrums){
+   for(const field of [pane.yinYangDrums,pane.yinYangBuffChoice,...pane.yinYangBuffList.querySelectorAll('button')])field.disabled=blocked;
+   pane.addYinYangBuff.disabled=blocked||!pane.yinYangBuffChoice.value;
+   pane.yinYangDrums.setAttribute('aria-invalid',String(!yinYangReady));
+   pane.yinYangDeadline.textContent=yinYangReady?`原版时限 ${yinYang.deadlineSeconds(yinYangSettings)} 秒`:
+    `剩余烽鼓应为 0 至 ${yinYang.maxDrums} 的整数。`;
+  }
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   const coins=pane.artifactCoins?.valueAsNumber;
@@ -168,7 +179,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -231,6 +242,19 @@
     <label class="pve-lineup-field">祝福层数 <input data-pve-journey-blessings type="number" value="0" min="0" step="1" required></label>
     <label class="pve-lineup-field">战斗时限（秒） <input data-pve-journey-deadline type="number" min="1" step="1" required></label>
    </div>`:''}
+   ${config.yinyangBuffOptions?`<fieldset class="pve-reserve">
+    <legend>秘境挑战条件</legend>
+    <div class="actions">
+     <label class="pve-lineup-field">剩余烽鼓 <input data-pve-yinyang-drums type="number" value="0" min="0"
+      max="${yinYang.maxDrums}" step="1" aria-describedby="pve-yinyang-deadline" required></label>
+     <label class="pve-lineup-field">强力加成 <select data-pve-yinyang-buff><option value="">选择加成</option>
+      ${config.yinyangBuffOptions.map(({id,name,desc})=>`<option value="${id}">${esc(name===desc?name:`${name} · ${desc}`)}</option>`).join('')}
+     </select></label>
+     <button class="secondary" type="button" data-pve-add-yinyang-buff>添加加成</button>
+    </div>
+    <p class="caption" id="pve-yinyang-deadline" data-pve-yinyang-deadline role="status"></p>
+    <ul data-pve-yinyang-buff-list aria-label="已选强力加成"></ul>
+   </fieldset>`:''}
    ${config.shilianEventId?`<div class="actions">
     <label class="pve-lineup-field">难度档位 <select data-pve-event-difficulty>
     ${[1,2,3].map(value=>`<option value="${value}">${value}</option>`).join('')}
@@ -309,6 +333,8 @@
   const part=name=>section.querySelector(`[data-pve-${name}]`);
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
    journeyDeadline:part('journey-deadline'),journeyBlessings:part('journey-blessings'),
+   yinYangDrums:part('yinyang-drums'),yinYangDeadline:part('yinyang-deadline'),yinYangBuffChoice:part('yinyang-buff'),
+   addYinYangBuff:part('add-yinyang-buff'),yinYangBuffList:part('yinyang-buff-list'),yinYangBuffIds:[],
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
@@ -319,15 +345,40 @@
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
   for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
-   pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough].filter(Boolean))field.onchange=()=>{
+   pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
-  for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,...pane.lifeCaps,...pane.marks,
+  for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
+  if(pane.yinYangBuffChoice){
+   const renderBuffs=()=>{
+    pane.yinYangBuffList.innerHTML=pane.yinYangBuffIds.map((id,index)=>{
+     const {name,desc}=pane.yinyangBuffOptions.find(option=>option.id===id);
+     return `<li>${esc(name===desc?name:desc)} <button class="secondary" type="button" data-remove-yinyang-buff="${index}"
+      aria-label="移除${esc(name)}">移除</button></li>`;
+    }).join('');
+    if(job&&!busy())job.notice=null;
+    update();
+   };
+   pane.addYinYangBuff.onclick=()=>{
+    const id=Number(pane.yinYangBuffChoice.value);
+    if(!yinYang.buffIds.includes(id))return;
+    pane.yinYangBuffIds.push(id);
+    renderBuffs();
+   };
+   pane.yinYangBuffList.onclick=event=>{
+    const button=event.target.closest('[data-remove-yinyang-buff]');
+    if(!button||button.disabled)return;
+    const index=Number(button.dataset.removeYinyangBuff);
+    pane.yinYangBuffIds.splice(index,1);
+    renderBuffs();
+    (pane.yinYangBuffList.querySelectorAll('button')[index]??pane.yinYangBuffChoice).focus();
+   };
+  }
   if(pane.skillChoice){
    const renderSkills=()=>{
     pane.skillList.innerHTML=pane.skills.map(([id,level])=>{
@@ -414,6 +465,7 @@
    try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:true,...(battleMode?{battleMode}:{}),
     ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{}),...(qilingWindow?{qilingWindow}:{}),
     ...(run.journeyHard?{journeyHard:run.journeyHard}:{}),...(creviceWindow?{creviceWindow}:{}),...(ghostSettings?{ghostSettings}:{}),
+    ...(run.yinyangBoss?{yinyangBoss:run.yinyangBoss}:{}),
     ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(mapBossPlayers?{mapBossPlayers}:{}),...(tianfaTeam?{tianfaTeam}:{}),
     ...(qinfeiBoss?{qinfeiBoss}:{}),
@@ -582,7 +634,7 @@
   const selected=selectedForReplay(knownLineups());
   const inventory=account(),reserve=orochiReserve(selected,inventory);
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
-     pane.journeyHard&&!pane.journeySettings)return;
+     pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
@@ -591,6 +643,7 @@
   }:null;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    journeyHard:pane.journeySettings,
+   yinyangBoss:pane.yinYangSettings?{...pane.yinYangSettings,buffIds:pane.yinYangSettings.buffIds.slice()}:null,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
    sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins||guard?

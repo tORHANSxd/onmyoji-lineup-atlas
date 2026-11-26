@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,445,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -1078,6 +1078,33 @@ async function main(){
       {tianfa:{difficulty:difficulty+1,damage:7811706,combatSeconds:122.6,teamPositions:[[3,7],[2,5],[4,6]]}},undefined,10,6),
       /通关 · 三人组队 · 本队伤害 7,811,706 · 战斗与结算 122\.60 秒/);
     }
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='731010'&&entry.kind==='秘境鬼王')){
+    await encounter('event','阴阳之守 秘境鬼王 大岳丸');
+    assert.match(await ui(panel+'.textContent'),/原版时限 180 秒.*敌方编组 · 731010/s);
+    const drums='document.querySelector("[data-pve-yinyang-drums]")';
+    const choice='document.querySelector("[data-pve-yinyang-buff]")';
+    assert.equal(await ui(choice+'.options.length'),31);
+    await choose('superghost-five');
+    await ui(drums+'.value="10";'+drums+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(drums+'.getAttribute("aria-invalid")'),'true');
+    await ui(`(()=>{
+     const drums=${drums},choice=${choice};
+     drums.value='1';drums.dispatchEvent(new Event('input'));
+     for(const value of ['2','5','23','29','29']){
+      choice.value=value;choice.dispatchEvent(new Event('change'));
+      document.querySelector('[data-pve-add-yinyang-buff]').click();
+     }
+    })()`);
+    assert.match(await ui(panel+'.textContent'),/原版时限 300 秒/);
+    await ui('document.querySelector(\'[data-remove-yinyang-buff="4"]\').click()');
+    assert.equal(await ui('document.activeElement==='+choice),true);
+    assert.match(await ui(panel+'.textContent'),/原版时限 270 秒/);
+    const yinyangBoss={remainingDrums:1,buffIds:[2,5,23,29]};
+    assert.match(await run('superghost-five',{stageId:731010,groupId:731010,battleMode:409,yinyangBoss},
+      {outcome:'loss',waveCount:1,wavesCleared:0,yinyangBoss:{...yinyangBoss,timedOut:true,damage:17977802,deadlineSeconds:270,combatSeconds:272.84}}),
+      /达到原版时限 · 本队伤害 17,977,802 · 余鼓 1 · 加成 4 项 · 战斗与结算 272\.84 秒 · 时限 270 秒/);
    }
    if(catalog.entries.has('journey_hardbattle')){
     await encounter('event','京畿净化首领挑战 七人岬·扇');

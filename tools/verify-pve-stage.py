@@ -30,7 +30,8 @@ def replay(args, runtime, work):
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RaidDamageWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
-    from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
+    from journey_hard_stage import (JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, YINYANG_BOSS_STAGE, YINYANG_BOSS_WALL_SECONDS,
+                                    JourneyHardReplay, YinYangBossReplay)
     from pve_clock import NativePveClock, pve_wall_seconds
     from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, MEITUAN_MODE, NIAN_MODES,
                                 QINFEI_FOOD_CHAIN_SECONDS, QINFEI_FOOD_MODE, QINFEI_SIDE_STAGES, QINFEI_STATIC_STAGES,
@@ -86,6 +87,7 @@ def replay(args, runtime, work):
     ten_explore = args.mode == TEN_EXPLORE_MODE
     tianfa = args.mode == TIANFA_MODE
     journey_hard = args.mode == JOURNEY_HARD_MODE
+    yinyang_boss = args.mode == YINYANG_BOSS_MODE
     map_boss_replay = None
     qinfei_side_replay = None
     pve_clock = None
@@ -297,6 +299,14 @@ def replay(args, runtime, work):
         journey = JourneyHardReplay(args.stage, args.journey_blessings, args.journey_deadline)
         engine, group, const = journey.engine, journey.group, journey.const
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif yinyang_boss:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Yin Yang Defence requires five owned shikigami")
+        yinyang = YinYangBossReplay(modules, args.stage, args.yinyang_drums, args.yinyang_buffs or [])
+        engine, group, const = yinyang.engine, yinyang.group, yinyang.const
+        group_id, wave_count = group["ID"], 1
     elif args.mode in MAP_BOSS_MODES:
         from DynamicConfigData import DATA_HERO
 
@@ -396,6 +406,8 @@ def replay(args, runtime, work):
             raise ValueError("Fengmo Band stages require their original activity route")
         if args.stage in DEVIL_FEAST_STAGES:
             raise ValueError("Devil Feast stages require their original activity route")
+        if args.stage == YINYANG_BOSS_STAGE:
+            raise ValueError("The Yin Yang Defence boss requires its original activity route")
         if args.stage in SCORE_STAGES:
             raise ValueError("This activity requires its dedicated original score battle engine")
         if args.stage in (*TIANFA_STAGES, TIANFA_LOBBY_STAGE):
@@ -499,6 +511,8 @@ def replay(args, runtime, work):
         route = "tianfa-team" if args.tianfa_team else "tianfa-solo"
     elif journey_hard:
         route = "journey-hard-solo"
+    elif yinyang_boss:
+        route = "yinyang-monopoly-boss"
     elif map_boss_replay:
         route = "map-boss-local-team"
     elif spider:
@@ -674,7 +688,7 @@ def replay(args, runtime, work):
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == ten_groups[0]["resindex"]
                              and engine.defeat_monster_wave == 0 and engine.monster_wave_count == len(ten_groups)
                              and tuple(engine.wave_pve_flag_list) == tuple(group["ID"] for group in ten_groups))
-    elif yanwu or fengmo_band or band_together or devil_feast or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
+    elif yanwu or fengmo_band or band_together or devil_feast or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or yinyang_boss or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -713,6 +727,7 @@ def replay(args, runtime, work):
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else QINFEI_BOSS_REPLAY_SECONDS if qinfei_boss
                       else BAND_TOGETHER_WALL_SECONDS if band_together
                       else DEVIL_FEAST_WALL_SECONDS if devil_feast
+                      else YINYANG_BOSS_WALL_SECONDS if yinyang_boss
                       else TEN_REPLAY_SECONDS if ten_anniversary or ten_boss or ten_explore
                       else OROCHI_REPLAY_SECONDS if orochi
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
@@ -977,6 +992,9 @@ def replay(args, runtime, work):
         report["formationsVerified"] = 1
     if journey_hard:
         report["journeyHard"] = journey.report()
+    if yinyang_boss:
+        report["yinyangBoss"] = yinyang.report()
+        report["formationsVerified"] = 1
     if map_boss_replay:
         report["mapBoss"] = map_boss_replay.report(report["outcome"])
         report["formationsVerified"] = len(map_boss_replay.waves)
@@ -1067,7 +1085,8 @@ def main():
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from hunling_stage import CAPTURE_ITEMS, HUNLING_BOSS, HUNLING_MODES, HUNLING_REPLAY_SECONDS
-    from journey_hard_stage import JOURNEY_HARD_MODE
+    from journey_hard_stage import (JOURNEY_HARD_MODE, YINYANG_BOSS_BUFF_IDS, YINYANG_BOSS_MODE,
+                                    YINYANG_BOSS_STAGE, YINYANG_BOSS_WALL_SECONDS)
     from pve_clock import pve_wall_seconds
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
     from qinfei_boss_stage import (QINFEI_BOSS_MAX_WINDOW, QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES,
@@ -1090,7 +1109,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--yinyang-drums", type=int, choices=range(10))
+    parser.add_argument("--yinyang-buffs", type=int, nargs="+", choices=YINYANG_BOSS_BUFF_IDS)
     parser.add_argument("--devil-feast-hp", type=float)
     parser.add_argument("--band-score", type=int)
     parser.add_argument("--band-carry", type=int, nargs=2, metavar=("DAMAGE", "BUFF_LEVEL"))
@@ -1129,6 +1150,11 @@ def main():
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
     if args.mode == DEVIL_FEAST_MODE and args.stage not in DEVIL_FEAST_STAGES:
         parser.error("Unknown Devil Feast fixed encounter")
+    if args.mode == YINYANG_BOSS_MODE:
+        if args.stage != YINYANG_BOSS_STAGE or args.yinyang_drums is None:
+            parser.error("Yin Yang Defence boss needs its original stage and the remaining drum count")
+    elif args.yinyang_drums is not None or args.yinyang_buffs is not None:
+        parser.error("Remaining drums and blessings only apply to the Yin Yang Defence boss")
     if args.devil_feast_hp is not None and (args.mode != DEVIL_FEAST_MODE or args.stage not in DEVIL_FEAST_BOSSES
                                            or not 0 < args.devil_feast_hp < 2 ** 53):
         parser.error("Starting HP applies to Devil Feast bosses and must be positive")
@@ -1217,6 +1243,7 @@ def main():
     sys.path.insert(1, runtime["gameTools"])
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
                         DEVIL_FEAST_WALL_SECONDS + 20 if args.mode == DEVIL_FEAST_MODE else
+                        YINYANG_BOSS_WALL_SECONDS + 20 if args.mode == YINYANG_BOSS_MODE else
                         BAND_TOGETHER_WALL_SECONDS + 20 if args.mode == BAND_TOGETHER_MODE else
                         TEN_REPLAY_SECONDS + 20 if args.mode in (*TEN_OWNED_MODES, TEN_BOSS_MODE, TEN_EXPLORE_MODE) else
                         OROCHI_REPLAY_SECONDS + 20 if args.mode == OROCHI_MODE else

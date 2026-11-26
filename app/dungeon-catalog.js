@@ -39,6 +39,7 @@
     activity_lbs_intro: '现世妖约活动详情',
     activity_offline_lbs_mass: '现世妖约活动地点',
     journey_hardbattle: '京畿净化首领挑战',
+    defence_dungeon_multiple_buff: '秘境强力加成',
     journey_normalbattle_jinbi: '京畿净化战斗参数 · 金币',
     journey_normalbattle_jingyan: '京畿净化战斗参数 · 经验',
     journey_normalbattle_yuhun: '京畿净化战斗参数 · 御魂',
@@ -496,7 +497,7 @@
   }
 
   function encounterKind(entry) {
-    return entry.fengmoLive||['阴界之门入口','妖气封印','现世鬼王','现世妖约·策划鼠'].includes(entry.kind)||
+    return entry.fengmoLive||['阴界之门入口','妖气封印','现世鬼王','现世妖约·策划鼠','秘境鬼王'].includes(entry.kind)||
       entry.table==='pve_stage_data'&&['daily','guild'].includes(entry.family)?entry.kind:titles[entry.table]||entry.kind;
   }
 
@@ -759,6 +760,22 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:source.memberCount,
       battleMode:source.battleMode,waveCount:1,label:`京畿净化 · ${challenge.title}`,version:source.resourceVersion,
       journeyHard:true});
+  }
+
+  function showYinYangBoss(destination,groups,buffRows){
+    const source=AtlasJourneyHard.boss;
+    const stage=groups[0].row;
+    const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===source.stageId);
+    const constant=id=>groups.find(group=>group.ref.table==='Constant'&&group.ref.key===id)?.row?.value?.[0];
+    if(!matchesOpeningSource(source)||stage?.groupid!==source.stageId||stage.shishentotal!==source.memberCount||
+       formation?.row?.resindex!==source.sceneId||formation.waves.length!==1||
+       formation.waves[0].map(unit=>[unit.position,unit.id]).join()!==source.enemies.join()||
+       constant(1174)!==source.stageId||constant(992)!==source.baseSeconds||constant(993)!==source.drumSeconds||
+       !source.buffIds.every((id,index)=>buffRows?.[index]?.id===id))return;
+    destination.append(node('p','使用已知阵容在本机挑战完整编组，统计本队伤害。可填入当局剩余烽鼓和获得的强力加成。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.stageId,
+      battleMode:source.battleMode,memberCount:source.memberCount,waveCount:1,version:source.resourceVersion,
+      label:'阴阳之守 · 秘境鬼王',yinyangBuffOptions:buffRows});
   }
 
   function showTianfa(destination,entry,groups){
@@ -1729,7 +1746,12 @@
     const header = node('h3', entry.title || titles[entry.table] || entry.kind);
     destination.replaceChildren(header, node('p', '正在读取关卡与关联资料…', 'caption'));
     const refs = [{table:entry.table,key:entry.key,label:'关卡配置',primary:true,found:true}, ...entry.refs];
-    const records = await Promise.allSettled(refs.map(ref => ref.found ? api.records(ref.table, [ref.key]) : null));
+    const yinYang=AtlasJourneyHard.boss;
+    const isYinYang=entry.table==='pve_stage_data'&&Number(entry.key)===yinYang.stageId;
+    const [records,buffRows] = await Promise.all([
+      Promise.allSettled(refs.map(ref => ref.found ? api.records(ref.table, [ref.key]) : null)),
+      isYinYang&&matchesOpeningSource(yinYang)?api.records('defence_dungeon_multiple_buff',yinYang.buffIds).catch(()=>null):null,
+    ]);
     if (token !== stage.token) return;
     const groups = refs.map((ref,i) => {
       const row = records[i].value?.[0];
@@ -1796,6 +1818,7 @@
     const devilFeastMounted=showDevilFeast(destination,entry,groups);
     showActivityScore(destination,entry,groups);
     showJourneyHard(destination,entry,groups);
+    if(isYinYang)showYinYangBoss(destination,groups,buffRows);
     showTianfa(destination,entry,groups);
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
@@ -1866,7 +1889,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!isYinYang&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;

@@ -207,6 +207,7 @@ function sampleBattleMarkup(samples){
   const secretActor=sample.secretActor;
   const mirror=sample.secretMirror;
   const journey=sample.journeyHard;
+  const yinYang=sample.yinyangBoss;
   const mapBoss=sample.mapBoss;
   const journeyBonus=journey?Object.entries({attack:'攻击',defense:'防御',hp:'生命',speed:'速度',crit:'暴击',critDamage:'暴击伤害'})
    .flatMap(([key,label])=>journey.blessingBonus[key]?[`${label} +${key==='speed'?journey.blessingBonus[key]:
@@ -282,6 +283,9 @@ function sampleBattleMarkup(samples){
    journey?`${!sample.completed?'结算待确认':journey.timedOut?'原版判定超时':describeBattle(sample,false)} · `+
     `时限 ${journey.deadlineSeconds} 秒 · 战斗与结算 ${journey.combatSeconds.toFixed(2)} 秒 · 祝福 ${journey.blessingCount} 层`+
     (journeyBonus.length?` · 开场 ${journeyBonus.join('、')}`:''):
+   yinYang?`${!sample.completed?'结算待确认':yinYang.timedOut?'达到原版时限':sample.outcome==='win'?'已清场':'本队落败'} · `+
+    `本队伤害 ${yinYang.damage.toLocaleString('zh-CN')} · 余鼓 ${yinYang.remainingDrums} · 加成 ${yinYang.buffIds.length} 项 · `+
+    `战斗与结算 ${yinYang.combatSeconds.toFixed(2)} 秒 · 时限 ${yinYang.deadlineSeconds} 秒`:
    qiling?`${{'boss-defeated':'击败首领','team-defeated':'本队落败','window-expired':'达到计分时限'}[qiling.reason]||'结算待核对'} · `+
     `个人伤害 ${qiling.damage.toLocaleString('zh-CN')} · 作战 ${qiling.combatSeconds.toFixed(2)} / ${qiling.windowSeconds} 秒 · `+
     `共享生命剩余 ${Math.round(qiling.remainingHp).toLocaleString('zh-CN')}`:
