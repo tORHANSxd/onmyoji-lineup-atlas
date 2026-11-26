@@ -18,6 +18,7 @@ const tuzhizhuPractice=require('../app/tuzhizhu-practice.js');
 const resourceEncounters=require('../app/resource-encounters.js');
 const orochi=require('../app/true-orochi.js');
 const hunling=require('../app/hunling-encounters.js');
+const qilingGroups=require('../app/qiling-group-openings.js');
 const {firstExperience}=resourceEncounters;
 
 const engines={
@@ -32,6 +33,7 @@ const engines={
  [orochi.battleMode]:{name:'ZhenDaSheEngine',route:'true-orochi-local-solo',sha256:orochi.engineSHA256},
  1031:{name:'HunlingNormalBattleEngine',route:'hunling-regional-exploration',sha256:'bb053a93fe3ed2cea06443be58cfc7e45c80be6f34d057bdd32aca29abda70a1'},
  1032:{name:'HunlingBossBattleEngine',route:'hunling-personal-challenge',sha256:'e50f9324358819f76562dece05379f15d7def294d83c2eb327da798fc2e15813'},
+ [qilingGroups.battleMode]:{name:'QiLingGroupBossBattleEngine',route:'qiling-collective-local-window',sha256:qilingGroups.engineSHA256},
  3023:{name:'LBSWorldBossXEngine',route:'regional-boss-hard-scenario',sha256:'a4268deb478a53610e6ef6e23e833f3bf18d2be826f7cd703aaca7e1a54df38f'},
  [fengmoYanwu.battleMode]:{name:'FengMoEquipBattleEngine',route:'fengmo-yanwu-solo',sha256:fengmoYanwu.engineSHA256},
  ...Object.fromEntries(Object.entries(tuzhizhuPractice.modes).map(([id,mode])=>
@@ -46,7 +48,7 @@ const regionModes=[3004,3023];
 function validTactics(plan,battleMode){
  if(!Object.hasOwn(plan,'tactics'))return true;
  const {tactics}=plan;
- if(![2000,306,fengmoYanwu.battleMode].includes(battleMode)||!tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
+ if(![2000,306,fengmoYanwu.battleMode,qilingGroups.battleMode].includes(battleMode)||!tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
  return Object.entries(tactics).every(([key,value])=>{
   const slot=number=>positive(number)&&number<=plan.members.length;
   if(key==='redBoss')return value===true;
@@ -116,6 +118,30 @@ function validHunlingReport(report,encounter,choice){
  return attempt?.itemId===choice.itemId&&Array.isArray(attempt.cards)&&attempt.cards.length===3&&
   attempt.cards.every((slot,i)=>slot===choice.cards[i])&&[attempt.baseRate,attempt.bonusRate].every(rate=>Number.isFinite(rate)&&rate>=0)&&
   (report.completed?typeof attempt.success==='boolean':attempt.success===null);
+}
+
+function validQiLingWindow(input,entry){
+ return input&&positive(input.windowSeconds)&&input.windowSeconds<=qilingGroups.windowLimit&&
+  (input.startingHp===undefined||positive(input.startingHp)&&input.startingHp<=entry.maxHp);
+}
+
+function validQiLingReport(report,entry,input,plan){
+ const data=report.qilingCollective;
+ const actors=[Number(plan.onmyoji.heroId),...plan.members.map(row=>Number(row.hero?.heroId))];
+ if(!data||report.sceneId!==entry.sceneId||report.waveCount!==1||data.configId!==report.stageId||
+    data.spiritId!==entry.spiritId||data.enemyId!==entry.enemyId||data.skillId!==entry.skillId||data.maxHp!==entry.maxHp||
+    data.startingHp!==(input.startingHp??entry.maxHp)||data.windowSeconds!==input.windowSeconds||
+    !Number.isFinite(data.remainingHp)||data.remainingHp<0||data.remainingHp>data.startingHp||
+    !Number.isSafeInteger(data.damage)||data.damage<0||!Number.isSafeInteger(data.hpMessages)||data.hpMessages<0||
+    Math.abs(data.startingHp-data.remainingHp-data.damage)>=1.001||
+    !Number.isFinite(data.combatSeconds)||data.combatSeconds<0||data.combatSeconds>input.windowSeconds+0.02||
+    !validScoringTactics(data,plan,entry.enemyId)||!Array.isArray(data.skillRecipients)||data.skillRecipients.length!==entry.skillTargets||
+    !data.skillRecipients.every(([position,id],index)=>position===index+1&&id===actors[index]))return false;
+ if(!report.completed)return data.reason===null&&data.settlementSeconds===null;
+ if(data.reason==='window-expired')return data.settlementSeconds===null&&data.combatSeconds===input.windowSeconds&&report.outcome==='loss';
+ return Number.isFinite(data.settlementSeconds)&&data.settlementSeconds>=data.combatSeconds&&
+  (report.outcome==='win'?data.reason==='boss-defeated'&&data.remainingHp===0&&report.wavesCleared===1:
+   data.reason==='team-defeated'&&report.wavesCleared===0);
 }
 
 function validOrochiReport(report,plan){
@@ -268,7 +294,7 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow}){
  const engine=resource?{name:resource.engine,route:resource.route,sha256:resource.engineSHA256??resourceEncounters.engineSHA256}:engines[battleMode];
  const awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
@@ -294,6 +320,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===2001&&!validUnderworld(report,rounds))||
     (battleMode===orochi.battleMode&&!validOrochiReport(report,rounds[0]))||
     (hunlingRoute&&!validHunlingReport(report,hunlingRoute,capture))||
+    (qilingEntry&&!validQiLingReport(report,qilingEntry,qilingWindow,rounds[0]))||
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
@@ -318,18 +345,18 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
      has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),
-     has('fengmo_yanwu_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py')]);
+     has('fengmo_yanwu_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
-     ...(spirit?hunling.battleModes:[])]};
+     ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -371,6 +398,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('请选择可用式盘和三个不同的出战式神位置');
    if(battleMode===3&&(hunling.routes[stageId]||stageId===800021||stageId>=810001&&stageId<=810009))
     throw Error('契灵之境需要使用原版探查、挑战或集结入口');
+   const qilingEntry=battleMode===qilingGroups.battleMode?qilingGroups.routes[stageId]:null;
+   if(battleMode===qilingGroups.battleMode&&(qilingGroups.resourceVersion!==resourceVersion||qilingEntry?.groupId!==groupId||
+      plan.members.length!==5||!validQiLingWindow(qilingWindow,qilingEntry))||qilingWindow!==undefined&&!qilingEntry)
+    throw Error('契灵集结需要合法的首领、计分窗口、开场生命和五位自有式神');
    if(battleMode===fengmoYanwu.battleMode&&(fengmoYanwu.resourceVersion!==resourceVersion||stageId!==groupId||
       plan.members.length!==fengmoYanwu.routes[stageId]?.memberCount))throw Error('当前配装与逢魔演武单人上阵人数不一致');
    if(battleMode===3&&Object.hasOwn(fengmoYanwu.routes,stageId))throw Error('逢魔演武需要使用原版活动计分入口');
@@ -389,7 +420,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===3&&resourceEncounters.routes[stageId])throw Error('经验妖怪和金币妖怪需要资源副本的原版入口');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const deadlineMs=spider?645000:battleMode===306?245000:hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000;
+   const deadlineMs=spider?645000:battleMode===306||qilingEntry?245000:hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000;
    const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
    let release,dir;
    current={cancel,done:new Promise(resolve=>{release=resolve;})};
@@ -406,12 +437,16 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      '--guild-members',String(retreat.guildMembers),'--window-seconds',String(retreat.windowSeconds));
     if(regionModes.includes(battleMode))args.push('--region',JSON.stringify(region));
     if(capture)args.push('--capture-item',String(capture.itemId),'--capture-cards',...capture.cards.map(String));
+    if(qilingEntry){
+     args.push('--qiling-window',String(qilingWindow.windowSeconds));
+     if(qilingWindow.startingHp!==undefined)args.push('--qiling-hp',String(qilingWindow.startingHp));
+    }
     const code=await launch(config.python,args,dir,AbortSignal.any([cancel.signal,deadline]));
     cancel.signal.throwIfAborted();
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');

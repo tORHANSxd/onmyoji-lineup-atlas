@@ -3,9 +3,10 @@
  const api=factory(common?require('./game-config.js'):root.AtlasGame,
   common?require('./rune-lineup.js'):root.AtlasRuneLineup,
   common?require('./rune-search.js'):root.AtlasRuneSearch,
-  common?require('./fengmo-yanwu.js'):root.AtlasFengmoYanwu);
+  common?require('./fengmo-yanwu.js'):root.AtlasFengmoYanwu,
+  common?require('./qiling-group-openings.js'):root.AtlasQiLingGroups);
  if(common)module.exports=api;else root.AtlasRuneCandidate=api;
-})(globalThis,function(G,R,S,yanwu){
+})(globalThis,function(G,R,S,yanwu,qiling){
 'use strict';
 
 const mainAttrs={attack_rate:'atk_per',crit_rate:'critical_rate',crit_damage:'critical_pow',speed:'spd',
@@ -101,8 +102,8 @@ function pveGoalMet(report,battleMode){
  return report.wavesCleared===report.waveCount;
 }
 
-const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu;
-const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode;
+const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.qilingCollective;
+const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===qiling.battleMode;
 const creditedDamage=report=>!report.guildHunt||report.outcome==='win';
 
 function damageResult(samples){

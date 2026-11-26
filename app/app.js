@@ -196,6 +196,7 @@ function sampleBattleMarkup(samples){
   const relay=sample.underworld;
   const orochi=sample.trueOrochi;
   const hunling=sample.hunling;
+  const qiling=sample.qilingCollective;
   const regional=sample.regionalBoss;
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
@@ -205,6 +206,9 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${retreat.damage.toLocaleString('zh-CN')} · 作战 ${retreat.combatSeconds.toFixed(2)} / ${retreat.windowSeconds} 秒 · ${retreat.phases.length} 次阶段切换`:
    yanwu?`${!sample.completed?'结算待确认':yanwu.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${yanwu.damage.toLocaleString('zh-CN')} · 作战 ${yanwu.combatSeconds.toFixed(2)} 秒`:
+   qiling?`${{'boss-defeated':'击败首领','team-defeated':'本队落败','window-expired':'达到计分时限'}[qiling.reason]||'结算待核对'} · `+
+    `个人伤害 ${qiling.damage.toLocaleString('zh-CN')} · 作战 ${qiling.combatSeconds.toFixed(2)} / ${qiling.windowSeconds} 秒 · `+
+    `共享生命剩余 ${Math.round(qiling.remainingHp).toLocaleString('zh-CN')}`:
    spider?`${sample.completed?describeBattle(sample):'本机复跑达到运行时限，结算待核对'} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
     `战斗 ${spider.combatSeconds.toFixed(2)} 秒`+
     (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):

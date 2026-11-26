@@ -18,6 +18,7 @@ def replay(args, runtime, work):
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
+    from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
@@ -35,6 +36,7 @@ def replay(args, runtime, work):
     relay = args.mode == UNDERWORLD_MODE
     orochi = args.mode == OROCHI_MODE
     hunling = args.mode in HUNLING_MODES
+    qiling = args.mode == QILING_GROUP_MODE
     retreat = args.mode == RETREAT_MODE
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
@@ -96,6 +98,14 @@ def replay(args, runtime, work):
         if len(fighters) != 5:
             raise ValueError("The original Hunling solo fight needs five owned shikigami")
         engine, group, hunling_route, const = hunling_stage(args.stage, args.mode, args.capture_item)
+        group_id, wave_count = group["ID"], 1
+    elif qiling:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("The collective Hunling replay needs five owned shikigami")
+        collective = QiLingGroupReplay(args.stage, args.qiling_window, args.qiling_hp)
+        engine, group, const = collective.engine, collective.group, collective.const
         group_id, wave_count = group["ID"], 1
     elif regional:
         from battleengine.engine.LBSWorldBossEngine import const
@@ -223,6 +233,8 @@ def replay(args, runtime, work):
         route = "true-orochi-local-solo"
     elif hunling:
         route = "hunling-personal-challenge" if hunling_route[2] is not None else "hunling-regional-exploration"
+    elif qiling:
+        route = "qiling-collective-local-window"
     elif regional:
         route = "regional-boss-ordinary-scenario" if args.mode == REGION_MODE else "regional-boss-hard-scenario"
     elif yanwu:
@@ -342,7 +354,7 @@ def replay(args, runtime, work):
         if args.mode == REGION_HARD_MODE:
             formation_matches = (formation_matches and engine.startLevel == args.region["star"]
                                  and engine.condition == args.region["modifierIds"])
-    elif yanwu or spider or hunling:
+    elif yanwu or spider or hunling or qiling:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -369,13 +381,13 @@ def replay(args, runtime, work):
     engine.op_sceneLoaded(controller)
 
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else OROCHI_REPLAY_SECONDS if orochi
-                      else HUNLING_REPLAY_SECONDS if hunling else 130 if relay else 75)
+                      else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling else 130 if relay else 75)
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
     equipped_spirit = None
     instructions = None
     if tactics:
-        boss = raid.boss["protoId"] if retreat else group["MonstersInfos"][0][0][1] if yanwu else stage["monsters"][0][0]
+        boss = raid.boss["protoId"] if retreat else group["MonstersInfos"][0][0][1] if yanwu or qiling else stage["monsters"][0][0]
         instructions = HuntOpening(engine, controller, const, tactics, boss)
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
@@ -399,6 +411,10 @@ def replay(args, runtime, work):
             orochi_replay.prepare()
         if hunling_replay:
             hunling_replay.update()
+        if qiling:
+            collective.update(winner)
+            if collective.reason:
+                break
         if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk or controller.isExited:
             continue
         if underworld:
@@ -448,6 +464,9 @@ def replay(args, runtime, work):
     if retreat:
         completed = raid_window.reason is not None
         outcome = "win" if raid_window.reason == "boss-defeated" else "loss" if completed else "unknown"
+    if qiling:
+        completed = collective.reason is not None
+        outcome = "win" if collective.reason == "boss-defeated" else "loss" if completed else "unknown"
     module = "battleengine.engine." + type(engine).__name__
     report = {**evidence, "route": route, "stageId": args.stage, "groupId": group_id,
               "engineClass": type(engine).__name__, "engineSHA256": modules.rows[module]["marshalSHA256"],
@@ -467,6 +486,11 @@ def replay(args, runtime, work):
         report["hunling"] = hunling_replay.report(completed)
         if hunling_route[2] is not None:
             report["wavesCleared"] = int(report["hunling"]["weakened"])
+    if qiling:
+        report["qilingCollective"] = collective.report()
+        if instructions:
+            report["qilingCollective"].update(instructions.report())
+        report["wavesCleared"] = int(outcome == "win")
     if regional_replay:
         report["regionalBoss"] = regional_replay.report(completed, winner)
     if yanwu_replay:
@@ -527,6 +551,7 @@ def main():
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from hunling_stage import CAPTURE_ITEMS, HUNLING_BOSS, HUNLING_MODES, HUNLING_REPLAY_SECONDS
+    from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
     from regional_boss_stage import REGION_MODES
     from resource_stage import RESOURCE_MODE
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
@@ -537,7 +562,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, QILING_GROUP_MODE, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -548,6 +573,8 @@ def main():
     parser.add_argument("--region", type=json.loads)
     parser.add_argument("--capture-item", type=int, choices=CAPTURE_ITEMS)
     parser.add_argument("--capture-cards", type=int, nargs=3, choices=range(1, 6))
+    parser.add_argument("--qiling-window", type=int)
+    parser.add_argument("--qiling-hp", type=int)
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
@@ -558,11 +585,17 @@ def main():
     if (args.capture_item is None) != (args.capture_cards is None) or args.capture_item is not None and (
             args.mode != HUNLING_BOSS or len(set(args.capture_cards)) != 3):
         parser.error("A Hunling capture attempt requires an item and three distinct lineup positions")
+    if (args.mode == QILING_GROUP_MODE) != (args.qiling_window is not None) or args.qiling_window is not None and (
+            not 1 <= args.qiling_window <= QILING_GROUP_LIMIT or args.qiling_hp is not None and args.qiling_hp < 1):
+        parser.error("A collective Hunling replay needs a valid scoring window and starting HP")
+    if args.mode != QILING_GROUP_MODE and args.qiling_hp is not None:
+        parser.error("Starting shared HP is only available for a collective Hunling replay")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
                         OROCHI_REPLAY_SECONDS + 20 if args.mode == OROCHI_MODE else
                         HUNLING_REPLAY_SECONDS + 20 if args.mode in HUNLING_MODES else
+                        QILING_GROUP_REPLAY_SECONDS + 20 if args.mode == QILING_GROUP_MODE else
                         240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
     faulthandler.dump_traceback_later(watchdog_seconds, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:

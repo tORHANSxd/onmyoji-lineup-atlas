@@ -351,15 +351,25 @@ def encounter_index(source, load_rows):
             links.append(rule_reference("defence_hard_battle", "京畿净化首领挑战规则"))
         if name == "hunling_tansuo":
             region_id = row.get("id")
+            links.append(rule_reference("qilingzhijing_map_tips", "地域开放与探索规则"))
             links.extend(ref for stage_id, (region, _, spirit, _) in hunling_routes.items() if region == region_id and spirit is None
                          if (ref := relation("pve_stage_data", stage_id, "原表探查战斗编组", False)))
             links.extend(ref for spirit in row.get("hunling_ids", ())
                          if (ref := relation("hunling_base", spirit, "契灵与首领规则", False)))
         if name == "hunling_boss":
+            links.append(rule_reference("qilingzhijing_rule3_tips", "发现、集结和结契规则"))
             links.extend(ref for key, label in ((2595, "集结首领战斗入口"), (1042, "集结后收服入口"))
                          if (ref := relation("battle_team_routes", key, label, False)))
             links.extend(ref for key in row.get("mark_list", ())
                          if (ref := relation("hunling_mark", key, "可获得术印", False)))
+            spirit = row.get("hunling_id")
+            if type(spirit) is int and (code := relation("team_assist_stage", hunling_codes.get(38000 + spirit - 100), "集结首领阵容码目录", False)):
+                links.append(code)
+            passive = row.get("skills")
+            if isinstance(passive, list) and len(passive) == 3:
+                skill = relation("skill", level_one_skill(passive[0]), "集结战斗队伍专属技能", False)
+                if skill:
+                    links.append(skill)
         panel_field = PANEL_RULE_FIELDS.get(name)
         if panel_field:
             field, label = panel_field

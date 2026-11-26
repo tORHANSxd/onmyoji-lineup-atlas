@@ -221,7 +221,7 @@
         const entry=withPracticeReferences(record,practice);
         const battle = entry.table==='act_team_battle'&&yanwu[entry.refs.find(ref=>ref.table==='pve_stage_data')?.key];
         const title = battle?`逢魔演武·${battle.name}`:entry.title;
-        const alias=entry.kind==='真·八岐大蛇'?'真蛇 真八岐大蛇':'';
+        const alias=entry.kind==='真·八岐大蛇'?'真蛇 真八岐大蛇':entry.table==='hunling_boss'?'契灵集结':'';
         return {...entry,title,search:normalized(
           [title, entry.kind, titles[entry.table], entry.table, keyText(entry.key), alias, ...entry.refs.map(ref => keyText(ref.key))].join(' ')
         )};
@@ -1035,6 +1035,41 @@
     render();
   }
 
+  function mountQiLingWindow(block,stageId){
+    const source=window.AtlasQiLingGroups;
+    if(!matchesOpeningSource(source))return;
+    const route=source.routes[stageId];
+    if(!route)return;
+    const fields=node('div','','actions'),workbench=node('div');
+    const input=(label,marker,max,value,placeholder='')=>{
+      const field=node('label',label,'pve-lineup-field'),control=document.createElement('input');
+      Object.assign(control,{type:'number',min:'1',max:String(max),step:'1',value,placeholder});
+      control.dataset[marker]='';
+      field.append(control);fields.append(field);
+      return control;
+    };
+    const length=input('计分窗口（秒）','qilingWindow',source.windowLimit,String(source.windowLimit));
+    const hp=input('开场剩余生命','qilingHp',Math.floor(route.maxHp),'','默认满血');
+    const skill=AtlasGame.skill(DATA.gameConfig,route.skillId,1,0)?.name||`技能 ${route.skillId}`;
+    block.append(node('p',`共享生命上限 ${openingNumber.format(route.maxHp)} · ${skill}作用于${route.skillTargets===1?'阴阳师':'本队阴阳师和式神'}`,'caption'),
+      fields,node('p','使用一队已知阵容，伤害只计入本队。','caption'),workbench);
+    const render=()=>{
+      if(!length.value||!length.checkValidity()||!hp.checkValidity()){
+        window.AtlasPveWorkbench?.unmount();
+        workbench.replaceChildren(node('p',!length.value||!length.checkValidity()?`计分窗口请输入 1 至 ${source.windowLimit.toLocaleString('zh-CN')} 秒的整数。`:
+          '开场剩余生命请输入 1 至满血值之间的整数，也可留空。','caption'));
+        return;
+      }
+      const windowSeconds=Number(length.value),qilingWindow={windowSeconds,...(hp.value?{startingHp:Number(hp.value)}:{})};
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:route.groupId,battleMode:source.battleMode,
+        memberCount:5,waveCount:1,qilingWindow,scoreWindowSeconds:windowSeconds,version:source.resourceVersion,
+        codeStageId:route.codeStageId,label:`契灵集结 · ${route.name} · 个人伤害`});
+    };
+    length.addEventListener('change',render);hp.addEventListener('change',render);
+    render();
+  }
+
   async function showEncounter(entry) {
     if (!entry) return;
     window.AtlasPveWorkbench?.unmount();
@@ -1100,6 +1135,7 @@
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
+    if(entry.table==='hunling_boss')mountQiLingWindow(destination,Number(entry.key));
     const orochi=AtlasTrueOrochi;
     if(entry.table==='map_boss'&&Number(entry.key)===orochi.stageId&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion&&
        groups.filter(group=>group.ref.table==='pve_stage_data'&&group.row).length===orochi.floorCount){

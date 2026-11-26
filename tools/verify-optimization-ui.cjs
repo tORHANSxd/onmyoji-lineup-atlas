@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,1031,1032,2000,2001,3004,3005,3023,5550,5551,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,1031,1032,1041,2000,2001,3004,3005,3023,5550,5551,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -302,7 +302,7 @@ async function main(){
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('spider',10020221,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
-   known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5)];
+   known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
   const boot=await ui('JSON.stringify(STATE)');
   const cases=JSON.parse(await readEncounters(catalog)).entries;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -398,6 +398,17 @@ async function main(){
     assert.deepEqual(captureCalls,[0,1,2,3,7,42]);
     assert.match(await ui(reports+'.textContent'),/首领已虚弱.*百物式盘.*收服成功.*70\.0%.*收服失败/s);
     assert.match(await ui(panel+'.textContent'),/孽缘/);
+   }
+   if(cases.some(entry=>entry.table==='hunling_boss'&&entry.key===1)){
+    await encounter('daily','契灵集结 镇墓兽 1');
+    assert.match(await ui(panel+'.textContent'),/共享生命上限 320,013,345.*最多集结10人.*30分钟/s);
+    const qilingTime='document.querySelector("[data-qiling-window]")',qilingHp='document.querySelector("[data-qiling-hp]")';
+    await ui(`${qilingTime}.value="1801";${qilingTime}.dispatchEvent(new Event("change"))`);
+    assert.equal(await ui(start+'===null'),true);
+    await ui(`${qilingTime}.value="37";${qilingTime}.dispatchEvent(new Event("change"));${qilingHp}.value="123456";${qilingHp}.dispatchEvent(new Event("change"))`);
+    assert.match(await run('qiling-group',{stageId:1,groupId:810002,battleMode:1041,qilingWindow:{windowSeconds:37,startingHp:123456}},
+      {outcome:'loss',wavesCleared:0,qilingCollective:{reason:'window-expired',damage:23456,remainingHp:100000,combatSeconds:37,windowSeconds:37}}),
+      /单场最高 23,456.*达到计分时限.*共享生命剩余 100,000/s);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');
