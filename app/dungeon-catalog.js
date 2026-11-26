@@ -597,10 +597,6 @@
     if(activity&&(activity.id!==trial.activityRow||activity.act_id!==trial.actId||activity.team_battle_type!==trial.teamType)||
        stage?.groupid!==trial.stageId||stage.shishentotal!==trial.memberCount||formation?.row?.resindex!==trial.sceneId||
        formation.waves.length!==1||formation.waves[0].map(unit=>unit.id).join()!==trial.enemies.join())return;
-    if(trial.playerCount){
-      destination.append(node('p',`原版组队入口 · ${trial.playerCount} 名玩家 · 关卡时限 ${trial.deadlineSeconds} 秒。组队模拟需要当局队友阵容及入场状态。`,'caption'));
-      return;
-    }
     const scene=DATA.gameConfig.stages[trial.codeStageId];
     if(scene?.actors!==1||scene.shikigami!==trial.memberCount)return;
     destination.append(node('p',`可用已知阵容离线模拟活动的单人挑战，按原版 ${trial.deadlineSeconds} 秒时限统计个人伤害。`,'caption'));
@@ -625,8 +621,15 @@
   }
 
   function showTianfa(destination,entry,groups){
-    if(!['xinghen_battle','pve_stage_data'].includes(entry.table)||!matchesOpeningSource(AtlasTianfa))return;
-    const source=AtlasTianfa,stage=groups.find(group=>group.ref.table==='pve_stage_data')?.row;
+    const source=AtlasTianfa;
+    const menuEntry=entry.table==='act_team_battle'&&Number(entry.key)===source.teamEntryId;
+    const menuStage=entry.table==='pve_stage_data'&&Number(entry.key)===source.lobbyStageId;
+    if(menuEntry||menuStage){
+      destination.append(node('p','组队入口按所选难度开战。请从下方选择普通、困难或梦魇关卡，再选择三人组队演练。','caption'));
+      return;
+    }
+    if(!['xinghen_battle','pve_stage_data'].includes(entry.table)||!matchesOpeningSource(source))return;
+    const stage=groups.find(group=>group.ref.table==='pve_stage_data')?.row;
     const stageId=Number(stage?.id),route=source.stages[stageId];
     if(!route||stage.groupid!==stageId||stage.shishentotal!==source.memberCount)return;
     const difficulty=groups.find(group=>group.ref.table==='xinghen_battle')?.row;
@@ -637,10 +640,22 @@
     const scene=DATA.gameConfig.stages[source.codeStageId];
     if(scene?.actors!==1||scene.shikigami!==source.memberCount)return;
     for(const rule of difficulty?.battle_tips??[])destination.append(node('p',rule,'caption'));
-    destination.append(node('p','按原版缺省入场参数模拟单人挑战。原表无战斗时限。','caption'));
-    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:source.memberCount,
-      battleMode:source.battleMode,waveCount:1,label:`彼世逢魔 · ${route.name}`,version:source.resourceVersion,
-      codeStageId:source.codeStageId,codeLabel:scene.name});
+    const controls=node('div','','actions'),label=node('label','参战方式','pve-lineup-field');
+    const select=document.createElement('select'),caption=node('p','','caption'),workbench=node('div');
+    select.dataset.tianfaParty='';
+    select.append(new Option('单人挑战','solo'),new Option('三人组队演练','team'));
+    label.append(select);controls.append(label);destination.append(controls,caption,workbench);
+    const render=()=>{
+      const tianfaTeam=select.value==='team';
+      caption.textContent=tianfaTeam?'同一阵容的六位式神按原版位置分给三名本地参战者，阴阳师由队长出战。敌方使用原表属性。':
+        '按原版缺省入场参数模拟单人挑战。原表无战斗时限。';
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:stageId,memberCount:source.memberCount,
+        battleMode:source.battleMode,waveCount:1,label:`彼世逢魔 · ${route.name}`,version:source.resourceVersion,
+        codeStageId:source.codeStageId,codeLabel:scene.name,tianfaTeam});
+    };
+    select.addEventListener('change',render);
+    render();
   }
 
   function liveScoreTable(label,columns,rows){
@@ -1431,7 +1446,7 @@
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
     if (!yanwu&&!mapBossMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
-        !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&
+        !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);

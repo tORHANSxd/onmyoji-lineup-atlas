@@ -9,6 +9,7 @@ from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIV
                             NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, SEAL_MODE,
                             SPECIAL_NIAN_MODE, SPECIAL_NIAN_STAGES, is_fragment_entry)
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
+from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
 
 
 ROOTS = {
@@ -387,6 +388,11 @@ def encounter_index(source, load_rows):
             route = relation("battle_team_routes", row.get("team_battle_type"), "原版组队战斗入口", True)
             if route:
                 links.append(route)
+        if ((name == "act_team_battle" and row.get("id") == TIANFA_TEAM_ENTRY)
+                or (name == "pve_stage_data" and numeric_key(row.get("id")) == str(TIANFA_LOBBY_STAGE))):
+            for difficulty in range(1, len(TIANFA_STAGES) + 1):
+                if ref := relation("xinghen_battle", difficulty, "实际难度入口", False):
+                    links.append(ref)
         if name == "MZB_fengmo":
             trait = row.get("skill_id")
             mode = 5551 if trait else 5550
@@ -527,7 +533,8 @@ def encounter_index(source, load_rows):
         if name == "xinghen_battle":
             links.extend(ref for dest, key, label in (
                 ("xinghen_ui", 2, "彼世逢魔战斗入口"),
-                ("normal_battle_config", 2600, "彼世逢魔默认战斗规则"),
+                ("normal_battle_config", TIANFA_MODE, "彼世逢魔默认战斗规则"),
+                ("battle_team_routes", TIANFA_TEAM_TYPE, "彼世逢魔原版组队入口"),
                 ("team_assist_stage", 100969, "彼世逢魔阵容码"),
             ) if (ref := relation(dest, key, label, False)))
         if name == "pve_stage_data" and (tianfa_difficulty := tianfa_by_stage.get(numeric_key(row.get("id")))):

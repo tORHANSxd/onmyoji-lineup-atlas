@@ -1,5 +1,7 @@
 """Replay versioned map boss battles with the original player positions."""
 
+from rune_team import assign_local_party, verify_local_party, verify_local_party_selection
+
 MODE = 3000
 SEAL_MODE = 855
 LBS_MODE = 3001
@@ -171,33 +173,18 @@ class MapBossReplay:
         self.observe_waves()
 
     def assign_players(self, player, fighters):
-        members = list(fighters)
-        teams = [{members[pos - 2]: fighters[members[pos - 2]] for pos in slots} for slots in self.positions]
-        return [{**player, "id": 1, "heroes": {**teams[0], "selected-onmyoji": player["heroes"]["selected-onmyoji"]}},
-                *({"id": i, "yysid": 0, "heroes": team} for i, team in enumerate(teams[1:], 2))]
+        return assign_local_party(player, fighters, self.positions)
 
     def verify_players(self, controllers):
-        actual = [(ctrl.ctrlPlayer.hasYYS, tuple(ctrl.ctrlPlayer.ssPosIndexList)) for ctrl in controllers]
-        if actual != [(i == 0, positions) for i, positions in enumerate(self.positions)]:
-            raise RuntimeError("The original map boss selected different team positions")
+        verify_local_party(controllers, self.positions)
 
     def verify_selection(self, controllers):
-        selected = {"selected-onmyoji": (controllers[0], 1)}
-        for controller, positions in zip(controllers, self.lineup_slots or self.positions):
-            selected.update((uid, (controller, position))
-                            for uid, position in zip(controller.ctrlPlayer.defaultHeros, positions))
-        actual = {}
-        for entity in self.engine.heroEntities.values():
-            uid = entity.HeroComp.heroData.heroUid
-            if uid in selected:
-                actual[uid] = entity.ownerController, entity.posIndex
-            if self.lbs_activity and uid == "selected-onmyoji":
-                skill = entity.SkillMgrComp.getSkillComp(LBS_ACTIVITY_SKILLS[-1])
-                self.passive_verified = skill is not None and skill.skillLevel == 1
-        if actual != selected:
-            raise RuntimeError("The original map boss placed the selected lineup differently")
-        if self.lbs_activity and not self.passive_verified:
-            raise RuntimeError("The original LBS activity did not install the Onmyoji passive")
+        onmyoji = verify_local_party_selection(self.engine, controllers, self.lineup_slots or self.positions)
+        if self.lbs_activity:
+            skill = onmyoji.SkillMgrComp.getSkillComp(LBS_ACTIVITY_SKILLS[-1])
+            self.passive_verified = skill is not None and skill.skillLevel == 1
+            if not self.passive_verified:
+                raise RuntimeError("The original LBS activity did not install the Onmyoji passive")
 
     def observe_deadline(self):
         set_deadline = self.engine.set_haltBattleTime

@@ -399,10 +399,12 @@ function validJourneySettings(settings){
   Number.isSafeInteger(settings.blessingCount)&&settings.blessingCount>=0;
 }
 
-function validTianfaReport(report,stage){
+function validTianfaReport(report,stage,team){
  const data=report.tianfa;
  return data&&report.sceneId===tianfa.sceneId&&report.waveCount===1&&data.difficulty===stage.difficulty&&
-  sameTactics(data.positions,[2,3,4,5,6,7])&&Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&
+  sameTactics(data.positions,team?tianfa.teamPositions[0]:[2,3,4,5,6,7])&&
+  (team?sameTactics(data.teamPositions,tianfa.teamPositions):data.teamPositions===undefined)&&
+  Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&
   Number.isSafeInteger(data.damage)&&data.damage>=0&&Number.isSafeInteger(data.fireCount)&&data.fireCount>=0&&
   Array.isArray(data.opening)&&sameTactics(data.opening.map(unit=>[unit?.position,unit?.id]),tianfa.formation(stage))&&
   data.opening.every(unit=>unit.level===40&&['hp','speed','attack','defense','critRate'].every(key=>Number.isFinite(unit[key])&&unit[key]>=0));
@@ -537,13 +539,14 @@ function validMapBossReport(report,route,players){
    rewards.paperManCount<=({stone:0,angryStone:4,yearBeast:5}[route.kind]):rewards===null);
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const engine=sixRealmsRoute?{name:sixRealmsRoute.engine,sha256:sixRealmsRoute.sha256,
   route:`six-realms-${sixRealmsState?'configured':'full-health'}-${sixRealmsEvent?'encounter':'trial'}`}:
   resource?{name:resource.engine,route:resource.route,sha256:resource.engineSHA256??resourceEncounters.engineSHA256}:
   secret?.entrance==='race'?{...engines[battleMode],route:'secret-race-solo'}:
-  secret?.entrance==='team'?{...engines[battleMode],route:'secret-team-solo'}:engines[battleMode];
+  secret?.entrance==='team'?{...engines[battleMode],route:'secret-team-solo'}:
+  tianfaTeam?{...engines[battleMode],route:'tianfa-team'}:engines[battleMode];
  const awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;
  const hunt=battleMode===2000?guildHuntOpenings.floors[stageId]:null;
@@ -572,7 +575,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (retreatOpening&&!validRetreat(report,retreatOpening,retreat,rounds[0]))||
     (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
     (activityScore.modes[battleMode]&&!validActivityScore(report,rounds[0],activityScore.modes[battleMode]))||
-    (battleMode===tianfa.battleMode&&!validTianfaReport(report,tianfa.stages[stageId]))||
+    (battleMode===tianfa.battleMode&&!validTianfaReport(report,tianfa.stages[stageId],tianfaTeam))||
     (journeyRoute&&!validJourneyReport(report,journeyRoute,journeySettings))||
     (mapBossRoute&&!validMapBossReport(report,mapBossRoute,mapBossPlayers))||
     (spider&&!validTuzhizhuPractice(report,spider,stageId,rounds[0]))||
@@ -634,7 +637,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,tianfaTeam=false}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -701,10 +704,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error(`${scoreRoute.label}需要原版活动关卡和五位自有式神`);
    if(battleMode===3&&activityScore.stages[stageId])throw Error(`${activityScore.stages[stageId].label}需要使用原版活动计分入口`);
    const tianfaStage=tianfa.stages[stageId];
+   if(typeof tianfaTeam!=='boolean'||tianfaTeam&&battleMode!==tianfa.battleMode)throw Error('三人复跑设置只适用于彼世逢魔');
    if(battleMode===tianfa.battleMode&&(tianfa.resourceVersion!==resourceVersion||!tianfaStage||
       groupId!==stageId||plan.members.length!==tianfa.memberCount))
-    throw Error('彼世逢魔单人挑战需要对应难度的原版关卡和六位自有式神');
-   if(battleMode===3&&tianfaStage)throw Error('彼世逢魔需要使用原版挑战入口');
+    throw Error('彼世逢魔需要对应难度的原版关卡和六位自有式神');
+   if(battleMode===3&&(tianfaStage||stageId===tianfa.lobbyStageId))throw Error('彼世逢魔需要使用原版挑战入口');
    const journeyRoute=battleMode===journeyHard.battleMode?journeyHard.routes[stageId]:null;
    if(battleMode===journeyHard.battleMode&&(journeyHard.resourceVersion!==resourceVersion||!journeyRoute||stageId!==groupId||
       plan.members.length!==journeyHard.memberCount||!validJourneySettings(journeySettings))||journeySettings!==undefined&&!journeyRoute)
@@ -777,12 +781,13 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(ghostRoute)args.push('--ghost-settings',JSON.stringify(ghostSettings));
     if(historicalGhostRoute)args.push('--historical-ghost-window',String(historicalGhostWindow));
     if(mapBossRoute)args.push('--map-boss-players',String(mapBossPlayers));
+    if(tianfaTeam)args.push('--tianfa-team');
     const code=await launch(config.python,args,dir,AbortSignal.any([cancel.signal,deadline]));
     cancel.signal.throwIfAborted();
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');

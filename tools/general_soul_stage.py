@@ -25,7 +25,7 @@ SOLO_SCORE_MODES = {
     6086: ScoreRoute(6082, 6086, 3334472, 300, "XiaoyeBaitiBattleEngine",
                      "solo-activity-score", "activityScore", "xiaoye_battle_statisics"),
 }
-SCORE_STAGES = {row.stage_id for row in SOLO_SCORE_MODES.values()} | {594011}
+SCORE_STAGES = {row.stage_id for row in SOLO_SCORE_MODES.values()}
 
 
 def solo_score_stage(mode, stage_id):

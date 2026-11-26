@@ -20,6 +20,7 @@ class EncounterIndexTests(unittest.TestCase):
             "Combinesceneinfo": [[2735048, {}]],
             "team_assist_stage": [[100969, {"ss_num": 6}]],
             "normal_battle_config": [[2600, {"battleMode": 2600}]],
+            "battle_team_routes": [[3600, {"battleMode": 2600}]],
         }
         manifests = [{"name": name, "status": "decoded", "family": "battle",
                       "fields": [field for _, row in rows for field in row]} for name, rows in tables.items()]
@@ -30,8 +31,31 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertEqual({(ref["table"], ref["key"]) for ref in route["refs"]}, {
             ("pve_stage_data", "2716062"), ("xinghen_ui", 2), ("BattleMonstersInfo", 2716062),
             ("Combinesceneinfo", 2735048), ("normal_battle_config", 2600), ("team_assist_stage", 100969),
+            ("battle_team_routes", 3600),
         })
         self.assertIn(("xinghen_battle", 2), {(ref["table"], ref["key"]) for ref in entries["pve_stage_data"]["refs"]})
+
+    def test_tianfa_team_menu_links_actual_difficulties_and_preserves_preview_stage(self):
+        stages = (2716061, 2716062, 2716063, 594011)
+        tables = {
+            "act_team_battle": [[57, {"id": 57, "title_name": "彼世逢魔", "battle_id": 594011,
+                                      "team_battle_type": 3600, "act_id": 11696, "team_player_num": 3}]],
+            "activity": [[11696, {}]],
+            "battle_team_routes": [[3600, {"battleMode": 2600}]],
+            "xinghen_battle": [[difficulty, {"id": difficulty, "difficulty": difficulty, "stage_id": stage}]
+                               for difficulty, stage in enumerate(stages[:3], 1)],
+            "pve_stage_data": [[str(stage), {"id": str(stage), "groupid": stage}] for stage in stages],
+            "BattleMonstersInfo": [[stage, {"resindex": 40061 if stage == 594011 else 2735048}] for stage in stages],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], str(entry["key"])): entry for entry in catalog["entries"]}
+        for table, key in (("act_team_battle", "57"), ("pve_stage_data", "594011")):
+            refs = entries[table, key]["refs"]
+            self.assertEqual([ref["key"] for ref in refs if ref["table"] == "xinghen_battle"], [1, 2, 3])
+        self.assertIn(("pve_stage_data", "594011"),
+                      {(ref["table"], ref["key"]) for ref in entries["act_team_battle", "57"]["refs"]})
 
     def test_six_realms_keeps_trial_routing_and_battle_island_pools_distinct(self):
         tables = {

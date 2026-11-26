@@ -845,8 +845,8 @@ async function main(){
    }
    if(cases.some(entry=>entry.table==='act_team_battle'&&Number(entry.key)===57)){
     await ui('qaEncounterInput("event","彼世逢魔")');
-    await until(panel+'.textContent.includes("需要当局队友阵容及入场状态")');
-    assert.match(await ui(panel+'.textContent'),/原版组队入口 · 3 名玩家 · 关卡时限 180 秒/);
+    await until(panel+'.textContent.includes("组队入口按所选难度开战")');
+    assert.match(await ui(panel+'.textContent'),/实际难度入口.*普通.*实际难度入口.*困难.*实际难度入口.*梦魇/s);
     assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='xinghen_battle')){
@@ -858,6 +858,12 @@ async function main(){
      assert.match(await run('tianfa',{stageId,groupId:stageId,battleMode:2600},
       {tianfa:{difficulty:difficulty+1,damage:7811706,combatSeconds:126.10}},undefined,10,6),
       /通关 · 个人伤害 7,811,706 · 战斗与结算 126\.10 秒/);
+     const party='document.querySelector("[data-tianfa-party]")';
+     await ui(`${party}.value="team";${party}.dispatchEvent(new Event("change"))`);
+     assert.match(await ui(panel+'.textContent'),/同一阵容的六位式神按原版位置分给三名本地参战者/);
+     assert.match(await run('tianfa',{stageId,groupId:stageId,battleMode:2600,tianfaTeam:true},
+      {tianfa:{difficulty:difficulty+1,damage:7811706,combatSeconds:122.6,teamPositions:[[3,7],[2,5],[4,6]]}},undefined,10,6),
+      /通关 · 三人组队 · 本队伤害 7,811,706 · 战斗与结算 122\.60 秒/);
     }
    }
    if(catalog.entries.has('journey_hardbattle')){

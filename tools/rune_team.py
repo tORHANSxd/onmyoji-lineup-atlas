@@ -105,6 +105,30 @@ def auto_setting(row):
     return setting
 
 
+def assign_local_party(player, fighters, positions):
+    members = list(fighters)
+    teams = [{members[pos - 2]: fighters[members[pos - 2]] for pos in slots} for slots in positions]
+    return [{**player, "id": 1, "heroes": {**teams[0], "selected-onmyoji": player["heroes"]["selected-onmyoji"]}},
+            *({"id": i, "yysid": 0, "heroes": team} for i, team in enumerate(teams[1:], 2))]
+
+
+def verify_local_party(controllers, positions):
+    actual = [(ctrl.ctrlPlayer.hasYYS, tuple(ctrl.ctrlPlayer.ssPosIndexList)) for ctrl in controllers]
+    if actual != [(i == 0, slots) for i, slots in enumerate(positions)]:
+        raise RuntimeError("The original engine selected different team positions")
+
+
+def verify_local_party_selection(engine, controllers, positions):
+    expected = {"selected-onmyoji": (controllers[0], 1)}
+    for controller, slots in zip(controllers, positions):
+        expected.update((uid, (controller, pos)) for uid, pos in zip(controller.ctrlPlayer.defaultHeros, slots))
+    selected = {entity.HeroComp.heroData.heroUid: entity for entity in engine.heroEntities.values()
+                if entity.HeroComp.heroData.heroUid in expected}
+    if {uid: (entity.ownerController, entity.posIndex) for uid, entity in selected.items()} != expected:
+        raise RuntimeError("The original engine placed the selected lineup differently")
+    return selected["selected-onmyoji"]
+
+
 def battle_spirit(row, calculate):
     marks = row.get("marks")
     if (not integer(row.get("id"), 1, 999999) or not integer(row.get("star"), 1, 6)

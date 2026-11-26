@@ -4,6 +4,7 @@
 const tianfa={resourceVersion:'0.0.816',battleMode:2600,engine:'TianFaBattleEngine',route:'tianfa-solo',
  engineSHA256:'41cbda284f4f2952ad20a5c63688cffa91c9c18da926633f0aaefe288aac3080',
  sceneId:2735048,codeStageId:100969,memberCount:6,
+ teamEntryId:57,lobbyStageId:594011,teamPositions:[[3,7],[2,5],[4,6]],
  tableSHA256:{
   xinghen_battle:'7f86b8a49598e96fd2d177e9c10ce18b678412054a99dcd0e4c6b376b02c7a5c',
   pve_stage_data:'7d376d64c733f53882acc6e88291a4607b6c290828981fbad7adc3dcf7ad36b0',

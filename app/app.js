@@ -232,7 +232,8 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${yanwu.damage.toLocaleString('zh-CN')} · 作战 ${yanwu.combatSeconds.toFixed(2)} 秒`:
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
-   tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · 个人伤害 ${tianfa.damage.toLocaleString('zh-CN')} · `+
+   tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+
+    `${tianfa.teamPositions?'三人组队 · 本队伤害':'个人伤害'} ${tianfa.damage.toLocaleString('zh-CN')} · `+
     `战斗${sample.completed?'与结算':''} ${tianfa.combatSeconds.toFixed(2)} 秒`:
    protectedUnits?`${describeBattle(sample)} · 鲤鱼精${protectedUnits.supportAlive?'存活':'阵亡'} · `+
     `河童${protectedUnits.targetAlive?'存活':'阵亡'} · 敌方剩余 ${protectedUnits.enemiesAlive} 位`:

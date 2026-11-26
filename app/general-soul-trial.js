@@ -24,12 +24,9 @@ const instant={...soloFields,label:'刹那试炼',battleMode:6086,teamType:6086,
  stageId:3334472,sceneId:3647228,codeStageId:101009,
  enemies:[43483331,43483220,43483300,43483558,43483577,43483344],engine:'XiaoyeBaitiBattleEngine',
  engineSHA256:'cb98b0fd37d34f1be074ee91dedf39d3a032ea826123e60a71fb75f51d5a628a'};
-const team={resourceVersion:trial.resourceVersion,tableSHA256:trial.tableSHA256,label:'彼世逢魔',
- battleMode:2600,teamType:3600,actId:11696,activityRow:57,stageId:594011,sceneId:40061,deadlineSeconds:180,
- playerCount:3,memberCount:5,enemies:[9402266,9402266,9402266,9401231,9401231,9401231]};
 const solo=[legacy,snow,instant];
 const modes=Object.fromEntries(solo.map(row=>[row.battleMode,row]));
-const stages=Object.fromEntries([...solo,team].map(row=>[row.stageId,row]));
+const stages=Object.fromEntries(solo.map(row=>[row.stageId,row]));
 const encounters={...legacy,modes,stages};
 if(typeof module==='object'&&module.exports)module.exports=encounters;
 else globalThis.AtlasGeneralSoulTrial=encounters;

@@ -34,7 +34,8 @@ def replay(args, runtime, work):
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, SHILIAN_MODES
     from shilian_stage import ArtifactReplay, MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, guard_battle_input, shilian_stage, verify_opening, verify_run_state
     from superghost_stage import HISTORICAL_GHOST_MODE, SUPERGHOST_MODE, SUPERGHOST_WALL_SECONDS, HistoricalGhostReplay, SuperGhostReplay
-    from tianfa_stage import TIANFA_MEMBER_COUNT, TIANFA_MODE, TIANFA_REPLAY_SECONDS, TIANFA_STAGES, TianfaReplay
+    from tianfa_stage import (TIANFA_LOBBY_STAGE, TIANFA_MEMBER_COUNT, TIANFA_MODE, TIANFA_REPLAY_SECONDS,
+                              TIANFA_STAGES, TianfaReplay)
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
@@ -187,7 +188,7 @@ def replay(args, runtime, work):
 
         if len(fighters) != TIANFA_MEMBER_COUNT:
             raise ValueError("Tianfa requires six owned shikigami")
-        tianfa_replay = TianfaReplay(args.stage)
+        tianfa_replay = TianfaReplay(args.stage, args.tianfa_team)
         engine, group, const = tianfa_replay.engine, tianfa_replay.group, tianfa_replay.const
         group_id, wave_count = group["ID"], 1
     elif journey_hard:
@@ -287,7 +288,7 @@ def replay(args, runtime, work):
             raise ValueError(f"Unknown native PvE stage {stage_id}")
         if args.stage in SCORE_STAGES:
             raise ValueError("This activity requires its dedicated original score battle engine")
-        if args.stage in TIANFA_STAGES:
+        if args.stage in (*TIANFA_STAGES, TIANFA_LOBBY_STAGE):
             raise ValueError("Tianfa requires its dedicated original battle engine")
         if args.stage in CREVICE_STAGES:
             raise ValueError("The Guild Crevice requires its dedicated original battle engine")
@@ -332,13 +333,14 @@ def replay(args, runtime, work):
             raise ValueError("The spirit configuration does not match the runtime")
         player["hunling_info"] = {spirit["uid"]: spirit}
         player["yys_hunling"] = {str(actor["heroId"]): spirit["uid"]}
-    map_boss_team = map_boss_replay.assign_players(player, fighters) if map_boss_replay else None
+    party_replay = tianfa_replay if args.tianfa_team else map_boss_replay
+    local_party = party_replay.assign_players(player, fighters) if party_replay else None
     avatar = BattleAvatar()
-    avatar.init_from_dict(map_boss_team[0] if map_boss_team else player)
+    avatar.init_from_dict(local_party[0] if local_party else player)
     avatar.inventory.update(inventory)
     avatar.defaultHeros = rounds[0]["members"][:] if relay else list(fighters)[:6] if orochi else list(fighters)
-    if map_boss_team:
-        avatar.defaultHeros = [uid for uid in map_boss_team[0]["heroes"] if uid in fighters]
+    if local_party:
+        avatar.defaultHeros = [uid for uid in local_party[0]["heroes"] if uid in fighters]
 
     if retreat:
         route = "guild-retreat-personal-window"
@@ -365,7 +367,7 @@ def replay(args, runtime, work):
     elif activity_score:
         route = activity_score.route
     elif tianfa:
-        route = "tianfa-solo"
+        route = "tianfa-team" if args.tianfa_team else "tianfa-solo"
     elif journey_hard:
         route = "journey-hard-solo"
     elif map_boss_replay:
@@ -409,7 +411,7 @@ def replay(args, runtime, work):
     engine.addBattlePlayer(avatar)
     engine.controllers.append(controller)
     controllers = [controller]
-    for teammate in map_boss_team[1:] if map_boss_team else ():
+    for teammate in local_party[1:] if local_party else ():
         partner = BattleAvatar()
         partner.init_from_dict(teammate)
         partner.inventory.update(inventory)
@@ -501,8 +503,8 @@ def replay(args, runtime, work):
         engine._createNextRoundMons = verify_spawn
     engine._time, engine.delta_time = float(ENGINE_START_SECONDS), .020
     engine.init()
-    if map_boss_replay:
-        map_boss_replay.verify_players(controllers)
+    if party_replay:
+        party_replay.verify_players(controllers)
     if retreat:
         formation_matches = (engine.combineSceneInfoId == 40010 and engine.currBossProtoId == raid.boss["protoId"]
                              and engine.finishedWaveCount == args.raid_round - 1 and engine.raid_id == 1
@@ -666,8 +668,8 @@ def replay(args, runtime, work):
                 equipped_spirit = {"id": attached.id, "star": attached.star, "level": attached.lv}
         if pending:
             raise RuntimeError("The original engine did not create every selected character")
-        if map_boss_replay:
-            map_boss_replay.verify_selection(controllers)
+        if party_replay:
+            party_replay.verify_selection(controllers)
         for current in controllers:
             engine.op_setAuto(current, not tactics.get("manualOpening"))
             engine.op_selectHeroOk(current)
@@ -855,6 +857,7 @@ def main():
     parser.add_argument("--historical-ghost-window", type=int)
     parser.add_argument("--journey-blessings", type=int)
     parser.add_argument("--journey-deadline", type=int)
+    parser.add_argument("--tianfa-team", action="store_true")
     parser.add_argument("--shilian-trial-slot", type=int, choices=range(1, 7))
     parser.add_argument("--shilian-event-id", type=int)
     parser.add_argument("--shilian-difficulty", type=int, choices=(1, 2, 3))
@@ -868,7 +871,9 @@ def main():
     if args.map_boss_players is not None and not party_positions(args.mode, args.map_boss_players):
         parser.error("Player count is unavailable for this map boss mode")
     if args.mode == TIANFA_MODE and args.stage not in TIANFA_STAGES:
-        parser.error("The Tianfa solo entrance supports only the three configured difficulties")
+        parser.error("Tianfa replay needs one of the three configured difficulty stages")
+    if args.tianfa_team and args.mode != TIANFA_MODE:
+        parser.error("Tianfa team replay is only available in the original Tianfa mode")
     if args.mode == RETREAT_MODE and (args.boss is None or not 0 <= args.guild_members <= 50 or not 1 <= args.window_seconds <= 1800):
         parser.error("The retreat needs a boss, 0 to 50 guild members and a 1 to 1800-second window")
     if (args.mode in REGION_MODES) != (args.region is not None):
