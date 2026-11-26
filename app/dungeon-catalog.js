@@ -610,6 +610,25 @@
       journeyHard:true});
   }
 
+  function showTianfa(destination,entry,groups){
+    if(!['xinghen_battle','pve_stage_data'].includes(entry.table)||!matchesOpeningSource(AtlasTianfa))return;
+    const source=AtlasTianfa,stage=groups.find(group=>group.ref.table==='pve_stage_data')?.row;
+    const stageId=Number(stage?.id),route=source.stages[stageId];
+    if(!route||stage.groupid!==stageId||stage.shishentotal!==source.memberCount)return;
+    const difficulty=groups.find(group=>group.ref.table==='xinghen_battle')?.row;
+    const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===stageId);
+    if(difficulty&&(difficulty.difficulty!==route.difficulty||difficulty.stage_id!==stageId)||
+       formation?.row?.resindex!==source.sceneId||formation.waves.length!==1||
+       formation.waves[0].map(unit=>[unit.position,unit.id]).join()!==source.formation(route).join())return;
+    const scene=DATA.gameConfig.stages[source.codeStageId];
+    if(scene?.actors!==1||scene.shikigami!==source.memberCount)return;
+    for(const rule of difficulty?.battle_tips??[])destination.append(node('p',rule,'caption'));
+    destination.append(node('p','按原版缺省入场参数模拟单人挑战。原表无战斗时限。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:source.memberCount,
+      battleMode:source.battleMode,waveCount:1,label:`彼世逢魔 · ${route.name}`,version:source.resourceVersion,
+      codeStageId:source.codeStageId,codeLabel:scene.name});
+  }
+
   function liveScoreTable(label,columns,rows){
     const detail=node('details'),table=node('table'),head=node('thead'),heading=node('tr'),body=node('tbody');
     for(const text of columns){
@@ -1189,6 +1208,7 @@
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
     showActivityScore(destination,entry,groups);
     showJourneyHard(destination,entry,groups);
+    showTianfa(destination,entry,groups);
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
     const exams=window.AtlasSixRealmsExams;
@@ -1250,6 +1270,7 @@
       });
     }
     if (!yanwu&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+        !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);

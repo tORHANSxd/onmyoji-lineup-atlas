@@ -14,6 +14,7 @@ const guildHuntOpenings=require('../app/guild-hunt-openings.js');
 const guildRetreatOpenings=require('../app/guild-retreat-openings.js');
 const fengmoYanwu=require('../app/fengmo-yanwu.js');
 const activityScore=require('../app/general-soul-trial.js');
+const tianfa=require('../app/tianfa.js');
 const journeyHard=require('../app/journey-hard.js');
 const fengmoLive=require('../app/fengmo-live.js');
 const tuzhizhuPractice=require('../app/tuzhizhu-practice.js');
@@ -41,6 +42,7 @@ const engines={
  [fengmoYanwu.battleMode]:{name:'FengMoEquipBattleEngine',route:'fengmo-yanwu-solo',sha256:fengmoYanwu.engineSHA256},
  ...Object.fromEntries(Object.values(activityScore.modes).map(({battleMode,engine,route,engineSHA256})=>
   [battleMode,{name:engine,route,sha256:engineSHA256}])),
+ [tianfa.battleMode]:{name:tianfa.engine,route:tianfa.route,sha256:tianfa.engineSHA256},
  [journeyHard.battleMode]:{name:'JSNormalEngine',route:'journey-hard-solo',sha256:journeyHard.engineSHA256},
  ...Object.fromEntries(Object.entries(tuzhizhuPractice.modes).map(([id,mode])=>
   [id,{name:mode.engine,route:'tuzhizhu-practice-solo',sha256:mode.sha256}])),
@@ -338,6 +340,15 @@ function validJourneySettings(settings){
   Number.isSafeInteger(settings.blessingCount)&&settings.blessingCount>=0;
 }
 
+function validTianfaReport(report,stage){
+ const data=report.tianfa;
+ return data&&report.sceneId===tianfa.sceneId&&report.waveCount===1&&data.difficulty===stage.difficulty&&
+  sameTactics(data.positions,[2,3,4,5,6,7])&&Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&
+  Number.isSafeInteger(data.damage)&&data.damage>=0&&Number.isSafeInteger(data.fireCount)&&data.fireCount>=0&&
+  Array.isArray(data.opening)&&sameTactics(data.opening.map(unit=>[unit?.position,unit?.id]),tianfa.formation(stage))&&
+  data.opening.every(unit=>unit.level===40&&['hp','speed','attack','defense','critRate'].every(key=>Number.isFinite(unit[key])&&unit[key]>=0));
+}
+
 function validJourneyReport(report,route,settings){
  const data=report.journeyHard;
  return data&&report.sceneId===journeyHard.sceneId&&report.waveCount===1&&data.challengeId===route.challengeId&&
@@ -429,6 +440,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (retreatOpening&&!validRetreat(report,retreatOpening,retreat,rounds[0]))||
     (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
     (activityScore.modes[battleMode]&&!validActivityScore(report,rounds[0],activityScore.modes[battleMode]))||
+    (battleMode===tianfa.battleMode&&!validTianfaReport(report,tianfa.stages[stageId]))||
     (journeyRoute&&!validJourneyReport(report,journeyRoute,journeySettings))||
     (spider&&!validTuzhizhuPractice(report,spider,stageId,rounds[0]))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
@@ -469,15 +481,15 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
      has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),
      has('fengmo_yanwu_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py'),
-     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py')]);
+     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py'),has('tianfa_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
      ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
-     ...(generalSoul?Object.keys(activityScore.modes).map(Number):[]),...(journey?[journeyHard.battleMode]:[])]};
+     ...(generalSoul?Object.keys(activityScore.modes).map(Number):[]),...(journey?[journeyHard.battleMode]:[]),...(tianfaAvailable?[tianfa.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -486,7 +498,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
-   const maxMembers=[fengmoYanwu.battleMode,orochi.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
+   const maxMembers=[fengmoYanwu.battleMode,orochi.battleMode,tianfa.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
       typeof damageFloor!=='boolean'||!Array.isArray(rounds)||rounds.length<1||rounds.length>4||rounds.some(row=>
        !row?.onmyoji||!Array.isArray(row.members)||row.members.length<minMembers||row.members.length>maxMembers||!validTactics(row,battleMode))||
@@ -547,6 +559,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       groupId!==stageId||plan.members.length!==scoreRoute.memberCount))
     throw Error(`${scoreRoute.label}需要原版活动关卡和五位自有式神`);
    if(battleMode===3&&activityScore.stages[stageId])throw Error(`${activityScore.stages[stageId].label}需要使用原版活动计分入口`);
+   const tianfaStage=tianfa.stages[stageId];
+   if(battleMode===tianfa.battleMode&&(tianfa.resourceVersion!==resourceVersion||!tianfaStage||
+      groupId!==stageId||plan.members.length!==tianfa.memberCount))
+    throw Error('彼世逢魔单人挑战需要对应难度的原版关卡和六位自有式神');
+   if(battleMode===3&&tianfaStage)throw Error('彼世逢魔需要使用原版挑战入口');
    const journeyRoute=battleMode===journeyHard.battleMode?journeyHard.routes[stageId]:null;
    if(battleMode===journeyHard.battleMode&&(journeyHard.resourceVersion!==resourceVersion||!journeyRoute||stageId!==groupId||
       plan.members.length!==journeyHard.memberCount||!validJourneySettings(journeySettings))||journeySettings!==undefined&&!journeyRoute)
@@ -567,7 +584,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===3&&resourceEncounters.routes[stageId])throw Error('经验妖怪和金币妖怪需要资源副本的原版入口');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const deadlineMs=spider?645000:battleMode===306||qilingEntry?245000:sixRealmsRoute?175000:
+   const deadlineMs=spider?645000:battleMode===306||qilingEntry?245000:sixRealmsRoute||tianfaStage?175000:
     hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000;
    const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
    let release,dir;

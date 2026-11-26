@@ -25,6 +25,7 @@ def replay(args, runtime, work):
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, SHILIAN_MODES
     from shilian_stage import ArtifactReplay, MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, guard_battle_input, shilian_stage, verify_opening, verify_run_state
+    from tianfa_stage import TIANFA_MEMBER_COUNT, TIANFA_MODE, TIANFA_REPLAY_SECONDS, TIANFA_STAGES, TianfaReplay
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
@@ -45,6 +46,7 @@ def replay(args, runtime, work):
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
     activity_score = SOLO_SCORE_MODES.get(args.mode)
+    tianfa = args.mode == TIANFA_MODE
     journey_hard = args.mode == JOURNEY_HARD_MODE
     spider = args.mode in PRACTICE_MODES
     shilian = args.mode in SHILIAN_MODES
@@ -57,7 +59,7 @@ def replay(args, runtime, work):
         actor = actors["selected-onmyoji"][0]
         heroes = {**fighters, **{alias: profile for alias, (profile, _) in actors.items()}}
     else:
-        actor, fighters, inventory, choices = selected_team(plan, suits, member_limit=6 if yanwu or shilian else 5)
+        actor, fighters, inventory, choices = selected_team(plan, suits, member_limit=6 if yanwu or shilian or tianfa else 5)
         heroes = {**fighters, "selected-onmyoji": actor}
         if shilian:
             choices.pop("selected-onmyoji")
@@ -146,6 +148,14 @@ def replay(args, runtime, work):
             raise ValueError("The solo activity requires five owned shikigami")
         engine, group, score_activity_id, const = solo_score_stage(args.mode, args.stage)
         group_id, wave_count = group["ID"], 1
+    elif tianfa:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != TIANFA_MEMBER_COUNT:
+            raise ValueError("Tianfa requires six owned shikigami")
+        tianfa_replay = TianfaReplay(args.stage)
+        engine, group, const = tianfa_replay.engine, tianfa_replay.group, tianfa_replay.const
+        group_id, wave_count = group["ID"], 1
     elif journey_hard:
         from DynamicConfigData import DATA_HERO
 
@@ -220,6 +230,8 @@ def replay(args, runtime, work):
             raise ValueError(f"Unknown native PvE stage {stage_id}")
         if args.stage in SCORE_STAGES:
             raise ValueError("This activity requires its dedicated original score battle engine")
+        if args.stage in TIANFA_STAGES:
+            raise ValueError("Tianfa requires its dedicated original battle engine")
         if stage.get("name") in RESOURCE_STAGE_NAMES:
             raise ValueError("Experience and coin encounters require their dedicated entry")
         if any(args.stage == floor[0] for floor in map_boss.data[OROCHI_STAGE]["gk_list"]):
@@ -284,6 +296,8 @@ def replay(args, runtime, work):
         route = "fengmo-yanwu-solo"
     elif activity_score:
         route = activity_score.route
+    elif tianfa:
+        route = "tianfa-solo"
     elif journey_hard:
         route = "journey-hard-solo"
     elif spider:
@@ -402,7 +416,7 @@ def replay(args, runtime, work):
         if args.mode == REGION_HARD_MODE:
             formation_matches = (formation_matches and engine.startLevel == args.region["star"]
                                  and engine.condition == args.region["modifierIds"])
-    elif yanwu or activity_score or journey_hard or spider or hunling or qiling or shilian:
+    elif yanwu or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -431,7 +445,7 @@ def replay(args, runtime, work):
 
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else OROCHI_REPLAY_SECONDS if orochi
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
-                      else SHILIAN_REPLAY_SECONDS if shilian else 130 if relay else 75)
+                      else SHILIAN_REPLAY_SECONDS if shilian else TIANFA_REPLAY_SECONDS if tianfa else 130 if relay else 75)
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
     equipped_spirit = None
@@ -465,6 +479,8 @@ def replay(args, runtime, work):
             yanwu_replay.update()
         if score_replay:
             score_replay.update()
+        if tianfa:
+            tianfa_replay.update()
         if spider_replay:
             spider_replay.update()
         if instructions:
@@ -593,6 +609,8 @@ def replay(args, runtime, work):
             report[activity_score.report_key].update(instructions.report())
     if journey_hard:
         report["journeyHard"] = journey.report()
+    if tianfa:
+        report["tianfa"] = tianfa_replay.report(completed)
     if spider_replay:
         report["tuzhizhuPractice"] = spider_replay.report(report["outcome"])
     if retreat:
@@ -654,6 +672,7 @@ def main():
     from resource_stage import RESOURCE_MODE
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_MODES
     from shilian_stage import REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, valid_run_state
+    from tianfa_stage import TIANFA_MODE, TIANFA_REPLAY_SECONDS, TIANFA_STAGES
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS
     from underworld_stage import UNDERWORLD_MODE
@@ -662,7 +681,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, TIANFA_MODE, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -685,6 +704,8 @@ def main():
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
+    if args.mode == TIANFA_MODE and args.stage not in TIANFA_STAGES:
+        parser.error("The Tianfa solo entrance supports only the three configured difficulties")
     if args.mode == RETREAT_MODE and (args.boss is None or not 0 <= args.guild_members <= 50 or not 1 <= args.window_seconds <= 1800):
         parser.error("The retreat needs a boss, 0 to 50 guild members and a 1 to 1800-second window")
     if (args.mode in REGION_MODES) != (args.region is not None):
@@ -720,6 +741,7 @@ def main():
                         HUNLING_REPLAY_SECONDS + 20 if args.mode in HUNLING_MODES else
                         QILING_GROUP_REPLAY_SECONDS + 20 if args.mode == QILING_GROUP_MODE else
                         SHILIAN_REPLAY_SECONDS + 20 if args.mode in SHILIAN_MODES else
+                        TIANFA_REPLAY_SECONDS + 20 if args.mode == TIANFA_MODE else
                         240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
     faulthandler.dump_traceback_later(watchdog_seconds, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:

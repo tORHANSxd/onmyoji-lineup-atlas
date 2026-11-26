@@ -46,6 +46,7 @@ ROOTS = {
     "guild_monster": ("guild", "阴阳寮麒麟"),
     "guild_fake_god_event": ("guild", "阴阳寮活动"),
     "act_team_battle": ("event", "活动组队战斗"),
+    "xinghen_battle": ("daily", "彼世逢魔"),
     "SuperGhost_mission": ("event", "超鬼王"),
     "SuperGhost_bossmission": ("event", "超鬼王首领挑战"),
     "journey_hardbattle": ("event", "京畿净化首领挑战"),
@@ -93,6 +94,7 @@ EDGES = {
     "MZB_fengmo": (("boss_id", "monster", "首领"),),
     "lbs_world_boss_area": (("dist_id", "lbs_world_boss_init", "地图分区"),),
     "act_team_battle": (("act_id", "activity", "活动开放配置"),),
+    "xinghen_battle": (("stage_id", "pve_stage_data", "彼世逢魔关卡"),),
     "journey_hardbattle": (("battle_id", "pve_stage_data", "首领挑战关卡"),),
     "shilian_liudao": (("pve_id", "pve_stage_data", "路线配置 PvE"),),
     "SuperGhost_mission": (("actid", "activity", "活动开放配置"), ("sceneid", "Combinesceneinfo", "关卡场景")),
@@ -171,6 +173,8 @@ def encounter_index(source, load_rows):
         if match is None:
             return None if not unresolved else {"table": destination, "key": value, "label": label, "found": False}
         return {"table": destination, "key": match[0], "label": label, "found": True}
+
+    tianfa_by_stage = {numeric_key(row.get("stage_id")): key for key, row in table("xinghen_battle").values()}
 
     def rule_reference(key, label):
         dest = legacy_tips if key not in rules and key in tips else rule_table
@@ -382,6 +386,14 @@ def encounter_index(source, load_rows):
                 links.append(scene)
         if name == "journey_hardbattle":
             links.append(rule_reference("defence_hard_battle", "京畿净化首领挑战规则"))
+        if name == "xinghen_battle":
+            links.extend(ref for dest, key, label in (
+                ("xinghen_ui", 2, "彼世逢魔战斗入口"),
+                ("normal_battle_config", 2600, "彼世逢魔默认战斗规则"),
+                ("team_assist_stage", 100969, "彼世逢魔阵容码"),
+            ) if (ref := relation(dest, key, label, False)))
+        if name == "pve_stage_data" and (tianfa_difficulty := tianfa_by_stage.get(numeric_key(row.get("id")))):
+            links.append(relation("xinghen_battle", tianfa_difficulty, "彼世逢魔难度与规则", True))
         if name in {"shilian_liudao", "shilian_event_exam", "shilian_stage_detail"}:
             dao = row.get("id") if name == "shilian_liudao" else row.get("dao")
             targets = []
@@ -603,6 +615,8 @@ def encounter_index(source, load_rows):
                     title = f"麒麟狩猎 · {name(info)} · 难度 {row['difficulty']}"
             if table_name == "guild_boss_reward":
                 title = f"首领退治 · 难度 {row['difficulty']}"
+            if table_name == "xinghen_battle":
+                title = f"彼世逢魔 · {title}"
             if table_name == "boss_troops" and row.get("groupId") in GUILD_BOSS_TROOPS:
                 entry_family, entry_kind = "guild", "首领退治机关编组"
                 title = f"首领退治 · 编组 {row['groupId']} · 方案 {row['id']}"

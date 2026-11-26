@@ -9,6 +9,28 @@ from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_tianfa_difficulty_links_original_stage_formation_and_lineup_code(self):
+        tables = {
+            "xinghen_battle": [[2, {"difficulty": 2, "name": "困难", "stage_id": 2716062}]],
+            "xinghen_ui": [[2, {"title": "彼世逢魔"}]],
+            "pve_stage_data": [["2716062", {"id": "2716062", "groupid": 2716062}]],
+            "BattleMonstersInfo": [[2716062, {"resindex": 2735048}]],
+            "Combinesceneinfo": [[2735048, {}]],
+            "team_assist_stage": [[100969, {"ss_num": 6}]],
+            "normal_battle_config": [[2600, {"battleMode": 2600}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle",
+                      "fields": [field for _, row in rows for field in row]} for name, rows in tables.items()]
+        catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {entry["table"]: entry for entry in catalog["entries"]}
+        route = entries["xinghen_battle"]
+        self.assertEqual((route["family"], route["title"]), ("daily", "彼世逢魔 · 困难"))
+        self.assertEqual({(ref["table"], ref["key"]) for ref in route["refs"]}, {
+            ("pve_stage_data", "2716062"), ("xinghen_ui", 2), ("BattleMonstersInfo", 2716062),
+            ("Combinesceneinfo", 2735048), ("normal_battle_config", 2600), ("team_assist_stage", 100969),
+        })
+        self.assertIn(("xinghen_battle", 2), {(ref["table"], ref["key"]) for ref in entries["pve_stage_data"]["refs"]})
+
     def test_six_realms_keeps_trial_routing_and_battle_island_pools_distinct(self):
         tables = {
             "shilian_liudao": [[2, {"id": 2, "name": "香行域", "pve_id": 700101}],
