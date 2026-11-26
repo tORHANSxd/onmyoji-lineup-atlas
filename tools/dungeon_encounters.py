@@ -4,6 +4,7 @@ from collections import Counter
 from functools import cache
 from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM, LAOLAO_FUSION_MODE, LAOLAO_TEAM, TOWER_TEAM
 from dojo_area_stage import DOJO_AREA_TEAM
+from dream_trial_stage import DREAM_TRIAL_MODE
 from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
 from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
@@ -48,6 +49,11 @@ GUILD_DINNER_CONSTANTS = ((4085, "料理奖励间隔与次数"), (4086, "宴会�
 # Native replay examples with the exact food-target template in the formation.
 GUILD_DINNER_EXAMPLES = {23: ("map_boss", 69, 14408), 208: ("story_room", 1003, 31012),
                          209: ("story_room", 2722, 32712), 214: ("story_room", 907, 30990)}
+DREAM_ACTIVITY = 11721
+DREAM_RULES = (("dream_self_tips", "幻游问梦开放与资源规则"),
+               ("dream_act_self_guide_tips1", "睡眠事件与消耗"),
+               ("dream_act_self_guide_tips2", "梦境互动与升星"),
+               ("dream_act_self_guide_tips3", "解梦规则"))
 
 
 ROOTS = {
@@ -121,6 +127,7 @@ ROOTS = {
     "urdtg_ui": ("event", "飞羽凌云玩法"),
     "urdtg_event": ("event", "围场赛事事件"),
     "urdtg_dungeon_battle": ("event", "围场赛事战斗"),
+    "dream_act_hero": ("event", "幻游问梦 · 梦境试炼"),
 }
 
 JOURNEY_BATTLE_VARIANTS = {
@@ -416,6 +423,7 @@ def encounter_index(source, load_rows):
     rooms_by_map, rooms_by_stage = {}, {}
     urdtg_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("urdtg_dungeon_battle").values()}
     urdtg_events_by_battle = {}
+    dream_heroes_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("dream_act_hero").values()}
     for key, row in table("urdtg_event").values():
         params = row.get("params")
         if row.get("type") in (1, 2) and params:
@@ -569,6 +577,33 @@ def encounter_index(source, load_rows):
                          if (ref := relation("Constant", key, label, False)))
             links.extend(relation("guild_dinner_monster", key, "料理筹备目标", False)
                          for key, _ in sorted(table("guild_dinner_monster").values()))
+        if name == "dream_act_hero":
+            battle = row.get("battle_id")
+            links.extend(ref for dest, key, label in (
+                ("pve_stage_data", battle, "原版试炼关卡"), ("dream_act_battle_cond", battle, "试炼胜负条件"),
+                ("DramaHeroInfo", battle, "原版固定出战配置"), ("battle_mode_routes", DREAM_TRIAL_MODE, "原版梦境试炼入口"),
+                ("activity", DREAM_ACTIVITY, "活动开放配置"),
+            ) if (ref := relation(dest, key, label, False)))
+            links.extend(ref for stage, label in enumerate(("浅睡", "酣睡", "熟睡"), 1)
+                         if (ref := relation("dream_act_stage", {"$tuple": [row["id"], stage]}, f"{label}梦境图鉴", False)))
+        dream_battle = name == "pve_stage_data" and numeric_key(row.get("id")) in dream_heroes_by_stage
+        if dream_battle:
+            links.extend(ref for dest, key, label in (
+                ("dream_act_hero", dream_heroes_by_stage[numeric_key(row["id"])], "对应梦境试炼"),
+                ("dream_act_battle_cond", row["id"], "试炼胜负条件"), ("DramaHeroInfo", row["id"], "原版固定出战配置"),
+                ("battle_mode_routes", DREAM_TRIAL_MODE, "原版梦境试炼入口"),
+            ) if (ref := relation(dest, key, label, False)))
+        if (name == "activity" and row.get("id") == DREAM_ACTIVITY or
+                name == "battle_mode_routes" and row.get("mode_symbol") == "MODE_DREAM_ACT_SELF_BATTLE"):
+            links.extend(rule_reference(key, label) for key, label in DREAM_RULES if key in rules)
+            links.extend(relation("dream_act_hero", key, "梦境试炼", False) for key in sorted(dream_heroes_by_stage.values()))
+            if name == "activity":
+                if ref := relation("battle_mode_routes", DREAM_TRIAL_MODE, "原版梦境试炼入口", False):
+                    links.append(ref)
+                if ref := relation("currency", 9907030, "梦境互动道具", False):
+                    links.append(ref)
+            elif ref := relation("activity", DREAM_ACTIVITY, "活动开放配置", False):
+                links.append(ref)
         if name.startswith(("dojo2025_bbbl_", "dojo2026_bbbl_")):
             prefix, suffix = name.split("_bbbl_", 1)
             if suffix == "map":
@@ -1403,10 +1438,11 @@ def encounter_index(source, load_rows):
             dojo_area_activity = table_name == "activity" and key in dojo_area_activities
             forest_activity = table_name == "activity" and key == 7076
             ten_activity = table_name == "activity" and key in TEN_ACTIVITY_LINKS
+            dream_activity = table_name == "activity" and key == DREAM_ACTIVITY
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not dinner_route and not linked_battles and not row.get("monsterWaves")
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
-                    and not ten_activity):
+                    and not ten_activity and not dream_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -1656,6 +1692,15 @@ def encounter_index(source, load_rows):
                 title = " · ".join((f"战斗模式 {key}", row["mode_symbol"], row["scene_engine"]))
                 if row["mode_symbol"] == "MODE_LBS_WORLD_BOSSX":
                     title = f"地域鬼王极难 · {title}"
+                if key == DREAM_TRIAL_MODE:
+                    entry_family, entry_kind, title = "event", "幻游问梦", "幻游问梦 · 梦境试炼原版入口"
+            if dream_activity:
+                entry_family, entry_kind, title = "event", "幻游问梦", "幻游问梦 · 活动开放与玩法规则"
+            if table_name == "dream_act_hero":
+                title = f"幻游问梦 · {row['name']} · {row['nightmare_name']}"
+            if table_name == "pve_stage_data" and (dream_hero := dream_heroes_by_stage.get(numeric_key(key))):
+                _, hero = table("dream_act_hero")[numeric_key(dream_hero)]
+                title = f"幻游问梦 · {hero['name']} · {hero['nightmare_name']} · {key}"
             if not title and linked_battles:
                 _, battle = table("pve_stage_data")[numeric_key(linked_battles[0]["key"])]
                 title = name(battle)

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -365,6 +365,38 @@ async function main(){
   await until('document.querySelector("[data-pve-start]")!==null');
   assert.match(await ui(detail+'.textContent'),/2722.*模拟已知阵容.*32712.*河童/s);
   await ui('$("client-dungeons").open=false');
+ });
+ if(encounterCases.some(entry=>entry.table==='dream_act_hero'&&entry.key===592))await check('幻游问梦读取指定阵容、规则和种子并显示原版结算',async()=>{
+  const detail='$("client-dungeons-encounter-detail")',start='document.querySelector("[data-dream-start]")';
+  await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click();qaEncounterInput("event","幻游问梦 11721")');
+  await until(detail+'.textContent.includes("幻游问梦开放与资源规则")');
+  assert.match(await ui(detail+'.textContent'),/2026-11-25.*2026-12-01.*酣梦引/s);
+  await ui(`[...${detail}.querySelectorAll('section')].find(section=>section.firstChild.textContent.includes('梦境试炼 · 平将门')).querySelector('button:last-child').click()`);
+  await until(start+'?.disabled===false');
+  const text=await ui(detail+'.textContent');
+  assert.match(text,/40 级 6 星平将门.*7 回合.*无趣梦.*试炼胜负条件/s);
+  assert.equal(await ui('document.querySelector("[data-pve-lineup]")===null'),true);
+  const seed='document.querySelector("[data-dream-seed]")';
+  await ui(`${seed}.value='10000';${seed}.dispatchEvent(new Event('input'))`);
+  assert.equal(await ui(start+'.disabled'),true);
+  try{
+   mockPve=async(plan,request)=>{
+    assert.deepEqual(plan,{});
+    assert.deepEqual(request,{battleMode:9606,stageId:34266,groupId:34266,seed:37,damageFloor:true});
+    return {completed:true,outcome:'win',bouts:1,engineSeconds:4.78,dreamTrial:{turnLimit:7}};
+   };
+   await ui(`${seed}.value='37';${seed}.dispatchEvent(new Event('input'));${start}.click()`);
+   await until(detail+'.textContent.includes("原版胜利")');
+   assert.match(await ui(detail+'.textContent'),/种子 37 · 1 \/ 7 回合 · 引擎全程 4.78 秒/);
+   mockPve=async(plan,request)=>{
+    assert.deepEqual(plan,{manualBasic:true});
+    assert.equal(request.seed,37);
+    return {completed:true,outcome:'loss',bouts:7,engineSeconds:35.30,dreamTrial:{turnLimit:7,manualAttacks:3}};
+   };
+   await ui(`document.querySelector('[data-dream-control]').value='basic';${start}.click()`);
+   await until(detail+'.textContent.includes("原版失败")');
+   assert.match(await ui(detail+'.textContent'),/原版失败.*7 \/ 7 回合.*手动普攻 3 次/s);
+  }finally{mockPve=null;await ui('$("client-dungeons").open=false');}
  });
  if(catalog?.index.encounters&&catalog.entries.has('lbs_world_boss_area'))await check('地域鬼王显示原版普通条件、极难词条及玩法专用入口',async()=>{
   await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');

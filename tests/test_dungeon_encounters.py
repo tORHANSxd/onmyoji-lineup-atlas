@@ -11,6 +11,33 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_dream_trials_link_fixed_roster_and_activity_without_matching_by_display_name(self):
+        tables = {
+            "activity": [[11721, {"id": 11721, "name": "QQ人睡眠活动-活动时间"}]],
+            "battle_mode_routes": [[9606, {"mode_symbol": "MODE_DREAM_ACT_SELF_BATTLE", "scene_engine": "DreamSelfBattleEngine"}]],
+            "dream_act_hero": [[592, {"id": 592, "name": "平将门", "nightmare_name": "无趣梦", "battle_id": 34266}]],
+            "dream_act_stage": [[{"$tuple": [592, 1]}, {"hero_id": 592, "stage": 1}]],
+            "dream_act_battle_cond": [[34266, {"cond_type": 2, "param1": 7}]],
+            "pve_stage_data": [["34266", {"id": "34266", "groupid": 34266, "isplot": 1}],
+                               ["34276", {"id": "34276", "name": "QQ人睡眠活动"}]],
+            "DramaHeroInfo": [["34266", {"heroIds": [[60592, 40, 6, 1, 0]]}]],
+            "BattleMonstersInfo": [[34266, {"resindex": 49017}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(row["table"], row["key"]): row for row in catalog["entries"]}
+
+        def references(table, key):
+            return [(ref["table"], ref["key"]) for ref in entries[table, key]["refs"]]
+
+        self.assertEqual(entries["dream_act_hero", 592]["title"], "幻游问梦 · 平将门 · 无趣梦")
+        self.assertIn(("dream_act_hero", 592), references("activity", 11721))
+        self.assertIn(("dream_act_hero", 592), references("pve_stage_data", "34266"))
+        self.assertNotIn(("dream_act_hero", 592), references("pve_stage_data", "34276"))
+        self.assertIn(("DramaHeroInfo", "34266"), references("dream_act_hero", 592))
+        self.assertIn(("dream_act_stage", {"$tuple": [592, 1]}), references("dream_act_hero", 592))
+
     def test_guild_dinner_indexes_preparation_and_links_only_matching_battle_examples(self):
         tables = {
             "battle_mode_routes": [[312, {"mode_symbol": "MODE_GUILD_DINNER", "scene_class": "GuildDinnerScene"}]],

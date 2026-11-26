@@ -38,6 +38,10 @@
     guild_dinner_question: '阴阳寮宴会题库',
     guild_dinner_xiaozhiren: '阴阳寮宴会小纸人布置',
     guild_dinner_food_detail: '阴阳寮宴会料理摆放',
+    dream_act_hero: '幻游问梦试炼式神',
+    dream_act_stage: '幻游问梦梦境图鉴',
+    dream_act_battle_cond: '幻游问梦试炼胜负条件',
+    DramaHeroInfo: '剧情固定出战配置',
     guild_fake_god_event: '青森之秘事件',
     guild_fake_god_map: '青森之秘地格',
     guild_fake_god_route: '青森之秘路线',
@@ -136,6 +140,7 @@
     food_lv: '料理等级', unlock_cost_score: '学习所需勋章', food_value: '原表料理值',
     secs_delay: '开场后出现（秒）', notice_conent: '公告', notice_last_time: '公告持续（秒）',
     question: '题目', right_answer: '正确答案', error_1: '错误选项一', error_2: '错误选项二', error_3: '错误选项三',
+    dream_name: '梦境', nightmare_name: '噩梦', battle_option: '战斗选项', dialogue_battle: '战斗对白',
     need_team: '组队要求', notice: '机制说明', fb1_defs: '秘闻竞速规则', spec_skill: '首领特殊技能',
     remain_time: '存在时限', private_time: '私人挑战时限', crazy_time: '狂暴时限',
     atk_chng: '攻击调整', def_chng: '防御调整', hp_chng: '生命调整',
@@ -169,6 +174,8 @@
   };
   const journeyBossFields = {hero_id: '首领编号', reward: '奖励编号', time: '时限参数', unlocked: '解锁参数'};
   const tableFields = {
+    dream_act_battle_cond:{desc:'原版胜负条件',cond_type:'条件类型',param1:'回合上限'},
+    dream_act_stage:{desc:'睡眠阶段'},
     urdtg_event:{pre_id:'前置事件',unlock_time:'解锁时间',task_desc:'任务目标',params:'事件参数'},
     urdtg_dungeon_battle:{cost:'体力消耗',exp:'车队经验',level:'原表等级',battle_id:'活动战斗关卡'},
     SuperGhost_mission: {crazy_time:'单次追击时限',private_time:'发现者专属时长',remain_time:'首领剩余时长',
@@ -211,7 +218,7 @@
   const openingNumber = new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2});
   const entryKey = ({table, key}) => JSON.stringify([table, key]);
   const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.area_name, row?.chapter_name, row?.floordesc,
-    row?.typedesc, row?.skill_name, row?.skin_name, row?.StoryName, row?.food_name, row?.question, row?.notice_conent,
+    row?.typedesc, row?.skill_name, row?.skin_name, row?.StoryName, row?.food_name, row?.question, row?.notice_conent, row?.dream_name,
     row?.MapEntryID != null ? row.desc : null]
     .find(value => typeof value === 'string' && value.trim()) || '';
 
@@ -2027,6 +2034,7 @@
     if (token !== stage.token) return;
     destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
     appendGuildDinnerDetails(destination, entry, groups);
+    showDreamTrial(destination, entry, groups);
     const chapterChallengeMounted=showChapterChallenge(destination,entry,groups,monsters,chapterDifficulties);
     showSuperGhost(destination,entry,groups[0]);
     if(entry.table==='story_room'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion){
@@ -2318,6 +2326,23 @@
     }
     if (row.food_id === 10001) section.append(node('p', '四周年活动料理。开放和领取状态以游戏内为准。', 'caption'));
     destination.append(section);
+  }
+
+  function showDreamTrial(destination, entry, groups) {
+    const source = window.AtlasDreamTrial;
+    if (!matchesOpeningSource(source) || !['dream_act_hero', 'pve_stage_data'].includes(entry.table)) return;
+    const get = table => groups.find(group => group.ref.table === table)?.row;
+    const hero = get('dream_act_hero');
+    const stageId = hero?.battle_id;
+    if (!source.heroId(stageId)) return;
+    const battle = get('pve_stage_data'), condition = get('dream_act_battle_cond');
+    const roster = get('DramaHeroInfo'), formation = get('BattleMonstersInfo'), route = get('battle_mode_routes');
+    if (battle?.groupid !== stageId || condition?.cond_type !== 2 || condition.param1 !== source.turnLimit ||
+        roster?.heroIds?.[0]?.[0] !== source.heroId(stageId) || roster.heroIds.slice(1).some(Boolean) ||
+        formation?.resindex !== source.sceneId || route?.scene_engine !== source.engine.name) return;
+    const [, level, stars] = roster.heroIds[0];
+    window.AtlasPveWorkbench?.mountFixedTrial(destination, {stageId, groupId:battle.groupid, battleMode:source.battleMode,
+      version:source.resourceVersion, label:`${level} 级 ${stars} 星${hero.name}`, turnLimit:condition.param1});
   }
 
   async function selectTable(name, key = '') {

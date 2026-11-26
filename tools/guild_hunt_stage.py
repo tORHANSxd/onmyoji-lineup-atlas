@@ -179,7 +179,7 @@ class HuntOpening:
             return ["boss", "ally", "self"]
         return []
 
-    def cast_opening(self, opening, turn, entity, boss):
+    def cast_opening(self, opening, turn, entity, boss, *, switch_auto=True):
         engine, controller, const = self.engine, self.controller, self.const
         mgr = entity.SkillMgrComp
         slot = self.member_slot(entity)
@@ -232,9 +232,10 @@ class HuntOpening:
                 or len(accepted) != 1 or accepted[0] is None
                 or (target is not None and accepted[0] is not target)):
             raise RuntimeError("The original engine did not accept the manual opening skill and target")
-        engine.op_setAuto(controller, True)
-        if not controller.isAuto:
-            raise RuntimeError("The original engine did not return the controller to automatic play")
+        if switch_auto:
+            engine.op_setAuto(controller, True)
+            if not controller.isAuto:
+                raise RuntimeError("The original engine did not return the controller to automatic play")
         self.applied["manualOpening"] = opening
         self.manual_action = {"heroId": entity.protoid, "skillId": skill_id, "targetId": accepted[0].protoid}
         if opening is not True:

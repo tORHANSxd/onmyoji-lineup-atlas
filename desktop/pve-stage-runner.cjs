@@ -29,6 +29,7 @@ const tenBoss=ten.bossRoute;
 const tenExplore=ten.exploreRoute;
 const urdtgExplore=require('../app/urdtg-explore.js');
 const urdtgTrain=urdtgExplore.training;
+const dreamTrial=require('../app/dream-trial.js');
 const tianfa=require('../app/tianfa.js');
 const journeyHard=require('../app/journey-hard.js');
 const yinYang=journeyHard.boss;
@@ -54,6 +55,7 @@ const engines={
  [tenExplore.battleMode]:tenExplore.engine,
  [urdtgExplore.battleMode]:urdtgExplore.engine,
  [urdtgTrain.battleMode]:urdtgTrain.engine,
+ [dreamTrial.battleMode]:dreamTrial.engine,
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  [storyExplorationMode]:{name:'TeamFbEngine',route:'story-exploration-solo',sha256:'35ec64c1f9d84913a748971711635906034bb36fe9d48005193be8d6c775bbd2'},
  [friendChallengeMode]:{name:'FriendFbEngine',route:'chapter-shikigami-challenge',sha256:'70b5b28c85d9d364b3800415b1c05aa7e5fbc5aa2cd102a28b440d2c1155dde6'},
@@ -1266,6 +1268,16 @@ function validFriendChallenge(report,{bossId,difficulty}){
   Number.isSafeInteger(rule.allyOrbsRecovery)&&rule.allyOrbsRecovery>=0&&validVerifiedWaves(report);
 }
 
+function validDreamTrial(report, stageId, plan){
+ const {roster,turnLimit,control,manualAttacks}=report.dreamTrial??{};
+ return report.sceneId===dreamTrial.sceneId&&turnLimit===dreamTrial.turnLimit&&report.waveCount===1&&
+  report.formationsVerified===1&&roster?.position===1&&roster.heroId===dreamTrial.heroId(stageId)&&
+  roster.level===40&&roster.star===6&&roster.awake===1&&
+  control===(plan.manualBasic?'manual-basic':'automatic')&&Number.isSafeInteger(manualAttacks)&&
+  (plan.manualBasic?manualAttacks>=0:manualAttacks===0)&&
+  (report.outcome!=='win'||report.wavesCleared===1&&report.bouts<=turnLimit);
+}
+
 function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,dojoArea,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const qinfeiSide=battleMode===3?mapBoss.qinfeiSideBattles[stageId]:null;
@@ -1308,6 +1320,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (qinfeiSide&&!validQinfeiSide(report,qinfeiSide))||
     (battleMode===storyExplorationMode&&!validStoryExploration(report,storyRoomId))||
     (battleMode===friendChallengeMode&&!validFriendChallenge(report,friendChallenge))||
+    (battleMode===dreamTrial.battleMode&&!validDreamTrial(report,stageId,rounds[0]))||
     (dojoArea&&!validDojoAreaReport(report,dojoArea))||
     (forest&&!validForestReport(report,forest,rounds[0]))||
     (ten.modes[battleMode]&&!validTenAnniversary(report,stageId,tenBonuses??[]))||
@@ -1399,7 +1412,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(dojoAreaAvailable&&yanwu?[dojoAreaRules.battleMode]:[]),...(forestAvailable?[forestRules.battleMode]:[]),
      ...(tenAvailable&&yanwu?Object.keys(ten.modes).map(Number):[]),...(tenAvailable&&tenBossAvailable?[tenBoss.battleMode]:[]),
      ...(tenAvailable&&yanwu&&tenExploreAvailable?[tenExplore.battleMode]:[]),
-     ...(yanwu&&tenExploreAvailable&&await has('urdtg_explore.py')?[urdtgExplore.battleMode,urdtgTrain.battleMode]:[])]};
+     ...(yanwu&&tenExploreAvailable&&await has('urdtg_explore.py')?[urdtgExplore.battleMode,urdtgTrain.battleMode]:[]),
+     ...(await has('dream_trial_stage.py')?[dreamTrial.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -1411,7 +1425,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const maxMembers=[fengmoYanwu.battleMode,songstress.battleMode,orochi.battleMode,tianfa.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
    const stageActor=battleMode===tenBoss.battleMode||battleMode===urdtgTrain.battleMode||battleMode===266&&secretOpenings.floors[stageId]?.replacement;
    const explore=battleMode===tenExplore.battleMode?tenExplore:battleMode===urdtgExplore.battleMode?urdtgExplore:null;
-   const validPlan=explore?explore.validPlan(plan):Array.isArray(rounds)&&rounds.length>=1&&rounds.length<=4&&
+   const fixedDream=battleMode===dreamTrial.battleMode;
+   const validPlan=fixedDream?plan&&Object.getPrototypeOf(plan)===Object.prototype&&
+    (Object.keys(plan).length===0||Object.keys(plan).length===1&&plan.manualBasic===true):
+    explore?explore.validPlan(plan):Array.isArray(rounds)&&rounds.length>=1&&rounds.length<=4&&
     rounds.every(row=>row&&(stageActor||row.onmyoji)&&Array.isArray(row.members)&&
      row.members.length>=minMembers&&row.members.length<=maxMembers&&validTactics(row,battleMode));
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
@@ -1423,6 +1440,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       (!positive(friendChallenge?.bossId)||!positive(friendChallenge?.difficulty)||friendChallenge.difficulty>40||
        stageId!==groupId||plan.members.length!==5):friendChallenge!==undefined)
     throw Error('式神挑战需要原版首领、有效难度和五位自有式神');
+   if(fixedDream&&(dreamTrial.resourceVersion!==resourceVersion||!dreamTrial.heroId(stageId)||stageId!==groupId))
+    throw Error('梦境试炼需要已核验的原版固定阵容关卡');
+   if(battleMode===3&&dreamTrial.heroId(stageId))throw Error('梦境试炼需要使用原版固定阵容入口');
    if(battleMode===29&&(awakeOpenings.resourceVersion!==resourceVersion||
       awakeOpenings.floors[stageId]?.groupId!==groupId||plan.members.length!==5))
     throw Error('当前觉醒关卡、编组或阵容与普通单人规则不一致');

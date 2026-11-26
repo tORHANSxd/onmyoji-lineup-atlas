@@ -67,6 +67,7 @@ def replay(args, runtime, work):
     from ten_anniversary_explore import TEN_EXPLORE_MODE, TenExploreReplay, exploration_uid, ten_explore_stage
     from urdtg_explore import (URDTG_EXPLORE_MODE, URDTG_STAGES, URDTG_TRAIN_MODE, URDTG_TRAIN_STAGE,
                                UrDtgBattleReplay, urdtg_explore_stage, urdtg_train_stage)
+    from dream_trial_stage import DREAM_TRIAL_MODE, dream_basic_attack, dream_trial, verify_dream_roster
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
@@ -81,6 +82,7 @@ def replay(args, runtime, work):
     suits = json.loads(suit_bytes)
     story_exploration = args.mode == STORY_EXPLORATION_MODE
     friend_challenge = args.mode == FRIEND_CHALLENGE_MODE
+    fixed_dream = args.mode == DREAM_TRIAL_MODE
     relay = args.mode == UNDERWORLD_MODE
     orochi = args.mode == OROCHI_MODE
     hunling = args.mode in HUNLING_MODES
@@ -133,7 +135,11 @@ def replay(args, runtime, work):
     secret_actor_report = None
     shilian_event = ({"id": args.shilian_event_id, "difficulty": args.shilian_difficulty, "moves": args.shilian_moves}
                      if args.mode == SHILIAN_EVENT_MODE else None)
-    if recruited_explore:
+    if fixed_dream:
+        if type(plan) is not dict or plan and (plan.keys() != {"manualBasic"} or plan["manualBasic"] is not True):
+            raise ValueError("The dream trial uses the fixed character from the original stage")
+        actor, heroes, fighters, inventory, choices = None, {}, {}, {}, {}
+    elif recruited_explore:
         heroes, fighters, inventory, choices = {}, {}, {}, {}
     elif relay:
         heroes, inventory, actors, rounds = underworld_teams(plan, suits)
@@ -170,7 +176,12 @@ def replay(args, runtime, work):
     from battleengine.BattleController import LocalBattleController
     from battleengine.BattleRecorder import BattleRecorderRune
     from battleengine.battle_tools.RandomRecord import RandomRecord
-    if qinfei_boss:
+    if fixed_dream:
+        from DynamicConfigData import DATA_HERO
+
+        engine, stage, group, dream_condition, fixed_hero, const = dream_trial(args.stage)
+        group_id, wave_count = stage["groupid"], len(group["MonstersInfos"])
+    elif qinfei_boss:
         from battleengine.engine.QinfeiBossEngine import const
         from DynamicConfigData import DATA_HERO
 
@@ -612,7 +623,7 @@ def replay(args, runtime, work):
     if any(hero["heroId"] not in DATA_HERO.data for hero in heroes.values()):
         raise ValueError("Unknown inventory character")
 
-    actor_id = rounds[0]["id"] if relay else actor["heroId"]
+    actor_id = 0 if fixed_dream else rounds[0]["id"] if relay else actor["heroId"]
     player = preset_player(heroes, actors, actor_id) if relay or orochi else {"heroes": heroes, "yysid": actor_id}
     if shilian and args.shilian_state and args.shilian_state.get("guard"):
         player["behind_spirit_info"] = guard_battle_input(args.shilian_state["guard"])
@@ -638,7 +649,9 @@ def replay(args, runtime, work):
     if local_party:
         avatar.defaultHeros = [uid for uid in local_party[0]["heroes"] if uid in fighters]
 
-    if recruited_explore:
+    if fixed_dream:
+        route = "dream-trial-fixed-roster"
+    elif recruited_explore:
         avatar.defaultHeros = [exploration_uid(avatar, hero) for hero, _ in plan["members"]]
         route = "urdtg-map-exploration" if urdtg_explore else "ten-anniversary-exploration"
     elif urdtg_train:
@@ -766,6 +779,8 @@ def replay(args, runtime, work):
     controller = LocalBattleController(const.CampFlag.CAMP1, avatar)
     controller.battleEngine = engine
     controller.sceneLoaded = True
+    dream_manual = HuntOpening(engine, controller, const, {}, None) if fixed_dream and plan.get("manualBasic") else None
+    dream_actions = 0
     engine.addBattlePlayer(avatar)
     engine.controllers.append(controller)
     controllers = [controller]
@@ -841,7 +856,7 @@ def replay(args, runtime, work):
             secret_mirror_replay = SecretMirrorReplay(engine, const)
         if setup := secret_mechanic(stage):
             secret_mechanic_replay = SecretMechanicReplay(engine, controller, const, setup)
-    if story_exploration or friend_challenge or args.mode == 266:
+    if story_exploration or friend_challenge or fixed_dream or args.mode == 266:
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
 
         def verify_spawn():
@@ -849,7 +864,7 @@ def replay(args, runtime, work):
             if not 0 <= wave < wave_count:
                 raise RuntimeError("Unexpected original wave index")
             observed = []
-            if story_exploration:
+            if story_exploration or fixed_dream:
                 expected = [(pos, level, proto) for pos, proto, level, *_ in group["MonstersInfos"][wave]]
                 mirror_units = []
             elif friend_challenge:
@@ -933,6 +948,11 @@ def replay(args, runtime, work):
     elif friend_challenge:
         formation_matches = (engine.fbId == group_id and engine.combineSceneInfoId == group["sceneId"]
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
+    elif fixed_dream:
+        formation_matches = (engine.isDramaGuanKa and engine.monstergroup == group_id
+                             and engine.combineSceneInfoId == group["resindex"]
+                             and engine.halt_battle_bout_type == 1
+                             and engine.halt_battle_bout_limit == dream_condition["param1"])
     else:
         formation_matches = engine.monstergroup == group_id
     if (engine.seed != args.seed or engine.random is not random_record or engine.battleMode != args.mode
@@ -1036,6 +1056,8 @@ def replay(args, runtime, work):
     band_handoff = False
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
+        if dream_manual and dream_basic_attack(engine, controller, const, dream_manual):
+            dream_actions += 1
         if ghost_king_tower:
             tower.update()
         if laolao_challenge:
@@ -1153,9 +1175,11 @@ def replay(args, runtime, work):
                 explore_replay.record_selection(owned=urdtg_train)
             else:
                 explore_replay.verify_selection()
+        if fixed_dream:
+            dream_roster = verify_dream_roster(engine, controller, fixed_hero)
         verify_selected_equipment()
         for current in controllers:
-            engine.op_setAuto(current, not tactics.get("manualOpening"))
+            engine.op_setAuto(current, not (dream_manual or tactics.get("manualOpening")))
             engine.op_selectHeroOk(current)
         selection_checked = all(current.selectHeroOk for current in controllers)
     if not selection_checked:
@@ -1365,6 +1389,10 @@ def replay(args, runtime, work):
                                      "positions": avatar.ssPosIndexList, "allyHpRecovery": group["roundHPRecover"],
                                      "allyOrbsRecovery": group["roundGuiHuoRecover"]}
         report["formationsVerified"] = len(verified_waves)
+    if fixed_dream:
+        report["dreamTrial"] = {"roster": dream_roster, "turnLimit": engine.halt_battle_bout_limit,
+                                "control": "manual-basic" if dream_manual else "automatic", "manualAttacks": dream_actions}
+        report["formationsVerified"] = len(verified_waves)
     if spider_replay:
         report["tuzhizhuPractice"] = spider_replay.report(report["outcome"])
     if retreat:
@@ -1475,6 +1503,7 @@ def main():
     from ten_anniversary_boss import TEN_BOSS_MODE, TEN_BOSS_STAGE
     from ten_anniversary_explore import TEN_EXPLORE_MODE
     from urdtg_explore import URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE
+    from dream_trial_stage import DREAM_TRIAL_MODE
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS
     from underworld_stage import UNDERWORLD_MODE
@@ -1483,7 +1512,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
     parser.add_argument("--fusion-settings", type=json.loads)

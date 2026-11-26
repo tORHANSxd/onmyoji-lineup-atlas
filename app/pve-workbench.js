@@ -104,6 +104,17 @@
 
  function update(){
   if(!pane)return;
+  if(pane.fixedTrial){
+   const running=job?.running===true;
+   pane.start.disabled=!ready()||runeBusy()||!pane.seed.checkValidity();
+   pane.seed.disabled=running;
+   pane.control.disabled=running;
+   pane.stop.hidden=!running;
+   pane.stop.disabled=!!job?.cancelled;
+   pane.status.textContent=job?.notice??(ready()?'等待复跑。':runtime?.reason??
+    (runtimePending?'正在检查原版复跑组件…':'当前运行时缺少对应版本的原版梦境试炼组件。'));
+   return;
+  }
   const available=knownLineups(),hasAccount=!!account(),blocked=runeBusy();
   const supported=ready();
   const running=job?.running===true;
@@ -834,6 +845,66 @@
   pane=null;
  }
 
+ function mountFixedTrial(target,config){
+  if(!api?.pveStatus)return;
+  cancel(true);
+  const section=document.createElement('section');
+  section.className='encounter-source';
+  section.innerHTML=`<h4>模拟原版固定阵容</h4>
+   <p class="caption">${esc(config.label)}由原版指定出战，限 ${config.turnLimit} 回合清场。</p>
+   <p class="caption" data-dream-status role="status"></p>
+   <div class="actions">
+    <label class="pve-lineup-field">随机种子 <input data-dream-seed type="number" required min="0" max="9999" step="1" value="0"></label>
+    <label class="pve-lineup-field">操作方式 <select data-dream-control>
+     <option value="auto">自动选择技能</option><option value="basic">模拟手动普攻</option>
+    </select></label>
+    <button class="secondary" type="button" data-dream-start disabled>开始离线模拟</button>
+    <button class="secondary" type="button" data-dream-stop hidden>停止复跑</button>
+   </div><ol class="dungeon-battle-list" data-dream-results></ol>`;
+  const part=name=>section.querySelector(`[data-dream-${name}]`);
+  pane={...config,fixedTrial:true,start:part('start'),stop:part('stop'),status:part('status'),
+   seed:part('seed'),control:part('control'),results:part('results')};
+  pane.seed.oninput=update;
+  pane.stop.onclick=()=>cancel();
+  pane.start.onclick=async()=>{
+   if(!ready()||runeBusy()||!pane.seed.checkValidity())return;
+   const seed=pane.seed.valueAsNumber;
+   const plan=pane.control.value==='basic'?{manualBasic:true}:{};
+   const run={pane,running:true,native:true,notice:`正在复跑种子 ${seed}…`,rows:[]};
+   job=run;
+   pane.results.replaceChildren();
+   update();
+   renderDungeonSelection();
+   try{
+    const {battleMode,stageId,groupId}=run.pane;
+    const report=await api.runPve(plan,{battleMode,stageId,groupId,seed,damageFloor:true});
+    if(job!==run||run.cancelled)return;
+    const title=report.completed?(report.outcome==='win'?'原版胜利':'原版失败'):'未取得原版结算';
+    const row=addRow(run,title);
+    row.state.textContent=`种子 ${seed} · ${report.bouts} / ${report.dreamTrial.turnLimit} 回合 · `+
+     `引擎全程 ${report.engineSeconds.toFixed(2)} 秒 · 已核对原版敌方编组`;
+    if(plan.manualBasic)row.state.textContent+=` · 手动普攻 ${report.dreamTrial.manualAttacks} 次`;
+    run.notice='本次复跑结束。';
+   }catch(error){if(job===run&&!run.cancelled)run.notice=runeError(error);}
+   finally{
+    run.running=false;
+    if(job===run){
+     if(run.cancelled)run.notice='复跑已停止。';
+     const restore=run.restoreFocus||document.activeElement===run.pane.stop;
+     update();
+     if(restore){
+      await stopping;
+      if(job===run&&!run.pane.start.disabled)run.pane.start.focus();
+     }
+    }
+    renderDungeonSelection();
+   }
+  };
+  target.append(section);
+  refreshRuntime();
+  update();
+ }
+
  function addRow(run,title){
   const el=document.createElement('li');
   el.innerHTML=`<strong>${esc(title)}</strong><span data-state></span>
@@ -1169,5 +1240,5 @@
   }
  }
 
- window.AtlasPveWorkbench={busy,mount,unmount,refresh:update,cancel,reset:()=>cancel(true)};
+ window.AtlasPveWorkbench={busy,mount,mountFixedTrial,unmount,refresh:update,cancel,reset:()=>cancel(true)};
 })();
