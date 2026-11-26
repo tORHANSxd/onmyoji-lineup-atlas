@@ -238,6 +238,8 @@ function sampleBattleMarkup(samples){
    protectedUnits?`${describeBattle(sample)} · 鲤鱼精${protectedUnits.supportAlive?'存活':'阵亡'} · `+
     `河童${protectedUnits.targetAlive?'存活':'阵亡'} · 敌方剩余 ${protectedUnits.enemiesAlive} 位`:
    secretActor?`${describeBattle(sample)} · 指定角色 ${secretActor.name} · ${secretActor.level} 级 · ${secretActor.star} 星`:
+   mapBoss?.kind==='qinfeiFood'?`${describeBattle(sample,false)} · ${mapBoss.players===1?'单人演练':mapBoss.players+' 人组队'} · `+
+    `${mapBoss.level?'普通第 '+mapBoss.level+' 层':'惊喜战斗'} · 食材堆 ${mapBoss.clearedPiles}/${mapBoss.totalPiles}`:
    mapBoss?.kind==='meituan'?`${describeBattle(sample,false)} · 单人演练 · ${mapBoss.level} 级档 · 食灵满意度 `+
     (mapBoss.completionHp/mapBoss.targetHp).toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2,roundingMode:'floor'})+
     ` · 本队贡献 ${mapBoss.personalSatisfaction.toLocaleString('zh-CN')} · 战斗与结算 ${mapBoss.combatSeconds.toFixed(2)} 秒`:

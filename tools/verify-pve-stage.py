@@ -26,7 +26,8 @@ def replay(args, runtime, work):
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
     from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, MEITUAN_MODE, NIAN_MODES,
-                                SPECIAL_NIAN_MODE, MapBossReplay, MeituanReplay, NianReplay, entry_for_stage,
+                                QINFEI_FOOD_MODE, QINFEI_FOOD_STAGES, QINFEI_STATIC_STAGES, SPECIAL_NIAN_MODE,
+                                MapBossReplay, MeituanReplay, NianReplay, QinfeiFoodReplay, entry_for_stage,
                                 party_positions)
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
@@ -209,6 +210,8 @@ def replay(args, runtime, work):
             map_boss_replay = NianReplay(modules, args.stage, args.map_boss_players, args.mode, ENGINE_START_SECONDS)
         elif args.mode == MEITUAN_MODE:
             map_boss_replay = MeituanReplay(modules, args.stage, args.map_boss_players)
+        elif args.mode == QINFEI_FOOD_MODE:
+            map_boss_replay = QinfeiFoodReplay(modules, args.stage, args.map_boss_players)
         else:
             map_boss_replay = MapBossReplay(modules, args.stage, args.map_boss_players, args.mode)
         engine, const = map_boss_replay.engine, map_boss_replay.const
@@ -296,6 +299,8 @@ def replay(args, runtime, work):
             raise ValueError("Experience and coin encounters require their dedicated entry")
         if any(args.stage == floor[0] for floor in map_boss.data[OROCHI_STAGE]["gk_list"]):
             raise ValueError("True Orochi floors require the original continuous dungeon engine")
+        if args.stage in QINFEI_FOOD_STAGES or args.stage in QINFEI_STATIC_STAGES:
+            raise ValueError("Qinfei stages require their original activity route")
         if args.stage in ARCHIVED_NIAN_STAGES or entry_for_stage(map_boss.data, args.stage):
             raise ValueError("Map boss stages require their original cooperative engine")
         if (args.stage in dict(challenge_stages()) or args.stage in dict(exploration_stages())

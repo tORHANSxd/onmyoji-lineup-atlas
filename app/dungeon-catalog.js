@@ -1176,13 +1176,20 @@
 
   function showMapBoss(destination,entry,groups){
     const source=window.AtlasMapBoss,isMap=entry.table==='map_boss';
-    if(!matchesOpeningSource(source)||!isMap&&entry.table!=='pve_stage_data')return false;
+    const qinfeiEntry=entry.table==='boss_food_battle'||entry.table==='activity'&&entry.key===13005;
+    if(!matchesOpeningSource(source)||!isMap&&!qinfeiEntry&&entry.table!=='pve_stage_data')return false;
     const row=groups[0].row;
-    const ids=isMap?row?.gk_list?.map(([id])=>id)??[]:[Number(entry.key)];
+    const stageGroups=new Map(groups.filter(({ref})=>ref.table==='pve_stage_data').map(group=>[Number(group.ref.key),group.row]));
+    const ids=isMap?row?.gk_list?.map(([id])=>id)??[]:qinfeiEntry?[...stageGroups.keys()]:[Number(entry.key)];
+    const foodSource=state.index.tables.find(table=>table.name==='boss_food_battle')?.source?.marshalSHA256;
     const stages=ids.filter(id=>{
       const route=source.stages[id],mapId=isMap?Number(entry.key):null;
       if(!route||mapId!==null&&!route.entries.includes(mapId))return false;
-      const stage=isMap?groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===id)?.row:row;
+      if(qinfeiEntry&&route.kind!=='qinfeiFood')return false;
+      if(route.kind==='qinfeiFood'&&(foodSource!==source.qinfeiFoodTableHash||
+         !groups.some(({ref,row})=>ref.table==='boss_food_battle'&&row?.id===route.foodId&&
+           row.up_battle_id===26300+route.foodId-900260)))return false;
+      const stage=stageGroups.get(id);
       const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===id);
       return stage?.groupid===id&&stage.shishentotal===5&&
         (!route.deadlineSeconds||stage.battleTime===route.deadlineSeconds)&&formation?.row?.resindex===route.sceneId&&
@@ -1201,11 +1208,15 @@
       label.append(control);controls.append(label);
       return control;
     };
-    const stage=select('关卡档位','mapBossStage',stages.map(id=>[id,`${source.stages[id].tierLabel??source.stages[id].level+' 级档'} · ${id}`]));
+    const stage=select('关卡档位','mapBossStage',stages.map(id=>{
+      const route=source.stages[id],label=route.tierLabel??route.level+' 级档';
+      return [id,`${qinfeiEntry?route.label+' · ':''}${label} · ${id}`];
+    }));
     const playerOptions=[[1,'单人演练'],[2,'两人组队'],[3,'三人组队']];
     const mode=source.stages[stages[0]].battleMode;
     const players=select('参战人数','mapBossPlayers',playerOptions.filter(([count])=>source.partyPositions(mode,count)));
     destination.append(controls,node('p','阴阳师和式神来自当前账号。式神按阵容顺序填入原版战斗站位。','caption'),slots,workbench);
+    if(entry.table==='activity'&&qinfeiEntry)destination.append(node('p','此处复跑食材战。寝肥本体的联机对局资料见下方。','caption'));
     const render=()=>{
       const stageId=Number(stage.value),mapBossPlayers=Number(players.value),route=source.stages[stageId];
       const positions=source.partyPositions(route.battleMode,mapBossPlayers);
@@ -1214,7 +1225,8 @@
       const levels=route.waves[0].map(unit=>unit[2]),lowest=Math.min(...levels),highest=Math.max(...levels);
       const enemies=route.waves.length>1?`敌方 ${route.waves.length} 波`:
         `敌方 ${lowest===highest?lowest:lowest+'–'+highest} 级`;
-      const limit=route.kind==='meituan'?' · 攻击食物小怪，食灵满意度达到 100% 时获胜':
+      const limit=route.kind==='qinfeiFood'?' · 一堆食材 · 无额外祝福':
+        route.kind==='meituan'?' · 攻击食物小怪，食灵满意度达到 100% 时获胜':
         route.raidWindowSeconds?` · 从首领满血、剩余 ${route.raidWindowSeconds} 秒开始`:
         route.deadlineSeconds?` · 原版时限 ${route.deadlineSeconds} 秒 · 阴阳师被动 LBS周年烟花`:
         route.kind==='lbsHistory'?' · 原表无固定战斗时限':'';
@@ -1479,6 +1491,10 @@
       else if (shilian) destination.append(node('p','此编组由六道之门专用引擎使用。请从关联入口核对试炼式神及途中规则。','caption'));
       else if (window.AtlasMapBoss?.archivedNianStages.includes(stageId))
         destination.append(node('p','此关卡可查阅历史编组，原版战斗入口待核对。','caption'));
+      else if (window.AtlasMapBoss?.qinfeiStaticStages.includes(stageId))
+        destination.append(node('p','此条目可查看寝肥合战原版配置。此关卡的独立复跑待接入。','caption'));
+      else if (window.AtlasMapBoss?.stages[stageId]?.kind==='qinfeiFood')
+        destination.append(node('p','寝肥食材战需要匹配版本的原版关卡、食材和敌方站位。','caption'));
       else if (window.AtlasMapBoss?.stages[stageId]) destination.append(node('p','地图首领组队复跑需要匹配的客户端关卡与编组资料。','caption'));
       else if (entry.refs.some(ref=>ref.table==='map_boss')) destination.append(node('p','对应玩法的入场与结算条件见关联的地图首领入口。','caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&

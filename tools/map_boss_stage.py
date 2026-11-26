@@ -9,9 +9,10 @@ LBS_ACTIVITY_MODE = 3022
 NIAN_MODE = 534
 SPECIAL_NIAN_MODE = 535
 MEITUAN_MODE = 880
+QINFEI_FOOD_MODE = 321
 NIAN_MODES = (NIAN_MODE, SPECIAL_NIAN_MODE)
 SINGLE_TEAM_MODES = (*NIAN_MODES, MEITUAN_MODE)
-MODES = (MODE, SEAL_MODE, LBS_MODE, LBS_ACTIVITY_MODE, *SINGLE_TEAM_MODES)
+MODES = (MODE, SEAL_MODE, LBS_MODE, LBS_ACTIVITY_MODE, QINFEI_FOOD_MODE, *SINGLE_TEAM_MODES)
 ENGINE = "battleengine.engine.WorldBossEngine"
 LBS_ENGINE = "battleengine.engine.LBSBossEngine"
 LBS_ACTIVITY_ENGINE = "battleengine.engine.LBSActivityBossEngine"
@@ -46,7 +47,16 @@ MEITUAN_STAGES = dict(zip(range(20140, 20149), range(10, 51, 5)))
 MEITUAN_ENGINE = "battleengine.engine.MTLBSBossEngine"
 MEITUAN_SKILLS = (61270, 61271)
 MEITUAN_ENEMIES = (4262369, 4262208, 4262312, 4262281, 4262301, 4262342)
+QINFEI_FOOD_ENGINE = "battleengine.engine.QinfeiBossFoodEngine"
+QINFEI_FOOD_TABLE = "com.data.cdata.boss_food_battle"
+QINFEI_FOODS = (900260, 900261, 900262, 900263)
+QINFEI_FOOD_STAGES = range(26300, 26324)
+QINFEI_ARCHIVED_FOOD = (*range(25006, 25014), *range(6902011, 6902015), *range(6902021, 6902025))
+QINFEI_STATIC_STAGES = (25005, 6902001, 26325, 501200, *QINFEI_ARCHIVED_FOOD)
+QINFEI_FOOD_SCENES = (40056, 40057, 40058, 40059)
 SOURCE_HASHES = {
+    QINFEI_FOOD_ENGINE: "ce5a64f1e5daf5ee6ba826066df856b70d14d45d4cf854d45659a7ba5bab768d",
+    QINFEI_FOOD_TABLE: "0c5b3887f7c88341a910bbd8fc6c6c74af95ac83fb79fa0123504a1ded52cf0d",
     NIAN_ENGINE: "294a00b948adb8855bf45e686b470ec987cd289b865a4c9dcdf9f1b5af8f4256",
     SPECIAL_NIAN_ENGINE: "48a2b5ffb7dcc0feb1172c13023cf503ba131b1acb70c5a42d5a9acda5a4f9f5",
     MEITUAN_ENGINE: "438bf4444da738e084f33dfe72a46c706945a840ffad2231d2e391e5124fe699",
@@ -67,7 +77,7 @@ POSITIONS = {2: ((5, 6), (2, 3, 4)), 3: ((3,), (2, 5), (4, 6))}
 
 def party_positions(mode, players):
     if players == 1:
-        if mode in (*SINGLE_TEAM_MODES, LBS_ACTIVITY_MODE):
+        if mode in (*SINGLE_TEAM_MODES, LBS_ACTIVITY_MODE, QINFEI_FOOD_MODE):
             return ((2, 3, 4, 5, 6),)
         return ((2, 3, 4),) if mode == LBS_MODE else None
     if mode in SINGLE_TEAM_MODES:
@@ -288,6 +298,52 @@ class MapBossReplay:
             rewards = {"phaseDamageRatio": ratio, "paperManCount": paper_men}
         return {"kind": self.kind, "level": self.level, "bossId": self.boss_id, "players": len(self.positions),
                 "positions": self.positions, "opening": self.waves[0], "rewardInputs": rewards}
+
+
+class QinfeiFoodReplay(MapBossReplay):
+    kind = "qinfeiFood"
+
+    def __init__(self, modules, stage_id, players):
+        from com import const
+        from com.data.cdata import boss_food_battle
+        from battleengine.engine.QinfeiBossFoodEngine import QinfeiBossFoodEngine
+        from DynamicConfigData import DATA_PVE_STAGE_DATA, BattleMonstersInfo
+
+        if (stage_id not in QINFEI_FOOD_STAGES or any(
+                modules.rows[name]["marshalSHA256"] != SOURCE_HASHES[name]
+                for name in (QINFEI_FOOD_ENGINE, QINFEI_FOOD_TABLE))):
+            raise ValueError("Qinfei food replay requires a verified stage and original engine")
+        self.level, food_index = divmod(stage_id - QINFEI_FOOD_STAGES.start, len(QINFEI_FOODS))
+        self.food_id = QINFEI_FOODS[food_index]
+        if boss_food_battle.data[self.food_id]["up_battle_id"] != QINFEI_FOOD_STAGES.start + food_index:
+            raise RuntimeError("The original Qinfei food and surprise stage disagree")
+        stage = DATA_PVE_STAGE_DATA.data[str(stage_id)]
+        self.group_id = stage["groupid"]
+        formation = BattleMonstersInfo.data[self.group_id]
+        scene = QINFEI_FOOD_SCENES[food_index]
+        if (self.group_id != stage_id or stage.get("shishentotal") != 5 or formation["resindex"] != scene
+                or len(formation["MonstersInfos"]) != 1 or stage.get("battleTime") is not None):
+            raise RuntimeError("The original Qinfei food formation or timing changed")
+        self.const = const
+        self.positions = party_positions(QINFEI_FOOD_MODE, players)
+        self.engine = QinfeiBossFoodEngine({"pve_data_flag": str(stage_id), "food_type": self.food_id,
+                                           "buff": 0, "total_pile": 1})
+        self.engine.battleMode = const.BattleMode.MODE_QINFEI_BOSS_FOOD
+        if self.engine.battleMode != QINFEI_FOOD_MODE or self.engine.combineSceneInfoId != scene:
+            raise RuntimeError("The original Qinfei food engine initialized another scene")
+        self.expected = [[tuple(enemy[:3]) for enemy in formation["MonstersInfos"][0]]]
+        self.wave_count = 1
+        self.waves = []
+        self.observe_waves()
+
+    def report(self, outcome):
+        cleared = self.engine.finishedWaveCount
+        if len(self.waves) != 1 or cleared != int(outcome == "win") or self.engine.getHaltBattleTime() is not None:
+            raise RuntimeError("The original Qinfei food engine did not settle the expected pile")
+        return {"kind": self.kind, "level": self.level, "players": len(self.positions),
+                "positions": self.positions, "waves": self.waves, "foodId": self.engine.food_type,
+                "totalPiles": self.engine.total_pile, "clearedPiles": cleared,
+                "blessingId": self.engine.bless_buff_id}
 
 
 class SoloNianRaid:

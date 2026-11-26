@@ -505,6 +505,11 @@ function validMapBossReport(report,route,players){
  const data=report.mapBoss,rewards=data?.rewardInputs;
  if(report.sceneId!==route.sceneId||report.waveCount!==route.waves.length||data?.kind!==route.kind||
     data.level!==route.level||data.players!==players||!sameTactics(data.positions,mapBoss.partyPositions(route.battleMode,players)))return false;
+ if(route.kind==='qinfeiFood'){
+  const cleared=Number(report.outcome==='win');
+  return report.formationsVerified===1&&report.wavesCleared===cleared&&data.clearedPiles===cleared&&data.totalPiles===1&&
+   data.blessingId===0&&data.foodId===route.foodId&&sameTactics(data.waves,route.waves);
+ }
  if(route.kind==='meituan'){
   return report.formationsVerified===1&&data.bossId===route.waves[0][0][1]&&sameTactics(data.opening,route.waves[0])&&
    sameTactics(data.lineupSlots,route.lineupSlots)&&sameTactics(data.skills,route.skills)&&data.openingHp===1&&
@@ -732,6 +737,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       plan.members.length!==5||!positive(creviceWindow)||creviceWindow>guildCrevice.deadlineSeconds)||
       creviceWindow!==undefined&&!creviceRoute)throw Error('狭间暗域需要正确的关卡、编组、计分时长和五位自有式神');
    if(battleMode===3&&guildCrevice.routes[stageId])throw Error('狭间暗域需要该玩法的原版入口');
+   if(battleMode===3&&(mapBoss.stages[stageId]?.kind==='qinfeiFood'||mapBoss.qinfeiStaticStages.includes(stageId)))
+    throw Error('寝肥关卡需要使用该玩法的原版入口');
    if(battleMode===3&&(mapBoss.stages[stageId]||mapBoss.archivedNianStages.includes(stageId)))
     throw Error('该关卡需要地图首领的原版组队入口');
    const mapBossMode=mapBoss.battleModes.includes(battleMode);

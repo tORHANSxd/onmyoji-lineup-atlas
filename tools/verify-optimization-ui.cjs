@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,534,535,855,880,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,321,341,402,528,534,535,855,880,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -719,6 +719,20 @@ async function main(){
     await ui(start+'.click()');
     await until(status+'.textContent.includes("未通过本次采样")');
     assert.match(await ui(reports+'.textContent'),/食灵满意度 99\.99% · 本队贡献 159,424/);
+   }
+   if(cases.some(entry=>entry.table==='activity'&&entry.key===13005&&entry.kind==='寝肥合战')){
+    await encounter('guild','2026崽战-寝肥合战');
+    assert.match(await ui(panel+'.textContent'),/一堆食材 · 无额外祝福/);
+    assert.equal(await ui('document.querySelector("[data-map-boss-stage]").options.length'),24);
+    assert.equal(await ui('document.querySelector("[data-map-boss-players]").options.length'),3);
+    await ui(`(()=>{const participants=document.querySelector('[data-map-boss-players]');
+      participants.value='3';participants.dispatchEvent(new Event('change'));
+      const stage=document.querySelector('[data-map-boss-stage]');
+      stage.value='26319';stage.dispatchEvent(new Event('change'));})()`);
+    assert.match(await ui(panel+'.textContent'),/队长 3 号位 · 队友 1 2、5 号位 · 队友 2 4、6 号位/);
+    const mapBoss={kind:'qinfeiFood',players:3,level:4,totalPiles:1,clearedPiles:1};
+    const expected={stageId:26319,groupId:26319,battleMode:321,mapBossPlayers:3};
+    assert.match(await run('superghost-five',expected,{mapBoss}),/3 人组队 · 普通第 4 层 · 食材堆 1\/1/);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');

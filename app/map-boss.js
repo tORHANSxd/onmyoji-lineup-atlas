@@ -7,6 +7,7 @@
   BattleMonstersInfo:'8747286d03333c0073d5d2d72e3cec1e89a25f043efb920ee4fcaa8b55b29111',
  };
  const bossMode=3000,sealMode=855,lbsMode=3001,lbsActivityMode=3022,nianMode=534,specialNianMode=535,meituanMode=880;
+ const qinfeiFoodMode=321,qinfeiFoodTableHash='0c5b3887f7c88341a910bbd8fc6c6c74af95ac83fb79fa0123504a1ded52cf0d';
  const bossRoutes=[
   {base:14400,entries:[69],label:'石距',kind:'stone',sceneId:44,ids:[[23]]},
   {base:25300,entries:[73],label:'愤怒的石距',kind:'angryStone',sceneId:40055,ids:[[9991101,9997247,9998247]]},
@@ -132,15 +133,52 @@
   kind:'meituan',sceneId:41146,lineupSlots:sharedHpLineupSlots,skills:[61270,61271],
   ids:[[4262369,4262208,4262312,4262281,4262301,4262342]],
  }];
+ const qinfeiFoods=['酒','苹果','鱼','肉'];
+ const qinfeiEnemySlots=[[1,2,4],[1,2,3,4],[1,2,3,4],[1,2,4,5,6],[1,2,3,4,5,6],[1,2,4]];
+ const qinfeiFoodRoutes=[
+  [9901050,9900276,9901276],
+  [9902050,9900317,9901317],
+  [9903050,9900247,9901247],
+  [9904050,9900257,9901257],
+  [9900406,9901406,9902406,9903406],
+  [9900404,9901404,9902404,9903404],
+  [9900407,9901407,9902407,9903407],
+  [9900405,9901405,9902405,9903405],
+  [9902208,9904406,9905406,9906406],
+  [9902289,9904404,9905404,9906404],
+  [9902206,9904407,9905407,9906407],
+  [9902237,9904405,9905405,9906405],
+  [9902276,9903208,9904208,9905208,9906208],
+  [9902317,9903289,9904289,9905289,9906289],
+  [9902247,9903206,9904206,9905206,9906206],
+  [9902257,9903237,9904237,9905237,9906237],
+  [9901219,9903276,9904276,9905276,9906276,9907276],
+  [9901259,9903317,9904317,9905317,9906317,9907317],
+  [9901248,9903247,9904247,9905247,9906247,9907247],
+  [9901296,9903257,9904257,9905257,9906257,9907257],
+  [9907208,9902219,9902219],
+  [9910208,9902259,9902259],
+  [9911208,9902248,9902248],
+  [9916208,9902296,9902296],
+ ].map((enemies,index)=>{
+  const kind=index%qinfeiFoods.length,level=Math.floor(index/qinfeiFoods.length);
+  return [26300+index,{entries:[],label:'寝肥合战 · '+qinfeiFoods[kind],
+   tierLabel:level?`普通第 ${level} 层`:'惊喜战斗',
+   kind:'qinfeiFood',battleMode:qinfeiFoodMode,sceneId:40056+kind,foodId:900260+kind,level,
+   waves:[enemies.map((id,i)=>[qinfeiEnemySlots[level][i],id,40])]}];
+ });
+ const qinfeiStaticStages=[25005,6902001,26325,501200,25006,25007,25008,25009,25010,25011,25012,25013,
+  6902011,6902012,6902013,6902014,6902021,6902022,6902023,6902024];
  const stages=Object.fromEntries([...buildStages(bossRoutes,bossMode),...buildStages(sealRoutes,sealMode),
   ...buildStages(lbsRoutes,lbsMode),...buildStages(activityRoutes,lbsActivityMode),...historyStages,...nianRoutes,
-  ...buildStages(meituanRoutes,meituanMode)]);
+  ...buildStages(meituanRoutes,meituanMode),...qinfeiFoodRoutes]);
  const positions={2:[[5,6],[2,3,4]],3:[[3],[2,5],[4,6]]};
  const fiveSlots=[[2,3,4,5,6]],singleTeamModes=[nianMode,specialNianMode,meituanMode];
- const singlePositions={[lbsMode]:[[2,3,4]],[lbsActivityMode]:fiveSlots,[nianMode]:fiveSlots,
+ const singlePositions={[lbsMode]:[[2,3,4]],[lbsActivityMode]:fiveSlots,[nianMode]:fiveSlots,[qinfeiFoodMode]:fiveSlots,
   [specialNianMode]:fiveSlots,[meituanMode]:fiveSlots};
  const worldBossEngine={name:'WorldBossEngine',sha256:'d11c14d3eb97e361bee50a58ac8666a56f3332b484e851a8dde36a80c7fe53b4'};
  const engines={
+  [qinfeiFoodMode]:{name:'QinfeiBossFoodEngine',sha256:'ce5a64f1e5daf5ee6ba826066df856b70d14d45d4cf854d45659a7ba5bab768d'},
   [nianMode]:{name:'NormalLBSNianEngine',sha256:'294a00b948adb8855bf45e686b470ec987cd289b865a4c9dcdf9f1b5af8f4256'},
   [specialNianMode]:{name:'SpecialLBSNianEngine',sha256:'48a2b5ffb7dcc0feb1172c13023cf503ba131b1acb70c5a42d5a9acda5a4f9f5'},
   [meituanMode]:{name:'MTLBSBossEngine',sha256:'438bf4444da738e084f33dfe72a46c706945a840ffad2231d2e391e5124fe699'},
@@ -148,7 +186,8 @@
   [lbsMode]:{name:'LBSBossEngine',sha256:'045487760b52efb8c5f3157471c4cc8d21a3a3cb020fc1e11310cd4f17386a7d'},
   [lbsActivityMode]:{name:'LBSActivityBossEngine',sha256:'e5fceb3cace7a72b6b323b83db6cfafe6a5bfb4a1dce013a84388992b32b9062'},
  };
- const rules={resourceVersion:'0.0.816',battleModes:[bossMode,sealMode,lbsMode,lbsActivityMode,...singleTeamModes],lbsMode,lbsActivityMode,tableSHA256,stages,engines,
+ const rules={resourceVersion:'0.0.816',battleModes:[bossMode,sealMode,lbsMode,lbsActivityMode,qinfeiFoodMode,...singleTeamModes],
+  lbsMode,lbsActivityMode,qinfeiFoodMode,qinfeiFoodTableHash,qinfeiStaticStages,tableSHA256,stages,engines,
   archivedNianStages:[3340033,3340034],
   partyPositions:(mode,players)=>{
    if(players===1)return singlePositions[mode];

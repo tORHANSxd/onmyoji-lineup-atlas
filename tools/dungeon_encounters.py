@@ -6,7 +6,8 @@ from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
 from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS, LBS_HISTORY_ENTRIES,
                             LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MEITUAN_SKILLS, MEITUAN_STAGES,
-                            NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, SEAL_MODE,
+                            NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, QINFEI_ARCHIVED_FOOD,
+                            QINFEI_FOOD_MODE, QINFEI_FOOD_STAGES, QINFEI_FOODS, QINFEI_STATIC_STAGES, SEAL_MODE,
                             SPECIAL_NIAN_MODE, SPECIAL_NIAN_STAGES, is_fragment_entry)
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
@@ -49,6 +50,10 @@ ROOTS = {
     "guild_crevice_area": ("guild", "狭间暗域"),
     "guild_crevice_battle": ("guild", "狭间暗域"),
     "guild_dinner_monster": ("guild", "阴阳寮宴会"),
+    "boss_food_battle": ("guild", "寝肥合战食材"),
+    "league_qinfei": ("guild", "寝肥应援寮式神分组"),
+    "qinfei_fight_buff": ("guild", "寝肥合战每日规则"),
+    "dojo_2024_qinfei_battle_match": ("guild", "寝肥合战历史赛程"),
     "guild_monster": ("guild", "阴阳寮麒麟"),
     "guild_fake_god_event": ("guild", "阴阳寮活动"),
     "act_team_battle": ("event", "活动组队战斗"),
@@ -215,6 +220,33 @@ def encounter_index(source, load_rows):
     def level_one_skill(skill_id):
         options = level_one_skills().get(numeric_key(skill_id), ())
         return {"$tuple": [int(part) for part in options[0]]} if len(options) == 1 else skill_id
+
+    qinfei_activities = {10425: (2025, 4), 13005: (2026, 5)}
+
+    def qinfei_schedule(activity_id):
+        year, raid = qinfei_activities[activity_id]
+        refs = [
+            ("battle_mode_routes", 320, "寝肥首领战原版引擎"),
+            ("battle_mode_routes", QINFEI_FOOD_MODE, "寝肥食材战原版引擎"),
+            ("raid_info", {"$tuple": [raid, 1]}, f"{year} 年寝肥首领档"),
+        ]
+        refs.extend(("qinfei_fight_buff", key, "每日首领机制") for key, buff in sorted(table("qinfei_fight_buff").values())
+                    if (buff.get("date") or [None])[0] == year)
+        if year == 2026:
+            refs.extend([("active_time", "the_sleeping_beauty", "每日开放时段"),
+                         ("dojo_const", 112, "集结时间"),
+                         ("dojo_const", 309, "阵容码场景编号"),
+                         ("team_assist_stage", 101002, "寝肥合战阵容码场景"),
+                         ("pve_stage_data", 26325, "寝肥入场券战斗"),
+                         ("Constant", 3222, "入场券战斗配置"),
+                         ("currency", 900264, "入场券")])
+            refs.extend(("boss_food_battle", key, "食材与惊喜战斗") for key in QINFEI_FOODS)
+            refs.extend(("pve_stage_data", key, "食材战斗") for key in QINFEI_FOOD_STAGES)
+            refs.extend(("league_qinfei", key, "应援寮式神分组") for key, _ in sorted(table("league_qinfei").values()))
+        links = [ref for dest, key, label in refs if (ref := relation(dest, key, label, False))]
+        if year == 2026 and "liansai_qinfei_notice_trunk" in rules:
+            links.append(rule_reference("liansai_qinfei_notice_trunk", "比赛、食材与投喂规则"))
+        return links
 
     def nian_references(mode):
         links = [rule_reference("xianshi_nianshou_activity_tips", "年兽挑战及召唤规则")]
@@ -449,6 +481,29 @@ def encounter_index(source, load_rows):
             links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
+            qinfei_stage = int(stage_id or 0)
+            if qinfei_stage in QINFEI_FOOD_STAGES:
+                food = QINFEI_FOODS[(qinfei_stage - QINFEI_FOOD_STAGES.start) % len(QINFEI_FOODS)]
+                links.extend(ref for dest, target, label in (
+                    ("boss_food_battle", food, "食材战斗配置"),
+                    ("currency", food, "对应食材"),
+                    ("battle_mode_routes", QINFEI_FOOD_MODE, "食材战斗原版引擎"),
+                ) if (ref := relation(dest, target, label, False)))
+            elif qinfei_stage in QINFEI_STATIC_STAGES:
+                refs = []
+                if qinfei_stage in (25005, 6902001):
+                    refs.extend([("battle_mode_routes", 320, "首领战原版引擎"),
+                                 ("boss_info", 202, "经典寝肥首领参数")])
+                elif qinfei_stage in QINFEI_ARCHIVED_FOOD:
+                    refs.append(("battle_mode_routes", QINFEI_FOOD_MODE, "食材战斗原版引擎"))
+                elif qinfei_stage == 26325:
+                    refs.extend([("Constant", 3222, "入场券战斗配置"), ("currency", 900264, "入场券")])
+                else:
+                    refs.extend([("dojo_2024_const", 30, "筹备挑战体力消耗"),
+                                 ("dojo_2024_const", 31, "筹备每日挑战次数")])
+                    if "Qinfei_choubei_tips" in rules:
+                        links.append(rule_reference("Qinfei_choubei_tips", "筹备副本消耗、次数与奖励"))
+                links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
             trial = relation("shilian_event_exam", shilian_exam_stages.get(stage_id), "六道试炼入口", False)
             if trial:
                 links.append(trial)
@@ -777,10 +832,32 @@ def encounter_index(source, load_rows):
                 restriction = relation("Clanlevel", clan, "开启所需最低寮等级", False)
                 if restriction:
                     links.append(restriction)
-        if name == "raid_info" and row.get("fbId") == 1:
+        if name == "activity" and row.get("id") in qinfei_activities:
+            links.extend(qinfei_schedule(row["id"]))
+        if name == "boss_food_battle":
+            links.extend(ref for dest, target, label in (
+                ("currency", row.get("id"), "食材道具"),
+            ) if (ref := relation(dest, target, label, False)))
+            start = row.get("up_battle_id")
+            if start in QINFEI_FOOD_STAGES and start < QINFEI_FOOD_STAGES.start + len(QINFEI_FOODS):
+                links.extend(ref for layer, stage in enumerate(range(start, QINFEI_FOOD_STAGES.stop, len(QINFEI_FOODS)))
+                             if (ref := relation("pve_stage_data", stage, "惊喜战斗" if not layer else f"普通第 {layer} 层", False)))
+        if name == "league_qinfei":
+            links.extend(ref for hero in row.get("heroCombination", ())
+                         if (ref := relation("hero", hero, "可应援式神", False)))
+        if name == "dojo_2024_qinfei_battle_match":
+            links.extend(ref for dest, target, label in (
+                ("active_time", "the_sleeping_beauty_2024", "2024 赛程时段"),
+                ("pve_stage_data", 501200, "寝肥筹备战"),
+            ) if (ref := relation(dest, target, label, False)))
+        if name == "raid_info" and row.get("fbId") in (1, 2, 3, 4, 5):
             for boss in row.get("bossInfo", ()):
                 ref = relation("boss_info", boss, "候选首领阶段参数", True)
                 if ref:
+                    links.append(ref)
+        if name == "boss_info" and row.get("id") in (201, 202, 203, 204):
+            for skill in dict.fromkeys((row.get("ctrlSkill"), *row.get("extraSkill", ()), *row.get("hideSkill", ()))):
+                if ref := relation("skill", level_one_skill(skill), "寝肥首领技能", False):
                     links.append(ref)
         for field, label in RULE_TEXT_FIELDS.items():
             if panel_field and field == panel_field[0]:
@@ -810,7 +887,7 @@ def encounter_index(source, load_rows):
 
     candidates = [
         name for name, row in manifests.items()
-        if name in ROOTS or name in JOURNEY_BATTLE_VARIANTS or name == "battle_mode_routes"
+        if name in ROOTS or name in JOURNEY_BATTLE_VARIANTS or name in {"activity", "battle_mode_routes"}
         or set(row["fields"]).intersection((*BATTLE_ID_FIELDS, "monsterWaves"))
     ]
     entries, unresolved = [], 0
@@ -838,13 +915,23 @@ def encounter_index(source, load_rows):
             ] if not entrance else []
             scene_route = table_name == "battle_mode_routes" and row.get("scene_engine") \
                 and numeric_key(key) not in table("normal_battle_config")
-            if not root and not entrance and not scene_route and not linked_battles and not row.get("monsterWaves"):
+            qinfei_activity = table_name == "activity" and key in qinfei_activities
+            if not root and not entrance and not scene_route and not linked_battles and not row.get("monsterWaves") and not qinfei_activity:
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
             if scene_route:
                 entry_kind = "初始场景引擎"
             title = name(row)
+            if qinfei_activity:
+                entry_family, entry_kind = "guild", "寝肥合战"
+            if table_name == "qinfei_fight_buff" and row.get("date"):
+                title = f"寝肥合战 · {'-'.join(map(str, row['date'][:3]))} · {row.get('buff_desc', '')}"
+            if table_name == "dojo_2024_qinfei_battle_match" and row.get("day_time"):
+                title = f"寝肥历史赛程 · {'-'.join(map(str, row['day_time']))} · 第 {row['count']} 场"
+            if table_name == "boss_food_battle":
+                _, food = table("currency").get(numeric_key(key), (None, {}))
+                title = f"寝肥合战食材 · {name(food) or key}"
             if table_name == "map_boss" and key == TRUE_OROCHI_MAP_ID:
                 entry_kind = "真·八岐大蛇"
             elif table_name == "map_boss" and is_fragment_entry(key, row):
@@ -917,6 +1004,8 @@ def encounter_index(source, load_rows):
                 elif stage_id in MEITUAN_STAGES:
                     entry_family, entry_kind = "event", "宴席大赛"
                     title = f"{entry_kind} · {MEITUAN_STAGES[stage_id]} 级档"
+                elif stage_id in QINFEI_FOOD_STAGES or stage_id in QINFEI_STATIC_STAGES:
+                    entry_family, entry_kind = "guild", "寝肥合战"
             if table_name == "pve_stage_data" and numeric_key(key) in crevice_stages:
                 entry_family, entry_kind = "guild", "狭间暗域战斗"
                 title = f"狭间暗域 · {row['name'].removeprefix('阴界裂缝')}"
