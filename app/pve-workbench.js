@@ -7,7 +7,7 @@
  const ghostKingTower=AtlasDevilFeast.tower;
  const laolao=AtlasDevilFeast.laolao;
  const fusion=AtlasDevilFeast.fusion;
- const {duskWraith:dusk,songstress:song,mirage,catfish,skeleton,longche,spiderLive,spiderNormal}=AtlasFengmoLive;
+ const {duskWraith:dusk,songstress:song,mirage,catfish,skeleton,skeletonX,longche,spiderLive,spiderNormal}=AtlasFengmoLive;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -233,15 +233,17 @@
   }
   const skeletonSettings=pane.skeletonWindow?{windowSeconds:pane.skeletonWindow.valueAsNumber,
    truePositions:pane.skeletonPositions.map(input=>Number(input.value))}:null;
-  const skeletonReady=!skeletonSettings||skeleton.validSettings(skeletonSettings);
-  pane.skeletonSettings=skeletonReady?skeletonSettings:null;
+  const skeletonXSettings=pane.skeletonWeekly?{...skeletonSettings,weeklySeconds:pane.skeletonWeekly.valueAsNumber,
+   trait:Number(pane.skeletonTrait.value),paperTier:Number(pane.skeletonPaper.value)}:null;
+  const skeletonReady=skeletonXSettings?skeletonX.validSettings(skeletonXSettings):
+   !skeletonSettings||skeleton.validSettings(skeletonSettings);
+  pane.skeletonSettings=skeletonReady&&!skeletonXSettings?skeletonSettings:null;
+  pane.skeletonXSettings=skeletonReady?skeletonXSettings:null;
   if(skeletonSettings){
-   pane.skeletonWindow.disabled=blocked;
-   pane.skeletonWindow.setAttribute('aria-invalid',String(!pane.skeletonWindow.validity.valid));
    const repeated=new Set(skeletonSettings.truePositions).size!==2;
-   for(const input of pane.skeletonPositions){
+   for(const input of [pane.skeletonWindow,...pane.skeletonPositions,pane.skeletonWeekly,pane.skeletonTrait,pane.skeletonPaper].filter(Boolean)){
     input.disabled=blocked;
-    input.setAttribute('aria-invalid',String(repeated));
+    input.setAttribute('aria-invalid',String(!input.validity.valid||repeated&&pane.skeletonPositions.includes(input)));
    }
   }
   const longcheSettings=pane.longcheWindow?{windowSeconds:pane.longcheWindow.valueAsNumber,
@@ -335,7 +337,8 @@
    !songReady?`计分时长须为 1 至 ${song.windowLimit} 秒的整数。`:
    !mirageReady?'请填写有效的计分时长和入场秒数，并选两个不同的真镜像位置。':
    !catfishReady?'请核对时长、减伤层数和人数，其他队伍的击破人数不可超过参战人数。':
-   !skeletonReady?'请选择两个不同的真部下位置，并填写有效的模拟时长。':
+   !skeletonReady?(pane.skeletonWeekly?'请选择两个不同的真部下位置，并检查时长、均时、突变效果和纸人档位。':
+    '请选择两个不同的真部下位置，并填写有效的模拟时长。'):
    !longcheReady?`计分时长须为 1 至 ${longche.windowLimit} 秒，修理时限须为 1 至 ${longche.repairLimit} 秒，均填写整数。`:
    !spiderLiveReady?`计分时长须为 1 至 ${spiderLive.windowLimit} 秒的整数${pane.spiderLiveTrait?'，并选择一项突变词条':''}。`:
    !stateReady?'生命上限应在 0% 至 100% 之间。':
@@ -368,6 +371,7 @@
  }
 
  function mount(target,config){
+  const skeletonSource=config.skeletonX?skeletonX:skeleton;
   if(!api?.pveStatus)return;
   cancel(true);
   const section=document.createElement('section');
@@ -375,7 +379,7 @@
   section.innerHTML=`<h4>模拟已知阵容</h4>
    <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子${config.scoreWindowSeconds?
     ` · ${config.retreat||config.qilingWindow||config.creviceWindow||config.ghostSettings||config.historicalGhostWindow?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
-   <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive||config.spiderNormal?' id="pve-spider-live-status"':''} data-pve-status role="status"></p>
+   <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive||config.spiderNormal?' id="pve-spider-live-status"':config.skeleton?' id="pve-skeleton-status"':''} data-pve-status role="status"></p>
    <div class="actions">
     <label class="pve-lineup-field">已知阵容 <select data-pve-lineup></select></label>
     ${config.trialEligible?`<label class="pve-lineup-field">试炼式神位置 <select data-pve-trial>
@@ -383,7 +387,7 @@
     ${Array.from({length:config.memberCount},(_,i)=>`<option value="${i+1}">阵容中第 ${i+1} 位式神</option>`).join('')}
     </select></label>`:''}
     <button class="secondary" type="button"${config.longche?' aria-describedby="pve-longche-status"':
-    config.spiderLive||config.spiderNormal?' aria-describedby="pve-spider-live-status"':''} data-pve-start>开始离线模拟</button>
+    config.spiderLive||config.spiderNormal?' aria-describedby="pve-spider-live-status"':config.skeleton?' aria-describedby="pve-skeleton-status"':''} data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
    ${config.journeyHard?`<div class="actions">
@@ -461,14 +465,25 @@
      </label>
     </div>
    </fieldset>`:''}
-   ${config.skeleton?`<fieldset class="pve-reserve"><legend>荒骷髅模拟条件</legend>
+   ${config.skeleton?`<fieldset class="pve-reserve"><legend>${config.skeletonX?'极·':''}荒骷髅模拟条件</legend>
     <div class="actions">
      <label class="pve-lineup-field">本地计分时长（秒）
-      <input data-pve-skeleton-window type="number" min="1" max="${skeleton.windowLimit}" step="1" value="${skeleton.defaultWindow}" required>
+      <input data-pve-skeleton-window type="number" min="1" max="${skeletonSource.windowLimit}" step="1" value="${skeletonSource.defaultWindow}" required>
      </label>
      ${skeleton.defaultTruePositions.map((selected,i)=>`<label class="pve-lineup-field">真部下 ${i+1} 的位置
       <select data-pve-skeleton-position>${skeleton.positions.map(position=>`<option value="${position}" ${position===selected?'selected':''}>${position} 号位</option>`).join('')}</select>
      </label>`).join('')}
+     ${config.skeletonX?`<label class="pve-lineup-field">本场突变效果
+      <select data-pve-skeleton-trait required>${skeletonX.traits.map(({id,label})=>
+       `<option value="${id}" ${id===skeletonX.defaultTrait?'selected':''}>${label}</option>`).join('')}</select>
+     </label>
+     <label class="pve-lineup-field">区服上周平均用时（秒）
+      <input data-pve-skeleton-weekly type="number" min="1" max="${skeletonX.weeklyLimit}" step="1" value="${skeletonX.weeklyDefault}" required>
+     </label>
+     <label class="pve-lineup-field">纸人档位
+      <select data-pve-skeleton-paper required>${skeletonX.paperFormations.map((units,index)=>
+       `<option value="${index+1}">${index+1} 档（${units.length} 位）</option>`).join('')}</select>
+     </label>`:''}
     </div>
    </fieldset>`:''}
    ${config.catfish?`<fieldset class="pve-reserve"><legend>地震鲶模拟条件</legend>
@@ -639,6 +654,7 @@
    catfishWindow:part('catfish-window'),catfishArmor:part('catfish-armor'),
    catfishPlayers:part('catfish-players'),catfishBreaks:part('catfish-breaks'),
    skeletonWindow:part('skeleton-window'),skeletonPositions:all('skeleton-position'),
+   skeletonWeekly:part('skeleton-weekly'),skeletonTrait:part('skeleton-trait'),skeletonPaper:part('skeleton-paper'),
    longcheWindow:part('longche-window'),longcheRepair:part('longche-repair'),longcheCommander:part('longche-commander'),
    spiderLiveWindow:part('spider-live-window'),spiderLiveTrait:part('spider-live-trait'),
    spiderNormalWeakPart:part('spider-normal-weak'),
@@ -654,7 +670,7 @@
   for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,
-   ...pane.skeletonPositions,pane.longcheCommander,pane.spiderLiveTrait,pane.spiderNormalWeakPart].filter(Boolean))field.onchange=()=>{
+   ...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.spiderLiveTrait,pane.spiderNormalWeakPart].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -662,7 +678,7 @@
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.mirageWindow,pane.mirageGeneral,
    pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,
-   pane.skeletonWindow,pane.longcheWindow,pane.longcheRepair,pane.spiderLiveWindow,
+   pane.skeletonWindow,pane.skeletonWeekly,pane.longcheWindow,pane.longcheRepair,pane.spiderLiveWindow,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
@@ -802,6 +818,7 @@
     ...(run.mirageSettings?{mirageSettings:run.mirageSettings}:{}),
     ...(run.catfishSettings?{catfishSettings:run.catfishSettings}:{}),
     ...(run.skeletonSettings?{skeletonSettings:run.skeletonSettings}:{}),
+    ...(run.skeletonXSettings?{skeletonXSettings:run.skeletonXSettings}:{}),
     ...(run.longcheSettings?{longcheSettings:run.longcheSettings}:{}),
     ...(run.spiderLiveSettings?{spiderLiveSettings:run.spiderLiveSettings}:{}),
     ...(run.spiderNormalSettings?{spiderNormalSettings:run.spiderNormalSettings}:{}),
@@ -979,7 +996,7 @@
      pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
      pane.duskWindow&&!pane.duskSettings||pane.songWindow&&!pane.songWindowSeconds||pane.mirageWindow&&!pane.mirageSettings||
-     pane.catfishWindow&&!pane.catfishSettings||pane.skeletonWindow&&!pane.skeletonSettings||pane.longcheWindow&&!pane.longcheSettings||
+     pane.catfishWindow&&!pane.catfishSettings||pane.skeletonWindow&&!pane.skeletonSettings&&!pane.skeletonXSettings||pane.longcheWindow&&!pane.longcheSettings||
      pane.spiderLiveWindow&&!pane.spiderLiveSettings&&!pane.spiderNormalSettings)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
@@ -997,6 +1014,7 @@
    mirageSettings:pane.mirageSettings,
    catfishSettings:pane.catfishSettings,
    skeletonSettings:pane.skeletonSettings,
+   skeletonXSettings:pane.skeletonXSettings,
    longcheSettings:pane.longcheSettings,
    spiderLiveSettings:pane.spiderLiveSettings,
    spiderNormalSettings:pane.spiderNormalSettings,

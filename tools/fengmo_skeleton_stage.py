@@ -1,10 +1,15 @@
-"""Run ordinary Huangkulou using the original encounter and skill handlers."""
+"""Run Huangkulou encounters using the original battle and skill handlers."""
 from collections import Counter
 from math import isfinite
 
 SKELETON_MODE, SKELETON_STAGE, SKELETON_SCENE = 3012, 25003, 40012
+SKELETON_X_MODE, SKELETON_X_STAGE, BOSS_X = 4441, 25018, 9992001
 SKELETON_WINDOW, SKELETON_WALL_SECONDS = 1200, 300
 BOSS = 9991001
+TRAITS = (63402, 63601, 63404, 63602, 63405, 63603, 63406)
+PAPER_TIERS = ({3: 9992017, 4: 9992014, 5: 9992015, 6: 9992016},
+               {4: 9992014, 5: 9992015, 8: 9992016},
+               {4: 9992014, 5: 9992015}, {9: 9992015}, {9: 9992015})
 ELITES = dict(zip(range(2, 8), range(9991008, 9991014)))
 FORMATIONS = {
     "slimes": {2: 9991006, 3: 9991003, 6: 9991004, 7: 9991005, 8: 9991002},
@@ -12,7 +17,6 @@ FORMATIONS = {
     "papers": {3: 9991017, 4: 9991014, 5: 9991015, 6: 9991016},
     "late": {3: 9991018, 4: 9991019, 5: 9991020, 6: 9991021, 8: 9991022},
 }
-PHASE_BY_UNIT = {unit: phase for phase, units in FORMATIONS.items() for unit in units.values()}
 STATES = {1: "normal", 2: "elite", 3: "gift"}
 SOURCES = {
     "battleengine.engine.HuangKuLouEngine": "d680ad3efffd1cc59198eaa8e8d0e4868c7c7b897ad353e260430794bd992d92",
@@ -23,6 +27,10 @@ SOURCES = {
     "battleengine.skill.SkillComp_486": "793b6352a23e1da5297c49519dc794eee87be724a7f9da84df30ccf102457994",
     "battleengine.skill.SkillComp_487": "aabeaa978578b839c3f295104ce7e64f186dac180bedb9ca82f3cdc5b96d8f83",
     "scenemembers.HuangKuLouScene": "6658a3afccbd8a708b127b4ce2e22668c052bfa67a9fbba7bf62ed6da3fcf297",
+}
+EXTREME_SOURCES = {
+    "battleengine.engine.HuangKuLouXEngine": "0b0e2d4b5c73eb1c76199213befa3ca7b61f694160d1d0c8627de56df1185b20",
+    "scenemembers.HuangKuLouXScene": "433a9d31cd869389e23b1e93e51459ec2091c1a670ed53a9f59a5ab6f386002d",
 }
 
 
@@ -35,23 +43,54 @@ def valid_skeleton_settings(settings):
             and all(type(position) is int and position in ELITES for position in positions))
 
 
+def valid_skeleton_x_settings(settings):
+    return (type(settings) is dict and set(settings) == {"windowSeconds", "truePositions", "trait", "paperTier", "weeklySeconds"}
+            and valid_skeleton_settings({key: settings[key] for key in ("windowSeconds", "truePositions")})
+            and type(settings["trait"]) is int and settings["trait"] in TRAITS
+            and type(settings["paperTier"]) is int and 1 <= settings["paperTier"] <= len(PAPER_TIERS)
+            and type(settings["weeklySeconds"]) is int and 1 <= settings["weeklySeconds"] <= SKELETON_WINDOW)
+
+
 class SkeletonReplay:
-    def __init__(self, modules, settings):
+    def __init__(self, modules, settings, *, extreme=False):
         from battleengine.engine.HuangKuLouEngine import HuangKuLouEngine, const
         from com.data.cdata import huangkulou_stage, monstertalk
         from DynamicConfigData import BattleMonstersInfo, DATA_CONSTANT, DATA_PVE_STAGE_DATA
 
-        if any(modules.rows[name]["marshalSHA256"] != value for name, value in SOURCES.items()):
+        self.extreme, self.poison_retaliation = extreme, False
+        self.trait_recipients, self.poison_retaliations = [], []
+        self.boss_id, self.formations, self.paper_tier = BOSS, FORMATIONS, 1
+        engine_class, stage_id, mode = HuangKuLouEngine, SKELETON_STAGE, SKELETON_MODE
+        source, troops, weekly, room = SOURCES, huangkulou_stage.data, (), {}
+        if extreme:
+            from battleengine.engine.HuangKuLouXEngine import HuangKuLouXEngine
+            from com.data.cdata import huangkuloux_stage
+
+            engine_class, stage_id, mode = HuangKuLouXEngine, SKELETON_X_STAGE, SKELETON_X_MODE
+            self.boss_id, self.paper_tier = BOSS_X, settings["paperTier"]
+            self.formations = {phase: {pos: unit + 1000 for pos, unit in units.items()}
+                               for phase, units in FORMATIONS.items()}
+            self.formations["papers"] = PAPER_TIERS[self.paper_tier - 1]
+            source, troops, weekly = {**SOURCES, **EXTREME_SOURCES}, huangkuloux_stage.data, (settings["weeklySeconds"],)
+            if tuple(DATA_CONSTANT.data[10631]["value"]) != TRAITS or DATA_CONSTANT.data[10900]["value"] != [480]:
+                raise RuntimeError("The original extreme Huangkulou constants changed")
+            maximum = engine_class.calcSingleSharedMonMaxHp(self.boss_id, 2500, 5, *weekly)
+            if not isfinite(maximum) or maximum <= 1:
+                raise RuntimeError("The original extreme Huangkulou body health changed")
+            room = {"event4_avg_time": weekly[0], "event4_skill_buff": [0, settings["trait"]], "hp": {"1": maximum}}
+        self.weekly = weekly
+        self.phase_by_unit = {unit: phase for phase, units in self.formations.items() for unit in units.values()}
+        if any(modules.rows[name]["marshalSHA256"] != value for name, value in source.items()):
             raise RuntimeError("The original Huangkulou engine changed")
-        stage = DATA_PVE_STAGE_DATA.data[str(SKELETON_STAGE)]
+        stage = DATA_PVE_STAGE_DATA.data[str(stage_id)]
         self.group = BattleMonstersInfo.data[stage["groupid"]]
-        if (self.group["ID"] != SKELETON_STAGE or self.group["resindex"] != SKELETON_SCENE
-                or stage["shishentotal"] != 5 or self.group["MonstersInfos"] != [[[1, BOSS, 40, 1, 0]]]):
+        if (self.group["ID"] != stage_id or self.group["resindex"] != SKELETON_SCENE
+                or stage["shishentotal"] != 5 or self.group["MonstersInfos"] != [[[1, self.boss_id, 40, 1, 0]]]):
             raise RuntimeError("The original Huangkulou opening changed")
         for phase, keys in (("slimes", [(100, i) for i in range(1, 6)]), ("elite", [(200, 1)]),
-                            ("papers", [(300, 1)]), ("late", [(400, 1)])):
-            if any({position: row[0] for position, row in enumerate(huangkulou_stage.data[key]["monsterWaves"], 2)
-                    if row is not None} != FORMATIONS[phase] for key in keys):
+                            ("papers", [(300, self.paper_tier)]), ("late", [(400, 1)])):
+            if any({position: row[0] for position, row in enumerate(troops[key]["monsterWaves"], 2)
+                    if row is not None} != self.formations[phase] for key in keys):
                 raise RuntimeError(f"The original Huangkulou formation changed: {phase}")
         self.thresholds = tuple(DATA_CONSTANT.data[index]["value"][0] for index in (3801, 3802, 3803))
         if self.thresholds != (.8, .5, .3):
@@ -64,16 +103,17 @@ class SkeletonReplay:
         self.const, self.settings = const, settings
         self.started = self.expiry = self.victory = None
         self.hp, self.maximum, self.clue_by_unit = {}, {}, {}
-        self.slots = {phase: {} for phase in FORMATIONS}
+        self.slots = {phase: {} for phase in self.formations}
         self.phases, self.votes, self.notices, self.punishments = [], [], [], []
         self.punishment_casting = False
         self.queued = "normal"
-        self.engine = engine = HuangKuLouEngine({
-            "pve_data_flag": str(SKELETON_STAGE), "fbUid": "local-skeleton", "teamUid": 1, "team": self,
+        self.engine = engine = engine_class({
+            "pve_data_flag": str(stage_id), "fbUid": "local-skeleton", "teamUid": 1, "team": self,
             "status_info": {"status": 1}, "atk_set": 2500, "cal_num": 5,
+            **room,
         })
-        engine.battleMode = const.BattleMode.MODE_HUANGKULOU
-        if engine.battleMode != SKELETON_MODE or engine.state_dict != STATES:
+        engine.battleMode = const.BattleMode.MODE_HUANGKULOU_X if extreme else const.BattleMode.MODE_HUANGKULOU
+        if engine.battleMode != mode or engine.state_dict != STATES:
             raise RuntimeError("The original Huangkulou battle mode changed")
         self.on_death, self.on_clue, self.on_notice = engine.onMonsterDie, engine.send_elite_msg, engine.send_notice
         engine.onMonsterDie, engine.send_elite_msg, engine.send_notice = self.observe_death, self.observe_clue, self.observe_notice
@@ -108,8 +148,8 @@ class SkeletonReplay:
 
     def observe_summon(self, unit_id, position, *args, **kwargs):
         unit = self.summon(unit_id, position, *args, **kwargs)
-        phase = PHASE_BY_UNIT.get(unit_id)
-        if phase is None or FORMATIONS[phase].get(position) != unit_id or position in self.slots[phase]:
+        phase = self.phase_by_unit.get(unit_id)
+        if phase is None or self.formations[phase].get(position) != unit_id or position in self.slots[phase]:
             raise RuntimeError(f"The original Huangkulou spawned an unexpected monster: {unit_id}@{position}")
         self.slots[phase][position] = unit
         return unit
@@ -130,22 +170,26 @@ class SkeletonReplay:
 
     def observe_punishment(self, index):
         self.impact(index)
-        if self.punishment.is_punish and index == 0:
+        if self.punishment_casting and index == 0:
             self.punishments.append(self.seconds())
+            if self.poison_retaliation:
+                self.poison_retaliations.append(self.seconds())
             self.punishment_casting = False
 
     def observe_punishment_start(self, *args, **kwargs):
         result = self.punishment_start(*args, **kwargs)
-        self.punishment_casting = self.punishment.is_punish
+        self.poison_retaliation = (self.extreme and self.engine.state == "elite" and "kill_wrong" in self.notices
+                                   and kwargs.get("skip_check_disable") is True and kwargs.get("noConsumeGuiHuo") is True)
+        self.punishment_casting = self.punishment.is_punish or self.poison_retaliation
         return result
 
     def send_elite(self):
         engine = self.engine
         self.flush()
-        maximum = engine.calcSingleSharedMonMaxHp(next(iter(ELITES.values())), 2500, 5)
-        if not isfinite(maximum) or maximum <= 1:
+        pending = {str(pos): engine.calcSingleSharedMonMaxHp(unit, 2500, 5, *self.weekly)
+                   for pos, unit in self.formations["elite"].items()}
+        if any(not isfinite(hp) or hp <= 1 for hp in pending.values()):
             raise RuntimeError("The original Huangkulou shared health formula changed")
-        pending = dict.fromkeys(map(str, ELITES), maximum)
         self.hp.update(pending)
         self.maximum.update(pending)
         self.queued = "elite"
@@ -155,7 +199,14 @@ class SkeletonReplay:
 
     def send_gift(self):
         self.queued = "gift"
-        self.engine.onRecvOtherTeamMsg({"op": "ch_st", "status": 3, "param": {"gift_key": [300, 1], "reason": "paper"}})
+        self.engine.onRecvOtherTeamMsg({"op": "ch_st", "status": 3,
+                                       "param": {"gift_key": [300, self.paper_tier], "reason": "paper"}})
+
+    def check_selected(self, entity):
+        trait = self.settings["trait"]
+        if self.engine.playerSkill != trait or not entity.SkillMgrComp.getSkillById(trait):
+            raise RuntimeError("The original extreme Huangkulou trait was absent on a selected character")
+        self.trait_recipients.append(entity.protoid)
 
     def finish_window(self):
         if self.expiry is None and self.victory is None and not self.engine.waiting_battle_end:
@@ -191,7 +242,7 @@ class SkeletonReplay:
             return
         boss = engine.boss_entity
         if self.started is None:
-            if boss.protoid != BOSS or boss.posIndex != 1:
+            if boss.protoid != self.boss_id or boss.posIndex != 1:
                 raise RuntimeError(f"The original Huangkulou generated a different opening: {boss.protoid}@{boss.posIndex}")
             self.started = engine.now_time()
             self.hp["1"] = self.maximum["1"] = boss.AttrComp.maxHp
@@ -205,7 +256,7 @@ class SkeletonReplay:
             self.punishment.OnSkillStart = self.observe_punishment_start
             self.record_phase("normal")
             engine.delayExec(self.settings["windowSeconds"] * 1000, self.finish_window)
-        for phase, expected in FORMATIONS.items():
+        for phase, expected in self.formations.items():
             if len(self.slots[phase]) == len(expected) and not any(row["phase"] == phase for row in self.phases):
                 self.record_phase(phase)
         phase = self.phases[-1]["phase"]
@@ -220,15 +271,19 @@ class SkeletonReplay:
                 self.send_gift()
 
     def snapshot(self):
-        return {"settings": self.settings, "combatSeconds": self.seconds(), "damage": self.engine.myTotalDmg,
+        data = {"settings": self.settings, "combatSeconds": self.seconds(), "damage": self.engine.myTotalDmg,
                 "phases": self.phases.copy(), "bossHp": self.hp["1"], "maximumHp": self.maximum["1"],
                 "votes": self.votes.copy(), "punishments": self.punishments.copy(),
                 "papersDefeated": self.engine.kill_gift_paper_man}
+        if self.extreme:
+            data.update(traitRecipients=self.trait_recipients.copy(), poisonRetaliations=self.poison_retaliations.copy())
+        return data
 
     def report(self, completed, outcome):
         data = self.expiry or self.victory or self.snapshot()
         expected = Counter("kill_wrong" if vote["wrong"] else "kill_right" for vote in data["votes"])
         if (not data["phases"] or expected != Counter(self.notices)
+                or self.extreme and len(data["traitRecipients"]) != 6
                 or outcome == "win" and (not self.victory or data["bossHp"] != 0)):
             raise RuntimeError("The original Huangkulou did not produce a verified battle report")
         reason = ("boss-defeated" if outcome == "win" else "window-expired" if self.expiry is not None

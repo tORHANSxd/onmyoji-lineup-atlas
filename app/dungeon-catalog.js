@@ -950,7 +950,7 @@
       block.append(details);
     }
     destination.append(block);
-    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,skeleton,longche,spiderLive,spiderNormal}=source;
+    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,skeleton,skeletonX,longche,spiderLive,spiderNormal}=source;
     const stage=row('pve_stage_data',String(scenario.stage));
     if(scenario.stage===spiderNormal.stageId&&scenario.mode===spiderNormal.battleMode&&route?.scene_engine===spiderNormal.engine.name&&
         stage?.groupid===spiderNormal.stageId&&stage.shishentotal===spiderNormal.memberCount&&formation.resindex===spiderNormal.sceneId){
@@ -979,13 +979,16 @@
         codeStageId:code?.actors===1&&code.shikigami===longche.memberCount?longche.codeStageId:null,codeLabel:code?.name});
       return;
     }
-    if(scenario.stage===skeleton.stageId&&scenario.mode===skeleton.battleMode&&route?.scene_engine===skeleton.engine.name&&
-        stage?.groupid===skeleton.stageId&&stage.shishentotal===skeleton.memberCount&&formation.resindex===skeleton.sceneId){
-      const code=DATA.gameConfig.stages[skeleton.codeStageId];
-      destination.append(node('p','用已知阵容从满血开战。单队模拟以 50% 血线进入真假部下，击败两名真部下后进入固定的首档纸人编组。','caption'));
-      window.AtlasPveWorkbench?.mount(destination,{stageId:skeleton.stageId,groupId:skeleton.stageId,version:source.resourceVersion,
-        battleMode:skeleton.battleMode,memberCount:skeleton.memberCount,waveCount:1,label:'稀有·荒骷髅',skeleton:true,
-        codeStageId:code?.actors===1&&code.shikigami===skeleton.memberCount?skeleton.codeStageId:null,codeLabel:code?.name});
+    const boss=scenario.hard?skeletonX:skeleton;
+    if(scenario.stage===boss.stageId&&scenario.mode===boss.battleMode&&route?.scene_engine===boss.engine.name&&
+        stage?.groupid===boss.stageId&&stage.shishentotal===boss.memberCount&&formation.resindex===boss.sceneId){
+      const code=DATA.gameConfig.stages[boss.codeStageId];
+      const conditions=scenario.hard?'可设置本场突变效果、区服上周均时和纸人档位。':'击败两名真部下后进入首档纸人编组。';
+      destination.append(node('p','用已知阵容从满血开战。单队模拟以 50% 血线进入真假部下。'+conditions,'caption'));
+      window.AtlasPveWorkbench?.mount(destination,{stageId:boss.stageId,groupId:boss.stageId,version:source.resourceVersion,
+        battleMode:boss.battleMode,memberCount:boss.memberCount,waveCount:1,label:scenario.hard?'极·荒骷髅':'稀有·荒骷髅',
+        skeleton:true,skeletonX:scenario.hard,
+        codeStageId:code?.actors===1&&code.shikigami===boss.memberCount?boss.codeStageId:null,codeLabel:code?.name});
       return;
     }
     if(scenario.stage===catfish.stageId&&scenario.mode===catfish.battleMode&&route?.scene_engine===catfish.engine.name&&

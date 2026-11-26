@@ -40,6 +40,8 @@
  const coinConstants=[[228,'伤害金币系数'],[209,'金币奖励配置'],[3643,'同寮参战金币加成']];
  const rotationConstant=10631;
  const rotationSkills=[63402,63601,63404,63602,63405,63603,63406];
+ const rotationTraits=['巧劲','异变·易碎','咒术','异变·猛火','狂风','异变·斗魂','疾行']
+  .map((label,i)=>({id:rotationSkills[i],label}));
  const ref=(table,key,label)=>({table,key,label,found:true});
  const spiderNormal={
   stageId:25001,battleMode:3003,codeStageId:10020220,sceneId:40005,openingTarget:82,
@@ -57,7 +59,7 @@
  const spiderLive={
   stageId:25017,battleMode:4440,codeStageId:10020221,sceneId:40005,openingTarget:250172,
   memberCount:5,windowLimit:3600,cocoonSeconds:60,defaultTrait:63402,
-  traits:['巧劲','异变·易碎','咒术','异变·猛火','狂风','异变·斗魂','疾行'].map((label,i)=>({id:rotationSkills[i],label})),
+  traits:rotationTraits,
   parts:[[1,250171,'本体'],[2,250172,'钳'],[3,250173,'背'],[4,250174,'脚']],
   cocoons:[[6,250180],[7,250179],[8,250180]],
   engine:{name:'TuzhizhuXEngine',route:'spider-live-local-team',
@@ -99,6 +101,22 @@
    return Object.keys(settings??{}).length===2&&Number.isSafeInteger(windowSeconds)&&windowSeconds>=1&&windowSeconds<=this.windowLimit&&
     Array.isArray(truePositions)&&truePositions.length===2&&truePositions[0]!==truePositions[1]&&
     Array.from(truePositions).every(position=>this.positions.includes(position));
+  },
+ };
+ const skeletonX={
+  ...skeleton,stageId:25018,battleMode:4441,codeStageId:10020223,boss:9992001,defaultWindow:1200,
+  traits:rotationTraits,defaultTrait:63402,weeklyDefault:480,weeklyLimit:1200,
+  formations:Object.fromEntries(Object.entries(skeleton.formations).map(([phase,units])=>
+   [phase,units.map(([pos,id])=>[pos,id+1000])])),
+  paperFormations:[[[3,9992017],[4,9992014],[5,9992015],[6,9992016]],
+   [[4,9992014],[5,9992015],[8,9992016]],[[4,9992014],[5,9992015]],[[9,9992015]],[[9,9992015]]],
+  engine:{name:'HuangKuLouXEngine',route:'skeleton-x-local-team',
+   sha256:'0b0e2d4b5c73eb1c76199213befa3ca7b61f694160d1d0c8627de56df1185b20'},
+  validSettings(settings){
+   const {windowSeconds,truePositions,trait,paperTier,weeklySeconds}=settings??{};
+   const allowed=(value,limit)=>Number.isSafeInteger(value)&&value>=1&&value<=limit;
+   return Object.keys(settings??{}).length===5&&skeleton.validSettings({windowSeconds,truePositions})&&
+    this.traits.some(row=>row.id===trait)&&allowed(paperTier,this.paperFormations.length)&&allowed(weeklySeconds,this.weeklyLimit);
   },
  };
  const catfish={
@@ -184,6 +202,14 @@
      ...[480,483,484,486,487].map(id=>ref('skill',{$tuple:[id,1,-1]},'部下及阶段技能')),
      ...[1,2,3,4,5,6,7].map(id=>ref('monstertalk',id,'真假部下线索')));
    }
+   if(route.stage===skeletonX.stageId){
+    refs.push(...[[100,1,'首轮部下'],[200,1,'真假部下'],[400,1,'末轮部下'],
+     ...skeletonX.paperFormations.map((_,i)=>[300,i+1,`秘宝纸人第 ${i+1} 档`])]
+     .map(([state,id,label])=>ref('huangkuloux_stage',{$tuple:[state,id]},label)),
+     ...[3801,3802,3803].map(id=>ref('Constant',id,'阶段血线')),ref('Constant',10900,'共享生命参考均时'),
+     ...[479,480,483,484,486,487].map(id=>ref('skill',{$tuple:[id,[479,486].includes(id)?1:2,-1]},'极·荒骷髅阶段技能')),
+     ...[1,2,3,4,5,6,7].map(id=>ref('monstertalk',id,'真假部下线索')));
+   }
    if(route.stage===catfish.stageId){
     refs.push(...[[100,'海坊主祝福编组'],[300,'小猴编组'],[400,'鸟居编组'],[500,'击破鸟居后的纸人']].map(([id,label])=>ref('dizhennian_stage',{$tuple:[id,1]},label)),
      ...[[4151,'小猴和鸟居的首领血线'],[4152,'海坊主祝福效果'],[4155,'鸟居击破比例门槛'],[4156,'鸟居时限'],[4161,'妖琴师助战']].map(([id,label])=>ref('Constant',id,label)),
@@ -230,5 +256,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton,longche,spiderLive,spiderNormal};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton,skeletonX,longche,spiderLive,spiderNormal};
 });

@@ -208,7 +208,8 @@ function sampleBattleMarkup(samples){
   const song=sample.songstress;
   const mirage=sample.mirage;
   const catfish=sample.catfish;
-  const skeleton=sample.skeleton;
+  const skeleton=sample.skeletonX??sample.skeleton;
+  const skeletonName=sample.skeletonX?'极·荒骷髅':'荒骷髅';
   const longche=sample.longche;
   const spiderLive=sample.spiderLive;
   const spiderNormal=sample.spiderNormal;
@@ -289,7 +290,7 @@ function sampleBattleMarkup(samples){
     `本队伤害 ${mirage.damage.toLocaleString('zh-CN')} · 作战 ${mirage.combatSeconds.toFixed(2)} / ${mirage.settings.windowSeconds} 秒`:
    catfish?`${{'boss-defeated':'击败地震鲶','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[catfish.reason]} · `+
     `本队伤害 ${catfish.damage.toLocaleString('zh-CN')} · 作战 ${catfish.combatSeconds.toFixed(2)} / ${catfish.settings.windowSeconds} 秒`:
-   skeleton?`${{'boss-defeated':'击败荒骷髅','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[skeleton.reason]} · `+
+   skeleton?`${{'boss-defeated':`击败${skeletonName}`,'team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[skeleton.reason]} · `+
     `本队伤害 ${skeleton.damage.toLocaleString('zh-CN')} · 作战 ${skeleton.combatSeconds.toFixed(2)} / ${skeleton.settings.windowSeconds} 秒`:
    longche?`${{'boss-defeated':'击败胧车','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[longche.reason]} · `+
     `本队伤害 ${longche.damage.toLocaleString('zh-CN')} · 作战 ${longche.combatSeconds.toFixed(2)} / ${longche.settings.windowSeconds} 秒`:
@@ -417,12 +418,15 @@ function sampleBattleMarkup(samples){
     <p class="caption">鸟居限时 ${gate.limitSeconds} 秒 · ${gate.startedAt===null?'尚未进入鸟居阶段':gate.brokenAt===null?'本队未击破':`本队 ${(gate.brokenAt-gate.startedAt).toFixed(2)} 秒击破`}
      ${gate.breakRate===null?'':` · 总击破率 ${percent(gate.breakRate)}`} · 击败纸人 ${catfish.papersDefeated} 位</p></details>`;
   })():'';
-  const skeletonStages=skeleton?`<details><summary>查看荒骷髅各阶段</summary><ol>${skeleton.phases.map(phase=>{
+  const skeletonStages=skeleton?`<details><summary>查看${skeletonName}各阶段</summary><ol>${skeleton.phases.map(phase=>{
    const clue=phase.opening.find(unit=>unit.clue);
    return `<li>${AtlasFengmoLive.skeleton.phases[phase.phase]} · ${phase.seconds.toFixed(2)} 秒进场 ·
     首领余血 ${(phase.bossHp/skeleton.maximumHp).toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}
     ${clue?`<div class="caption">${clue.position} 号位线索 · ${esc(clue.clue)}</div>`:''}</li>`;
   }).join('')}</ol>
+   ${sample.skeletonX?`<p class="caption">突变效果 ${AtlasFengmoLive.skeletonX.traits.find(trait=>trait.id===skeleton.settings.trait).label} ·
+    区服上周平均用时 ${skeleton.settings.weeklySeconds} 秒 · 纸人 ${skeleton.settings.paperTier} 档 ·
+    毒雾反击 ${skeleton.poisonRetaliations.length} 次</p>`:''}
    ${skeleton.votes.length?`<p class="caption">部下击败顺序 · ${skeleton.votes.map(vote=>
     `${vote.position} 号位（${vote.wrong?'假':'真'}）`).join('、')}</p>`:''}
    <p class="caption">误杀后实际触发惩罚 ${skeleton.punishments.length} 次 · 击败纸人 ${skeleton.papersDefeated} 位</p></details>`:'';
