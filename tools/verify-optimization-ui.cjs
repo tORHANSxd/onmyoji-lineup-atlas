@@ -946,11 +946,12 @@ async function main(){
     else assert.match(status,/种子 1 未通关/);
     if(all){
      mockSeeds=(plan,progress)=>{
-      assert.deepEqual(plan,replayPlan);progress(seedEvidence());
+      assert.deepEqual(plan,replayPlan);progress(seedEvidence({workerCount:4,damageFloor:false}));
       return new Promise(resolve=>{stopSeeds=()=>resolve(seedEvidence({wins:74,stopped:true}));});
      };
      await ui('document.querySelector("[data-battle-full]").click()');
      await until('document.querySelector(".dungeon-full-seeds progress")?.value===73');
+     assert.match(await ui('document.querySelector(".dungeon-full-seeds").textContent'),/并行 4 场.*原版伤害浮动/s);
      assert.equal(await ui('$("dungeon-stop-battle").textContent'),'暂停全种子验收');
      assert.equal(await ui('document.querySelector("[data-battle-extra]").disabled'),true);
      assert.equal(await ui('document.querySelector("[data-battle-full]")===null'),true);

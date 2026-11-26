@@ -23,6 +23,33 @@ test('本地单人种子遍历恰好覆盖 0 至 9999',()=>{
  assert.deepEqual(seedOrder.toSorted((a,b)=>a-b),Array.from({length:10000},(_,i)=>i));
 });
 
+test('四个并行复跑分配不同种子并按原伤害口径续跑', {timeout:5000}, async t=>{
+ const dir=await directory(t),plan={},started=[];
+ const minimumScope={...scope,damageFloor:true};
+ let notifyStarted,release;
+ const fourStarted=new Promise(resolve=>{notifyStarted=resolve;});
+ const finishFirstFour=new Promise(resolve=>{release=resolve;});
+ const runners=Array.from({length:4},()=>({async runSeedEvidence(_plan,seed){
+  started.push(seed);
+  if(started.length===4)notifyStarted();
+  await finishFirstFour;
+  return win(seed);
+ }}));
+ const batch=scanSeeds({scope:minimumScope,dir,plan,runners,limit:5});
+ await fourStarted;
+ assert.deepEqual(started,seedOrder.slice(0,4));
+ release();
+ const first=await batch;
+ assert.equal(first.workerCount,4);
+ assert.equal(first.damageFloor,true);
+ assert.equal(first.wins,5);
+ assert.deepEqual(started,seedOrder.slice(0,5));
+ const resumed=await scanSeeds({scope:minimumScope,dir,plan,runners,limit:3});
+ assert.equal(resumed.wins,8);
+ assert.deepEqual(started,seedOrder.slice(0,8));
+ await assert.rejects(scanSeeds({scope,dir,plan,runners,limit:1}),/绑定了另一份阵容/);
+});
+
 test('同范围续跑跳过已验证种子，真实失败持久记录且保留最慢通过样本',async t=>{
  const dir=await directory(t), plan={};
  const runner={async runSeedEvidence(_plan,seed){return win(seed);}};

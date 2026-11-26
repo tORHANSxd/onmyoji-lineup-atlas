@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, session, protocol, net, nativeImage, clipboard, safeStorage } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const {availableParallelism} = require('node:os');
 const { pathToFileURL } = require('node:url');
 const {Background}=require('./background.cjs');
 let background;
@@ -76,9 +77,11 @@ app.whenReady().then(async () => {
   hun13=createHun13Runner(runeRuntime);
   pveStage=createPveStageRunner(runeRuntime);
   const evidenceDirectory=path.join(app.getPath('userData'),'rune-seed-evidence');
-  const seedRunners=new Map([[101,runeFloor],[102,runeRunner],[103,hun13]].map(([dungeonId,runner])=>[dungeonId,
-    createSeedEvidenceRunner({...runeRuntime,dungeonId,runner,directory:evidenceDirectory}),
-  ]));
+  const seedWorkers=Math.max(1,Math.min(4,Math.floor(availableParallelism()/2)));
+  const seedRunners=new Map([[101,createRuneFloorRunner],[102,createRuneRunner],[103,createHun13Runner]].map(([dungeonId,createRunner])=>{
+    const runners=Array.from({length:seedWorkers},()=>createRunner(runeRuntime));
+    return [dungeonId,createSeedEvidenceRunner({...runeRuntime,dungeonId,runners,directory:evidenceDirectory})];
+  }));
   const forDungeon=(dungeonId=102)=>{
     const audit=seedRunners.get(dungeonId);
     if(!audit)throw Error('当前副本未接入全种子验收');

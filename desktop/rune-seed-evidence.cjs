@@ -107,8 +107,10 @@ async function readCheckpoint(scope,dir){
  return results;
 }
 
-function evidenceSummary(scope,{auditId,wins,bothWavesWins,loss,slowest},{attempted=0,uncertain=null,stopped=false}={}){
+function evidenceSummary(scope,{auditId,wins,bothWavesWins,loss,slowest},{attempted=0,uncertain=null,stopped=false,workerCount}={}){
  return {auditId,scope:scope.route,resourceVersion:scope.resourceVersion,wins,total:seedCount,attempted,
+  damageFloor:scope.damageFloor===true,
+  ...(workerCount===undefined?{}:{workerCount}),
   ...(scope.dungeonId===103?{bothWavesWins}:{}),
   slowest:slowest&&{seed:slowest.seed,engineSeconds:slowest.engineSeconds,combatMs:slowest.combatMs,
    ...(scope.dungeonId===103?{wavesCleared:slowest.wavesCleared,recordSHA256:slowest.recordSHA256}:{})},
@@ -123,7 +125,7 @@ async function scanSeeds({scope,dir,runners,plan,limit=seedCount,signal,onProgre
  const results=await readCheckpoint(scope,dir);
  const todo=seedOrder.filter(seed=>!results.seeds.has(seed)).slice(0,limit);
  let attempted=0,uncertain=null;
- const progress=()=>evidenceSummary(scope,results,{attempted,uncertain,stopped:signal?.aborted===true});
+ const progress=()=>evidenceSummary(scope,results,{attempted,uncertain,stopped:signal?.aborted===true,workerCount:runners.length});
  onProgress(progress());
  let cursor=0;
  async function scan(runner){
@@ -149,7 +151,7 @@ async function scanSeeds({scope,dir,runners,plan,limit=seedCount,signal,onProgre
  finally{signal?.removeEventListener('abort',stop);}
 }
 
-function createSeedEvidenceRunner({directory,runner,...runtime}){
+function createSeedEvidenceRunner({directory,runners,...runtime}){
  let job=null;
  async function input(plan){
   const scope=await buildScope(runtime,plan);
@@ -165,7 +167,7 @@ function createSeedEvidenceRunner({directory,runner,...runtime}){
   run(plan,onProgress){
    if(job)throw Error('已有全种子验收正在运行');
    const cancel=new AbortController();
-   const pending=input(plan).then(args=>scanSeeds({...args,runners:[runner],plan,signal:cancel.signal,onProgress})).finally(()=>{job=null;});
+   const pending=input(plan).then(args=>scanSeeds({...args,runners,plan,signal:cancel.signal,onProgress})).finally(()=>{job=null;});
    job={cancel,pending};
    return pending;
   },

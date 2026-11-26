@@ -328,7 +328,8 @@ function fullSeedAuditMarkup(row,action,busy,detailAction,dungeon){
  if(row.seedAudit?.verdict==='loss'&&!loss&&!complete)return '';
  const status=loss?`全种子验收 · 种子 ${loss.seed} 未通关 · 通过 ${loss.wavesCleared} 波`:
   complete?hun?'常规单人本地入口的 10,000 个种子均获原版胜利':'常规单人本地入口的 10,000 个种子全部通过':
-  audit?.running?'正在验收常规单人本地种子':audit?.cancelled?'已暂停全种子验收':progress?'已保存全种子验收进度':'';
+  audit?.running?`正在验收常规单人本地种子${progress?.workerCount>1?` · 最多并行 ${progress.workerCount} 场`:''}`:
+  audit?.cancelled?'已暂停全种子验收':progress?'已保存全种子验收进度':'';
  const slow=progress?.slowest;
  const time=slow&&!loss?[`最慢种子 ${slow.seed}`,`引擎全程 ${slow.engineSeconds.toFixed(2)} 秒`,
   ...(Number.isSafeInteger(slow.combatMs)?[`开战至结算 ${(slow.combatMs/1000).toFixed(2)} 秒`]:[])].join(' · '):'';
@@ -337,8 +338,9 @@ function fullSeedAuditMarkup(row,action,busy,detailAction,dungeon){
  const report=detail?.report?.seed===recorded?.seed?detail?.report:null;
  const inspect=detailAction&&recorded&&!audit.running;
  const twoWaves=hun&&Number.isSafeInteger(progress?.bothWavesWins)?` · 两波均清场 ${progress.bothWavesWins.toLocaleString('zh-CN')} 场`:'';
+ const damagePolicy=(progress?.damageFloor??row.plan?.damageFloor)?'我方伤害取下限':'原版伤害浮动';
  return `<div class="dungeon-full-seeds">
-  ${status?`<p class="caption" role="status">${esc(status)}${progress&&!loss&&!complete?` · ${progress.wins.toLocaleString('zh-CN')} / ${progress.total.toLocaleString('zh-CN')} 已通过`:''}${esc(twoWaves)}${time?` · ${esc(time)}`:''}</p>`:''}
+  ${status?`<p class="caption" role="status">${esc(status)}${progress&&!loss&&!complete?` · ${progress.wins.toLocaleString('zh-CN')} / ${progress.total.toLocaleString('zh-CN')} 已通过`:''}${esc(twoWaves)}${time?` · ${esc(time)}`:''} · ${damagePolicy}</p>`:''}
   ${audit?.running?`<progress aria-label="常规单人本地种子验收进度" value="${esc(progress?.wins??0)}" max="10000"></progress>`:''}
   ${error?`<p class="caption" role="status">${esc(error)}</p>`:''}
   <div class="actions">
