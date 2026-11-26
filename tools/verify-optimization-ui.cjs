@@ -379,17 +379,18 @@ async function main(){
    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
    await capture('client-yuling-solo');
    if(JSON.parse(await readEncounters(catalog)).entries.some(entry=>entry.table==='gve_battleinfo')){
-    const huntingCalls=new Map();
+    const huntingCalls=new Map(),tacticalCalls=[];
     mockPve=(plan,options)=>{
      assert.deepEqual(options,{stageId:61,groupId:61,battleMode:2000,seed:options.seed,damageFloor:true});
      assert.equal(plan.members.length,5);
      const key=teamKey(plan);
      if(!huntingCalls.has(key))huntingCalls.set(key,[]);
      huntingCalls.get(key).push(options.seed);
+     if(plan.tactics)tacticalCalls.push({tactics:plan.tactics,seed:options.seed});
      const firstCandidate=key===huntingCalls.keys().next().value;
      const failed=firstCandidate&&options.seed===2;
-     const damage=firstCandidate?(failed?500000:options.seed===0?3000000:5000000):2000000;
-     return {...sample,...options,outcome:failed?'loss':'win',waveCount:1,wavesCleared:0,guildHunt:{damage}};
+     const damage=firstCandidate?(failed?500000:options.seed===0?3000000:5000000):plan.tactics?.manualOpening?2500000:2000000;
+     return {...sample,...options,outcome:failed?'loss':'win',waveCount:1,wavesCleared:0,guildHunt:{damage,tactics:plan.tactics}};
     };
     await ui(`window.qaGuildEncounter=(id,query)=>{
      qaEncounterInput("guild",query);
@@ -400,10 +401,18 @@ async function main(){
     await ui(stock+'.click()');
     await until(status+'.textContent.includes("按平均伤害排序")',20000);
     assert.deepEqual(huntingCalls.values().next().value,[0,1,2,3,7,42]);
+    assert.deepEqual(tacticalCalls.filter(call=>call.tactics.manualOpening).map(call=>call.seed),[0,1,2,3,7,42]);
+    assert.deepEqual(tacticalCalls.filter(call=>call.seed===0&&call.tactics.autoMode).map(call=>call.tactics.autoMode.mode),['spell','basic']);
     assert.match(await ui(reports+'.firstElementChild.textContent'),/5 \/ 6 场有效结算.*平均伤害 3,916,667.*单场最高 5,000,000.*最低 500,000.*个人结算失败 · 未清场/s);
     assert.match(await ui(reports+'.textContent'),/平均伤害 2,000,000/);
+    assert.match(await ui(reports+'.children[1].textContent'),/平均伤害 2,500,000.*首动普攻首领后切自动。红标首领。绿标/s);
     await ui('document.querySelector("[data-pve-code]").click()');
-    assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
+    const tacticalCode=await ui('$("stock-candidate-code").value');
+    assert.match(tacticalCode,/^#TA#/);
+    assert.match(await ui('document.querySelector(".rune-code-preview").textContent'),/首动普攻首领后切自动。红标首领。/);
+    const {readScoreInstructions}=require('../app/rune-candidate.js');
+    const decoded=require('../desktop/ta-codec.cjs').decodeLineupData(tacticalCode);
+    assert.deepEqual(readScoreInstructions(decoded.desc),tacticalCalls.find(call=>call.tactics.manualOpening).tactics);
     assert.match(await ui('$("detail-heading").textContent'),/狩猎战·火麒麟/);
     await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
     await capture('client-guild-hunting');

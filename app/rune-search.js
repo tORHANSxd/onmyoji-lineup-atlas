@@ -179,7 +179,7 @@ function configFor(name,id,openingSpeed,bossSpeed,earlySpeed,set){
 
 function teamKey(plan){
  return JSON.stringify([plan.onmyoji,plan.spirit,plan.members.map(({instanceId,souls,aiSkill})=>
-  [instanceId,souls.map(row=>row.id).sort(),aiSkill])]);
+  [instanceId,souls.map(row=>row.id).sort(),aiSkill]),...(plan.tactics?[plan.tactics]:[])]);
 }
 
 function candidates(account,data,alternatives=[],dungeonId=102){
@@ -272,6 +272,23 @@ function buildCandidates(account,{gameConfig:game,roster,effects},profile,altern
  return sampled;
 }
 
+function scoreVariants(item,game){
+ const {plan,panels}=item;
+ const slots=plan.members.map((member,index)=>({slot:index+1,member,panel:panels?.[index]}));
+ const output=[...slots].sort((a,b)=>(b.panel?.attack??0)-(a.panel?.attack??0))[0];
+ const first=[...slots].sort((a,b)=>(b.panel?.speed??0)-(a.panel?.speed??0))[0];
+ const variant=(title,tactics,slot,aiSkill)=>({...item,title:`${item.title} · ${title}`,plan:{...plan,tactics,
+  members:slot?plan.members.map((member,i)=>i+1===slot?{...member,aiSkill}:member):plan.members}});
+ const red={redBoss:true},marks={...red,greenSlot:output.slot};
+ const variants=[variant('开场红标',red),variant('开场红绿标',marks),variant('首动手动普攻',{manualOpening:true,...marks}),
+  variant('自动妖术',{...marks,autoMode:{slot:output.slot,mode:'spell'}},output.slot,0),
+  variant('自动普攻',{...marks,autoMode:{slot:first.slot,mode:'basic'}},first.slot,0)];
+ const {hero}=output.member;
+ const lock=G.aiChoices(game,{hero_id:hero.heroId,awake:hero.awake,skills:hero.skinfo}).filter(choice=>choice.slot>1&&choice.value!==output.member.aiSkill).at(-1);
+ if(lock)variants.push(variant(`锁定第 ${lock.slot} 技能`,marks,output.slot,lock.value));
+ return variants;
+}
+
 function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpeed=0,battleMode=3){
  const {gameConfig:game,roster}=data;
  const strategies=[
@@ -353,5 +370,5 @@ function hun13Candidates(account,data,alternatives=[]){
  return rows;
 }
 
-return {candidates,teamKey,pveCandidates,hun13Candidates,hun13Key,hun13SampleSeeds,baseSampleSeeds,sampleSeeds,extraSeeds,samplesForDungeon};
+return {candidates,teamKey,pveCandidates,scoreVariants,hun13Candidates,hun13Key,hun13SampleSeeds,baseSampleSeeds,sampleSeeds,extraSeeds,samplesForDungeon};
 });

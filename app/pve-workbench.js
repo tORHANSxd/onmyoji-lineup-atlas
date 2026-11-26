@@ -120,6 +120,7 @@
    if(!active(run))return;
    row.samples.push(report);
    row.details.hidden=false;
+   if(scoring&&row.samples.length===1&&AtlasRuneCandidate.damageResult([report]))showScoreInstructions(row,plan,run.data.gameConfig);
    row.report.innerHTML=sampleBattleMarkup(row.samples);
    row.state.textContent=`已复跑 ${row.samples.length} / ${seeds.length} 个种子`;
    if(scoring){
@@ -175,7 +176,9 @@
    }
    row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码培养和技能复跑。普攻等级缺失时使用客户端最低等级。</p>');
    const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount);
-   await replay(run,row,plan,isDamageMode(run.pane.battleMode));
+   const scoring=isDamageMode(run.pane.battleMode);
+   const tactics=scoring&&Number(lineup.gameSceneId)===run.pane.codeStageId&&AtlasRuneCandidate.readScoreInstructions(lineup.notes);
+   await replay(run,row,tactics?{...plan,tactics}:plan,scoring);
   }catch(error){
    if(active(run))row.state.textContent=runeError(error);
   }
@@ -208,7 +211,7 @@
   action.onclick=()=>{
    const evidence=run.pane.battleMode===2000?'个人伤害结算通过采样 · 全随机分支待验证':'离线采样通过 · 全随机分支待验证';
    if(valid())openCandidateCode(output.lineup.title,evidence,output,{
-    valid,save,savedMessage:'阵容码已保存到阵容库。',
+    valid,save,savedMessage:'阵容码已保存到阵容库。',savedDetail:row.el.querySelector('[data-score-tactics]')?.textContent,
    });
   };
   row.el.append(action);
@@ -244,20 +247,55 @@
 
  const damageText=value=>Math.round(value).toLocaleString('zh-CN');
 
+ function scoreChoices(game,hero){
+  return AtlasGame.aiChoices(game,{hero_id:hero.heroId,awake:hero.awake,skills:hero.skinfo});
+ }
+
+ function showScoreInstructions(row,plan,game){
+  const names=plan.members.map(({hero})=>game.heroes[hero.heroId]?.name||`式神 ${hero.heroId}`);
+  const {tactics}=plan;
+  const opening=AtlasRuneCandidate.scoreInstructions(tactics).replace(/第([1-5])位式神/g,(_,slot)=>`${names[slot-1]}（式神第 ${slot} 位）`);
+  const skillModes=[{hero:plan.onmyoji,aiSkill:plan.onmyoji.aiSkill},...plan.members].flatMap(({hero,aiSkill},index)=>{
+   if(!aiSkill)return [];
+   const choice=scoreChoices(game,hero).find(option=>option.value===aiSkill);
+   if(!choice)return [];
+   const name=index?names[index-1]:game.heroes[hero.heroId]?.name||'阴阳师';
+   return [choice.slot?`${name}锁定第 ${choice.slot} 技能（${choice.name}）`:`${name}使用${choice.name}`];
+  });
+  row.details.insertAdjacentHTML('beforebegin',`<p class="caption" data-score-tactics>${esc(opening||'开场直接自动。')}${esc(skillModes.length?skillModes.join('，')+'。':'')}</p>`);
+ }
+
  async function scoreStock(run,candidates){
   const shortlist=[];
-  for(const item of candidates){
-   if(!active(run))return;
+  const tried=new Set(run.alternatives);
+  async function screen(item){
+   const key=AtlasRuneSearch.teamKey(item.plan);
+   if(!active(run)||tried.has(key))return;
+   tried.add(key);
    const candidate=addCandidate(run,item);
    await replayCandidate(run,candidate,screenSize);
    if(candidate.row.verdict==='screened')shortlist.push({...candidate,score:AtlasRuneCandidate.damageResult(candidate.row.samples)});
   }
+  for(const item of candidates){
+   if(!active(run))return;
+   await screen(item);
+  }
   shortlist.sort((a,b)=>AtlasRuneCandidate.compareDamage(a.score,b.score));
-  for(const {row,item,score} of shortlist.slice(finalistCount)){
+  const leader=shortlist[0];
+  if(leader){
+   for(const item of AtlasRuneSearch.scoreVariants(leader.item,run.data.gameConfig)){
+    if(!active(run))return;
+    await screen(item);
+   }
+  }
+  shortlist.sort((a,b)=>AtlasRuneCandidate.compareDamage(a.score,b.score));
+  const finalists=shortlist.slice(0,finalistCount);
+  if(leader&&!finalists.includes(leader))finalists[finalists.length-1]=leader;
+  for(const {row,item,score} of shortlist.filter(candidate=>!finalists.includes(candidate))){
    row.state.textContent=`初筛 ${screenSize} 场 · 平均伤害 ${damageText(score.average)} · 未进入复评`;
    run.alternatives.push(AtlasRuneSearch.teamKey(item.plan));
   }
-  for(const candidate of shortlist.slice(0,finalistCount)){
+  for(const candidate of finalists){
    if(!active(run))return;
    candidate.row.verdict='unknown';
    await replayCandidate(run,candidate);

@@ -105,11 +105,30 @@ function compareDamage(a,b){
  return b.average-a.average||b.min-a.min||b.max-a.max;
 }
 
+function scoreInstructions(tactics){
+ if(!tactics)return '';
+ const {manualOpening,redBoss,greenSlot,autoMode}=tactics;
+ return (autoMode?`入场前把第${autoMode.slot}位式神设为自动${autoMode.mode==='basic'?'普攻':'妖术'}。`:'')+
+  (manualOpening?'手动开场，首动普攻首领后切自动。':'')+(redBoss?'红标首领。':'')+(greenSlot?`绿标第${greenSlot}位式神。`:'');
+}
+
+function readScoreInstructions(notes){
+ if(typeof notes!=='string')return null;
+ const match=/^资源 0\.[\d.]+，\d+ 场离线结算。(?:我方伤害取下限。)?阴阳师普攻 \d+ 级。开场操作。(?:入场前把第([1-5])位式神设为自动(普攻|妖术)。)?(手动开场，首动普攻首领后切自动。)?(红标首领。)?(?:绿标第([1-5])位式神。)?全分支待验证。$/.exec(notes);
+ if(!match)return null;
+ const [,slot,mode,opening,red,green]=match;
+ const tactics={...(opening?{manualOpening:true}:{}),...(red?{redBoss:true}:{}),...(green?{greenSlot:Number(green)}:{}),
+  ...(slot?{autoMode:{slot:Number(slot),mode:mode==='普攻'?'basic':'spell'}}:{})};
+ return Object.keys(tactics).length?tactics:null;
+}
+
 async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeStageId,codeLabel}){
  const seeds=S.baseSampleSeeds;
+ const instructions=scoreInstructions(row.plan.tactics);
  if(!Number.isSafeInteger(waveCount)||waveCount<1||row.samples.length!==seeds.length||!row.samples.every((report,index)=>
   report.battleMode===battleMode&&report.stageId===stageId&&report.groupId===groupId&&report.seed===seeds[index]&&
-  report.completed&&report.outcome==='win'&&report.waveCount===waveCount&&pveGoalMet(report,battleMode)))
+  report.completed&&report.outcome==='win'&&report.waveCount===waveCount&&pveGoalMet(report,battleMode)&&
+  (!instructions||battleMode===2000&&scoreInstructions(report.guildHunt?.tactics)===instructions)))
   throw Error('完成本关的全部采样复跑后才可生成此阵容码');
  if(!row.panels?.every(Boolean)||row.plan.members.some(member=>member.souls.length!==6))
   throw Error('御魂条件需要每位式神穿齐六个位置并能够计算面板');
@@ -117,7 +136,7 @@ async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeSt
 }
 
 async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples,outcome='通关'){
- const {onmyoji,spirit,members}=row.plan;
+ const {onmyoji,spirit,members,tactics}=row.plan;
  const basic=game.heroes[onmyoji.heroId]?.skills[0];
  const actor={hero_id:onmyoji.heroId,level:onmyoji.level,star:onmyoji.star,awake:onmyoji.awake,
   skills:onmyoji.skinfo.filter(([id])=>id!==basic),ai_skill:onmyoji.aiSkill,qiling_info:spiritConfig(game,spirit)};
@@ -127,11 +146,12 @@ async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples
   not_calc_flag:0,equip_info:equipment(souls,row.panels[index],suits)
  }))];
  const names=members.map(({hero})=>game.heroes[hero.heroId]?.name);
- const title=label+' · '+names.join('、')+' · '+(await sha256(hconf)).slice(0,10);
+ const title=label+' · '+names.join('、')+' · '+(await sha256(tactics?[hconf,tactics]:hconf)).slice(0,10);
  const basicLevel=onmyoji.skinfo.find(([id])=>id===basic)?.[1];
  const damage=row.plan.damageFloor?'我方伤害取下限。':'';
- return G.validate(game,{title,desc:`资源 ${R.resourceVersion}，${samples} 个离线种子${outcome}。${damage}阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`,
-  select_stage_id:sceneId,hconf});
+ const desc=tactics?`资源 ${R.resourceVersion}，${samples} 场离线结算。${damage}阴阳师普攻 ${basicLevel} 级。开场操作。${scoreInstructions(tactics)}全分支待验证。`:
+  `资源 ${R.resourceVersion}，${samples} 个离线种子${outcome}。${damage}阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`;
+ return G.validate(game,{title,desc,select_stage_id:sceneId,hconf});
 }
 
 // Match the actual fields consumed by rune_team.py. Worn gear and display metadata
@@ -186,5 +206,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageResult,compareDamage,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
+return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageResult,compareDamage,scoreInstructions,readScoreInstructions,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
 });

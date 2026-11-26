@@ -26,6 +26,26 @@ const positive=value=>Number.isSafeInteger(value)&&value>0;
 const sha256=value=>createHash('sha256').update(value).digest('hex');
 const validHash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 
+function validTactics(plan,battleMode){
+ if(!Object.hasOwn(plan,'tactics'))return true;
+ const {tactics}=plan;
+ if(battleMode!==2000||!tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
+ return Object.entries(tactics).every(([key,value])=>{
+  const slot=number=>positive(number)&&number<=plan.members.length;
+  if(key==='redBoss'||key==='manualOpening')return value===true;
+  if(key==='greenSlot')return slot(value);
+  return key==='autoMode'&&value&&Object.keys(value).length===2&&slot(value.slot)&&
+   ['basic','spell'].includes(value.mode)&&plan.members[value.slot-1]?.aiSkill===0;
+ });
+}
+
+function sameTactics(actual,expected){
+ if(actual===expected)return true;
+ if(!actual||!expected||typeof actual!=='object'||typeof expected!=='object')return false;
+ return Object.keys(actual).length===Object.keys(expected).length&&
+  Object.entries(expected).every(([key,value])=>Object.hasOwn(actual,key)&&sameTactics(actual[key],value));
+}
+
 function launch(python,args,cwd,signal){
  return new Promise((resolve,reject)=>{
   const env={...process.env,PYTHONHOME:'',PYTHONPATH:'',PYTHONNOUSERSITE:'1',PYTHONHASHSEED:'0',TMP:cwd,TEMP:cwd};
@@ -36,14 +56,17 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics}){
  const engine=engines[battleMode],awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;
  const hunt=battleMode===2000?guildHuntOpenings.floors[stageId]:null;
  const huntReport=report?.guildHunt;
+ const manual=huntReport?.manualAction;
  const invalidHunt=hunt&&(!huntReport||huntReport.deadlineSeconds!==240||huntReport.phaseRandomSeed!==seed||!Number.isSafeInteger(huntReport.damage)||
-  huntReport.damage<0||!Object.entries(hunt.enemy).every(([key,value])=>huntReport.opening?.[key]===value));
+  huntReport.damage<0||!sameTactics(huntReport.tactics,tactics)||
+  (tactics?.manualOpening?(!positive(manual?.heroId)||!positive(manual?.skillId)||manual.targetId!==hunt.enemy.id):manual!==undefined)||
+  !Object.entries(hunt.enemy).every(([key,value])=>huntReport.opening?.[key]===value));
  const invalidYuling=yuling&&(!Array.isArray(report?.opening)||report.opening.length!==yuling.enemies.length||
   !yuling.enemies.every((unit,index)=>Object.entries(unit).every(([key,value])=>report.opening[index]?.[key]===value)));
  const experience=battleMode===firstExperience.battleMode?report?.experience:null;
@@ -94,7 +117,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
   async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false}={}){
    if(current)throw Error('已有库存复跑正在运行');
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
-      typeof damageFloor!=='boolean'||!plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length<1||plan.members.length>5)
+      typeof damageFloor!=='boolean'||!plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length<1||plan.members.length>5||!validTactics(plan,battleMode))
     throw Error('无效的关卡、种子或配装');
    if(battleMode===29&&(awakeOpenings.resourceVersion!==resourceVersion||
       awakeOpenings.floors[stageId]?.groupId!==groupId||plan.members.length!==5))
@@ -130,7 +153,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor});
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics:plan.tactics});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');
     if(deadline.aborted)throw Error('副本原版复跑超时');

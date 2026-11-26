@@ -13,7 +13,7 @@ import time
 
 def replay(args, runtime, work):
     from game_resources import sha256
-    from guild_hunt_stage import GUILD_HUNT_MODE
+    from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
     from yuling_stage import YULING_MODE
     from rune_floor_host import prepare_runtime
@@ -24,6 +24,7 @@ def replay(args, runtime, work):
     team_bytes, suit_bytes = args.team.read_bytes(), args.suit_index.read_bytes()
     plan = json.loads(team_bytes)
     actor, fighters, inventory, choices = selected_team(plan, json.loads(suit_bytes))
+    tactics = hunt_tactics(plan, args.mode)
     modules, host, evidence = prepare_runtime(runtime, work)
     if args.minimum_damage:
         from minimum_damage import install_minimum_damage
@@ -246,10 +247,13 @@ def replay(args, runtime, work):
     deadline, start = time.monotonic() + 75, engine.now_time()
     selection_checked = False
     equipped_spirit = None
+    instructions = HuntOpening(engine, controller, const, tactics, stage["monsters"][0][0]) if tactics else None
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
         if host.oracle.unsupported:
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
+        if instructions:
+            instructions.update()
         if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk:
             continue
         pending = dict(choices)
@@ -265,6 +269,8 @@ def replay(args, runtime, work):
                 engine.op_setAutoSkill(controller, entity.uid, setting)
                 if controller.autoSkill.get(entity.uid) != setting:
                     raise RuntimeError("The original engine did not apply the selected automatic skill")
+            if instructions:
+                instructions.select(alias, entity)
             if sorted(uid for uid in hero.equips if uid) != sorted(fighters.get(alias, actor)["equips"]):
                 raise RuntimeError("The original engine changed the selected equipment")
             if alias == "selected-onmyoji" and spirit:
@@ -274,11 +280,13 @@ def replay(args, runtime, work):
                 equipped_spirit = {"id": attached.id, "star": attached.star, "level": attached.lv}
         if pending:
             raise RuntimeError("The original engine did not create every selected character")
-        engine.op_setAuto(controller, True)
+        engine.op_setAuto(controller, not tactics.get("manualOpening"))
         engine.op_selectHeroOk(controller)
         selection_checked = controller.selectHeroOk
     if not selection_checked:
         raise RuntimeError("The original engine did not accept the selected roster")
+    if instructions and instructions.applied != tactics:
+        raise RuntimeError("The battle did not apply every requested opening instruction")
 
     record = "".join(recorder.data_list).encode("utf-8")
     outcome = {const.CampFlag.CAMP1: "win", const.CampFlag.CAMP2: "loss"}.get(winner, "unknown")
@@ -315,6 +323,10 @@ def replay(args, runtime, work):
             raise RuntimeError("Guild Hunting did not return a matching original formation and score")
         report["guildHunt"] = {"opening": hunt_opening, "damage": damage, "deadlineSeconds": engine.halt_battle_time,
                                "phaseRandomSeed": args.seed}
+        if instructions:
+            report["guildHunt"]["tactics"] = instructions.applied
+            if instructions.manual_action:
+                report["guildHunt"]["manualAction"] = instructions.manual_action
     if args.minimum_damage:
         report["minimumDamage"] = minimum
     try:

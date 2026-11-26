@@ -71,6 +71,7 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-battle-list>li+li{border-top:1px solid var(--line)}
 .dungeon-battle-list span{color:var(--muted)}
 .dungeon-battle-list details{grid-column:1/-1;font-size:12px}
+.dungeon-battle-list [data-score-tactics]{grid-column:1/-1;margin:0}
 .dungeon-battle-list>li>button{justify-self:start}
 .dungeon-full-seeds{grid-column:1/-1;margin-top:6px}
 .dungeon-full-seeds .caption{margin:4px 0}
