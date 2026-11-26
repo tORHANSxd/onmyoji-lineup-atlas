@@ -4,7 +4,9 @@ from collections import Counter
 from functools import cache
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
-from map_boss_stage import LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS, LBS_MODE, SEAL_MODE, is_fragment_entry
+from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS,
+                            LBS_MODE, NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, SEAL_MODE,
+                            SPECIAL_NIAN_MODE, SPECIAL_NIAN_STAGES, is_fragment_entry)
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 
 
@@ -203,6 +205,16 @@ def encounter_index(source, load_rows):
         options = level_one_skills().get(numeric_key(skill_id), ())
         return {"$tuple": [int(part) for part in options[0]]} if len(options) == 1 else skill_id
 
+    def nian_references(mode):
+        links = [rule_reference("xianshi_nianshou_activity_tips", "年兽挑战及召唤规则")]
+        refs = (("activity", 774, "现世年兽活动配置"),
+                ("battle_mode_routes", mode, "原版战斗场景"),
+                ("battle_team_routes", 664 if mode == NIAN_MODE else 665, "原版组队入口"),
+                ("monster", 100032, "兽型年兽"),
+                ("skill", level_one_skill(NIAN_PASSIVE), "年兽阶段被动"))
+        links.extend(ref for dest, key, label in refs if (ref := relation(dest, key, label, False)))
+        return links
+
     def region_modifiers():
         constants = table("Constant")
         if not any(str(key) in constants for key in REGION_DIFFICULTY_SKILLS):
@@ -388,6 +400,11 @@ def encounter_index(source, load_rows):
                 links.append(relation("map_boss", orochi_key, "真·八岐大蛇挑战入口", True))
             links.extend(relation("map_boss", key, "地图首领入口", True)
                          for key in map_boss_by_stage.get(stage_id, ()))
+            nian_stage = int(stage_id or 0)
+            if nian_stage in NIAN_STAGES:
+                links.extend(nian_references(NIAN_MODE))
+            elif nian_stage in SPECIAL_NIAN_STAGES:
+                links.extend(nian_references(SPECIAL_NIAN_MODE))
             for key in regions_by_stage.get(stage_id, ()):
                 links.append({"table": "lbs_world_boss_area", "key": key, "label": "地域鬼王玩法入口", "found": True})
             tip = relation("normal_battle_tips", row.get("id"), "通用战斗规则", False)
@@ -435,6 +452,10 @@ def encounter_index(source, load_rows):
             elif row.get("type") == 2:
                 if route := relation("battle_mode_routes", LBS_MODE, "现世鬼王战斗引擎", False):
                     links.append(route)
+            elif site_id := NIAN_ENTRIES.get(row.get("id")):
+                links.extend(nian_references(NIAN_MODE))
+                if site := relation("activity_offline_lbs_mass", site_id, "地区地点及信物", False):
+                    links.append(site)
             elif activity_route := LBS_ACTIVITY_ENTRIES.get(row.get("id")):
                 intro_id, site_id, _ = activity_route
                 _, intro = table("activity_lbs_intro").get(str(intro_id), (None, {}))
@@ -738,6 +759,9 @@ def encounter_index(source, load_rows):
             elif table_name == "map_boss" and row.get("type") == 2:
                 entry_kind = "现世鬼王"
                 title = f"{entry_kind} · {title}"
+            elif table_name == "map_boss" and key in NIAN_ENTRIES:
+                entry_family, entry_kind = "event", "现世年兽"
+                title = f"{entry_kind} · {title}"
             elif table_name == "map_boss" and key in LBS_ACTIVITY_ENTRIES:
                 entry_family, entry_kind = "event", "现世妖约·策划鼠"
                 title = f"现世妖约 · {LBS_ACTIVITY_ENTRIES[key][2]}策划鼠"
@@ -773,6 +797,14 @@ def encounter_index(source, load_rows):
             if table_name == "pve_stage_data" and row.get("name") in RESOURCE_STAGES:
                 entry_family, entry_kind = "daily", RESOURCE_STAGES[row["name"]][0]
                 title = f"{entry_kind} · 新服首次" if numeric_key(key) == "2111" else f"{entry_kind} · 编组 {row['groupid']}"
+            if table_name == "pve_stage_data":
+                stage_id = int(numeric_key(key) or 0)
+                if stage_id in NIAN_STAGES:
+                    entry_family, entry_kind = "event", "现世年兽"
+                    title = f"{entry_kind} · {NIAN_STAGES[stage_id]} 级档"
+                elif stage_id in SPECIAL_NIAN_STAGES:
+                    entry_family, entry_kind = "event", "专属年兽"
+                    title = f"{entry_kind} · 第 {SPECIAL_NIAN_STAGES[stage_id]} 档"
             if table_name == "pve_stage_data" and numeric_key(key) in crevice_stages:
                 entry_family, entry_kind = "guild", "狭间暗域战斗"
                 title = f"狭间暗域 · {row['name'].removeprefix('阴界裂缝')}"

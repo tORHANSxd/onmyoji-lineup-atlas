@@ -6,7 +6,7 @@
   pve_stage_data:'7d376d64c733f53882acc6e88291a4607b6c290828981fbad7adc3dcf7ad36b0',
   BattleMonstersInfo:'8747286d03333c0073d5d2d72e3cec1e89a25f043efb920ee4fcaa8b55b29111',
  };
- const bossMode=3000,sealMode=855,lbsMode=3001,lbsActivityMode=3022;
+ const bossMode=3000,sealMode=855,lbsMode=3001,lbsActivityMode=3022,nianMode=534,specialNianMode=535;
  const bossRoutes=[
   {base:14400,entries:[69],label:'石距',kind:'stone',sceneId:44,ids:[[23]]},
   {base:25300,entries:[73],label:'愤怒的石距',kind:'angryStone',sceneId:40055,ids:[[9991101,9997247,9998247]]},
@@ -80,18 +80,38 @@
   {base:200190,entries:[19043],label:'现世妖约 · 上海五角场策划鼠'},
  ].map(route=>({...route,kind:'lbsActivity',sceneId:233,waves:[[[2,14451,40],[3,14452,40],[4,14453,40]]],
   deadlineSeconds:300,passiveSkill:101013,codeStageId:101006}));
+ const nianLineupSlots=[3,4,5,6,2];
+ const nianRoutes=[
+  ...Array.from({length:9},(_,i)=>[3340141+i,{
+   entries:[19015,19016,19017,19018,19019,19020,19026],label:'现世年兽',
+   kind:'lbsNianNormal',battleMode:nianMode,level:10+5*i,enemyLevel:Math.min(40,10+5*i),
+  }]),
+  ...[30,35,40,40,40,40].map((enemyLevel,i)=>[3340150+i,{
+   entries:[],label:'专属年兽',kind:'lbsNianSpecial',battleMode:specialNianMode,level:i+1,enemyLevel,raidWindowSeconds:600,
+  }]),
+ ].map(([id,{enemyLevel,...route}])=>[id,{
+  ...route,sceneId:40061,waves:[[[1,100031,enemyLevel]]],lineupSlots:nianLineupSlots,passiveSkill:62050,
+  tierLabel:route.battleMode===specialNianMode?`第 ${route.level} 档`:`${route.level} 级档`,
+ }]);
  const stages=Object.fromEntries([...buildStages(bossRoutes,bossMode),...buildStages(sealRoutes,sealMode),
-  ...buildStages(lbsRoutes,lbsMode),...buildStages(activityRoutes,lbsActivityMode)]);
+  ...buildStages(lbsRoutes,lbsMode),...buildStages(activityRoutes,lbsActivityMode),...nianRoutes]);
  const positions={2:[[5,6],[2,3,4]],3:[[3],[2,5],[4,6]]};
- const singlePositions={[lbsMode]:[[2,3,4]],[lbsActivityMode]:[[2,3,4,5,6]]};
+ const fiveSlots=[[2,3,4,5,6]],nianModes=[nianMode,specialNianMode];
+ const singlePositions={[lbsMode]:[[2,3,4]],[lbsActivityMode]:fiveSlots,[nianMode]:fiveSlots,[specialNianMode]:fiveSlots};
  const worldBossEngine={name:'WorldBossEngine',sha256:'d11c14d3eb97e361bee50a58ac8666a56f3332b484e851a8dde36a80c7fe53b4'};
  const engines={
+  [nianMode]:{name:'NormalLBSNianEngine',sha256:'294a00b948adb8855bf45e686b470ec987cd289b865a4c9dcdf9f1b5af8f4256'},
+  [specialNianMode]:{name:'SpecialLBSNianEngine',sha256:'48a2b5ffb7dcc0feb1172c13023cf503ba131b1acb70c5a42d5a9acda5a4f9f5'},
   [bossMode]:worldBossEngine,[sealMode]:worldBossEngine,
   [lbsMode]:{name:'LBSBossEngine',sha256:'045487760b52efb8c5f3157471c4cc8d21a3a3cb020fc1e11310cd4f17386a7d'},
   [lbsActivityMode]:{name:'LBSActivityBossEngine',sha256:'e5fceb3cace7a72b6b323b83db6cfafe6a5bfb4a1dce013a84388992b32b9062'},
  };
- const rules={resourceVersion:'0.0.816',battleModes:[bossMode,sealMode,lbsMode,lbsActivityMode],lbsMode,lbsActivityMode,tableSHA256,stages,engines,
-  partyPositions:(mode,players)=>Number.isSafeInteger(players)?(players===1?singlePositions[mode]:positions[players]):undefined,
+ const rules={resourceVersion:'0.0.816',battleModes:[bossMode,sealMode,lbsMode,lbsActivityMode,...nianModes],lbsMode,lbsActivityMode,tableSHA256,stages,engines,
+  archivedNianStages:[3340033,3340034],
+  partyPositions:(mode,players)=>{
+   if(players===1)return singlePositions[mode];
+   if(Number.isSafeInteger(players)&&!nianModes.includes(mode))return positions[players];
+  },
  };
  if(typeof module==='object'&&module.exports)module.exports=rules;
  else root.AtlasMapBoss=rules;

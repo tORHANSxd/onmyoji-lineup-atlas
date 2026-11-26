@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,855,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,534,535,855,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -656,6 +656,28 @@ async function main(){
     await ui(start+'.click()');
     await until(status+'.textContent.includes("未通过本次采样")');
     assert.match(await ui(reports+'.textContent'),/达到原版时限 · 战斗与结算 302\.86 秒/);
+   }
+   if(cases.some(entry=>entry.table==='map_boss'&&entry.key===19015&&entry.kind==='现世年兽')){
+    await encounter('event','现世年兽 东北年兽');
+    assert.equal(await ui('document.querySelector("[data-map-boss-players]").options.length'),1);
+    assert.equal(await ui('document.querySelector("[data-map-boss-stage]").options.length'),9);
+    const lineupSlots=[3,4,5,6,2],phases=['step_1','step_2','step_3'];
+    assert.match(await run('superghost-five',{stageId:3340141,groupId:3340141,battleMode:534,mapBossPlayers:1},{
+     mapBoss:{kind:'lbsNianNormal',players:1,level:10,lineupSlots,phases,personalDamage:382604,remainingHp:0,roomElapsedSeconds:64.6},
+    }),/单人演练 · 10 级档 · 个人伤害 382,604 · 剩余生命 0 · 3 个阶段/);
+    await encounter('event','专属年兽 3340155');
+    assert.match(await ui(panel+'.textContent'),/从首领满血、剩余 600 秒开始/);
+    const expected={stageId:3340155,groupId:3340155,battleMode:535,mapBossPlayers:1};
+    const mapBoss={kind:'lbsNianSpecial',players:1,level:6,lineupSlots,phases,raidWindowSeconds:600,
+     personalDamage:27096970,remainingHp:14841266,roomElapsedSeconds:600};
+    await run('superghost-five',expected,{mapBoss});
+    mockPve=(_plan,request)=>{
+     assert.deepEqual(request,{...expected,seed:0,damageFloor:true});
+     return {...sample,seed:request.seed,outcome:'loss',wavesCleared:0,mapBoss:{...mapBoss,timedOut:true}};
+    };
+    await ui(start+'.click()');
+    await until(status+'.textContent.includes("未通过本次采样")');
+    assert.match(await ui(reports+'.textContent'),/原版判定超时 · 单人演练 · 第 6 档 · 房间时限 600 秒/);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');

@@ -4,7 +4,10 @@ MODE = 3000
 SEAL_MODE = 855
 LBS_MODE = 3001
 LBS_ACTIVITY_MODE = 3022
-MODES = (MODE, SEAL_MODE, LBS_MODE, LBS_ACTIVITY_MODE)
+NIAN_MODE = 534
+SPECIAL_NIAN_MODE = 535
+NIAN_MODES = (NIAN_MODE, SPECIAL_NIAN_MODE)
+MODES = (MODE, SEAL_MODE, LBS_MODE, LBS_ACTIVITY_MODE, *NIAN_MODES)
 ENGINE = "battleengine.engine.WorldBossEngine"
 LBS_ENGINE = "battleengine.engine.LBSBossEngine"
 LBS_ACTIVITY_ENGINE = "battleengine.engine.LBSActivityBossEngine"
@@ -15,7 +18,19 @@ LBS_ACTIVITY_ENTRIES = {
     19042: (52, 408, "广州塔"),
     19043: (53, 409, "上海五角场"),
 }
+NIAN_ENTRIES = dict(zip((19015, 19016, 19017, 19018, 19019, 19020, 19026), range(238, 245)))
+NIAN_STAGES = dict(zip(range(3340141, 3340150), range(10, 51, 5)))
+SPECIAL_NIAN_STAGES = dict(zip(range(3340150, 3340156), range(1, 7)))
+ARCHIVED_NIAN_STAGES = (3340033, 3340034)
+NIAN_ENGINE = "battleengine.engine.NormalLBSNianEngine"
+SPECIAL_NIAN_ENGINE = "battleengine.engine.SpecialLBSNianEngine"
+NIAN_PASSIVE = 62050
+SPECIAL_NIAN_WINDOW = 600
+NIAN_PHASES = ("step_1", "step_2", "step_3")
+NIAN_LINEUP_SLOTS = (3, 4, 5, 6, 2)
 SOURCE_HASHES = {
+    NIAN_ENGINE: "294a00b948adb8855bf45e686b470ec987cd289b865a4c9dcdf9f1b5af8f4256",
+    SPECIAL_NIAN_ENGINE: "48a2b5ffb7dcc0feb1172c13023cf503ba131b1acb70c5a42d5a9acda5a4f9f5",
     ENGINE: "d11c14d3eb97e361bee50a58ac8666a56f3332b484e851a8dde36a80c7fe53b4",
     LBS_ENGINE: "045487760b52efb8c5f3157471c4cc8d21a3a3cb020fc1e11310cd4f17386a7d",
     LBS_ACTIVITY_ENGINE: "e5fceb3cace7a72b6b323b83db6cfafe6a5bfb4a1dce013a84388992b32b9062",
@@ -33,7 +48,11 @@ POSITIONS = {2: ((5, 6), (2, 3, 4)), 3: ((3,), (2, 5), (4, 6))}
 
 def party_positions(mode, players):
     if players == 1:
-        return {LBS_MODE: ((2, 3, 4),), LBS_ACTIVITY_MODE: ((2, 3, 4, 5, 6),)}.get(mode)
+        if mode in (*NIAN_MODES, LBS_ACTIVITY_MODE):
+            return ((2, 3, 4, 5, 6),)
+        return ((2, 3, 4),) if mode == LBS_MODE else None
+    if mode in NIAN_MODES:
+        return None
     return POSITIONS.get(players)
 
 
@@ -42,6 +61,14 @@ def is_fragment_entry(entry_id, row):
 
 
 def entry_for_stage(entries, stage_id, mode=None):
+    if mode in (None, NIAN_MODE) and stage_id in NIAN_STAGES:
+        expected = (stage_id, NIAN_STAGES[stage_id])
+        if not all(any(tuple(pair) == expected for pair in entries.get(entry_id, {}).get("gk_list", ()))
+                   for entry_id in NIAN_ENTRIES):
+            return None
+        return "lbsNianNormal", None, 40061, 100031, expected[1]
+    if mode in (None, SPECIAL_NIAN_MODE) and stage_id in SPECIAL_NIAN_STAGES:
+        return "lbsNianSpecial", None, 40061, 100031, SPECIAL_NIAN_STAGES[stage_id]
     if mode in (None, MODE):
         for entry_id, (kind, flag, scene, boss) in KINDS.items():
             for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
@@ -230,3 +257,116 @@ class MapBossReplay:
             rewards = {"phaseDamageRatio": ratio, "paperManCount": paper_men}
         return {"kind": self.kind, "level": self.level, "bossId": self.boss_id, "players": len(self.positions),
                 "positions": self.positions, "opening": self.waves[0], "rewardInputs": rewards}
+
+
+class SoloNianRaid:
+    """Receive the original team's broadcasts in a room with one participant."""
+
+    def __init__(self):
+        self.win_sent = False
+
+    def raid_send_property(self, header, name, value, merge_policy):
+        # The only participant already has its own local boss HP and stage changes.
+        pass
+
+    def raid_send_msgs(self, header, messages):
+        self.win_sent |= any(message["op"] == "battle_win" for message in messages)
+
+
+class NianReplay(MapBossReplay):
+    def __init__(self, modules, stage_id, players, mode, start_time):
+        from com import const
+        from com.data.cdata import map_boss
+        from DynamicConfigData import DATA_PVE_STAGE_DATA, BattleMonstersInfo
+
+        self.special = mode == SPECIAL_NIAN_MODE
+        engine_name = SPECIAL_NIAN_ENGINE if self.special else NIAN_ENGINE
+        for name in (engine_name, "com.data.cdata.map_boss"):
+            if modules.rows[name]["marshalSHA256"] != SOURCE_HASHES[name]:
+                raise ValueError("The LBS Nian engine or stage table has changed")
+        entry = entry_for_stage(map_boss.data, stage_id, mode)
+        self.positions = party_positions(mode, players)
+        if not entry or not self.positions:
+            raise ValueError("LBS Nian replay requires a verified stage and one participant")
+        self.kind, _, scene, self.boss_id, self.level = entry
+        self.const = const
+        self.group_id = stage_id
+        self.wave_count = 1
+        self.waves = []
+        self.phases = []
+        self.start_time = start_time
+
+        stage_key = str(stage_id)
+        stage = DATA_PVE_STAGE_DATA.data[stage_key]
+        formation = BattleMonstersInfo.data[stage_id]
+        waves = formation["MonstersInfos"]
+        if (stage["groupid"] != stage_id or stage["shishentotal"] != 5 or formation["resindex"] != scene
+                or stage.get("battleTime") is not None or [len(wave) for wave in waves] != [1]
+                or waves[0][0][:2] != [1, self.boss_id]):
+            raise RuntimeError("The original LBS Nian stage has a different opening")
+        self.expected = [[tuple(waves[0][0][:3])]]
+        params = {"pve_data_flag": stage_key, "teamUid": "local-nian"}
+        if self.special:
+            from battleengine.engine.SpecialLBSNianEngine import SpecialLBSNianEngine
+
+            self.raid = SoloNianRaid()
+            self.shared_max_hp = SpecialLBSNianEngine.calcSharedMonMaxHp(stage_key, True)
+            if set(self.shared_max_hp) != {"0_1", "0_2"} or min(self.shared_max_hp.values()) <= 0:
+                raise RuntimeError("The original special LBS Nian shared HP data has changed")
+            params.update(team=self.raid, raid_header={"status": 1}, boss_info={
+                "id": "local-nian", "timeout": start_time + SPECIAL_NIAN_WINDOW,
+                "total_attackers": 1, "boss_hp": self.shared_max_hp.copy(),
+            })
+            self.engine = SpecialLBSNianEngine(params)
+            self.engine.battleMode = const.BattleMode.MODE_SPECIAL_LBS_NIANSHOU_2021
+        else:
+            from battleengine.engine.NormalLBSNianEngine import NormalLBSNianEngine
+
+            params.update(is_leader=True, status_info={"status": 1})
+            self.engine = NormalLBSNianEngine(params)
+            self.engine.battleMode = const.BattleMode.MODE_NORMAL_LBS_NIANSHOU_2021
+        if self.engine.battleMode != mode or self.engine.combineSceneInfoId != scene:
+            raise RuntimeError("The original LBS Nian engine initialized a different scene")
+        self.observe_waves()
+        change = self.engine.change_to_state
+
+        def record_phase(state, param_dict=None):
+            previous = self.engine.state
+            result = change(state, param_dict)
+            if self.engine.state != previous:
+                self.phases.append(self.engine.state)
+            return result
+
+        self.engine.change_to_state = record_phase
+
+    def verify_selection(self, controllers):
+        controller, = controllers
+        expected = dict(zip(["selected-onmyoji", *controller.ctrlPlayer.defaultHeros], (1, *NIAN_LINEUP_SLOTS)))
+        actual = {entity.HeroComp.heroData.heroUid: entity.posIndex for entity in self.engine.heroEntities.values()
+                  if entity.ownerController is controller and entity.HeroComp.heroData.heroUid in expected}
+        boss = self.engine.boss_entity
+        passive = boss.SkillMgrComp.getSkillById(NIAN_PASSIVE)
+        if actual != expected:
+            raise RuntimeError(f"The original LBS Nian placed the lineup at {actual}, expected {expected}")
+        if passive is None or passive.skillLevel != 1:
+            raise RuntimeError("The original LBS Nian did not install the boss passive")
+        self.opening_hp = boss.AttrComp.hp
+        expected_hp = self.shared_max_hp["0_1"] if self.special else boss.AttrComp.maxHp
+        if self.opening_hp != expected_hp or self.special and boss.uid not in self.engine.sharedEntityUids:
+            raise RuntimeError("The original LBS Nian did not start at full boss HP")
+
+    def report(self, outcome):
+        engine = self.engine
+        ordered = [phase for phase in NIAN_PHASES if phase in self.phases]
+        if not self.waves or self.phases[:1] != [NIAN_PHASES[0]] or self.phases != ordered:
+            raise RuntimeError("The original LBS Nian did not follow the verified phase order")
+        timed_out = bool(engine.is_timeout)
+        remaining_hp = engine.boss_entity.AttrComp.hp
+        if outcome == "win" and (remaining_hp != 0 or self.special and not self.raid.win_sent):
+            raise RuntimeError("The original LBS Nian did not confirm the boss defeat")
+        return {"kind": self.kind, "level": self.level, "bossId": self.boss_id, "players": 1,
+                "positions": self.positions, "lineupSlots": NIAN_LINEUP_SLOTS, "opening": self.waves[0], "passiveSkill": NIAN_PASSIVE,
+                "openingHp": self.opening_hp, "remainingHp": remaining_hp, "phases": self.phases,
+                "personalDamage": engine.myTotalDmg if self.special else engine.my_total_damage,
+                "raidWindowSeconds": SPECIAL_NIAN_WINDOW if self.special else None, "timedOut": timed_out,
+                "roomElapsedSeconds": round(engine.now_time() - self.start_time, 6)}

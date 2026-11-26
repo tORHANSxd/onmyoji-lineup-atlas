@@ -6,7 +6,8 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from dungeon_encounters import encounter_index
 from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
-from map_boss_stage import LBS_ACTIVITY_MODE, LBS_MODE, MODE, SEAL_MODE, entry_for_stage, party_positions
+from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MODE, NIAN_ENTRIES, NIAN_MODE, SEAL_MODE,
+                            SPECIAL_NIAN_MODE, entry_for_stage, party_positions)
 
 
 class EncounterIndexTests(unittest.TestCase):
@@ -221,6 +222,38 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertEqual(entry_for_stage({19042: boss}, 200180, LBS_ACTIVITY_MODE), ("lbsActivity", None, 233, None, 10))
         self.assertIsNone(entry_for_stage({19042: boss}, 200180, LBS_MODE))
         self.assertEqual(party_positions(LBS_ACTIVITY_MODE, 1), ((2, 3, 4, 5, 6),))
+
+    def test_lbs_nian_keeps_separate_regional_and_special_routes(self):
+        ordinary, special = 3340141, 3340150
+        bosses = {key: {"id": key, "name": "区域年兽", "type": 36, "gk_list": [[ordinary, 10]]}
+                  for key in NIAN_ENTRIES}
+        tables = {
+            "map_boss": list(bosses.items()),
+            "activity": [[774, {}]],
+            "activity_offline_lbs_mass": [[site, {"mapbossid": key}] for key, site in NIAN_ENTRIES.items()],
+            "system_rule_dsc": [["xianshi_nianshou_activity_tips", {"rule_dsc": "召唤规则"}]],
+            "pve_stage_data": [[str(stage), {"id": str(stage), "groupid": stage}] for stage in (ordinary, special)],
+            "BattleMonstersInfo": [[stage, {"resindex": 40061}] for stage in (ordinary, special)],
+            "battle_mode_routes": [[534, {}], [535, {}]],
+            "battle_team_routes": [[664, {"battleMode": 534}], [665, {"battleMode": 535}]],
+            "monster": [[100032, {}]],
+            "skill": [[{"$tuple": [62050, 1, -1]}, {}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle", "fields": []} for name in tables]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], str(entry["key"])): entry for entry in index["entries"]}
+        regional_entry = entries["map_boss", "19015"]
+        special_entry = entries["pve_stage_data", str(special)]
+        self.assertEqual((regional_entry["family"], regional_entry["kind"]), ("event", "现世年兽"))
+        self.assertEqual(special_entry["title"], "专属年兽 · 第 1 档")
+        self.assertIn(("activity_offline_lbs_mass", 238), {(ref["table"], ref["key"]) for ref in regional_entry["refs"]
+                                                          if ref["table"] != "skill"})
+        self.assertIn(665, [ref["key"] for ref in special_entry["refs"]])
+        self.assertNotIn(664, [ref["key"] for ref in special_entry["refs"]])
+        self.assertEqual(entry_for_stage(bosses, ordinary, NIAN_MODE), ("lbsNianNormal", None, 40061, 100031, 10))
+        self.assertEqual(entry_for_stage(bosses, special, SPECIAL_NIAN_MODE), ("lbsNianSpecial", None, 40061, 100031, 1))
+        self.assertIsNone(entry_for_stage(bosses, special, NIAN_MODE))
+        self.assertIsNone(party_positions(SPECIAL_NIAN_MODE, 2))
 
     def test_regional_boss_preserves_weighted_rules_and_level_one_modifier_variants(self):
         base_skill = {"$tuple": [61701, 1, -1]}

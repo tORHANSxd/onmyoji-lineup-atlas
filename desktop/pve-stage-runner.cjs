@@ -503,6 +503,18 @@ function validMapBossReport(report,route,players){
  const data=report.mapBoss,rewards=data?.rewardInputs;
  if(report.sceneId!==route.sceneId||report.waveCount!==route.waves.length||data?.kind!==route.kind||
     data.level!==route.level||data.players!==players||!sameTactics(data.positions,mapBoss.partyPositions(route.battleMode,players)))return false;
+ if(route.lineupSlots){
+  const phases=data.phases,expectedPhases=['step_1','step_2','step_3'];
+  return report.formationsVerified===1&&data.bossId===route.waves[0][0][1]&&sameTactics(data.opening,route.waves[0])&&
+   sameTactics(data.lineupSlots,route.lineupSlots)&&data.passiveSkill===route.passiveSkill&&
+   Array.isArray(phases)&&phases[0]===expectedPhases[0]&&sameTactics(phases,expectedPhases.filter(phase=>phases.includes(phase)))&&
+   Number.isFinite(data.openingHp)&&data.openingHp>0&&Number.isFinite(data.remainingHp)&&data.remainingHp>=0&&
+   data.remainingHp<=data.openingHp&&Number.isSafeInteger(data.personalDamage)&&data.personalDamage>=0&&
+   typeof data.timedOut==='boolean'&&Number.isFinite(data.roomElapsedSeconds)&&data.roomElapsedSeconds>=0&&
+   data.raidWindowSeconds===(route.raidWindowSeconds??null)&&
+   (!data.timedOut||report.outcome==='loss'&&data.raidWindowSeconds>0&&data.roomElapsedSeconds>=data.raidWindowSeconds)&&
+   (report.outcome!=='win'||!data.timedOut&&data.remainingHp===0);
+ }
  if(route.deadlineSeconds&&(data.deadlineSeconds!==route.deadlineSeconds||data.passiveSkill!==route.passiveSkill||
     !Number.isFinite(data.combatSeconds)||data.combatSeconds<0||typeof data.timedOut!=='boolean'||
     (data.timedOut&&(report.outcome!=='loss'||data.combatSeconds<route.deadlineSeconds))))return false;
@@ -709,7 +721,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       plan.members.length!==5||!positive(creviceWindow)||creviceWindow>guildCrevice.deadlineSeconds)||
       creviceWindow!==undefined&&!creviceRoute)throw Error('狭间暗域需要正确的关卡、编组、计分时长和五位自有式神');
    if(battleMode===3&&guildCrevice.routes[stageId])throw Error('狭间暗域需要该玩法的原版入口');
-   if(battleMode===3&&mapBoss.stages[stageId])throw Error('该关卡需要地图首领的原版组队入口');
+   if(battleMode===3&&(mapBoss.stages[stageId]||mapBoss.archivedNianStages.includes(stageId)))
+    throw Error('该关卡需要地图首领的原版组队入口');
    const mapBossMode=mapBoss.battleModes.includes(battleMode);
    const mapBossRoute=mapBossMode?mapBoss.stages[stageId]:null;
    const mapBossPositions=mapBossMode?mapBoss.partyPositions(battleMode,mapBossPlayers):null;
@@ -726,7 +739,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       historicalGhostWindow!==undefined&&!historicalGhostRoute)throw Error('超鬼王历史挑战需要正确的关卡、阵容和计分时长');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const deadlineMs=spider?645000:battleMode===306||qilingEntry||ghostRoute||historicalGhostRoute?245000:sixRealmsRoute||tianfaStage||creviceRoute?175000:
+   const deadlineMs=spider?645000:battleMode===306||qilingEntry||ghostRoute||historicalGhostRoute?245000:sixRealmsRoute||tianfaStage||creviceRoute||mapBossRoute?.raidWindowSeconds?175000:
     hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000;
    const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
    let release,dir;

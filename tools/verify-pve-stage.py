@@ -12,6 +12,10 @@ import sys
 from tempfile import TemporaryDirectory
 import time
 
+ENGINE_START_SECONDS = 1000
+SPECIAL_NIAN_WALL_SECONDS = 145
+
+
 def replay(args, runtime, work):
     from game_resources import sha256
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE, FengmoYanwuReplay, fengmo_yanwu_stage
@@ -21,7 +25,8 @@ def replay(args, runtime, work):
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
-    from map_boss_stage import MODES as MAP_BOSS_MODES, MapBossReplay, entry_for_stage, party_positions
+    from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, NIAN_MODES, SPECIAL_NIAN_MODE,
+                                MapBossReplay, NianReplay, entry_for_stage, party_positions)
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
@@ -198,7 +203,10 @@ def replay(args, runtime, work):
         positions = party_positions(args.mode, args.map_boss_players)
         if not positions or len(fighters) != sum(map(len, positions)):
             raise ValueError("Selected shikigami count does not match the original map boss positions")
-        map_boss_replay = MapBossReplay(modules, args.stage, args.map_boss_players, args.mode)
+        if args.mode in NIAN_MODES:
+            map_boss_replay = NianReplay(modules, args.stage, args.map_boss_players, args.mode, ENGINE_START_SECONDS)
+        else:
+            map_boss_replay = MapBossReplay(modules, args.stage, args.map_boss_players, args.mode)
         engine, const = map_boss_replay.engine, map_boss_replay.const
         group_id, wave_count = map_boss_replay.group_id, map_boss_replay.wave_count
     elif spider:
@@ -284,7 +292,7 @@ def replay(args, runtime, work):
             raise ValueError("Experience and coin encounters require their dedicated entry")
         if any(args.stage == floor[0] for floor in map_boss.data[OROCHI_STAGE]["gk_list"]):
             raise ValueError("True Orochi floors require the original continuous dungeon engine")
-        if entry_for_stage(map_boss.data, args.stage):
+        if args.stage in ARCHIVED_NIAN_STAGES or entry_for_stage(map_boss.data, args.stage):
             raise ValueError("Map boss stages require their original cooperative engine")
         if (args.stage in dict(challenge_stages()) or args.stage in dict(exploration_stages())
                 or args.stage == 800021 or 810001 <= args.stage <= 810009):
@@ -488,7 +496,7 @@ def replay(args, runtime, work):
             return result
 
         engine._createNextRoundMons = verify_spawn
-    engine._time, engine.delta_time = 1000.0, .020
+    engine._time, engine.delta_time = float(ENGINE_START_SECONDS), .020
     engine.init()
     if map_boss_replay:
         map_boss_replay.verify_players(controllers)
@@ -548,7 +556,8 @@ def replay(args, runtime, work):
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
                       else CREVICE_WALL_SECONDS if crevice
                       else SUPERGHOST_WALL_SECONDS if superghost or historical_ghost
-                      else SHILIAN_REPLAY_SECONDS if shilian else TIANFA_REPLAY_SECONDS if tianfa else 130 if relay else 75)
+                      else SHILIAN_REPLAY_SECONDS if shilian else TIANFA_REPLAY_SECONDS if tianfa
+                      else SPECIAL_NIAN_WALL_SECONDS if args.mode == SPECIAL_NIAN_MODE else 130 if relay else 75)
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
     equipped_spirit = None
@@ -801,7 +810,7 @@ def replay(args, runtime, work):
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from map_boss_stage import MODES as MAP_BOSS_MODES, party_positions
+    from map_boss_stage import MODES as MAP_BOSS_MODES, SPECIAL_NIAN_MODE, party_positions
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
     from general_soul_stage import SOLO_SCORE_MODES
     from guild_crevice_stage import CREVICE_MODE, CREVICE_TIME
@@ -902,6 +911,7 @@ def main():
                         QILING_GROUP_REPLAY_SECONDS + 20 if args.mode == QILING_GROUP_MODE else
                         SHILIAN_REPLAY_SECONDS + 20 if args.mode in SHILIAN_MODES else
                         TIANFA_REPLAY_SECONDS + 20 if args.mode == TIANFA_MODE else
+                        SPECIAL_NIAN_WALL_SECONDS + 20 if args.mode == SPECIAL_NIAN_MODE else
                         240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
     faulthandler.dump_traceback_later(watchdog_seconds, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:
