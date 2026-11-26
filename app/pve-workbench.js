@@ -7,7 +7,7 @@
  const ghostKingTower=AtlasDevilFeast.tower;
  const laolao=AtlasDevilFeast.laolao;
  const fusion=AtlasDevilFeast.fusion;
- const {duskWraith:dusk,songstress:song,mirage,catfish}=AtlasFengmoLive;
+ const {duskWraith:dusk,songstress:song,mirage,catfish,skeleton}=AtlasFengmoLive;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -231,6 +231,19 @@
       catfishSettings.otherBreaks>catfishSettings.otherPlayers));
    }
   }
+  const skeletonSettings=pane.skeletonWindow?{windowSeconds:pane.skeletonWindow.valueAsNumber,
+   truePositions:pane.skeletonPositions.map(input=>Number(input.value))}:null;
+  const skeletonReady=!skeletonSettings||skeleton.validSettings(skeletonSettings);
+  pane.skeletonSettings=skeletonReady?skeletonSettings:null;
+  if(skeletonSettings){
+   pane.skeletonWindow.disabled=blocked;
+   pane.skeletonWindow.setAttribute('aria-invalid',String(!pane.skeletonWindow.validity.valid));
+   const repeated=new Set(skeletonSettings.truePositions).size!==2;
+   for(const input of pane.skeletonPositions){
+    input.disabled=blocked;
+    input.setAttribute('aria-invalid',String(repeated));
+   }
+  }
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   const coins=pane.artifactCoins?.valueAsNumber;
@@ -275,7 +288,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -294,6 +307,7 @@
    !songReady?`计分时长须为 1 至 ${song.windowLimit} 秒的整数。`:
    !mirageReady?'请填写有效的计分时长和入场秒数，并选两个不同的真镜像位置。':
    !catfishReady?'请核对时长、减伤层数和人数，其他队伍的击破人数不可超过参战人数。':
+   !skeletonReady?'请选择两个不同的真部下位置，并填写有效的模拟时长。':
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
@@ -387,6 +401,16 @@
     </fieldset>`:''}
     <p class="caption" id="pve-tower-hint" data-pve-tower-hint role="status"></p>
    </details>`:''}
+   ${config.skeleton?`<fieldset class="pve-reserve"><legend>荒骷髅模拟条件</legend>
+    <div class="actions">
+     <label class="pve-lineup-field">本地计分时长（秒）
+      <input data-pve-skeleton-window type="number" min="1" max="${skeleton.windowLimit}" step="1" value="${skeleton.defaultWindow}" required>
+     </label>
+     ${skeleton.defaultTruePositions.map((selected,i)=>`<label class="pve-lineup-field">真部下 ${i+1} 的位置
+      <select data-pve-skeleton-position>${skeleton.positions.map(position=>`<option value="${position}" ${position===selected?'selected':''}>${position} 号位</option>`).join('')}</select>
+     </label>`).join('')}
+    </div>
+   </fieldset>`:''}
    ${config.catfish?`<fieldset class="pve-reserve"><legend>地震鲶模拟条件</legend>
     <div class="actions">
      <label class="pve-lineup-field">本地计分时长（秒）
@@ -554,6 +578,7 @@
    mirageWindow:part('mirage-window'),mirageGeneral:part('mirage-general'),miragePositions:all('mirage-position'),
    catfishWindow:part('catfish-window'),catfishArmor:part('catfish-armor'),
    catfishPlayers:part('catfish-players'),catfishBreaks:part('catfish-breaks'),
+   skeletonWindow:part('skeleton-window'),skeletonPositions:all('skeleton-position'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
@@ -565,7 +590,8 @@
   pane.start.onclick=()=>void run();
   for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
-   ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions].filter(Boolean))field.onchange=()=>{
+   ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,
+   ...pane.skeletonPositions].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -573,6 +599,7 @@
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.mirageWindow,pane.mirageGeneral,
    pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,
+   pane.skeletonWindow,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
@@ -711,6 +738,7 @@
     ...(run.songWindowSeconds?{songWindowSeconds:run.songWindowSeconds}:{}),
     ...(run.mirageSettings?{mirageSettings:run.mirageSettings}:{}),
     ...(run.catfishSettings?{catfishSettings:run.catfishSettings}:{}),
+    ...(run.skeletonSettings?{skeletonSettings:run.skeletonSettings}:{}),
     ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(mapBossPlayers?{mapBossPlayers}:{}),...(tianfaTeam?{tianfaTeam}:{}),
     ...(qinfeiBoss?{qinfeiBoss}:{}),
@@ -882,7 +910,7 @@
      pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
      pane.duskWindow&&!pane.duskSettings||pane.songWindow&&!pane.songWindowSeconds||pane.mirageWindow&&!pane.mirageSettings||
-     pane.catfishWindow&&!pane.catfishSettings)return;
+     pane.catfishWindow&&!pane.catfishSettings||pane.skeletonWindow&&!pane.skeletonSettings)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
@@ -898,6 +926,7 @@
    songWindowSeconds:pane.songWindowSeconds,
    mirageSettings:pane.mirageSettings,
    catfishSettings:pane.catfishSettings,
+   skeletonSettings:pane.skeletonSettings,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
    sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins||guard?

@@ -950,8 +950,17 @@
       block.append(details);
     }
     destination.append(block);
-    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish}=source;
+    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,skeleton}=source;
     const stage=row('pve_stage_data',String(scenario.stage));
+    if(scenario.stage===skeleton.stageId&&scenario.mode===skeleton.battleMode&&route?.scene_engine===skeleton.engine.name&&
+        stage?.groupid===skeleton.stageId&&stage.shishentotal===skeleton.memberCount&&formation.resindex===skeleton.sceneId){
+      const code=DATA.gameConfig.stages[skeleton.codeStageId];
+      destination.append(node('p','用已知阵容从满血开战。单队模拟以 50% 血线进入真假部下，击败两名真部下后进入固定的首档纸人编组。','caption'));
+      window.AtlasPveWorkbench?.mount(destination,{stageId:skeleton.stageId,groupId:skeleton.stageId,version:source.resourceVersion,
+        battleMode:skeleton.battleMode,memberCount:skeleton.memberCount,waveCount:1,label:'稀有·荒骷髅',skeleton:true,
+        codeStageId:code?.actors===1&&code.shikigami===skeleton.memberCount?skeleton.codeStageId:null,codeLabel:code?.name});
+      return;
+    }
     if(scenario.stage===catfish.stageId&&scenario.mode===catfish.battleMode&&route?.scene_engine===catfish.engine.name&&
         stage?.groupid===catfish.stageId&&stage.shishentotal===catfish.memberCount&&formation.resindex===catfish.sceneId){
       const code=DATA.gameConfig.stages[catfish.codeStageId];

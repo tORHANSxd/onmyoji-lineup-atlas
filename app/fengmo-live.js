@@ -41,6 +41,23 @@
  const rotationConstant=10631;
  const rotationSkills=[63402,63601,63404,63602,63405,63603,63406];
  const ref=(table,key,label)=>({table,key,label,found:true});
+ const skeleton={
+  stageId:25003,battleMode:3012,codeStageId:10020222,sceneId:40012,boss:9991001,
+  memberCount:5,windowLimit:1200,defaultWindow:600,positions:[2,3,4,5,6,7],defaultTruePositions:[2,3],
+  phases:{normal:'开战',slimes:'首轮小怪',elite:'真假部下',papers:'秘宝小纸人',late:'末轮小怪'},
+  formations:{normal:[],slimes:[[2,9991006],[3,9991003],[6,9991004],[7,9991005],[8,9991002]],
+   elite:[[2,9991008],[3,9991009],[4,9991010],[5,9991011],[6,9991012],[7,9991013]],
+   papers:[[3,9991017],[4,9991014],[5,9991015],[6,9991016]],
+   late:[[3,9991018],[4,9991019],[5,9991020],[6,9991021],[8,9991022]]},
+  engine:{name:'HuangKuLouEngine',route:'skeleton-local-team',
+   sha256:'d680ad3efffd1cc59198eaa8e8d0e4868c7c7b897ad353e260430794bd992d92'},
+  validSettings(settings){
+   const {windowSeconds,truePositions}=settings??{};
+   return Object.keys(settings??{}).length===2&&Number.isSafeInteger(windowSeconds)&&windowSeconds>=1&&windowSeconds<=this.windowLimit&&
+    Array.isArray(truePositions)&&truePositions.length===2&&truePositions[0]!==truePositions[1]&&
+    Array.from(truePositions).every(position=>this.positions.includes(position));
+  },
+ };
  const catfish={
   stageId:25004,battleMode:3014,codeStageId:10020224,sceneId:40020,boss:9991030,assist:9991041,
   fish:[[2,9991247],[3,9992247],[5,9993247],[6,9994247]],monkey:9991032,gate:9991031,
@@ -111,6 +128,12 @@
     ref(route.ruleTable??'tipsInfoData_cn',route.rule,'客户端玩法说明'),
     ...coinConstants.map(([id,label])=>ref('Constant',id,label)),
    ];
+   if(route.stage===skeleton.stageId){
+    refs.push(...[[100,'首轮小怪'],[200,'真假部下'],[300,'秘宝小纸人'],[400,'末轮小怪']].map(([id,label])=>ref('huangkulou_stage',{$tuple:[id,1]},label)),
+     ...[3801,3802,3803].map(id=>ref('Constant',id,'阶段血线')),
+     ...[480,483,484,486,487].map(id=>ref('skill',{$tuple:[id,1,-1]},'部下及阶段技能')),
+     ...[1,2,3,4,5,6,7].map(id=>ref('monstertalk',id,'真假部下线索')));
+   }
    if(route.stage===catfish.stageId){
     refs.push(...[[100,'海坊主祝福编组'],[300,'小猴编组'],[400,'鸟居编组'],[500,'击破鸟居后的纸人']].map(([id,label])=>ref('dizhennian_stage',{$tuple:[id,1]},label)),
      ...[[4151,'小猴和鸟居的首领血线'],[4152,'海坊主祝福效果'],[4155,'鸟居击破比例门槛'],[4156,'鸟居时限'],[4161,'妖琴师助战']].map(([id,label])=>ref('Constant',id,label)),
@@ -152,5 +175,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton};
 });
