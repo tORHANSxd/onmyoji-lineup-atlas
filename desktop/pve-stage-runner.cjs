@@ -13,6 +13,7 @@ const yulingOpenings=require('../app/yuling-openings.js');
 const guildHuntOpenings=require('../app/guild-hunt-openings.js');
 const guildRetreatOpenings=require('../app/guild-retreat-openings.js');
 const fengmoYanwu=require('../app/fengmo-yanwu.js');
+const tuzhizhuPractice=require('../app/tuzhizhu-practice.js');
 const resourceEncounters=require('../app/resource-encounters.js');
 const {firstExperience}=resourceEncounters;
 
@@ -27,6 +28,8 @@ const engines={
  3004:{name:'LBSWorldBossEngine',route:'regional-boss-ordinary-scenario',sha256:'d7430531c4dd85fa2c3fc14b2c55677ee7d030e4703e8806887a3d55a0821174'},
  3023:{name:'LBSWorldBossXEngine',route:'regional-boss-hard-scenario',sha256:'a4268deb478a53610e6ef6e23e833f3bf18d2be826f7cd703aaca7e1a54df38f'},
  [fengmoYanwu.battleMode]:{name:'FengMoEquipBattleEngine',route:'fengmo-yanwu-solo',sha256:fengmoYanwu.engineSHA256},
+ ...Object.fromEntries(Object.entries(tuzhizhuPractice.modes).map(([id,mode])=>
+  [id,{name:mode.engine,route:'tuzhizhu-practice-solo',sha256:mode.sha256}])),
  [firstExperience.battleMode]:{name:'NewExpEngine',route:'resource-first-new-server-exp',sha256:resourceEncounters.engineSHA256},
 };
 const positive=value=>Number.isSafeInteger(value)&&value>0;
@@ -151,6 +154,22 @@ function validFengmoYanwu(report,entry,plan){
    ['hp','speed','attack','defense','critRate'].every(key=>Number.isFinite(unit[key])&&unit[key]>=0))&&validScoringTactics(data,plan,entry.bossId);
 }
 
+function validTuzhizhuPractice(report,mode,stageId,plan){
+ const data=report.tuzhizhuPractice,trait=tuzhizhuPractice.traits[stageId];
+ const ids=trait?[plan.onmyoji.heroId,...plan.members.map(member=>member.hero.heroId)].map(Number).sort((a,b)=>a-b):[];
+ return data&&report.sceneId===tuzhizhuPractice.sceneId&&report.waveCount===1&&data.trait===trait&&data.configuredSeconds===3600&&
+  Array.isArray(data.traitRecipients)&&sameTactics([...data.traitRecipients].sort((a,b)=>a-b),ids)&&
+  typeof data.timedOut==='boolean'&&Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&
+  Number.isSafeInteger(data.damage)&&data.damage>=0&&Number.isSafeInteger(data.cocoonsSpawned)&&data.cocoonsSpawned>=0&&
+  Number.isSafeInteger(data.cocoonsDefeated)&&data.cocoonsDefeated>=0&&data.cocoonsDefeated<=data.cocoonsSpawned&&
+  (trait||data.cocoonsSpawned===0)&&Array.isArray(data.opening)&&data.opening.length===4&&data.opening.every((unit,index)=>
+   unit?.id===mode.bossId+index&&unit.position===index+1&&unit.level===40&&
+   ['hp','speed','attack','defense','critRate'].every(key=>Number.isFinite(unit[key])&&unit[key]>=0))&&
+  Array.isArray(data.partsRemaining)&&new Set(data.partsRemaining).size===data.partsRemaining.length&&
+  data.partsRemaining.every(id=>data.opening.some(unit=>unit.id===id))&&
+  (report.outcome!=='win'||data.partsRemaining.length===0);
+}
+
 function launch(python,args,cwd,signal){
  return new Promise((resolve,reject)=>{
   const env={...process.env,PYTHONHOME:'',PYTHONPATH:'',PYTHONNOUSERSITE:'1',PYTHONHASHSEED:'0',TMP:cwd,TEMP:cwd};
@@ -172,6 +191,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
   !Object.entries(hunt.enemy).every(([key,value])=>huntReport.opening?.[key]===value));
  const retreatOpening=retreat&&guildRetreatOpenings.difficulties[stageId][retreat.raidRound-1][groupId];
  const yanwu=battleMode===fengmoYanwu.battleMode?fengmoYanwu.routes[stageId]:null;
+ const spider=tuzhizhuPractice.modes[battleMode];
  const invalidYuling=yuling&&(!Array.isArray(report?.opening)||report.opening.length!==yuling.enemies.length||
   !yuling.enemies.every((unit,index)=>Object.entries(unit).every(([key,value])=>report.opening[index]?.[key]===value)));
  const experience=battleMode===firstExperience.battleMode?report?.experience:null;
@@ -190,6 +210,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
     (retreatOpening&&!validRetreat(report,retreatOpening,retreat,rounds[0]))||
     (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
+    (spider&&!validTuzhizhuPractice(report,spider,stageId,rounds[0]))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
@@ -215,11 +236,12 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
-     has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),has('fengmo_yanwu_stage.py')]);
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+     has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),
+     has('fengmo_yanwu_stage.py'),has('tuzhizhu_practice.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
-     ...(yanwu?[fengmoYanwu.battleMode]:[])]};
+     ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -258,6 +280,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===fengmoYanwu.battleMode&&(fengmoYanwu.resourceVersion!==resourceVersion||stageId!==groupId||
       plan.members.length!==fengmoYanwu.routes[stageId]?.memberCount))throw Error('当前配装与逢魔演武单人上阵人数不一致');
    if(battleMode===3&&Object.hasOwn(fengmoYanwu.routes,stageId))throw Error('逢魔演武需要使用原版活动计分入口');
+   if(battleMode===3&&Object.values(tuzhizhuPractice.modes).some(mode=>mode.groupId===stageId))
+    throw Error('土蜘蛛木桩需要使用原版单人练习入口');
+   const spider=tuzhizhuPractice.modes[battleMode],trait=tuzhizhuPractice.traits[stageId];
+   if(spider&&(tuzhizhuPractice.resourceVersion!==resourceVersion||trait===undefined||groupId!==spider.groupId||
+      (trait===0)!==(battleMode===5550)||plan.members.length!==5))throw Error('土蜘蛛木桩入口、词条或上阵人数不匹配');
    if(regionModes.includes(battleMode)&&(!validRegion(region,battleMode)||plan.members.length!==5))
     throw Error('地域鬼王复跑需要地点、难度、合法的特殊条件和五位自有式神');
    if(battleMode===firstExperience.battleMode&&(resourceEncounters.resourceVersion!==resourceVersion||
@@ -265,7 +292,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('此入口只适用于新服首次经验妖怪的五式神配装');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const cancel=new AbortController(),deadline=AbortSignal.timeout(battleMode===306?245000:battleMode===2001?155000:100000);
+   const cancel=new AbortController(),deadline=AbortSignal.timeout(battleMode===306||spider?245000:battleMode===2001?155000:100000);
    let release,dir;
    current={cancel,done:new Promise(resolve=>{release=resolve;})};
    try{

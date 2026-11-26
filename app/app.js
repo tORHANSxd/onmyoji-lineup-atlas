@@ -186,6 +186,7 @@ function sampleBattleMarkup(samples){
   const hunt=sample.guildHunt;
   const retreat=sample.guildRetreat;
   const yanwu=sample.fengmoYanwu;
+  const spider=sample.tuzhizhuPractice;
   const relay=sample.underworld;
   const regional=sample.regionalBoss;
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
@@ -196,6 +197,9 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${retreat.damage.toLocaleString('zh-CN')} · 作战 ${retreat.combatSeconds.toFixed(2)} 秒 · ${retreat.phases.length} 次阶段切换`:
    yanwu?`${!sample.completed?'结算待确认':yanwu.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${yanwu.damage.toLocaleString('zh-CN')} · 作战 ${yanwu.combatSeconds.toFixed(2)} 秒`:
+   spider?`${describeBattle(sample)} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
+    `战斗 ${spider.combatSeconds.toFixed(2)} 秒`+
+    (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):
    relay?`${sample.completed?'结算':'结算待确认'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 波 · `+
     relay.teams.map(team=>`第 ${team.team} 队在第 ${team.startWave} 波上场`).join('，')+(relay.leftAfterLastTeam?' · 已用完所选队伍':''):
    regional?.eligible===false?'原版引擎判定阵容不符合特殊条件':

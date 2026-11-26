@@ -1,6 +1,7 @@
 """Build a searchable encounter index from decoded, versioned client tables."""
 
 from collections import Counter
+from functools import cache
 
 
 ROOTS = {
@@ -13,7 +14,7 @@ ROOTS = {
     "dungeon_challenge_series": ("daily", "秘闻"),
     "dungeon_challenge_race": ("daily", "秘闻竞速"),
     "dungeon_yuling": ("daily", "御灵"),
-    "MZB_fengmo": ("daily", "逢魔演武"),
+    "MZB_fengmo": ("daily", "逢魔木桩练习"),
     "lbs_world_boss_area": ("daily", "地域鬼王"),
     "lbs_world_boss_type": ("daily", "地域鬼王规则"),
     "shilian_event_battles": ("daily", "六道之门"),
@@ -155,16 +156,24 @@ def encounter_index(source, load_rows):
         dest = legacy_tips if key not in rules and key in tips else rule_table
         return {"table": dest, "key": key, "label": label, "found": key in rules or key in tips}
 
+    @cache
+    def level_one_skills():
+        result = {}
+        for key in table("skill"):
+            if isinstance(key, tuple) and len(key) == 3 and key[1] == "1":
+                result.setdefault(key[0], []).append(key)
+        return result
+
+    def level_one_skill(skill_id):
+        options = level_one_skills().get(numeric_key(skill_id), ())
+        return {"$tuple": [int(part) for part in options[0]]} if len(options) == 1 else skill_id
+
     def region_modifiers():
         constants = table("Constant")
         if not any(str(key) in constants for key in REGION_DIFFICULTY_SKILLS):
             return []
         # AreaKingBossInfoPanel reads level-one skill data. Each included ID
         # currently has one such row, including rows with a non-default variant.
-        level_one = {}
-        for skill_key in table("skill"):
-            if isinstance(skill_key, tuple) and len(skill_key) == 3 and skill_key[1] == "1":
-                level_one.setdefault(skill_key[0], []).append(skill_key)
         links = []
         for constant_id, label in REGION_DIFFICULTY_SKILLS.items():
             ref = relation("Constant", constant_id, f"{label}编号表", True)
@@ -175,9 +184,7 @@ def encounter_index(source, load_rows):
             for skill_id in ids if isinstance(ids, list) else ():
                 if type(skill_id) is float and skill_id.is_integer():
                     skill_id = int(skill_id)
-                options = level_one.get(numeric_key(skill_id), ())
-                key = {"$tuple": [int(part) for part in options[0]]} if len(options) == 1 else skill_id
-                skill = relation("skill", key, label, True)
+                skill = relation("skill", level_one_skill(skill_id), label, True)
                 if skill:
                     links.append(skill)
         return links
@@ -248,6 +255,23 @@ def encounter_index(source, load_rows):
             route = relation("battle_team_routes", row.get("team_battle_type"), "原版组队战斗入口", True)
             if route:
                 links.append(route)
+        if name == "MZB_fengmo":
+            trait = row.get("skill_id")
+            mode = 5551 if trait else 5550
+            refs = [
+                ("battle_team_routes", mode, "单人木桩入口"),
+                ("normal_battle_config", mode, "单人木桩默认规则"),
+                ("team_assist_stage", 10020221 if trait else 10020220, "对应阵容码分类"),
+                ("fengmo_muzhuang_constant", 9 if trait else 8, "通关所需击破部位"),
+            ]
+            if trait:
+                refs.extend([
+                    ("skill", level_one_skill(trait), "木桩增益词条"),
+                    ("fengmo_muzhuang_constant", 5, "白茧等待时限"),
+                    ("monster", 1250179, "白茧（高生命）"),
+                    ("monster", 1250180, "白茧"),
+                ])
+            links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
             for key in regions_by_stage.get(stage_id, ()):
@@ -435,6 +459,10 @@ def encounter_index(source, load_rows):
             if scene_route:
                 entry_kind = "初始场景引擎"
             title = name(row)
+            if table_name == "MZB_fengmo":
+                trait_id = row.get("skill_id")
+                _, trait = table("skill").get(reference_key(level_one_skill(trait_id)), (None, {}))
+                title = " · ".join(filter(None, (entry_kind, title, trait.get("skill_name"))))
             if table_name == "gve_battleinfo":
                 monsters = row.get("monsters", ())
                 boss = monsters[0][0] if monsters and isinstance(monsters[0], list) and monsters[0] else None

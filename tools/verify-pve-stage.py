@@ -19,6 +19,7 @@ def replay(args, runtime, work):
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
+    from tuzhizhu_practice import PRACTICE_MODES, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_player, underworld_stage, underworld_teams
     from yuling_stage import YULING_MODE
     from rune_floor_host import prepare_runtime
@@ -33,6 +34,7 @@ def replay(args, runtime, work):
     retreat = args.mode == RETREAT_MODE
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
+    spider = args.mode in PRACTICE_MODES
     if relay:
         heroes, inventory, actors, rounds = underworld_teams(plan, suits)
     else:
@@ -90,6 +92,13 @@ def replay(args, runtime, work):
         engine, group, member_count = fengmo_yanwu_stage(args.stage)
         if len(fighters) != member_count:
             raise ValueError("The selected roster does not match the original solo Fengmo Yanwu route")
+        group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif spider:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Tsuchigumo practice uses five owned shikigami")
+        engine, stage, group, const = practice_stage(args.stage, args.mode)
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
     elif args.mode == 29:
         from awake_stage import awake_stage
@@ -186,6 +195,8 @@ def replay(args, runtime, work):
         route = "regional-boss-ordinary-scenario" if args.mode == REGION_MODE else "regional-boss-hard-scenario"
     elif yanwu:
         route = "fengmo-yanwu-solo"
+    elif spider:
+        route = "tuzhizhu-practice-solo"
     elif args.mode == 29:
         engine, stage, enemy_ids = awake_stage(args.stage)
         group_id, wave_count = stage["monsterid"], 1
@@ -237,6 +248,8 @@ def replay(args, runtime, work):
 
     def observe_created(entity):
         create_entity(entity)
+        if spider_replay:
+            spider_replay.created(entity)
         model = getattr(entity, "modelName", None)
         if isinstance(model, str):
             filename = model.replace("\\", "/").replace("/", "_").replace(".gim", ".json")
@@ -249,6 +262,7 @@ def replay(args, runtime, work):
     engine.onEntityCreated = observe_created
     regional_replay = RegionalBossReplay(engine, formation, args.region, effective_level, const) if regional else None
     yanwu_replay = FengmoYanwuReplay(engine, group, const) if yanwu else None
+    spider_replay = TsuchigumoPractice(engine, stage, group, const) if spider else None
     verified_waves = set()
     if args.mode == 266:
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
@@ -290,7 +304,7 @@ def replay(args, runtime, work):
         if args.mode == REGION_HARD_MODE:
             formation_matches = (formation_matches and engine.startLevel == args.region["star"]
                                  and engine.condition == args.region["modifierIds"])
-    elif yanwu:
+    elif yanwu or spider:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -317,7 +331,7 @@ def replay(args, runtime, work):
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
 
-    deadline, start = time.monotonic() + (220 if retreat else 130 if relay else 75), engine.now_time()
+    deadline, start = time.monotonic() + (220 if retreat or spider else 130 if relay else 75), engine.now_time()
     selection_checked = False
     equipped_spirit = None
     instructions = None
@@ -332,6 +346,8 @@ def replay(args, runtime, work):
             break
         if yanwu_replay:
             yanwu_replay.update()
+        if spider_replay:
+            spider_replay.update()
         if instructions:
             instructions.update()
         if retreat:
@@ -355,6 +371,8 @@ def replay(args, runtime, work):
             if alias not in pending:
                 continue
             setting = pending.pop(alias)
+            if spider_replay:
+                spider_replay.check_selected(entity)
             if setting:
                 engine.op_setAutoSkill(controller, entity.uid, setting)
                 if controller.autoSkill.get(entity.uid) != setting:
@@ -401,6 +419,8 @@ def replay(args, runtime, work):
         report["fengmoYanwu"] = yanwu_replay.report(completed)
         if instructions:
             report["fengmoYanwu"].update(instructions.report())
+    if spider_replay:
+        report["tuzhizhuPractice"] = spider_replay.report(report["outcome"])
     if retreat:
         report["waveCount"], report["wavesCleared"] = 1, int(outcome == "win")
         report["guildRetreat"] = {**raid_window.report(), "guildMembers": args.guild_members,
@@ -457,13 +477,14 @@ def main():
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from regional_boss_stage import REGION_MODES
     from resource_stage import RESOURCE_MODE
+    from tuzhizhu_practice import PRACTICE_MODES
     from underworld_stage import UNDERWORLD_MODE
     from yuling_stage import YULING_MODE
 
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, *REGION_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, *REGION_MODES, *PRACTICE_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -481,7 +502,8 @@ def main():
         parser.error("--region is required only for a Regional Boss scenario")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
-    faulthandler.dump_traceback_later(240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95, exit=True)
+    faulthandler.dump_traceback_later(240 if args.mode == RETREAT_MODE or args.mode in PRACTICE_MODES else
+                                      150 if args.mode == UNDERWORLD_MODE else 95, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:
         previous = Path.cwd()
         work = Path(directory).resolve()

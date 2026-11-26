@@ -35,7 +35,7 @@
     journey_normalbattle_jingyan: '京畿净化战斗参数 · 经验',
     journey_normalbattle_yuhun: '京畿净化战斗参数 · 御魂',
     journey_normalbattle_juexing: '京畿净化战斗参数 · 觉醒',
-    MZB_fengmo: '逢魔首领',
+    MZB_fengmo: '逢魔木桩练习',
     lbs_world_boss_area: '地域鬼王',
     lbs_world_boss_init: '地域鬼王地图分区',
     lbs_world_boss_type: '地域鬼王普通特殊条件',
@@ -198,7 +198,9 @@
       }
       const order = ['daily', 'guild', 'event', 'battle', 'other'];
       const yanwu = matchesOpeningSource(window.AtlasFengmoYanwu)?window.AtlasFengmoYanwu.routes:{};
-      stage.rows = payload.entries.map(entry => {
+      const practice=matchesOpeningSource(window.AtlasTuzhizhuPractice)?window.AtlasTuzhizhuPractice:null;
+      stage.rows = payload.entries.map(record => {
+        const entry=withPracticeReferences(record,practice);
         const battle = entry.table==='act_team_battle'&&yanwu[entry.refs.find(ref=>ref.table==='pve_stage_data')?.key];
         const title = battle?`逢魔演武·${battle.name}`:entry.title;
         return {...entry,title,search:normalized(
@@ -523,6 +525,44 @@
       battleMode:source.battleMode,waveCount:1,label:`逢魔演武·${entry.name}个人伤害`,version:source.resourceVersion,
       codeStageId:scene?.actors===1&&scene.shikigami===entry.memberCount?entry.codeStageId:null,codeLabel:scene?.name});
     return true;
+  }
+
+  function showTuzhizhuPractice(destination,entry,groups){
+    const source=window.AtlasTuzhizhuPractice;
+    if(entry.table!=='MZB_fengmo'||!matchesOpeningSource(source))return;
+    const stageId=Number(entry.key),config=groups[0].row,trait=source.traits[stageId];
+    if(trait===undefined||config?.mook_jong_id!==stageId||config.skill_id!==trait)return;
+    const battleMode=trait?5551:5550,mode=source.modes[battleMode];
+    const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===mode.groupId);
+    const traitEntry=groups.find(group=>group.ref.table==='skill'&&group.ref.label==='木桩增益词条')?.row;
+    const rules=groups.find(group=>group.ref.table==='normal_battle_config')?.row;
+    if(mode.groupId!==config.battle_id||mode.bossId!==config.boss_id||formation?.row?.resindex!==source.sceneId||
+       formation.waves[0]?.length!==4||rules?.battleMode!==battleMode||rules.halt_time!==3600||trait&&!traitEntry?.skill_name)return;
+    destination.append(node('p','单人木桩 · 一位阴阳师和五位自有式神 · 击破本体、钳、背、脚后结算通关','caption'));
+    if(trait)destination.append(node('p',`词条 ${traitEntry.skill_name} · 原版对白茧的处理会影响部位恢复。`,'caption'));
+    const scene=DATA.gameConfig.stages[mode.codeStageId];
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:mode.groupId,memberCount:5,battleMode,waveCount:1,openingSpeed:mode.bossSpeed,
+      label:trait?`极·土蜘蛛木桩 · ${traitEntry.skill_name}`:'普通土蜘蛛木桩',version:source.resourceVersion,
+      codeStageId:scene?.actors===1&&scene.shikigami===5?mode.codeStageId:null,
+      codeLabel:trait?`极土蜘蛛木桩·${traitEntry.skill_name}`:'土蜘蛛木桩'});
+  }
+
+  function withPracticeReferences(entry,source){
+    if(entry.table!=='MZB_fengmo'||!source)return entry;
+    const trait=source.traits[entry.key];
+    if(trait===undefined||entry.refs.some(ref=>ref.table==='normal_battle_config'&&[5550,5551].includes(ref.key)))return entry;
+    // Previous catalogs have the same raw tables but omitted practice-specific links.
+    const mode=trait?5551:5550,kind='逢魔木桩练习';
+    const extras=[
+      ['normal_battle_config',mode,'单人木桩默认规则'],
+      ['battle_team_routes',mode,'单人木桩入口'],
+      ['team_assist_stage',source.modes[mode].codeStageId,'对应阵容码分类'],
+      ['fengmo_muzhuang_constant',trait?9:8,'通关所需击破部位'],
+    ];
+    if(trait)extras.push(['skill',{$tuple:[trait,1,-1]},'木桩增益词条'],
+      ['fengmo_muzhuang_constant',5,'白茧等待时限'],['monster',1250179,'白茧（高生命）'],['monster',1250180,'白茧']);
+    const title=[kind,trait?'极·土蜘蛛':'土蜘蛛',source.traitNames[trait]].filter(Boolean).join(' · ');
+    return {...entry,title,kind,refs:[...entry.refs,...extras.map(([table,key,label])=>({table,key,label,found:true}))]};
   }
 
   const regionalRuleFields = {
@@ -937,6 +977,7 @@
     }
     showYulingEncounter(destination,entry,groups[0]);
     showGuildHunt(destination,entry,groups[0]);
+    showTuzhizhuPractice(destination,entry,groups);
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
@@ -944,7 +985,9 @@
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
       const regional=entry.refs.some(ref=>ref.table==='lbs_world_boss_area');
-      if(window.AtlasResourceEncounters.isResourceStage(row))showResourceEncounter(destination,stageId,row,formation);
+      const practice=Object.values(window.AtlasTuzhizhuPractice?.modes??{}).some(mode=>mode.groupId===stageId);
+      if(practice)destination.append(node('p','请在「逢魔木桩练习」中选择普通入口或极词条，再按对应原版引擎复跑。','caption'));
+      else if(window.AtlasResourceEncounters.isResourceStage(row))showResourceEncounter(destination,stageId,row,formation);
       else if (regional) destination.append(node('p','此编组供地域鬼王入口使用。离线演练还需要该玩法下发的实际参数。','caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&

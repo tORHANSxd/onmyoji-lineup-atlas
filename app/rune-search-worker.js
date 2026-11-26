@@ -1,4 +1,4 @@
-importScripts('solver.js','core.js','rune-openings.js','game-config.js','fengmo-yanwu.js','rune-search.js');
+importScripts('solver.js','core.js','rune-openings.js','game-config.js','fengmo-yanwu.js','tuzhizhu-practice.js','rune-search.js');
 
 onmessage=({data:{account,gameConfig,roster,effects,alternatives,dungeonId,pveMemberCount,pveOpeningSpeed,pveBattleMode,pveActorId}})=>{
  try{

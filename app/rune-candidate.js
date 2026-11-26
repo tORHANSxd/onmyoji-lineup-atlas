@@ -95,6 +95,7 @@ function pveGoalMet(report,battleMode){
   return Number.isSafeInteger(damage)&&damage>0;
  }
  if(battleMode===528)return report.experience?.timedOut===false&&report.experience.requiredKills===30&&report.experience.kills===30;
+ if([5550,5551].includes(battleMode))return report.tuzhizhuPractice?.partsRemaining?.length===0;
  return report.wavesCleared===report.waveCount;
 }
 

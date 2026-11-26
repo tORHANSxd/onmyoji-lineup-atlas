@@ -1,9 +1,10 @@
 (function(root,factory){
  const common=typeof module==='object'&&module.exports;
  const api=factory(common?require('./core.js'):root.AtlasCore,common?require('./game-config.js'):root.AtlasGame,
-  common?require('./fengmo-yanwu.js'):root.AtlasFengmoYanwu);
+  common?require('./fengmo-yanwu.js'):root.AtlasFengmoYanwu,
+  common?require('./tuzhizhu-practice.js'):root.AtlasTuzhizhuPractice);
  if(common)module.exports=api;else root.AtlasRuneSearch=api;
-})(globalThis,function(C,G,yanwu){
+})(globalThis,function(C,G,yanwu,practice){
 'use strict';
 
 // 神罚的开场属性来自同版本的 RuneFbEngine。定位按客户端技能说明选取，
@@ -63,6 +64,12 @@ const guildHuntStrategies=[{name:'清小麒麟与首领输出',roles:clearAdds},
  {name:'拉条与分裂清场',roles:advanceAndClear}];
 const guildRetreatStrategies=[{name:'清小怪与首领输出',roles:clearAdds},dualDamageHeal,
  {name:'拉条与范围清怪',roles:advanceAndClear}];
+const spiderStrategies=[
+ {name:'范围伤害与双增伤',roles:['accelerate','lightDamage','amplify','orbs','markAmp']},
+ {name:'双范围输出与续航',roles:['lightDamage','fastFinisher','orbs','criticalHeal','markAmp']},
+ {name:'拉条、群攻与收尾',roles:['accelerate','lightDamage','fastFinisher','orbs','support']},
+ sustain,
+];
 const limit=6;
 // Check the observed losing seed before the two long fights found in the full-domain audit.
 const baseSampleSeeds=Object.freeze([0,1,2,3,7,42]);
@@ -321,6 +328,7 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
    {name:'拉条供火与治疗',roles:['accelerate','orbs','lightDamage','healer']}],
   battleMode===306||battleMode===yanwu.battleMode?[...guildRetreatStrategies,hun13Pace,sustain]:
    scoring?[...guildHuntStrategies,hun13Pace,sustain]:
+   Object.hasOwn(practice.modes,battleMode)?spiderStrategies:
    battleMode===267?[...yulingStrategies,hun13Pace,turnAdvance]:[hun13Pace,hun13Hold,groupBuff,turnAdvance,openingDamage,sustain],
   battleMode===yanwu.battleMode?[
    {name:'双输出与双增伤',roles:['accelerate','orbs','bossMark','amplify','lightDamage','bossDamage']},
