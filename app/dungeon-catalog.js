@@ -36,6 +36,11 @@
     journey_normalbattle_yuhun: '京畿净化战斗参数 · 御魂',
     journey_normalbattle_juexing: '京畿净化战斗参数 · 觉醒',
     MZB_fengmo: '逢魔木桩练习',
+    event4: '逢魔实战首领',
+    event4_honor_limit: '极逢魔实战门槛',
+    event4_timescore: '逢魔用时积分',
+    event4_rankscore: '逢魔名次积分',
+    event4_damage_rank2: '极逢魔名次奖励',
     lbs_world_boss_area: '地域鬼王',
     lbs_world_boss_init: '地域鬼王地图分区',
     lbs_world_boss_type: '地域鬼王普通特殊条件',
@@ -199,7 +204,9 @@
       const order = ['daily', 'guild', 'event', 'battle', 'other'];
       const yanwu = matchesOpeningSource(window.AtlasFengmoYanwu)?window.AtlasFengmoYanwu.routes:{};
       const practice=matchesOpeningSource(window.AtlasTuzhizhuPractice)?window.AtlasTuzhizhuPractice:null;
-      stage.rows = payload.entries.map(record => {
+      const live=window.AtlasFengmoLive;
+      const liveEntries=matchesOpeningSource(live)?live.encounters(new Set(snapshot.tables.filter(table=>table.status==='decoded').map(table=>table.name))):[];
+      stage.rows = [...payload.entries,...liveEntries].map(record => {
         const entry=withPracticeReferences(record,practice);
         const battle = entry.table==='act_team_battle'&&yanwu[entry.refs.find(ref=>ref.table==='pve_stage_data')?.key];
         const title = battle?`逢魔演武·${battle.name}`:entry.title;
@@ -241,7 +248,7 @@
     el('encounter-list').replaceChildren(...records.map((entry, index) => {
       const button = node('button', entry.title || titles[entry.table] || entry.kind, 'secondary');
       const entrance=entry.table==='dungeon_challenge_series'&&entranceNames[secretFloors[entry.key]?.entrance];
-      const metadata=[encounterKind(entry),keyText(entry.key),entrance].filter(Boolean).join(' · ');
+      const metadata=[encounterKind(entry),encounterKeyLabel(entry),entrance].filter(Boolean).join(' · ');
       button.append(node('small',metadata));
       button.type = 'button';
       button.dataset.index = start + index;
@@ -426,7 +433,11 @@
   }
 
   function encounterKind(entry) {
-    return entry.kind==='阴界之门入口'||entry.table==='pve_stage_data'&&entry.family==='daily'?entry.kind:titles[entry.table]||entry.kind;
+    return entry.fengmoLive||entry.kind==='阴界之门入口'||entry.table==='pve_stage_data'&&entry.family==='daily'?entry.kind:titles[entry.table]||entry.kind;
+  }
+
+  function encounterKeyLabel(entry){
+    return entry.fengmoLive?`事件 ${entry.fengmoLive.eventId}`:keyText(entry.key);
   }
 
   function awakeOpening(entry,groups) {
@@ -525,6 +536,82 @@
       battleMode:source.battleMode,waveCount:1,label:`逢魔演武·${entry.name}个人伤害`,version:source.resourceVersion,
       codeStageId:scene?.actors===1&&scene.shikigami===entry.memberCount?entry.codeStageId:null,codeLabel:scene?.name});
     return true;
+  }
+
+  function liveScoreTable(label,columns,rows){
+    const detail=node('details'),table=node('table'),head=node('thead'),heading=node('tr'),body=node('tbody');
+    for(const text of columns){
+      const column=node('th',text);
+      column.scope='col';
+      heading.append(column);
+    }
+    head.append(heading);
+    for(const row of rows){
+      const line=node('tr');
+      line.append(...row.map(value=>node('td',String(value))));
+      body.append(line);
+    }
+    table.append(head,body);
+    detail.append(node('summary',label),table);
+    return detail;
+  }
+
+  function showFengmoLive(destination,entry,groups){
+    const scenario=entry.fengmoLive;
+    if(!scenario)return;
+    const row=(table,key)=>groups.find(group=>group.ref.table===table&&(key===undefined||group.ref.key===key))?.row;
+    const event=row('event4'),schedule=row('events',scenario.eventId);
+    const formation=row('BattleMonstersInfo',scenario.stage),route=row('battle_mode_routes',scenario.mode);
+    if(event?.id!==scenario.eventParam||schedule?.param!==scenario.eventParam||formation?.ID!==scenario.stage||
+       scenario.mode&&route?.battleMode!==scenario.mode)return;
+    const block=node('section','','encounter-source');
+    const days=schedule.rate_extra?.flatMap(([day,weight])=>weight>0&&day>=0&&day<7?['星期'+'一二三四五六日'[day]]:[])??[];
+    block.append(node('h4','实战入场与计分'),
+      node('p',`原表轮换 ${days.join('、')} · 阴阳师 ${schedule.level} 级 · 客户端人数上限 ${event.limit_user}`,'caption'),
+      node('p',`集结模式 ${scenario.rally}${route?` · 战斗模式 ${route.battleMode} · ${route.scene_engine??route.scene_class}`:''}`,'caption'),
+      node('p','联机战斗提供共享生命、实时名次和结算。','caption'));
+    const byDamage=scenario.soil&&!scenario.hard,extremeSoil=scenario.hard&&scenario.soil;
+    const bands=AtlasFengmoLive.ratingBands(event,row('Constant',10761)?.value,scenario);
+    const rule=byDamage?'普通土蜘蛛按个人伤害比较评级门槛。':
+      '客户端把个人名次积分与队伍用时积分相加。用时按严格大于战报秒数的首档取分；名次先按「名次 × 100 ÷ 总人数」向下取整，再取严格大于该值的首档。';
+    block.append(node('p',rule));
+    if(extremeSoil){
+      const minimum=row('Constant',10760)?.value?.[0];
+      if(Number.isFinite(minimum))block.append(node('p',`极土蜘蛛个人伤害低于 ${openingNumber.format(minimum)} 时，两项积分均为 0。`));
+    }
+    if(bands.length)block.append(liveScoreTable('评级门槛',['评级档位',byDamage?'个人伤害下限':'积分下限'],
+     bands.map(({grade,minimum})=>[grade,openingNumber.format(minimum)])));
+    const [rate]=row('Constant',228)?.value??[],[,cap]=row('Constant',209)?.value??[];
+    const [step,boost,max]=row('Constant',3643)?.value??[];
+    if([rate,cap,step,boost,max].every(Number.isFinite)){
+      block.append(node('p',`客户端金币预览按 ${rate} × (√(个人伤害 + 2,500) − 50) 取整，基础上限 ${openingNumber.format(cap)}。同寮人数扣除本人后，每 ${step} 人增加 ${openingNumber.format(boost*100)}%，最高 ${openingNumber.format(max*100)}%。`,'caption'));
+    }
+    if(scenario.hard)block.append(node('p','极词条按服务器周序号与星期索引之和对轮换池长度取余。下方可逐条查看词条技能。','caption'));
+    const tables=[
+     ...(!byDamage?[['event4_timescore','队伍用时积分表',['秒数档位','积分']],
+      ['event4_rankscore','个人名次积分表',['名次百分比档位','积分']]]:[]),
+     ...(scenario.hard?[['event4_damage_rank2','个人名次奖励表',['奖档','边界','奖励编号']]]:[]),
+    ];
+    if(tables.length){
+      const details=node('details'),body=node('div');
+      details.append(node('summary','查看客户端积分与奖励表'),body);
+      details.addEventListener('toggle',async()=>{
+        if(!details.open||body.hasChildNodes())return;
+        body.textContent='正在读取计分表…';
+        try{
+          const decoded=await Promise.all(tables.map(([name])=>api.table(name).then(JSON.parse)));
+          const names=['特赏·一','特赏·二','特赏·三','大赏','次赏','中赏','末赏'];
+          const cards=tables.map(([name,label,columns],index)=>{
+            const rows=decoded[index].slice().sort(([a],[b])=>a-b);
+            return liveScoreTable(label,columns,rows.map(([key,config])=>name!=='event4_damage_rank2'?[key,config.score]:
+             [names[key-1],key<=3?`第 ${key} 名`:`${openingNumber.format(config.right*100)}%`,config['reward_id_'+scenario.eventId]]));
+          });
+          body.replaceChildren(...cards);
+        }catch(error){body.textContent='计分表读取失败。'+error.message;}
+      });
+      block.append(details);
+    }
+    destination.append(block);
   }
 
   function showTuzhizhuPractice(destination,entry,groups){
@@ -946,7 +1033,7 @@
       }));
     }
     if (token !== stage.token) return;
-    destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + keyText(entry.key), 'caption'));
+    destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
     const awake=awakeOpening(entry,groups);
     if (awake) {
       const codeScene=DATA.gameConfig.stages[awake.codeStageId];
@@ -977,6 +1064,7 @@
     }
     showYulingEncounter(destination,entry,groups[0]);
     showGuildHunt(destination,entry,groups[0]);
+    showFengmoLive(destination,entry,groups);
     showTuzhizhuPractice(destination,entry,groups);
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
     showRegionalBoss(destination,entry,groups,monsters);
@@ -987,6 +1075,7 @@
       const regional=entry.refs.some(ref=>ref.table==='lbs_world_boss_area');
       const practice=Object.values(window.AtlasTuzhizhuPractice?.modes??{}).some(mode=>mode.groupId===stageId);
       if(practice)destination.append(node('p','请在「逢魔木桩练习」中选择普通入口或极词条，再按对应原版引擎复跑。','caption'));
+      else if(window.AtlasFengmoLive?.isLiveStage(stageId))destination.append(node('p','此编组用于逢魔实战。集结、评级与联机战报条件见逢魔实战入口。','caption'));
       else if(window.AtlasResourceEncounters.isResourceStage(row))showResourceEncounter(destination,stageId,row,formation);
       else if (regional) destination.append(node('p','此编组供地域鬼王入口使用。离线演练还需要该玩法下发的实际参数。','caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&

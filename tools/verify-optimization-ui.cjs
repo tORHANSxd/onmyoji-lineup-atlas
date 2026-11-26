@@ -150,6 +150,32 @@ async function main(){
   assert.match(await ui('document.getElementById("client-dungeons-detail").textContent'),/首领机制.*不能被复活/s);
   await ui('document.getElementById("client-dungeons").open=false');
  });
+ if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
+  const panel='$("client-dungeons-encounter-detail")';
+  const {encounters}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  assert.equal(entries.length,12);
+  for(const entry of entries){
+   const query=entry.title.replace(' · ',' ');
+   await ui(`$('client-dungeons').open=true;$('client-dungeons-mode-encounters').click();qaEncounterInput('daily',${JSON.stringify(query)})`);
+   await until(`${panel}.textContent.includes("实战入场与计分")`);
+   const info=await ui(panel+'.textContent');
+   assert.ok(info.includes(entry.title)&&info.includes(`集结模式 ${entry.fengmoLive.rally}`));
+   assert.ok(info.includes(`事件 ${entry.fengmoLive.eventId}`));
+   assert.ok(info.includes('客户端玩法说明')&&info.includes(String(entry.fengmoLive.stage)));
+   assert.equal(await ui(panel+'.querySelector("[data-pve-stock]")'),null);
+  }
+  await ui('qaEncounterInput("daily","逢魔实战 稀有·土蜘蛛")');
+  await until(panel+'.textContent.includes("按个人伤害比较评级门槛")');
+  assert.match(await ui(panel+'.textContent'),/星期三.*个人伤害下限.*2,000,000/s);
+  await ui('qaEncounterInput("daily","逢魔实战 极·土蜘蛛")');
+  await until(panel+'.textContent.includes("极土蜘蛛个人伤害低于")');
+  await ui(`[...${panel}.querySelectorAll('summary')].find(el=>el.textContent==="查看客户端积分与奖励表").click()`);
+  await until(panel+'.textContent.includes("个人名次奖励表")');
+  assert.match(await ui(panel+'.textContent'),/低于 30,000 时，两项积分均为 0.*60,000.*队伍用时积分表.*个人名次积分表.*71159/s);
+  await ui(panel+'.scrollIntoView({block:"start",behavior:"instant"})');
+  await capture('client-fengmo-live');
+  await ui('$("client-dungeons").open=false');
+ });
  if(catalog?.index.encounters&&JSON.parse(await readEncounters(catalog)).entries.some(entry=>entry.table==='story_room')){
   await check('按原版路径从探索入口跳转战斗点和主线单场战斗',async()=>{
    await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click();qaEncounterInput("daily","阴阳之理 地图探索入口")');

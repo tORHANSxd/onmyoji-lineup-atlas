@@ -13,6 +13,7 @@ const yulingOpenings=require('../app/yuling-openings.js');
 const guildHuntOpenings=require('../app/guild-hunt-openings.js');
 const guildRetreatOpenings=require('../app/guild-retreat-openings.js');
 const fengmoYanwu=require('../app/fengmo-yanwu.js');
+const fengmoLive=require('../app/fengmo-live.js');
 const tuzhizhuPractice=require('../app/tuzhizhu-practice.js');
 const resourceEncounters=require('../app/resource-encounters.js');
 const {firstExperience}=resourceEncounters;
@@ -280,6 +281,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===fengmoYanwu.battleMode&&(fengmoYanwu.resourceVersion!==resourceVersion||stageId!==groupId||
       plan.members.length!==fengmoYanwu.routes[stageId]?.memberCount))throw Error('当前配装与逢魔演武单人上阵人数不一致');
    if(battleMode===3&&Object.hasOwn(fengmoYanwu.routes,stageId))throw Error('逢魔演武需要使用原版活动计分入口');
+   if(battleMode===3&&fengmoLive.isLiveStage(stageId))throw Error('逢魔实战需要原版联机入场资料');
    if(battleMode===3&&Object.values(tuzhizhuPractice.modes).some(mode=>mode.groupId===stageId))
     throw Error('土蜘蛛木桩需要使用原版单人练习入口');
    const spider=tuzhizhuPractice.modes[battleMode],trait=tuzhizhuPractice.traits[stageId];

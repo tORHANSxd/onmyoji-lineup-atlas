@@ -6,6 +6,17 @@ const os = require('node:os');
 const { createHash } = require('node:crypto');
 const { gzipSync } = require('node:zlib');
 const { readIndex, readTable, readEncounters, readRecords } = require('../desktop/dungeon-catalog.cjs');
+const {ratingBands}=require('../app/fengmo-live.js');
+
+test('普通土蜘蛛从伤害第一档计级，其余逢魔使用对应积分表',()=>{
+  const event={reward:[[0,0],[30000,0],[300000,0]]};
+  assert.deepEqual(ratingBands(event,null,{hard:false,soil:true}),
+    [{grade:1,minimum:0},{grade:2,minimum:30000},{grade:3,minimum:300000}]);
+  assert.deepEqual(ratingBands(event,[0,2000,2500],{hard:true,soil:true}),
+    [{grade:1,minimum:0},{grade:2,minimum:2000},{grade:3,minimum:2500}]);
+  const other={reward:[[30000,0],[2000,0],[2500,0]]};
+  assert.deepEqual(ratingBands(other,null,{hard:true,soil:false}),[{grade:2,minimum:2000},{grade:3,minimum:2500}]);
+});
 
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'atlas-dungeon-'));
