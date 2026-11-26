@@ -173,7 +173,7 @@
  const mirage={
   stageId:25015,battleMode:3013,codeStageId:10020218,sceneId:40021,boss:9991106,general:9991107,paper:9991112,
   memberCount:5,windowLimit:1200,defaultWindow:600,defaultGeneralSeconds:10,maxGeneralSeconds:120,
-  positions:[2,3,4,5,6],defaultTruePositions:[2,3],burstSeconds:80,
+  positions:[2,3,4,5,6],defaultTruePositions:[2,3],burstSeconds:80,mirrorFallback:9991107,
   phases:{normal:'初始形态',elite:'蜃气楼大将',house:'秘宝小纸人',mirror:'海市蜃楼',burst:'蜃气勘破',crab:'蜃气楼上浮'},
   engine:{name:'ShenQiLouEngine',route:'mirage-local-team',
    sha256:'518b9c64884f989659ed828c66a397989958fc4e067e3c540799c5b87074f3dc'},
@@ -183,6 +183,17 @@
     Number.isSafeInteger(generalSeconds)&&generalSeconds>=0&&generalSeconds<=this.maxGeneralSeconds&&
     Array.isArray(truePositions)&&truePositions.length===2&&truePositions[0]!==truePositions[1]&&
     Array.from(truePositions).every(position=>this.positions.includes(position));
+  },
+ };
+ const mirageX={
+  ...mirage,stageId:25019,battleMode:1024,codeStageId:10020219,boss:4991106,general:4991107,paper:4991112,
+  defaultWindow:1200,traits:rotationTraits,defaultTrait:63402,weeklyDefault:480,weeklyLimit:1200,
+  engine:{name:'ShenQiLouXBattleEngine',route:'mirage-x-local-team',
+   sha256:'2823f01d5a8df937af882e1bcbab9fe58ebf12c3512193445fc88730e3bc5bf9'},
+  validSettings(settings){
+   const {trait,weeklySeconds,...phase}=settings??{};
+   return mirage.validSettings(phase)&&this.traits.some(row=>row.id===trait)&&
+    Number.isSafeInteger(weeklySeconds)&&weeklySeconds>=1&&weeklySeconds<=this.weeklyLimit;
   },
  };
  const songstress={
@@ -274,6 +285,17 @@
      ...[[4011,'镜像属性倍率'],[4012,'镜像属性修正'],[4013,'蜃气勘破时长'],[4021,'缺少镜像模板时的大将']].map(([id,label])=>ref('Constant',id,label)),
      ...[[750,'蜃气勘破效果'],[758,'海市蜃楼'],[759,'召唤及镜像流程']].map(([id,label])=>ref('skill',{$tuple:[id,1,-1]},label)));
    }
+   if(route.stage===mirageX.stageId){
+    refs.push(...[[1100,'极版大将召唤编组'],[1200,'极版秘宝小纸人编组'],[1300,'极版镜像共享生命模板']]
+     .map(([id,label])=>ref('dizhennianx_stage',{$tuple:[id,1]},label)),
+     ...[[4011,'镜像属性倍率'],[4012,'镜像属性修正'],[4013,'蜃气勘破时长'],[4021,'缺少镜像模板时的大将'],
+      [10900,'共享生命参考均时']].map(([id,label])=>ref('Constant',id,label)),
+     ...[[748,1,'极版钳击'],[750,1,'蜃气勘破'],[754,2,'极版蜃气爆弹'],[759,2,'极版召唤及镜像流程'],
+      [760,1,'护盾存在时的钳鳌重击'],[761,1,'蜃雾笼罩'],[762,1,'蜃气升腾'],[770,2,'极版大将挥砍']]
+      .map(([id,level,label])=>ref('skill',{$tuple:[id,level,-1]},label)),
+     ...[[7591,'误杀镜像后的攻击强化'],[7592,'误杀镜像后的暴击抵抗'],[7611,'蜃雾护盾']]
+      .map(([id,label])=>ref('buff',{$tuple:[id,1]},label)));
+   }
    if(route.stage===songstress.stageId){
     refs.push(...songstress.blackMaids.map(id=>ref('monster',id,'第二阶段黑衣侍女')),
      ...[[774,'黑衣侍女余血惩罚'],[779,'原版阶段控制'],[783,'白衣侍女击败增益']].map(([id,label])=>ref('skill',{$tuple:[id,1,-1]},label)),
@@ -310,5 +332,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,mirageX,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal};
 });

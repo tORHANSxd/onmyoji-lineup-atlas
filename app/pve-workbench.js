@@ -7,7 +7,7 @@
  const ghostKingTower=AtlasDevilFeast.tower;
  const laolao=AtlasDevilFeast.laolao;
  const fusion=AtlasDevilFeast.fusion;
- const {duskWraith:dusk,songstress:song,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=AtlasFengmoLive;
+ const {duskWraith:dusk,songstress:song,mirage,mirageX,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=AtlasFengmoLive;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -211,14 +211,17 @@
    pane.songWindow.setAttribute('aria-invalid',String(!songReady));
   }
   const mirageSettings=pane.mirageWindow?{windowSeconds:pane.mirageWindow.valueAsNumber,
-   generalSeconds:pane.mirageGeneral.valueAsNumber,truePositions:pane.miragePositions.map(input=>Number(input.value))}:null;
-  const mirageReady=!mirageSettings||mirage.validSettings(mirageSettings);
+   generalSeconds:pane.mirageGeneral.valueAsNumber,truePositions:pane.miragePositions.map(input=>Number(input.value)),
+   ...(pane.mirageWeekly?{weeklySeconds:pane.mirageWeekly.valueAsNumber,trait:Number(pane.mirageTrait.value)}:{})}:null;
+  const mirageSource=pane.mirageWeekly?mirageX:mirage;
+  const mirageReady=!mirageSettings||mirageSource.validSettings(mirageSettings);
   pane.mirageSettings=mirageReady?mirageSettings:null;
   if(mirageSettings){
-   for(const input of [pane.mirageWindow,pane.mirageGeneral,...pane.miragePositions])input.disabled=blocked;
-   for(const input of [pane.mirageWindow,pane.mirageGeneral])input.setAttribute('aria-invalid',String(!input.validity.valid));
    const repeated=new Set(mirageSettings.truePositions).size!==2;
-   for(const input of pane.miragePositions)input.setAttribute('aria-invalid',String(repeated));
+   for(const input of [pane.mirageWindow,pane.mirageGeneral,...pane.miragePositions,pane.mirageWeekly,pane.mirageTrait].filter(Boolean)){
+    input.disabled=blocked;
+    input.setAttribute('aria-invalid',String(!input.validity.valid||repeated&&pane.miragePositions.includes(input)));
+   }
   }
   const catfishSettings=pane.catfishWindow?{windowSeconds:pane.catfishWindow.valueAsNumber,armorStacks:pane.catfishArmor.valueAsNumber,
    otherPlayers:pane.catfishPlayers.valueAsNumber,otherBreaks:pane.catfishBreaks.valueAsNumber,
@@ -341,7 +344,8 @@
    !fusionReady?'请核对合魂共享生命和计分时长。':
    !duskReady?'时长须为 1 至 1200 秒，乐律顺序须包含 2 至 6 号位且各出现一次。':
    !songReady?`计分时长须为 1 至 ${song.windowLimit} 秒的整数。`:
-   !mirageReady?'请填写有效的计分时长和入场秒数，并选两个不同的真镜像位置。':
+   !mirageReady?(pane.mirageWeekly?'请检查计分时长、入场秒数、区服均时和突变，并选两个不同的真镜像位置。':
+    '请填写有效的计分时长和入场秒数，并选两个不同的真镜像位置。'):
    !catfishReady?(pane.catfishWeekly?'请核对时长、皮糙肉厚层数、均时、突变效果和鸟居人数。':
     '请核对时长、减伤层数和人数，其他队伍的击破人数不可超过参战人数。'):
    !skeletonReady?(pane.skeletonWeekly?'请选择两个不同的真部下位置，并检查时长、均时、突变效果和纸人档位。':
@@ -379,6 +383,7 @@
  }
 
  function mount(target,config){
+  const mirageSource=config.mirageX?mirageX:mirage;
   const catfishSource=config.catfishX?catfishX:catfish;
   const skeletonSource=config.skeletonX?skeletonX:skeleton;
   const longcheSource=config.longcheX?longcheX:longche;
@@ -390,7 +395,7 @@
    <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子${config.scoreWindowSeconds?
     ` · ${config.retreat||config.qilingWindow||config.creviceWindow||config.ghostSettings||config.historicalGhostWindow?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
    <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive||config.spiderNormal?' id="pve-spider-live-status"':
-    config.skeleton?' id="pve-skeleton-status"':config.catfish?' id="pve-catfish-status"':''} data-pve-status role="status"></p>
+    config.skeleton?' id="pve-skeleton-status"':config.catfish?' id="pve-catfish-status"':config.mirage?' id="pve-mirage-status"':''} data-pve-status role="status"></p>
    <div class="actions">
     <label class="pve-lineup-field">已知阵容 <select data-pve-lineup></select></label>
     ${config.trialEligible?`<label class="pve-lineup-field">试炼式神位置 <select data-pve-trial>
@@ -399,7 +404,8 @@
     </select></label>`:''}
     <button class="secondary" type="button"${config.longche?' aria-describedby="pve-longche-status"':
     config.spiderLive||config.spiderNormal?' aria-describedby="pve-spider-live-status"':
-    config.skeleton?' aria-describedby="pve-skeleton-status"':config.catfish?' aria-describedby="pve-catfish-status"':''} data-pve-start>开始离线模拟</button>
+    config.skeleton?' aria-describedby="pve-skeleton-status"':config.catfish?' aria-describedby="pve-catfish-status"':
+    config.mirage?' aria-describedby="pve-mirage-status"':''} data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
    ${config.journeyHard?`<div class="actions">
@@ -539,10 +545,10 @@
      <p class="caption">本队按一位参战者计入。总击破比例达到 80% 时，地震鲶冲天失败。</p>
     </details>
    </fieldset>`:''}
-   ${config.mirage?`<fieldset class="pve-reserve"><legend>蜃气楼模拟条件</legend>
+   ${config.mirage?`<fieldset class="pve-reserve"><legend>${config.mirageX?'极·':''}蜃气楼模拟条件</legend>
     <div class="actions">
      <label class="pve-lineup-field">本地计分时长（秒）
-      <input data-pve-mirage-window type="number" min="1" max="${mirage.windowLimit}" step="1" value="${mirage.defaultWindow}" required>
+      <input data-pve-mirage-window type="number" min="1" max="${mirageSource.windowLimit}" step="1" value="${mirageSource.defaultWindow}" required>
      </label>
      <label class="pve-lineup-field">大将入场（每轮第几秒）
       <input data-pve-mirage-general type="number" min="0" max="${mirage.maxGeneralSeconds}" step="1" value="${mirage.defaultGeneralSeconds}" required>
@@ -551,6 +557,13 @@
       <select data-pve-mirage-position>${mirage.positions.map(position=>
        `<option value="${position}" ${position===initial?'selected':''}>${position} 号位</option>`).join('')}</select>
      </label>`).join('')}
+     ${config.mirageX?`<label class="pve-lineup-field">本场突变效果
+      <select data-pve-mirage-trait required>${mirageX.traits.map(({id,label})=>
+       `<option value="${id}" ${id===mirageX.defaultTrait?'selected':''}>${label}</option>`).join('')}</select>
+     </label>
+     <label class="pve-lineup-field">区服上周平均用时（秒）
+      <input data-pve-mirage-weekly type="number" min="1" max="${mirageX.weeklyLimit}" step="1" value="${mirageX.weeklyDefault}" required>
+     </label>`:''}
     </div>
    </fieldset>`:''}
    ${config.songstress?`<label class="pve-lineup-field">本地计分时长（秒）
@@ -683,6 +696,7 @@
    duskWindow:part('dusk-window'),duskMusic:part('dusk-music'),
    songWindow:part('song-window'),
    mirageWindow:part('mirage-window'),mirageGeneral:part('mirage-general'),miragePositions:all('mirage-position'),
+   mirageWeekly:part('mirage-weekly'),mirageTrait:part('mirage-trait'),
    catfishWindow:part('catfish-window'),catfishArmor:part('catfish-armor'),
    catfishPlayers:part('catfish-players'),catfishBreaks:part('catfish-breaks'),
    catfishWeekly:part('catfish-weekly'),catfishTrait:part('catfish-trait'),
@@ -703,7 +717,7 @@
   pane.start.onclick=()=>void run();
   for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
-   ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,
+   ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,pane.mirageTrait,
    pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.longcheTrait,
    ...pane.longcheOrder,pane.spiderLiveTrait,pane.spiderNormalWeakPart].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
@@ -711,7 +725,7 @@
   };
   for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
-   pane.mirageWindow,pane.mirageGeneral,
+   pane.mirageWindow,pane.mirageGeneral,pane.mirageWeekly,
    pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,pane.catfishWeekly,
    pane.skeletonWindow,pane.skeletonWeekly,pane.longcheWindow,pane.longcheRepair,pane.longcheWeekly,pane.spiderLiveWindow,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{

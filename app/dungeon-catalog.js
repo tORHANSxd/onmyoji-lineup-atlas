@@ -950,7 +950,7 @@
       block.append(details);
     }
     destination.append(block);
-    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=source;
+    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,mirageX,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=source;
     const stage=row('pve_stage_data',String(scenario.stage));
     if(scenario.stage===spiderNormal.stageId&&scenario.mode===spiderNormal.battleMode&&route?.scene_engine===spiderNormal.engine.name&&
         stage?.groupid===spiderNormal.stageId&&stage.shishentotal===spiderNormal.memberCount&&formation.resindex===spiderNormal.sceneId){
@@ -1006,13 +1006,16 @@
         catfish:true,catfishX:scenario.hard,codeStageId:code?.actors===1&&code.shikigami===fish.memberCount?fish.codeStageId:null,codeLabel:code?.name});
       return;
     }
-    if(scenario.stage===mirage.stageId&&scenario.mode===mirage.battleMode&&route?.scene_engine===mirage.engine.name&&
-        stage?.groupid===mirage.stageId&&stage.shishentotal===mirage.memberCount&&formation.resindex===mirage.sceneId){
-      const code=DATA.gameConfig.stages[mirage.codeStageId];
-      destination.append(node('p','单队从满血开战。原版引擎召唤大将和纸人，并按本队式神生成镜像。大将入场时间和真镜像位置是本地模拟条件。','caption'));
-      window.AtlasPveWorkbench?.mount(destination,{stageId:mirage.stageId,groupId:mirage.stageId,version:source.resourceVersion,
-        battleMode:mirage.battleMode,memberCount:mirage.memberCount,waveCount:1,label:'稀有·蜃气楼',mirage:true,
-        codeStageId:code?.actors===1&&code.shikigami===mirage.memberCount?mirage.codeStageId:null,codeLabel:code?.name});
+    const mirageFight=scenario.hard?mirageX:mirage;
+    if(scenario.stage===mirageFight.stageId&&scenario.mode===mirageFight.battleMode&&route?.scene_engine===mirageFight.engine.name&&
+        stage?.groupid===mirageFight.stageId&&stage.shishentotal===mirageFight.memberCount&&formation.resindex===mirageFight.sceneId){
+      const code=DATA.gameConfig.stages[mirageFight.codeStageId];
+      const info=scenario.hard?'单队从满血开战，按本队式神生成镜像。战报记录蜃雾护盾和误杀镜像后的强化。':
+       '单队从满血开战。原版引擎召唤大将和纸人，并按本队式神生成镜像。大将入场时间和真镜像位置是本地模拟条件。';
+      destination.append(node('p',info,'caption'));
+      window.AtlasPveWorkbench?.mount(destination,{stageId:mirageFight.stageId,groupId:mirageFight.stageId,version:source.resourceVersion,
+        battleMode:mirageFight.battleMode,memberCount:mirageFight.memberCount,waveCount:1,label:scenario.hard?'极·蜃气楼':'稀有·蜃气楼',
+        mirage:true,mirageX:scenario.hard,codeStageId:code?.actors===1&&code.shikigami===mirageFight.memberCount?mirageFight.codeStageId:null,codeLabel:code?.name});
       return;
     }
     if(scenario.stage===song.stageId&&scenario.mode===song.battleMode&&route?.scene_engine===song.engine.name&&

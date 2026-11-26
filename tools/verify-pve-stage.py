@@ -37,7 +37,7 @@ def replay(args, runtime, work):
                                     JourneyHardReplay, YinYangBossReplay)
     from fengmo_dusk_stage import DUSK_MODE, DUSK_WALL_SECONDS, DuskWraithReplay
     from fengmo_songstress_stage import SONG_MODE, SONG_WALL_SECONDS, SongstressReplay
-    from fengmo_mirage_stage import MIRAGE_MODE, MIRAGE_WALL_SECONDS, MirageReplay
+    from fengmo_mirage_stage import MIRAGE_MODE, MIRAGE_WALL_SECONDS, MIRAGE_X_MODE, MirageReplay
     from fengmo_catfish_stage import CATFISH_MODE, CATFISH_WALL_SECONDS, CATFISH_X_MODE, CatfishReplay
     from fengmo_skeleton_stage import SKELETON_MODE, SKELETON_WALL_SECONDS, SKELETON_X_MODE, SkeletonReplay
     from fengmo_longche_stage import LONGCHE_MODE, LONGCHE_WALL_SECONDS, LONGCHE_X_MODE, LongcheReplay
@@ -95,7 +95,8 @@ def replay(args, runtime, work):
     laolao_challenge = args.mode == LAOLAO_MODE
     dusk_wraith = args.mode == DUSK_MODE
     songstress = args.mode == SONG_MODE
-    mirage = args.mode == MIRAGE_MODE
+    mirage_x = args.mode == MIRAGE_X_MODE
+    mirage = args.mode == MIRAGE_MODE or mirage_x
     catfish_x = args.mode == CATFISH_X_MODE
     catfish = args.mode == CATFISH_MODE or catfish_x
     skeleton_x = args.mode == SKELETON_X_MODE
@@ -387,7 +388,9 @@ def replay(args, runtime, work):
 
         if len(fighters) != 5:
             raise ValueError("Mirage requires five owned shikigami")
-        mirage_replay = MirageReplay(modules, args.mirage_settings)
+        if mirage_x:
+            random.seed(args.seed)
+        mirage_replay = MirageReplay(modules, args.mirage_settings, extreme=mirage_x)
         engine, group, const = mirage_replay.engine, mirage_replay.group, mirage_replay.const
         group_id, wave_count = group["ID"], 1
     elif songstress:
@@ -637,7 +640,7 @@ def replay(args, runtime, work):
     elif spider_normal:
         route = "spider-normal-local-team"
     elif mirage:
-        route = "mirage-local-team"
+        route = "mirage-x-local-team" if mirage_x else "mirage-local-team"
     elif songstress:
         route = "songstress-local-team"
     elif dusk_wraith:
@@ -938,6 +941,8 @@ def replay(args, runtime, work):
                 skeleton_replay.check_selected(entity)
             if longche_x:
                 longche_replay.check_selected(entity)
+            if mirage_x:
+                mirage_replay.check_selected(entity)
             if setting:
                 engine.op_setAutoSkill(owner, entity.uid, setting)
                 if owner.autoSkill.get(entity.uid) != setting:
@@ -1356,7 +1361,8 @@ def main():
                                     YINYANG_BOSS_STAGE, YINYANG_BOSS_WALL_SECONDS)
     from fengmo_dusk_stage import DUSK_MODE, DUSK_STAGE, DUSK_WALL_SECONDS, valid_dusk_settings
     from fengmo_songstress_stage import SONG_MODE, SONG_STAGE, SONG_WALL_SECONDS, SONG_WINDOW
-    from fengmo_mirage_stage import MIRAGE_MODE, MIRAGE_STAGE, MIRAGE_WALL_SECONDS, valid_mirage_settings
+    from fengmo_mirage_stage import (MIRAGE_MODE, MIRAGE_STAGE, MIRAGE_WALL_SECONDS, MIRAGE_X_MODE, MIRAGE_X_STAGE,
+                                     valid_mirage_settings, valid_mirage_x_settings)
     from fengmo_catfish_stage import (CATFISH_MODE, CATFISH_STAGE, CATFISH_WALL_SECONDS, CATFISH_X_MODE,
                                      CATFISH_X_STAGE, valid_catfish_settings, valid_catfish_x_settings)
     from fengmo_skeleton_stage import (SKELETON_MODE, SKELETON_STAGE, SKELETON_WALL_SECONDS, SKELETON_X_MODE,
@@ -1388,7 +1394,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
     parser.add_argument("--fusion-settings", type=json.loads)
@@ -1491,6 +1497,9 @@ def main():
     if args.mode == MIRAGE_MODE:
         if args.stage != MIRAGE_STAGE or not valid_mirage_settings(args.mirage_settings):
             parser.error("Mirage needs its original stage and valid phase settings")
+    elif args.mode == MIRAGE_X_MODE:
+        if args.stage != MIRAGE_X_STAGE or not valid_mirage_x_settings(args.mirage_settings):
+            parser.error("Extreme Mirage needs its original stage and valid phase settings")
     elif args.mirage_settings is not None:
         parser.error("Mirage phase settings apply only to its original mode")
     if args.mode == SONG_MODE:
@@ -1606,7 +1615,7 @@ def main():
                         FUSION_WALL_SECONDS + 20 if args.mode == LAOLAO_FUSION_MODE else
                         DUSK_WALL_SECONDS + 20 if args.mode == DUSK_MODE else
                         SONG_WALL_SECONDS + 20 if args.mode == SONG_MODE else
-                        MIRAGE_WALL_SECONDS + 20 if args.mode == MIRAGE_MODE else
+                        MIRAGE_WALL_SECONDS + 20 if args.mode in (MIRAGE_MODE, MIRAGE_X_MODE) else
                         CATFISH_WALL_SECONDS + 20 if args.mode in (CATFISH_MODE, CATFISH_X_MODE) else
                         SKELETON_WALL_SECONDS + 20 if args.mode in (SKELETON_MODE, SKELETON_X_MODE) else
                         LONGCHE_WALL_SECONDS + 20 if args.mode in (LONGCHE_MODE, LONGCHE_X_MODE) else

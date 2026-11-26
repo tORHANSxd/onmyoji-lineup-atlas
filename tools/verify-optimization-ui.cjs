@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -141,7 +141,7 @@ async function main(){
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
   const panel='$("client-dungeons-encounter-detail")';
-  const {encounters,duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  const {encounters,duskWraith,songstress,mirage,mirageX,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
   assert.equal(entries.length,12);
   for(const entry of entries){
    const query=entry.title.replace(' · ',' ');
@@ -167,6 +167,12 @@ async function main(){
     assert.match(info,/原版引擎召唤大将和纸人.*大将召唤编组.*蜃气勘破时长/s);
     assert.equal(await ui(panel+'.querySelector("[data-pve-mirage-general]")?.valueAsNumber'),mirage.defaultGeneralSeconds);
     assert.deepEqual(await ui('[...'+panel+'.querySelectorAll("[data-pve-mirage-position]")].map(el=>Number(el.value))'),mirage.defaultTruePositions);
+   }else if(entry.fengmoLive.stage===mirageX.stageId){
+    assert.match(info,/战报记录蜃雾护盾和误杀镜像后的强化.*极版大将召唤编组.*误杀镜像后的暴击抵抗/s);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-mirage-window]")?.valueAsNumber'),mirageX.defaultWindow);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-mirage-weekly]")?.valueAsNumber'),mirageX.weeklyDefault);
+    assert.deepEqual(await ui('[...'+panel+'.querySelector("[data-pve-mirage-trait]").options].map(el=>Number(el.value))'),
+     mirageX.traits.map(({id})=>id));
    }else if(entry.fengmoLive.stage===catfish.stageId){
     assert.match(info,/海坊主祝福、小猴伤害上限和鸟居结果.*小猴编组.*鸟居时限/s);
     assert.equal(await ui(panel+'.querySelector("[data-pve-catfish-window]")?.valueAsNumber'),catfish.defaultWindow);
@@ -398,6 +404,7 @@ async function main(){
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5,10,notes),
    known('spider-normal',10020220,5,10,notes),
    known('dusk-wraith',10020227,5),known('songstress',10020217,6,10,notes),known('mirage',10020218,5,10,notes),
+   known('mirage-x',10020219,5,10,notes),
    known('catfish',10020224,5,10,notes),known('catfish-x',10020225,5,10,notes),
    known('skeleton',10020222,5,10,notes),known('skeleton-x',10020223,5,10,notes),
    known('longche',10020226,5,10,notes),known('longche-x',10020229,5,10,notes),
@@ -1028,6 +1035,23 @@ async function main(){
       {phase:'burst',seconds:89.88,bossHp:7077053}]};
     const mirageReport=await run('mirage',{stageId:25015,groupId:25015,battleMode:3013,mirageSettings},{mirage},tactical);
     assert.match(mirageReport,/击败蜃气楼 · 本队伤害 12,938,001.*海市蜃楼 · 58\.24 秒进场.*5 号位 .*（真镜像）.*6 号位 .*（真镜像）.*原表虚弱时长 80 秒/s);
+    await encounter('daily','逢魔实战 极·蜃气楼');
+    await choose('mirage-x');
+    const mirageWeekly='document.querySelector("[data-pve-mirage-weekly]")';
+    await ui(mirageWeekly+'.value="0";'+mirageWeekly+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(mirageWeekly+'.getAttribute("aria-invalid")'),'true');
+    await ui(`for(const [field,value,event] of [['weekly',1200,'input'],['trait',63601,'change'],['general',0,'input']]){
+     const input=document.querySelector('[data-pve-mirage-'+field+']');input.value=value;input.dispatchEvent(new Event(event));
+    }`);
+    await ui(`for(const [i,input] of ${positions}.entries()){input.value=5+i;input.dispatchEvent(new Event('change'));}`);
+    const mirageXSettings={windowSeconds:1200,generalSeconds:0,truePositions:[5,6],trait:63601,weeklySeconds:1200};
+    const mirageExtreme={...mirage,settings:mirageXSettings,
+     falseMirrorDeaths:[{position:3,seconds:70.25,buffedPositions:[5,6]}],
+     mistChanges:[{seconds:23.14,active:true},{seconds:24.5,active:false}]};
+    const mirageXReport=await run('mirage-x',{stageId:25019,groupId:25019,battleMode:1024,mirageSettings:mirageXSettings},
+     {mirage:mirageExtreme},tactical);
+    assert.match(mirageXReport,/击败极·蜃气楼.*异变·易碎.*误杀假镜像 1 次.*3 号位假镜像倒下.*获得攻击与暴击抵抗 5、6 号位.*蜃雾护盾 · 观测到开启 1 次/s);
     await encounter('daily','逢魔实战 稀有·地震鲶');
     await choose('catfish');
     const breaks='document.querySelector("[data-pve-catfish-breaks]")';

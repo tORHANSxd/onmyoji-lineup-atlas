@@ -119,7 +119,7 @@ const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmo
 const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===band.battleMode||mode===band.together.battleMode||mode===qiling.battleMode||
  mode===crevice.battleMode||mode===ghost.battleMode||mode===ghost.historicalBattleMode||mode===qinfei.battleMode||mode===dojo.battleMode||
  mode===forest.battleMode||mode===tenBoss.battleMode||mode===yinYang.battleMode||mode===fusion.battleMode||
- mode===fengmoLive.duskWraith.battleMode||mode===fengmoLive.songstress.battleMode||mode===fengmoLive.mirage.battleMode||mode===fengmoLive.catfish.battleMode||mode===fengmoLive.catfishX.battleMode||mode===fengmoLive.skeleton.battleMode||mode===fengmoLive.skeletonX.battleMode||mode===fengmoLive.longche.battleMode||mode===fengmoLive.longcheX.battleMode||mode===fengmoLive.spiderLive.battleMode||mode===fengmoLive.spiderNormal.battleMode||
+ mode===fengmoLive.duskWraith.battleMode||mode===fengmoLive.songstress.battleMode||mode===fengmoLive.mirage.battleMode||mode===fengmoLive.mirageX.battleMode||mode===fengmoLive.catfish.battleMode||mode===fengmoLive.catfishX.battleMode||mode===fengmoLive.skeleton.battleMode||mode===fengmoLive.skeletonX.battleMode||mode===fengmoLive.longche.battleMode||mode===fengmoLive.longcheX.battleMode||mode===fengmoLive.spiderLive.battleMode||mode===fengmoLive.spiderNormal.battleMode||
  Object.hasOwn(generalSoul.modes,mode);
 const creditedDamage=report=>!report.guildHunt||report.outcome==='win';
 

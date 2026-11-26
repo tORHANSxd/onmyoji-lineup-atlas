@@ -33,7 +33,7 @@ const yinYang=journeyHard.boss;
 const mapBoss=require('../app/map-boss.js');
 const qinfei=mapBoss.qinfeiBoss;
 const fengmoLive=require('../app/fengmo-live.js');
-const {duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=fengmoLive;
+const {duskWraith,songstress,mirage,mirageX,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=fengmoLive;
 const tuzhizhuPractice=require('../app/tuzhizhu-practice.js');
 const resourceEncounters=require('../app/resource-encounters.js');
 const orochi=require('../app/true-orochi.js');
@@ -75,6 +75,7 @@ const engines={
  [duskWraith.battleMode]:duskWraith.engine,
  [songstress.battleMode]:songstress.engine,
  [mirage.battleMode]:mirage.engine,
+ [mirageX.battleMode]:mirageX.engine,
  [catfish.battleMode]:catfish.engine,
  [catfishX.battleMode]:catfishX.engine,
  [skeleton.battleMode]:skeleton.engine,
@@ -167,7 +168,7 @@ function validArtifactReport(proof,state,dao){
 function validTactics(plan,battleMode){
  if(!Object.hasOwn(plan,'tactics'))return true;
  const {tactics}=plan;
- if((![2000,306,fengmoYanwu.battleMode,duskWraith.battleMode,songstress.battleMode,mirage.battleMode,catfish.battleMode,catfishX.battleMode,skeleton.battleMode,skeletonX.battleMode,longche.battleMode,longcheX.battleMode,spiderLive.battleMode,spiderNormal.battleMode,qilingGroups.battleMode,qinfei.battleMode].includes(battleMode)&&!Object.hasOwn(activityScore.modes,battleMode))||
+ if((![2000,306,fengmoYanwu.battleMode,duskWraith.battleMode,songstress.battleMode,mirage.battleMode,mirageX.battleMode,catfish.battleMode,catfishX.battleMode,skeleton.battleMode,skeletonX.battleMode,longche.battleMode,longcheX.battleMode,spiderLive.battleMode,spiderNormal.battleMode,qilingGroups.battleMode,qinfei.battleMode].includes(battleMode)&&!Object.hasOwn(activityScore.modes,battleMode))||
     !tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
  return Object.entries(tactics).every(([key,value])=>{
   const slot=number=>positive(number)&&number<=plan.members.length;
@@ -896,8 +897,8 @@ function validCatfish(report,settings,plan,source){
   data.reason==='window-expired'&&data.combatSeconds===settings.windowSeconds);
 }
 
-function validMirage(report,settings,plan){
- const data=report.mirage,source=mirage;
+function validMirage(report,settings,plan,source){
+ const data=report.mirage,extreme=source===mirageX;
  if(!data||report.sceneId!==source.sceneId||report.waveCount!==1||!sameTactics(data.settings,settings)||
     !validScoringTactics(data,plan,source.boss)||data.burstSeconds!==source.burstSeconds||
     !Number.isSafeInteger(data.damage)||data.damage<0||!Number.isFinite(data.combatSeconds)||data.combatSeconds<0||
@@ -916,13 +917,32 @@ function validMirage(report,settings,plan){
      !Number.isSafeInteger(phase.damage)||phase.damage>data.damage||
      !Array.isArray(phase.opening)||phase.opening.length!==expectedCount)return false;
   if(phase.opening.some((unit,i)=>unit?.position!==source.positions[i]||unit.level!==40||
-    (state==='mirror'?[data.mirrorRoster[i],source.general].includes(unit.id)===false||
+    (state==='mirror'?![data.mirrorRoster[i],source.mirrorFallback].includes(unit.id)||
       unit.trueMirror!==settings.truePositions.includes(unit.position):unit.id!==unitId)))return false;
   if(index){
    const prior=phases[index-1],duration=phase.seconds-prior.seconds;
    if(duration<0||phase.damage<prior.damage||phase.bossHp>prior.bossHp||
       (state==='elite'&&duration+1e-6<settings.generalSeconds)||(state==='crab'&&duration+1e-6<source.burstSeconds))return false;
   }else if(phase.seconds!==0||phase.damage!==0||phase.bossHp!==data.maximumHp)return false;
+ }
+ if(extreme){
+  const ids=[plan.onmyoji,...plan.members.map(unit=>unit.hero)].map(unit=>Number(unit.heroId));
+  const time=value=>Number.isFinite(value)&&value>=0&&value<=data.combatSeconds;
+  const {traitRecipients,mistChanges,falseMirrorDeaths}=data;
+  if(!Array.isArray(traitRecipients)||!sameTactics([...traitRecipients].sort(),ids.sort())||
+     !Array.isArray(mistChanges)||mistChanges.some((row,i)=>!time(row?.seconds)||
+      row.seconds<(mistChanges[i-1]?.seconds??0)||row.active!==(i%2===0))||!Array.isArray(falseMirrorDeaths))return false;
+  const mirrors=phases.flatMap((phase,i)=>phase.phase==='mirror'?
+   [{start:phase.seconds,end:phases[i+1]?.seconds??data.combatSeconds,positions:new Set()}]:[]);
+  for(const [i,row] of falseMirrorDeaths.entries()){
+   if(!time(row?.seconds)||row.seconds<(falseMirrorDeaths[i-1]?.seconds??0)||
+      !source.positions.includes(row.position)||settings.truePositions.includes(row.position)||
+      !Array.isArray(row.buffedPositions)||row.buffedPositions.some((pos,j)=>
+       !source.positions.includes(pos)||pos===row.position||pos<=(row.buffedPositions[j-1]??1)))return false;
+   const match=mirrors.find(({start,end})=>row.seconds>=start&&row.seconds<=end);
+   if(!match||match.positions.has(row.position)||row.buffedPositions.some(pos=>match.positions.has(pos)))return false;
+   match.positions.add(row.position);
+  }
  }
  if(!report.completed)return data.reason==='incomplete'&&report.wavesCleared===0;
  if(report.outcome==='win')return data.reason==='boss-defeated'&&data.bossHp===0&&report.wavesCleared===1;
@@ -1247,7 +1267,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===fusion.battleMode&&!validLaolaoFusion(report,fusionSettings))||
     (battleMode===duskWraith.battleMode&&!validDuskWraith(report,duskSettings,rounds[0]))||
     (battleMode===songstress.battleMode&&!validSongstress(report,songWindowSeconds,rounds[0]))||
-    (battleMode===mirage.battleMode&&!validMirage(report,mirageSettings,rounds[0]))||
+    (mirageSettings&&!validMirage(report,mirageSettings,rounds[0],battleMode===mirageX.battleMode?mirageX:mirage))||
     (catfishSettings&&!validCatfish(report,catfishSettings,rounds[0],battleMode===catfishX.battleMode?catfishX:catfish))||
     (battleMode===skeleton.battleMode&&!validSkeleton(report,skeletonSettings,rounds[0]))||
     (battleMode===skeletonX.battleMode&&!validSkeleton(report,skeletonXSettings,rounds[0],skeletonX))||
@@ -1311,7 +1331,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(band?[fengmoBand.battleMode]:[]),...(bandPractice?[bandTogether.battleMode]:[]),
      ...(feast?[devilFeast.battleMode,laolao.battleMode]:[]),...(feast&&resource?[ghostKingTower.battleMode]:[]),
-     ...(feast&&fusionAvailable?[fusion.battleMode]:[]),...(duskAvailable?[duskWraith.battleMode]:[]),...(songAvailable?[songstress.battleMode]:[]),...(mirageAvailable?[mirage.battleMode]:[]),...(catfishAvailable?[catfish.battleMode,catfishX.battleMode]:[]),...(skeletonAvailable?[skeleton.battleMode,skeletonX.battleMode]:[]),...(longcheAvailable?[longche.battleMode,longcheX.battleMode]:[]),...(spiderLiveAvailable?[spiderLive.battleMode]:[]),
+     ...(feast&&fusionAvailable?[fusion.battleMode]:[]),...(duskAvailable?[duskWraith.battleMode]:[]),...(songAvailable?[songstress.battleMode]:[]),...(mirageAvailable?[mirage.battleMode,mirageX.battleMode]:[]),...(catfishAvailable?[catfish.battleMode,catfishX.battleMode]:[]),...(skeletonAvailable?[skeleton.battleMode,skeletonX.battleMode]:[]),...(longcheAvailable?[longche.battleMode,longcheX.battleMode]:[]),...(spiderLiveAvailable?[spiderLive.battleMode]:[]),
      ...(spiderNormalAvailable&&spiderLiveAvailable?[spiderNormal.battleMode]:[]),
      ...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
      ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
@@ -1453,9 +1473,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(catfishMode&&(fengmoLive.resourceVersion!==resourceVersion||stageId!==catfishSource.stageId||groupId!==stageId||
       plan.members.length!==catfishSource.memberCount||!catfishSource.validSettings(catfishSettings))||
       catfishSettings!==undefined&&!catfishMode)throw Error('地震鲶需要对应的原版关卡、五位自有式神和有效的模拟条件');
-   const mirageMode=battleMode===mirage.battleMode;
-   if(mirageMode&&(fengmoLive.resourceVersion!==resourceVersion||stageId!==mirage.stageId||groupId!==stageId||
-      plan.members.length!==mirage.memberCount||!mirage.validSettings(mirageSettings))||
+   const mirageSource=battleMode===mirageX.battleMode?mirageX:mirage;
+   const mirageMode=battleMode===mirageSource.battleMode;
+   if(mirageMode&&(fengmoLive.resourceVersion!==resourceVersion||stageId!==mirageSource.stageId||groupId!==stageId||
+      plan.members.length!==mirageSource.memberCount||!mirageSource.validSettings(mirageSettings))||
       mirageSettings!==undefined&&!mirageMode)throw Error('蜃气楼需要对应的原版关卡、五位自有式神和有效的阶段条件');
    const songMode=battleMode===songstress.battleMode;
    if(songMode&&(fengmoLive.resourceVersion!==resourceVersion||stageId!==songstress.stageId||groupId!==stageId||

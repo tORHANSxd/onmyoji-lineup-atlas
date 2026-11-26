@@ -207,6 +207,8 @@ function sampleBattleMarkup(samples){
   const dusk=sample.duskWraith;
   const song=sample.songstress;
   const mirage=sample.mirage;
+  const mirageExtreme=mirage&&sample.battleMode===AtlasFengmoLive.mirageX.battleMode;
+  const mirageName=mirageExtreme?'极·蜃气楼':'蜃气楼';
   const catfish=sample.catfish;
   const catfishExtreme=catfish&&sample.battleMode===AtlasFengmoLive.catfishX.battleMode;
   const catfishName=catfishExtreme?'极·地震鲶':'地震鲶';
@@ -290,7 +292,7 @@ function sampleBattleMarkup(samples){
    song?`${{'singer-rescued':'已救出歌伎','singer-defeated':'歌伎被击败','team-defeated':'本队落败','window-expired':'达到计分时限',
     'incomplete':'结算待确认'}[song.reason]} · 本队伤害 ${song.damage.toLocaleString('zh-CN')} · `+
     `作战 ${song.combatSeconds.toFixed(2)} / ${song.windowSeconds} 秒`:
-   mirage?`${{'boss-defeated':'击败蜃气楼','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[mirage.reason]} · `+
+   mirage?`${{'boss-defeated':`击败${mirageName}`,'team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[mirage.reason]} · `+
     `本队伤害 ${mirage.damage.toLocaleString('zh-CN')} · 作战 ${mirage.combatSeconds.toFixed(2)} / ${mirage.settings.windowSeconds} 秒`:
    catfish?`${{'boss-defeated':`击败${catfishName}`,'team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[catfish.reason]} · `+
     `本队伤害 ${catfish.damage.toLocaleString('zh-CN')} · 作战 ${catfish.combatSeconds.toFixed(2)} / ${catfish.settings.windowSeconds} 秒`:
@@ -404,13 +406,22 @@ function sampleBattleMarkup(samples){
     `歌伎共享余血 ${(phase.singerHp/song.singerMaximum).toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}</li>`).join('')}</ol>
    <p class="caption">击败白衣侍女 ${song.whiteMaidsDefeated} 位 · 触发余血惩罚 ${song.punishments} 次${song.remainingMaidsAtRescue===null?'':` · 救援时尚存黑衣侍女 ${song.remainingMaidsAtRescue} 位`}</p>
    <p class="caption">歌伎剩余生命 ${Math.round(song.singerHp).toLocaleString('zh-CN')} · 持伞人剩余生命 ${Math.round(song.umbrellaHp).toLocaleString('zh-CN')}</p></details>`:'';
-  const mirageStages=mirage?`<details><summary>查看蜃气楼各阶段</summary><ol>${mirage.phases.map(phase=>{
+  const mirageSource=mirage&&(mirageExtreme?AtlasFengmoLive.mirageX:AtlasFengmoLive.mirage);
+  const mirageStages=mirage?`<details><summary>查看${mirageName}各阶段</summary><ol>${mirage.phases.map(phase=>{
    const mirrors=phase.phase==='mirror'?phase.opening.map(({position,id,trueMirror})=>
-    `${position} 号位 ${DATA.gameConfig.heroes[id]?.name??(id===AtlasFengmoLive.mirage.general?'蜃气楼大将':id)}${trueMirror?'（真镜像）':''}`).join('、'):'';
-   return `<li>${AtlasFengmoLive.mirage.phases[phase.phase]} · ${phase.seconds.toFixed(2)} 秒进场 · `+
+    `${position} 号位 ${DATA.gameConfig.heroes[id]?.name??(id===mirageSource.mirrorFallback?'蜃气楼大将':id)}${trueMirror?'（真镜像）':''}`).join('、'):'';
+   return `<li>${mirageSource.phases[phase.phase]} · ${phase.seconds.toFixed(2)} 秒进场 · `+
     `首领余血 ${(phase.bossHp/mirage.maximumHp).toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}`+
     (mirrors?`<div class="caption">${esc(mirrors)}</div>`:'')+'</li>';
-  }).join('')}</ol><p class="caption">原表虚弱时长 ${mirage.burstSeconds} 秒 · 首领剩余生命 ${Math.round(mirage.bossHp).toLocaleString('zh-CN')}</p></details>`:'';
+  }).join('')}</ol><p class="caption">原表虚弱时长 ${mirage.burstSeconds} 秒 · 首领剩余生命 ${Math.round(mirage.bossHp).toLocaleString('zh-CN')}</p>
+   ${mirageExtreme?`<p class="caption">突变效果 ${mirageSource.traits.find(({id})=>id===mirage.settings.trait).label} ·
+    区服上周平均用时 ${mirage.settings.weeklySeconds} 秒 · 误杀假镜像 ${mirage.falseMirrorDeaths.length} 次</p>
+    ${mirage.falseMirrorDeaths.length?`<ul>${mirage.falseMirrorDeaths.map(row=>
+     `<li>${row.seconds.toFixed(2)} 秒 · ${row.position} 号位假镜像倒下 ·
+      ${row.buffedPositions.length?`获得攻击与暴击抵抗 ${row.buffedPositions.join('、')} 号位`:'无剩余镜像受到强化'}</li>`).join('')}</ul>`:''}
+    <details><summary>蜃雾护盾 · 观测到开启 ${mirage.mistChanges.filter(row=>row.active).length} 次</summary>
+     ${mirage.mistChanges.length?`<ol>${mirage.mistChanges.map(row=>
+      `<li>${row.seconds.toFixed(2)} 秒 · 护盾${row.active?'开启':'结束'}</li>`).join('')}</ol>`:''}</details>`:''}</details>`:'';
   const catfishStages=catfish?(()=>{
    const source=AtlasFengmoLive.catfish;
    const percent=value=>value.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2});
