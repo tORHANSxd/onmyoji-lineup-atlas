@@ -10,40 +10,69 @@ import re
 import sys
 
 CLIENT_TIP_MODULE = "com/data/pdata/tipsInfoData_cn.py"
+CLIENT_APPEARANCE_MODULE = "com/data/cdata/deco_skin_index.py"
+CLIENT_BACKGROUND_MODULE = "com/data/cdata/skin_bg_index.py"
+SUPPORT_MODULES = {
+    "com/data/cdata/__init__.py": "01d801c0b683c70d3a09baeea0df3e420429dcb6aeeb6cf8ea68d7a5a33a6b5c",
+    "com/data/cdata/bindict_proxy.py": "0049904a596b9b8a1e50dbd3b1043f66a162fe6297ff40f0f3a7f2ccb9f1f9a9",
+}
 
 
-def read_client_tip_table(code):
-    """Recover the shipped literal string map without executing the module."""
-    stack = []
+def read_plain_tables(code, names):
+    """Recover named literal dictionaries without executing client code."""
+    stack, tables = [], {}
+
+    def take(count):
+        if count > len(stack):
+            raise ValueError("Invalid literal table stack")
+        if not count:
+            return []
+        values = stack[-count:]
+        del stack[-count:]
+        return values
+
     for op in dis.get_instructions(code):
         kind = op.opname
         if kind in {"RESUME", "EXTENDED_ARG"}:
             continue
-        if kind == "LOAD_CONST" and isinstance(op.argval, str):
+        if kind == "LOAD_CONST" and type(op.argval) in {str, int, bool, float, tuple, type(None)}:
             stack.append(op.argval)
         elif kind == "BUILD_MAP":
-            count = op.arg * 2
-            values = stack[-count:] if count else []
-            if len(values) != count or any(type(value) is not str for value in values):
-                raise ValueError("Invalid literal tip map")
-            if count:
-                del stack[-count:]
+            values = take(op.arg * 2)
             stack.append(dict(zip(values[::2], values[1::2])))
+        elif kind == "BUILD_CONST_KEY_MAP":
+            keys, = take(1)
+            if type(keys) is not tuple or len(keys) != op.arg:
+                raise ValueError("Invalid literal table keys")
+            stack.append(dict(zip(keys, take(op.arg))))
         elif kind == "MAP_ADD" and op.arg == 1:
-            value, key = stack.pop(), stack.pop()
-            if type(key) is not str or type(value) is not str or type(stack[-1]) is not dict:
-                raise ValueError("Invalid literal tip entry")
-            stack[-1][key] = value
+            target, key, value = take(3)
+            if type(target) is not dict:
+                raise ValueError("Invalid literal table entry")
+            target[key] = value
+            stack.append(target)
         elif kind == "DICT_UPDATE" and op.arg == 1:
-            values = stack.pop()
-            if type(values) is not dict or type(stack[-1]) is not dict:
-                raise ValueError("Invalid literal tip map update")
-            stack[-1].update(values)
-        elif kind == "STORE_NAME" and op.argval == "data" and len(stack) == 1 and type(stack[0]) is dict:
-            return stack[0]
+            target, values = take(2)
+            if type(target) is not dict or type(values) is not dict:
+                raise ValueError("Invalid literal table update")
+            target.update(values)
+            stack.append(target)
+        elif kind == "LOAD_NAME" and op.argval in tables:
+            stack.append(tables[op.argval])
+        elif kind == "STORE_NAME" and op.argval in names and op.argval not in tables and len(stack) == 1 and type(stack[0]) is dict:
+            tables[op.argval] = stack.pop()
+        elif kind == "RETURN_VALUE" and stack == [None] and tables.keys() == names:
+            return tables
         else:
-            raise ValueError(f"Unexpected tip-table opcode {kind} at {op.offset}")
-    raise ValueError("The tip module has no literal data assignment")
+            raise ValueError(f"Unexpected literal table opcode {kind} at {op.offset}")
+    raise ValueError("The module is missing a literal table assignment")
+
+
+def store_table(resources, output, entry, rows, storage):
+    fields = sorted({key for row in rows.values() if isinstance(row, dict)
+                     for key in row if isinstance(key, str)})
+    entry.update(status="decoded", storage=storage, rowCount=len(rows), fields=fields)
+    resources.write_json(output / f"{entry['name']}.json", {**entry, "rows": resources.portable(rows)})
 
 
 def open_catalog_client(snapshot):
@@ -130,8 +159,12 @@ def extract(snapshot, proof, apk_version, output, battle_index=None, script_inde
         if not re.fullmatch(r"[A-Za-z0-9_]+", name) or name in tables:
             raise ValueError(f"Unexpected or duplicate configuration module: {module}")
         entry = tables[name] = {"name": name, "source": source}
+        if SUPPORT_MODULES.get(module) == source["marshalSHA256"]:
+            entry.update(status="support")
+            continue
 
         rows = None
+        extra_rows = None
         reasons = []
         storage = "bindict"
         for blob in sorted((v for v in code.co_consts if isinstance(v, bytes)), key=len, reverse=True):
@@ -145,17 +178,32 @@ def extract(snapshot, proof, apk_version, output, battle_index=None, script_inde
         if rows is None:
             storage = "literal"
             try:
-                read_table = read_client_tip_table if module == CLIENT_TIP_MODULE else read_literal_table
-                rows = read_table(decoder.code(code))
+                original = decoder.code(code)
+                if module in (CLIENT_TIP_MODULE, CLIENT_BACKGROUND_MODULE, CLIENT_APPEARANCE_MODULE):
+                    names = {"data", "hero_skin", "goren_skin"} if module == CLIENT_APPEARANCE_MODULE else {"data"}
+                    exports = read_plain_tables(original, names)
+                    if module == CLIENT_TIP_MODULE and any(type(key) is not str or type(value) is not str
+                                                            for key, value in exports["data"].items()):
+                        raise ValueError("Invalid literal tip map")
+                    if module == CLIENT_APPEARANCE_MODULE:
+                        if exports["data"] is not exports["hero_skin"]:
+                            raise ValueError("Unexpected default appearance table")
+                        extra_rows = exports["goren_skin"]
+                    rows = exports["data"]
+                else:
+                    rows = read_literal_table(original)
             except Exception as error:
                 reasons.append(f"{type(error).__name__}: {error}")
         if rows is None:
             entry.update(status="unresolved", reasons=reasons)
             continue
-        fields = sorted({key for row in rows.values() if isinstance(row, dict)
-                         for key in row if isinstance(key, str)})
-        entry.update(status="decoded", storage=storage, rowCount=len(rows), fields=fields)
-        resources.write_json(output / f"{name}.json", {**entry, "rows": resources.portable(rows)})
+        store_table(resources, output, entry, rows, storage)
+        if extra_rows is not None:
+            extra_name = name + "_goren_skin"
+            if extra_name in tables:
+                raise ValueError(f"Duplicate client table: {extra_name}")
+            extra = tables[extra_name] = {"name": extra_name, "source": {**source, "export": "goren_skin"}}
+            store_table(resources, output, extra, extra_rows, storage)
 
     for name, rows, source in extract_routes(route_modules, decoder):
         entry = tables[name] = {"name": name, "source": source, "status": "decoded", "storage": "literal-routes",

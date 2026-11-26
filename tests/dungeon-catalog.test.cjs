@@ -82,3 +82,17 @@ test('含有不安全名称或重复表名的索引不予加载', async t => {
   await write();
   await assert.rejects(readIndex(root), /无效表项/);
 });
+
+test('目录保留支持模块来源，并继续读取旧版未解析索引', async t => {
+  const { root, index, write } = await fixture(t);
+  index.tables.push(
+    { name: 'bindict_proxy', family: 'other', status: 'support' },
+    { name: 'old_unknown_table', family: 'other', status: 'unresolved' }
+  );
+  await write();
+
+  const catalog = await readIndex(root);
+  assert.equal(catalog.entries.get('bindict_proxy').status, 'support');
+  assert.equal(catalog.entries.get('old_unknown_table').status, 'unresolved');
+  await assert.rejects(readTable(catalog, 'bindict_proxy'), /没有可读取/);
+});

@@ -26,7 +26,7 @@ async function readIndex(root) {
   const entries = new Map();
   for (const row of index.tables) {
     if (!row || typeof row.name !== 'string' || !TABLE_NAME.test(row.name) || entries.has(row.name)
-        || !FAMILIES.has(row.family) || !['decoded', 'unresolved', 'error'].includes(row.status)
+        || !FAMILIES.has(row.family) || !['decoded', 'unresolved', 'error', 'support'].includes(row.status)
         || row.status === 'decoded' && !validPayload(row)) {
       throw new Error('副本资料索引包含无效表项');
     }

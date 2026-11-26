@@ -137,6 +137,17 @@ async function main(){
   await until('!document.getElementById("client-dungeons-records").hidden');
   await ui('qaCatalogInput("row-query","贪婪的铁鼠");document.querySelector("#client-dungeons-list button").click()');
   assert.match(await ui('document.getElementById("client-dungeons-detail").textContent'),/首领机制.*不能被复活/s);
+  if(catalog.entries.get('skin_bg_index')?.status==='decoded'){
+   await ui('qaCatalogInput("family","other");qaCatalogInput("query","皮肤背景");qaCatalogInput("table","skin_bg_index")');
+   await until('!$("client-dungeons-records").hidden');
+   await ui('qaCatalogInput("row-query","xuetongzi_05");document.querySelector("#client-dungeons-list button").click()');
+   assert.match(await ui('$("client-dungeons-detail").textContent'),/xuetongzi_05.*scene\/beijingban\/xuetongzi_dc\/xuetongzi_dc\.scn/s);
+   await ui('qaCatalogInput("query","外观系列扩展");qaCatalogInput("table","deco_skin_index_goren_skin")');
+   await until('!$("client-dungeons-records").hidden');
+   assert.match(await ui('$("client-dungeons-source").textContent'),/deco_skin_index\.py · goren_skin · SHA-256/);
+   await ui('qaCatalogInput("query","bindict_proxy")');
+   assert.equal(await ui('[...$("client-dungeons-table").options].some(option=>option.value==="bindict_proxy")'),false);
+  }
   await ui('document.getElementById("client-dungeons").open=false');
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{

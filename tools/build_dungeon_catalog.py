@@ -77,7 +77,7 @@ def build(tables, output):
     catalog.update(schema=1, tables=entries)
     store_encounters(catalog, output, lambda name: table_pairs(read(tables / f"{name}.json")["rows"]))
     (output / "index.json").write_bytes(encode(catalog))
-    print(f'{len(entries)} client tables, {sum(row.get("bytes", 0) for row in entries):,} compressed bytes')
+    print(f'{source["counts"].get("decoded", 0)} client tables, {sum(row.get("bytes", 0) for row in entries):,} compressed bytes')
 
 
 if __name__ == "__main__":

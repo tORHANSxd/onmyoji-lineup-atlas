@@ -4,6 +4,9 @@
   const panel = el();
   const pageSize = 25;
   const titles = {
+    deco_skin_index: '式神外观系列索引',
+    deco_skin_index_goren_skin: '外观系列扩展索引',
+    skin_bg_index: '式神皮肤背景索引',
     pve_stage_data: '通用 PvE 关卡',
     BattleMonstersInfo: '战斗编组与波次',
     BattleScenesInfo: '战斗场景与站位',
@@ -193,7 +196,7 @@
   const openingNumber = new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2});
   const entryKey = ({table, key}) => JSON.stringify([table, key]);
   const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.area_name, row?.chapter_name, row?.floordesc,
-    row?.typedesc, row?.skill_name, row?.StoryName, row?.MapEntryID != null ? row.desc : null]
+    row?.typedesc, row?.skill_name, row?.skin_name, row?.StoryName, row?.MapEntryID != null ? row.desc : null]
     .find(value => typeof value === 'string' && value.trim()) || '';
 
   function fieldsFor(row, table) {
@@ -2140,7 +2143,8 @@
     el('records').hidden = true;
     el('detail').replaceChildren();
     el('row-query').value = key;
-    el('source').textContent = [entry?.source?.module, entry?.source?.marshalSHA256 && 'SHA-256 ' + entry.source.marshalSHA256]
+    el('source').textContent = [entry?.source?.module, entry?.source?.export,
+      entry?.source?.marshalSHA256 && 'SHA-256 ' + entry.source.marshalSHA256]
       .filter(Boolean).join(' · ');
     el('status').textContent = '';
     if (!entry) return;
@@ -2175,7 +2179,7 @@
     const group = el('family').value;
     const query = normalized(el('query').value);
     const field = el('table');
-    const tables = state.index.tables.filter(row => (!group || group === row.family)
+    const tables = state.index.tables.filter(row => row.status !== 'support' && (!group || group === row.family)
       && normalized([row.name, titles[row.name], ...(row.fields ?? [])].join(' ')).includes(query));
     const current = preferred || field.value;
     field.replaceChildren(option(tables.length ? '选择资料表（' + tables.length + ' 张）' : '没有匹配的资料表', ''),
@@ -2251,7 +2255,7 @@
     el('encounter-family').value = el('encounter-query').value = '';
     el('modes').hidden = !index?.encounters;
     el('version').textContent = index ? '资源 ' + index.resourceVersion + ' · '
-      + index.tables.length.toLocaleString('zh-CN') + ' 张资料表'
+      + index.tables.filter(row => row.status !== 'support').length.toLocaleString('zh-CN') + ' 张资料表'
       + (index.encounters ? ' · ' + index.encounters.rowCount.toLocaleString('zh-CN') + ' 条关卡配置（含历史与内部配置）' : '')
       + ' · 开放状态以区服和游戏内活动为准'
       : '请选择本机解包产生的副本资料目录。';
