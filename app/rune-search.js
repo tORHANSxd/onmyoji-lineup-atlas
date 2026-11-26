@@ -286,10 +286,12 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
  ][memberCount-1];
  if(!strategies)throw Error('当前关卡的上阵人数未接入库存备选');
  const speed=Number.isFinite(openingEnemySpeed)&&openingEnemySpeed>0?Math.floor(openingEnemySpeed)+1:0;
- const candidates=buildCandidates(account,data,{strategies,openingSpeed:speed,bossSpeed:speed,earlySpeed:speed},alternatives,null,limit-1);
+ const scoring=battleMode===2000,poolSize=scoring?10:limit,damageFirstLimit=scoring?2:1;
+ const primaryLimit=scoring?poolSize-1-(speed?damageFirstLimit:0):limit-1;
+ const candidates=buildCandidates(account,data,{strategies,openingSpeed:speed,bossSpeed:speed,earlySpeed:speed},alternatives,null,primaryLimit);
  if(speed){
   const tried=[...alternatives,...candidates.map(row=>teamKey(row.plan))];
-  const damageFirst=buildCandidates(account,data,{strategies,openingSpeed:0,bossSpeed:0,earlySpeed:0},tried,null,1);
+  const damageFirst=buildCandidates(account,data,{strategies,openingSpeed:0,bossSpeed:0,earlySpeed:0},tried,null,damageFirstLimit);
   for(const row of damageFirst)candidates.push({...row,title:row.title+'（输出优先）'});
  }
  const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);

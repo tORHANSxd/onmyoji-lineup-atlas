@@ -2,6 +2,8 @@
  'use strict';
  const api=window.dungeonCatalog;
  const seeds=AtlasRuneSearch.baseSampleSeeds;
+ const isDamageMode=mode=>mode===2000;
+ const screenSize=2,finalistCount=5;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
  function checkedLineups(){
@@ -98,21 +100,21 @@
   el.innerHTML=`<strong>${esc(title)}</strong><span data-state></span>
    <details hidden><summary>查看采样战报</summary><ul class="dungeon-stock-samples"></ul></details>`;
   const row={el,state:el.querySelector('[data-state]'),details:el.querySelector('details'),
-   report:el.querySelector('ul'),samples:[],verdict:'unknown'};
+   report:el.querySelector('ul'),samples:[],verdict:'unknown',index:run.rows.length+1};
   run.rows.push(row);
   run.pane.results.append(el);
   return row;
  }
 
- async function replay(run,row,plan,damageFloor=false){
+ async function replay(run,row,plan,damageFloor=false,sampleCount=seeds.length){
   const teamKey=AtlasRuneSearch.teamKey(plan);
-  for(const seed of seeds){
+  const {stageId,groupId,battleMode}=run.pane,scoring=isDamageMode(battleMode);
+  for(const seed of seeds.slice(row.samples.length,sampleCount)){
    if(!active(run))return;
-   run.message=`正在复跑第 ${run.rows.length} 套 · 种子 ${seed}`;
+   run.message=`正在复跑第 ${row.index} 套 · 种子 ${seed}`;
    update();
    let report;
    run.native=true;
-   const {stageId,groupId,battleMode}=run.pane;
    try{report=await api.runPve(plan,{stageId,groupId,seed,...(battleMode?{battleMode}:{}),...(damageFloor?{damageFloor:true}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
@@ -120,6 +122,11 @@
    row.details.hidden=false;
    row.report.innerHTML=sampleBattleMarkup(row.samples);
    row.state.textContent=`已复跑 ${row.samples.length} / ${seeds.length} 个种子`;
+   if(scoring){
+    if(AtlasRuneCandidate.damageResult([report]))continue;
+    row.state.textContent=`种子 ${seed} 未取得完整伤害战报，可重试`;
+    return;
+   }
    const experience=report.experience;
    const ranOut=experience?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
@@ -134,7 +141,11 @@
     return;
    }
   }
-  row.verdict='pass';
+  if(sampleCount<seeds.length){
+   row.verdict='screened';
+   return;
+  }
+  row.verdict=scoring&&AtlasRuneCandidate.damageResult(row.samples)?.credited!==seeds.length?'scored':'pass';
   run.alternatives.push(teamKey);
  }
 
@@ -164,7 +175,7 @@
    }
    row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码培养和技能复跑。普攻等级缺失时使用客户端最低等级。</p>');
    const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount);
-   await replay(run,row,plan);
+   await replay(run,row,plan,isDamageMode(run.pane.battleMode));
   }catch(error){
    if(active(run))row.state.textContent=runeError(error);
   }
@@ -203,31 +214,68 @@
   row.el.append(action);
  }
 
+ function addCandidate(run,item){
+  const names=item.heroIds.map(id=>run.data.gameConfig.heroes[id]?.name||`式神 ${id}`);
+  const row=addRow(run,`${item.title} · ${names.join('、')}`);
+  row.details.insertAdjacentHTML('beforeend','<p class="caption">备选使用 60 级晴明、满级言灵·星和言灵·守。我方伤害浮动取下限。</p>');
+  return {item,row};
+ }
+
+ async function replayCandidate(run,{item,row},count){
+  try{await replay(run,row,item.plan,true,count);}
+  catch(error){if(active(run))row.state.textContent=runeError(error);}
+ }
+
+ async function makeCandidateCode(run,{item,row}){
+  if(!active(run)||row.verdict!=='pass'||!run.pane.codeStageId)return;
+  try{
+   const request=await AtlasRuneCandidate.pveTemplate({...item,samples:row.samples},run.data,run.pane);
+   if(!active(run))return;
+   const output=await window.atlas.buildLineup(request);
+   if(!active(run))return;
+   if(output.payload?.code!==output.code)throw Error('阵容码与本地解析结果不一致');
+   const lineup=C.adaptTA(output.payload,run.data);
+   if(Number(lineup.gameSceneId)!==run.pane.codeStageId)throw Error('生成的阵容码未对应本层');
+   offerCode(run,row,{...output,lineup});
+  }catch(error){
+   if(active(run))row.details.insertAdjacentHTML('beforeend',`<p class="caption">${esc(runeError(error))}</p>`);
+  }
+ }
+
+ const damageText=value=>Math.round(value).toLocaleString('zh-CN');
+
+ async function scoreStock(run,candidates){
+  const shortlist=[];
+  for(const item of candidates){
+   if(!active(run))return;
+   const candidate=addCandidate(run,item);
+   await replayCandidate(run,candidate,screenSize);
+   if(candidate.row.verdict==='screened')shortlist.push({...candidate,score:AtlasRuneCandidate.damageResult(candidate.row.samples)});
+  }
+  shortlist.sort((a,b)=>AtlasRuneCandidate.compareDamage(a.score,b.score));
+  for(const {row,item,score} of shortlist.slice(finalistCount)){
+   row.state.textContent=`初筛 ${screenSize} 场 · 平均伤害 ${damageText(score.average)} · 未进入复评`;
+   run.alternatives.push(AtlasRuneSearch.teamKey(item.plan));
+  }
+  for(const candidate of shortlist.slice(0,finalistCount)){
+   if(!active(run))return;
+   candidate.row.verdict='unknown';
+   await replayCandidate(run,candidate);
+   await makeCandidateCode(run,candidate);
+  }
+ }
+
  async function stockCandidates(run){
   run.message='正在从已导出的库存生成配装…';
   update();
   const candidates=await generateDungeonStock(run);
   if(!active(run))return;
+  if(isDamageMode(run.pane.battleMode))return scoreStock(run,candidates);
   for(const item of candidates){
    if(!active(run))return;
-   const names=item.heroIds.map(id=>run.data.gameConfig.heroes[id]?.name||`式神 ${id}`);
-   const row=addRow(run,`${item.title} · ${names.join('、')}`);
-   row.details.insertAdjacentHTML('beforeend','<p class="caption">备选使用 60 级晴明、满级言灵·星和言灵·守。我方伤害浮动取下限。</p>');
-   try{await replay(run,row,item.plan,true);}
-   catch(error){if(active(run))row.state.textContent=runeError(error);}
-   if(!active(run)||row.verdict!=='pass'||!run.pane.codeStageId)continue;
-   try{
-    const request=await AtlasRuneCandidate.pveTemplate({...item,samples:row.samples},run.data,run.pane);
-    if(!active(run))return;
-    const output=await window.atlas.buildLineup(request);
-    if(!active(run))return;
-    if(output.payload?.code!==output.code)throw Error('阵容码与本地解析结果不一致');
-    const lineup=C.adaptTA(output.payload,run.data);
-    if(Number(lineup.gameSceneId)!==run.pane.codeStageId)throw Error('生成的阵容码未对应本层');
-    offerCode(run,row,{...output,lineup});
-   }catch(error){
-    if(active(run))row.details.insertAdjacentHTML('beforeend',`<p class="caption">${esc(runeError(error))}</p>`);
-   }
+   const candidate=addCandidate(run,item);
+   await replayCandidate(run,candidate);
+   await makeCandidateCode(run,candidate);
   }
  }
 
@@ -254,28 +302,27 @@
     await original(next,lineup);
    }
    if(!active(next))return;
-   const passed=[...next.previous,...next.rows].filter(row=>row.verdict==='pass');
-   const timing=AtlasRuneCandidate.commonSampleTiming(passed);
-   const hunting=next.pane.battleMode===2000;
-   const huntScores=new Map(hunting?passed.map(row=>[row,{
-    damage:Math.min(...row.samples.map(report=>report.guildHunt.damage)),
-    cleared:row.samples.every(report=>report.wavesCleared===report.waveCount),
-   }]):[]);
-   const byTime=(a,b)=>timing.get(a).seconds-timing.get(b).seconds;
-   passed.sort(hunting?(a,b)=>{
-    const first=huntScores.get(a),second=huntScores.get(b);
-    return Number(second.cleared)-Number(first.cleared)||(first.cleared?0:second.damage-first.damage)||byTime(a,b);
-   }:byTime);
+   const hunting=isDamageMode(next.pane.battleMode);
+   const passed=[...next.previous,...next.rows].filter(row=>row.verdict==='pass'||hunting&&row.verdict==='scored');
+   const timing=hunting?null:AtlasRuneCandidate.commonSampleTiming(passed);
+   const huntScores=new Map(hunting?passed.map(row=>[row,AtlasRuneCandidate.damageResult(row.samples)]):[]);
+   passed.sort(hunting?(a,b)=>AtlasRuneCandidate.compareDamage(huntScores.get(a),huntScores.get(b)):
+    (a,b)=>timing.get(a).seconds-timing.get(b).seconds);
    for(const row of passed){
-    const time=timing.get(row);
     const score=huntScores.get(row);
+    if(score){
+     const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
+     row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${cleared?'均清场':'含未清场样本'} · 平均伤害 ${damageText(score.average)} · `+
+      `单场最高 ${damageText(score.max)} · 最低 ${damageText(score.min)}`;
+     continue;
+    }
+    const time=timing.get(row);
     const timeLabel=`最慢种子 ${time.seed} · ${time.combat?'开战至结算':'引擎全程'} ${time.seconds.toFixed(2)} 秒`;
-    row.state.textContent=score?`${seeds.length} 场个人结算 · ${score.cleared?'均清场':'含未清场样本'} · 最低伤害 ${score.damage.toLocaleString('zh-CN')} · ${timeLabel}`:
-     `通过 ${seeds.length} 个采样种子 · ${timeLabel}`;
+    row.state.textContent=`通过 ${seeds.length} 个采样种子 · ${timeLabel}`;
    }
    next.pane.results.prepend(...passed.map(row=>row.el));
-   if(!useStock)next.originalsComplete=next.rows.every(row=>['loss','infeasible'].includes(row.verdict));
-   next.notice=passed.length?(hunting?`${passed.length} 套取得个人结算。清场队优先比较用时，其余按最低伤害排序。全随机分支待验证。`:
+   if(!useStock)next.originalsComplete=next.rows.every(row=>['loss','infeasible','scored'].includes(row.verdict));
+   next.notice=passed.length?(hunting?`${passed.length} 套完成共同采样，按平均伤害排序。全随机分支待验证。`:
     `${passed.length} 套通过采样，已按最慢样本用时排序。全随机分支待验证。`):
     useStock?(next.rows.length?'这一批库存备选未通过全部采样。':'当前库存不足以生成可复跑的新备选。'):
     next.originalsComplete?'勾选原码均未通过，可从库存寻找备选。':

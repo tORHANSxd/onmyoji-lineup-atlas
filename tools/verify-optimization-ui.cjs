@@ -5,7 +5,7 @@ const {readIndex,readTable,readEncounters,readRecords}=require('../desktop/dunge
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
 const {createRuneFloorRunner}=require('../desktop/rune-floor-runner.cjs');
 const {createPveStageRunner}=require('../desktop/pve-stage-runner.cjs');
-const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
+const {sampleSeeds:commonSeeds,teamKey}=require('../app/rune-search.js');
 const game=require('../app/game-config.js');
 const {Background}=require('../desktop/background.cjs');
 const {applyLatestHeroes}=require('../desktop/latest-heroes.cjs');
@@ -379,14 +379,17 @@ async function main(){
    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
    await capture('client-yuling-solo');
    if(JSON.parse(await readEncounters(catalog)).entries.some(entry=>entry.table==='gve_battleinfo')){
-    const huntingCalls=[];
+    const huntingCalls=new Map();
     mockPve=(plan,options)=>{
      assert.deepEqual(options,{stageId:61,groupId:61,battleMode:2000,seed:options.seed,damageFloor:true});
      assert.equal(plan.members.length,5);
-     const firstCandidate=huntingCalls.length<6;
-     huntingCalls.push(options.seed);
-     const damage=firstCandidate?1000000+options.seed*100000:2000000;
-     return {...sample,...options,waveCount:1,wavesCleared:0,guildHunt:{damage}};
+     const key=teamKey(plan);
+     if(!huntingCalls.has(key))huntingCalls.set(key,[]);
+     huntingCalls.get(key).push(options.seed);
+     const firstCandidate=key===huntingCalls.keys().next().value;
+     const failed=firstCandidate&&options.seed===2;
+     const damage=firstCandidate?(failed?500000:options.seed===0?3000000:5000000):2000000;
+     return {...sample,...options,outcome:failed?'loss':'win',waveCount:1,wavesCleared:0,guildHunt:{damage}};
     };
     await ui(`window.qaGuildEncounter=(id,query)=>{
      qaEncounterInput("guild",query);
@@ -395,10 +398,10 @@ async function main(){
     await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
     assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/挑战时限 240 秒.*30 秒和 150 秒触发分裂.*90 秒触发属性召唤/s);
     await ui(stock+'.click()');
-    await until(status+'.textContent.includes("其余按最低伤害排序")',20000);
-    assert.deepEqual(huntingCalls.slice(0,6),[0,1,2,3,7,42]);
-    assert.match(await ui(reports+'.firstElementChild.textContent'),/含未清场样本.*最低伤害 2,000,000.*个人结算成功 · 未清场/s);
-    assert.match(await ui(reports+'.textContent'),/最低伤害 1,000,000/);
+    await until(status+'.textContent.includes("按平均伤害排序")',20000);
+    assert.deepEqual(huntingCalls.values().next().value,[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.firstElementChild.textContent'),/5 \/ 6 场有效结算.*平均伤害 3,916,667.*单场最高 5,000,000.*最低 500,000.*个人结算失败 · 未清场/s);
+    assert.match(await ui(reports+'.textContent'),/平均伤害 2,000,000/);
     await ui('document.querySelector("[data-pve-code]").click()');
     assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
     assert.match(await ui('$("detail-heading").textContent'),/狩猎战·火麒麟/);

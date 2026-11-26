@@ -94,6 +94,17 @@ function pveGoalMet(report,battleMode){
  return report.wavesCleared===report.waveCount;
 }
 
+function damageResult(samples){
+ const damage=samples.map(report=>report.guildHunt?.damage);
+ if(!damage.length||samples.some((report,i)=>!report.completed||!Number.isSafeInteger(damage[i])||damage[i]<0))return null;
+ return {average:damage.reduce((total,value)=>total+value,0)/damage.length,
+  min:Math.min(...damage),max:Math.max(...damage),credited:samples.filter(report=>report.outcome==='win'&&report.guildHunt.damage>0).length};
+}
+
+function compareDamage(a,b){
+ return b.average-a.average||b.min-a.min||b.max-a.max;
+}
+
 async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeStageId,codeLabel}){
  const seeds=S.baseSampleSeeds;
  if(!Number.isSafeInteger(waveCount)||waveCount<1||row.samples.length!==seeds.length||!row.samples.every((report,index)=>
@@ -102,10 +113,10 @@ async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeSt
   throw Error('完成本关的全部采样复跑后才可生成此阵容码');
  if(!row.panels?.every(Boolean)||row.plan.members.some(member=>member.souls.length!==6))
   throw Error('御魂条件需要每位式神穿齐六个位置并能够计算面板');
- return draft(row,data,codeStageId,codeLabel,row.samples.length);
+ return draft(row,data,codeStageId,codeLabel,row.samples.length,battleMode===2000?'取得有效个人伤害结算':'通关');
 }
 
-async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples){
+async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples,outcome='通关'){
  const {onmyoji,spirit,members}=row.plan;
  const basic=game.heroes[onmyoji.heroId]?.skills[0];
  const actor={hero_id:onmyoji.heroId,level:onmyoji.level,star:onmyoji.star,awake:onmyoji.awake,
@@ -119,7 +130,7 @@ async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples
  const title=label+' · '+names.join('、')+' · '+(await sha256(hconf)).slice(0,10);
  const basicLevel=onmyoji.skinfo.find(([id])=>id===basic)?.[1];
  const damage=row.plan.damageFloor?'我方伤害取下限。':'';
- return G.validate(game,{title,desc:`资源 ${R.resourceVersion}，${samples} 个离线种子通关。${damage}阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`,
+ return G.validate(game,{title,desc:`资源 ${R.resourceVersion}，${samples} 个离线种子${outcome}。${damage}阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`,
   select_stage_id:sceneId,hconf});
 }
 
@@ -175,5 +186,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
+return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageResult,compareDamage,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
 });
