@@ -3,7 +3,7 @@
 from collections import Counter
 from functools import cache
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
-from shilian_routes import SHILIAN_DAOS
+from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS
 
 
 ROOTS = {
@@ -397,6 +397,8 @@ def encounter_index(source, load_rows):
                 targets.extend(("shilian_level", key, "结算评级") for key in shilian_grades.get(dao, ()))
             else:
                 targets.append(("shilian_liudao", dao, "所属路线"))
+            if name == "shilian_event_exam" and dao == 1:
+                targets.append(("Combinesceneinfo", MOON_SECOND_SCENE, "月之海第二阶段场景"))
             links.extend(ref for dest, key, label in targets if (ref := relation(dest, key, label, False)))
         if name == "shilian_area":
             tip = row.get("tips_key")

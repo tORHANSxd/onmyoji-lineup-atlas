@@ -1160,8 +1160,10 @@
       const codeScene=DATA.gameConfig.stages[trial?.codeStageId];
       if(trial&&exam.dao===trial.dao&&realm?.row?.hero?.join()===trial.eligible.join()&&
          group?.ref.key===trial.stageId&&group?.row?.resindex===trial.sceneId&&codeScene?.actors===1&&codeScene.shikigami===6){
-        destination.append(node('p','以六位式神的满生命阵容复跑档位 1。途中技能、增益和守护条件见路线资料。','caption'));
-        window.AtlasPveWorkbench?.mount(destination,{stageId:trial.stageId,groupId:group.ref.key,memberCount:6,waveCount:1,
+        const scenario='以六位式神的满生命阵容复跑档位 1。途中技能、增益和守护条件见路线资料。';
+        destination.append(node('p',scenario,'caption'));
+        if(trial.phases)destination.append(node('p','月之海按原版两阶段战斗复跑，演出等待使用原版服务端超时机制并在战报单列。','caption'));
+        window.AtlasPveWorkbench?.mount(destination,{stageId:trial.stageId,groupId:group.ref.key,memberCount:6,waveCount:trial.phases?.length??1,
           battleMode:exams.battleMode,version:exams.resourceVersion,codeStageId:trial.codeStageId,codeLabel:codeScene.name,
           trialEligible:trial.eligible,label:'六道之门 · 单场首领试炼'});
       }

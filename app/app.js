@@ -222,7 +222,8 @@ function sampleBattleMarkup(samples){
      `收服${hunling.capture.success===true?'成功':hunling.capture.success===false?'失败':'待确认'} · 概率 ${Math.min(100,hunling.capture.baseRate*(1+hunling.capture.bonusRate)*100).toFixed(1)}%`:''):
    regional?.eligible===false?'原版引擎判定阵容不符合特殊条件':
    regional?.metrics?`${describeBattle(sample)} · ${regional.metrics.rounds} 回合 · 我方承伤 ${Math.round(regional.metrics.receivedDamage).toLocaleString('zh-CN')}${modifiers}`:
-   trial?`${describeBattle(sample)} · 试炼式神 ${DATA.gameConfig.heroes[trial.trialHero]?.name||trial.trialHero} · ${trial.rounds} 回合`:
+   trial?`${describeBattle(sample)} · 试炼式神 ${DATA.gameConfig.heroes[trial.trialHero]?.name||trial.trialHero} · ${trial.rounds} 回合`+
+    (trial.phases?` · 首领阶段 ${trial.phasesCleared} / ${sample.waveCount} · 服务端演出等待 ${(trial.montageWaitMs/1000).toFixed(2)} 秒`:''):
    experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:
    coins?`${coins.timedOut?'超时':sample.outcome==='win'?'击破首领':sample.completed?'队伍落败':'结算待确认'} · `+
     `首领剩余生命 ${(coins.bossHpFraction*100).toFixed(2)}% · 金币预览 ${coins.previewCoins.toLocaleString('zh-CN')} · `+

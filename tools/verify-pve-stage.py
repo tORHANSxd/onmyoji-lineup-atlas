@@ -22,7 +22,7 @@ def replay(args, runtime, work):
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
     from shilian_routes import SHILIAN_EXAM_MODE
-    from shilian_stage import REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, shilian_stage, verify_opening
+    from shilian_stage import MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, shilian_stage, verify_opening
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
@@ -392,6 +392,7 @@ def replay(args, runtime, work):
         raise RuntimeError("The original engine initialized a different battle")
     recorder = engine.battleRecorder or BattleRecorderRune(engine, controller)
     engine.battleRecorder = recorder
+    moon_trial = MoonTrial(engine, controller, group, choices) if shilian and dao == 1 else None
     if not relay:
         engine.op_init(controller, actor_id, avatar.defaultHeros[:], [])
     engine.battleState = const.BattleState.BS_LOADING
@@ -410,6 +411,8 @@ def replay(args, runtime, work):
         instructions = HuntOpening(engine, controller, const, tactics, boss)
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
+        if moon_trial:
+            moon_trial.update()
         if host.oracle.unsupported:
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
         if regional_replay and regional_replay.eligible is False:
@@ -516,6 +519,10 @@ def replay(args, runtime, work):
         report["sixRealms"] = {"dao": dao, "trialSlot": args.shilian_trial_slot, "trialHero": trial_hero,
                                "difficulty": engine.difficulty, "rounds": engine.lbs_bout_counter}
         report["wavesCleared"] = int(outcome == "win")
+        if moon_trial:
+            phases = moon_trial.report(report["outcome"])
+            report["sixRealms"].update(phases)
+            report["waveCount"], report["wavesCleared"] = len(group["MonstersInfos"]), phases["phasesCleared"]
     if regional_replay:
         report["regionalBoss"] = regional_replay.report(completed, winner)
     if yanwu_replay:

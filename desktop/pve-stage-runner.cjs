@@ -315,7 +315,9 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
  const trial=report?.sixRealms;
  const invalidTrial=sixRealmsTrial&&(!trial||trial.dao!==sixRealmsTrial.dao||trial.difficulty!==sixRealms.difficulty||
   trial.trialSlot!==trialSlot||trial.trialHero!==Number(rounds[0].members[trialSlot-1].hero.heroId)||
-  !Number.isSafeInteger(trial.rounds)||trial.rounds<0||report.sceneId!==sixRealmsTrial.sceneId||report.waveCount!==1);
+  !Number.isSafeInteger(trial.rounds)||trial.rounds<0||
+  (sixRealmsTrial.phases?!validMoonPhases(report,sixRealmsTrial.phases):
+   report.sceneId!==sixRealmsTrial.sceneId||report.waveCount!==1));
  if(report?.resourceVersion!==resourceVersion||report.route!==engine.route||report.engineClass!==engine.name||
     report.engineSHA256!==engine.sha256||report.battleMode!==battleMode||report.stageId!==stageId||report.groupId!==groupId||
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
@@ -343,6 +345,15 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
   throw Error('原版复跑没有返回与关卡和配装一致的战报');
  }
  return report;
+}
+
+function validMoonPhases(report,expected){
+ const {phases,phasesCleared,montageWaitMs}=report.sixRealms;
+ return Array.isArray(phases)&&phases.length>=1&&phases.length<=expected.length&&
+  phases.every((phase,index)=>phase&&Object.entries(expected[index]).every(([key,value])=>phase[key]===value))&&
+  expected.some(phase=>phase.sceneId===report.sceneId)&&report.waveCount===expected.length&&
+  phasesCleared===report.wavesCleared&&Number.isSafeInteger(phasesCleared)&&phasesCleared>=0&&phasesCleared<=phases.length&&
+  (report.outcome!=='win'||phasesCleared===expected.length)&&Number.isSafeInteger(montageWaitMs)&&montageWaitMs>=0;
 }
 
 function createPveStageRunner({configPath,scriptRoot,suits}){

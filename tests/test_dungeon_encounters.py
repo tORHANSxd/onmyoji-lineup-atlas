@@ -16,17 +16,18 @@ class EncounterIndexTests(unittest.TestCase):
                               [1, {"id": 1, "name": "月之海", "pve_id": 760000}]],
             "shilian_stage_detail": [[20, {"dao": 2, "name": "香炉规则"}]],
             "shilian_level": [[{"$tuple": [2, 1]}, {"dao": 2, "grade_str": "壹"}]],
-            "shilian_event_exam": [[1, {"dao": 0, "battle_id": 690036}], [3, {"dao": 2, "battle_id": 700133}]],
+            "shilian_event_exam": [[1, {"dao": 0, "battle_id": 690036}], [2, {"dao": 1, "battle_id": 700036}],
+                                   [3, {"dao": 2, "battle_id": 700133}]],
             "shilian_area": [[14, {"type": 40, "event_group": 7, "tips_key": "island"}],
                              [15, {"type": 20, "event_group": 7}]],
             "shilian_event_battles": [[201, {"group_id": 7, "battle_id": 700120}],
                                       [202, {"group_id": 8, "battle_id": 700121}]],
             "pve_stage_data": [[str(key), {"id": key, "groupid": key}]
-                               for key in (690036, 700101, 700120, 700121, 700133, 760000)],
+                               for key in (690036, 700036, 700101, 700120, 700121, 700133, 760000)],
             "BattleMonstersInfo": [[key, {"resindex": 100}]
-                                   for key in (690036, 700101, 700120, 700121, 700133, 760000)],
-            "Combinesceneinfo": [[100, {"battlesceneinfo": 10}]],
-            "BattleScenesInfo": [[10, {}]],
+                                   for key in (690036, 700036, 700101, 700120, 700121, 700133, 760000)],
+            "Combinesceneinfo": [[100, {"battlesceneinfo": 10}], [469104, {"battlesceneinfo": 811}]],
+            "BattleScenesInfo": [[10, {}], [811, {}]],
             "battle_team_routes": [[927, {"battleMode": 208}], [928, {"battleMode": 921}]],
             "team_assist_stage": [[110151, {"ss_num": 6}]],
             "tipsInfoData_cn": [["island", "岛屿说明"]],
@@ -48,6 +49,9 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertIn(("battle_team_routes", 928), references("shilian_event_exam", 3))
         self.assertIn(("team_assist_stage", 110151), references("shilian_event_exam", 3))
         self.assertIn(("shilian_liudao", 0), references("shilian_event_exam", 1))
+        self.assertNotIn(("Combinesceneinfo", 469104), references("shilian_event_exam", 1))
+        self.assertIn(("Combinesceneinfo", 469104), references("shilian_event_exam", 2))
+        self.assertIn(("BattleScenesInfo", 811), references("shilian_event_exam", 2))
         self.assertIn(("shilian_event_exam", 3), references("pve_stage_data", 700133))
         self.assertIn(("shilian_event_battles", 201), references("pve_stage_data", 700120))
         self.assertEqual([key for table, key in references("pve_stage_data", 760000) if table == "shilian_liudao"], [0, 1])

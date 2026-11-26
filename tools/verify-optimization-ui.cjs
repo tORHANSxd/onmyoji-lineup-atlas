@@ -296,7 +296,7 @@ async function main(){
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
  if(catalog?.index.encounters)await check('已知阵容按副本匹配、使用原版入口并保留逐场战报',async()=>{
   const ids=[591,389,596,554,379,557],reserves=[237,395,369,364],heroes={},items=[];
-  for(const id of [...ids,...reserves,217]){
+  for(const id of [...ids,...reserves,217,219]){
    const prototype=data.gameConfig.heroes[id],prefix='pve-'+id;
    const skinfo=prototype.skills.map(skill=>[skill,game.levels(data.gameConfig,skill,1).at(-1).level]);
    const equips=Array.from({length:6},(_,i)=>prefix+'-soul-'+i);
@@ -325,7 +325,9 @@ async function main(){
    known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
   const trial=known('six-realms',110151,6);
   trial.members[6]=fighter(217,5);
-  squads.push(trial,known('six-realms-ineligible',110151,6));
+  const moon=known('moon-trial',110150,6);
+  moon.members[6]=fighter(219,5);
+  squads.push(trial,moon,known('six-realms-ineligible',110151,6));
   const boot=await ui('JSON.stringify(STATE)');
   const cases=JSON.parse(await readEncounters(catalog)).entries;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -418,6 +420,17 @@ async function main(){
     });
     assert.deepEqual(trialSeeds,[0,1,2,3,7,42]);
     assert.match(await ui(reports+'.textContent'),/试炼式神.*4 回合/);
+    await encounter('daily','六道之门试炼关卡 月之海 700036');
+    assert.match(await ui(panel+'.textContent'),/原版两阶段战斗.*月之海第二阶段场景.*469104/s);
+    await choose('moon-trial');
+    mockPve=(plan,request)=>{
+     assert.deepEqual(request,{battleMode:921,stageId:700036,groupId:700036,seed:request.seed,damageFloor:true,trialSlot:6});
+     return {...sample,seed:request.seed,waveCount:2,wavesCleared:2,
+      sixRealms:{dao:1,trialSlot:6,trialHero:219,difficulty:1,rounds:4,phases:[{},{}],phasesCleared:2,montageWaitMs:90040}};
+    };
+    await ui(start+'.click()');
+    await until(status+'.textContent.includes("全随机分支待验证")',20000);
+    assert.match(await ui(reports+'.textContent'),/首领阶段 2 \/ 2 · 服务端演出等待 90\.04 秒/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='800017'&&entry.kind==='契灵之境')){
     await encounter('daily','契灵之境 平安京 770005');

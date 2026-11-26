@@ -9,6 +9,9 @@ const tableSHA256={
  BattleMonstersInfo:'8747286d03333c0073d5d2d72e3cec1e89a25f043efb920ee4fcaa8b55b29111',
 };
 const trials=[
+ {stageId:700036,dao:1,sceneId:469103,codeStageId:110150,eligible:[219,234,252],
+  engine:'ShiLianYueDuEngine',sha256:'875bca1a805f379d5baf5499e8962325202e3e1d8a38dd7dc292fd03a21ead00',
+  phases:[{sceneId:469103,bossId:6510589,position:1},{sceneId:469104,bossId:6511589,position:1}]},
  {stageId:700133,dao:2,sceneId:469110,codeStageId:110151,eligible:[217,264,238],
   engine:'ShiLianXunXiangXingEngine',sha256:'68eb9bb6141837fa993c166875822fea2f4082c7527f3f7b032d15bbabd531ad'},
  {stageId:700235,dao:3,sceneId:128,codeStageId:110152,eligible:[266,262,202],

@@ -3,6 +3,7 @@
 SHILIAN_EVENT_MODE = 208
 SHILIAN_EXAM_MODE = 921
 SHILIAN_MODES = (SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE)
+MOON_SECOND_SCENE = 469104
 
 # The two original team classes select these engines from their team type.
 SHILIAN_DAOS = {
