@@ -205,6 +205,28 @@ async function main(){
   await capture('client-journey-challenge');
   await ui('$("client-dungeons").open=false');
  });
+ if(catalog?.index.encounters&&catalog.entries.has('lbs_world_boss_area'))await check('地域鬼王显示原版普通条件、极难词条及玩法专用入口',async()=>{
+  await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
+  await ui('qaEncounterInput("daily","地域鬼王 国王湖")');
+  const detail='$("client-dungeons-encounter-detail")';
+  await until(detail+'.textContent.includes("LBSWorldBossXEngine")');
+  const area=await ui(detail+'.textContent');
+  assert.match(area,/国王湖.*每日条件及其实际参数由服务器下发.*静态战斗候选（权重 1）.*300092.*普通特殊条件候选（权重 0.2） · 10003.*限定%s回合.*参数池 1\[61,70\]/s);
+  assert.match(area,/LBSWorldBossEngine.*LBSWorldBossXEngine.*地域鬼王普通阵容码目录.*10020215.*地域鬼王极难阵容码目录.*10020216/s);
+  await ui(`[...${detail}.querySelectorAll('section')].find(el=>el.firstChild.textContent.includes('静态战斗候选')).querySelector('button:last-child').click()`);
+  await until(detail+'.textContent.includes("离线演练还需要该玩法下发的实际参数")');
+  assert.doesNotMatch(await ui(detail+'.textContent'),/用库存离线复跑/);
+  await ui('qaEncounterInput("daily","地域鬼王 密歇根湖")');
+  await until(detail+'.textContent.includes("权重 0.1 + 0.1")');
+  await ui(`[...${detail}.querySelectorAll('section')].find(el=>el.firstChild.textContent.includes('地域鬼王极难引擎及词条')).querySelector('button:last-child').click()`);
+  await until(detail+'.textContent.includes("蛇魔侵蚀(召唤)")');
+  const hard=await ui(detail+'.textContent');
+  assert.match(hard,/守护小纸人.*小纸人不阵亡.*群体加速.*全体提升20点.*蛇魔侵蚀\(召唤\).*额外提升2000积分/s);
+  assert.equal(await ui(detail+'.querySelectorAll(".encounter-rule-text").length'),12);
+  await ui(detail+'.querySelector(".encounter-rule-text").closest("section").scrollIntoView({block:"start",behavior:"instant"})');
+  await capture('client-regional-boss-hard-rules');
+  await ui('$("client-dungeons").open=false');
+ });
  if(catalog?.index.encounters&&catalog.entries.get('battle_mode_routes')?.fields.includes('scene_engine'))await check('可从战斗模式查找场景声明引擎和原脚本来源',async()=>{
   await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
   await ui('qaEncounterInput("battle","MODE_PVE MonstarGuanKaEngine")');

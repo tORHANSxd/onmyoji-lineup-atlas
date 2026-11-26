@@ -57,6 +57,7 @@ RESOURCE_CONSTANTS = {
 GUILD_BOSS_TROOPS = {101, 102, 111, 112, 121, 122}
 HUNT_CODE_TARGETS = (10020208, 10020207, 10020209, 10020210)
 RETREAT_CODE_TARGETS = {1200501: 10020206, 1200500: 10020204, 1200600: 10020205}
+REGION_DIFFICULTY_SKILLS = {10409: "极难默认词条", 10418: "极难奖励词条"}
 
 # The raw fields remain available. Each relation below names the ID namespace
 # used by the corresponding client table.
@@ -74,6 +75,7 @@ EDGES = {
                                  ("activity_time", "activity", "开放配置")),
     "dungeon_yuling": (("scene", "Combinesceneinfo", "关卡场景"),),
     "MZB_fengmo": (("boss_id", "monster", "首领"),),
+    "lbs_world_boss_area": (("dist_id", "lbs_world_boss_init", "地图分区"),),
     "act_team_battle": (("act_id", "activity", "活动开放配置"),),
     "journey_hardbattle": (("battle_id", "pve_stage_data", "首领挑战关卡"),),
     "SuperGhost_mission": (("actid", "activity", "活动开放配置"), ("sceneid", "Combinesceneinfo", "关卡场景")),
@@ -109,7 +111,7 @@ def numeric_key(value):
 
 def reference_key(value):
     if isinstance(value, dict) and set(value) == {"$tuple"} and isinstance(value["$tuple"], list):
-        parts = tuple(numeric_key(item) for item in value["$tuple"])
+        parts = tuple(str(item) if type(item) is int else numeric_key(item) for item in value["$tuple"])
         if parts and None not in parts:
             return parts
     return numeric_key(value) or (value if isinstance(value, str) and value else None)
@@ -153,6 +155,33 @@ def encounter_index(source, load_rows):
         dest = legacy_tips if key not in rules and key in tips else rule_table
         return {"table": dest, "key": key, "label": label, "found": key in rules or key in tips}
 
+    def region_modifiers():
+        constants = table("Constant")
+        if not any(str(key) in constants for key in REGION_DIFFICULTY_SKILLS):
+            return []
+        # AreaKingBossInfoPanel reads level-one skill data. Each included ID
+        # currently has one such row, including rows with a non-default variant.
+        level_one = {}
+        for skill_key in table("skill"):
+            if isinstance(skill_key, tuple) and len(skill_key) == 3 and skill_key[1] == "1":
+                level_one.setdefault(skill_key[0], []).append(skill_key)
+        links = []
+        for constant_id, label in REGION_DIFFICULTY_SKILLS.items():
+            ref = relation("Constant", constant_id, f"{label}编号表", True)
+            links.append(ref)
+            if not ref["found"]:
+                continue
+            ids = constants[str(constant_id)][1].get("value", ())
+            for skill_id in ids if isinstance(ids, list) else ():
+                if type(skill_id) is float and skill_id.is_integer():
+                    skill_id = int(skill_id)
+                options = level_one.get(numeric_key(skill_id), ())
+                key = {"$tuple": [int(part) for part in options[0]]} if len(options) == 1 else skill_id
+                skill = relation("skill", key, label, True)
+                if skill:
+                    links.append(skill)
+        return links
+
     teams_by_mode = {}
     for key, row in table("battle_team_routes").values():
         teams_by_mode.setdefault(row["battleMode"], []).append(key)
@@ -168,6 +197,11 @@ def encounter_index(source, load_rows):
         for key, row in table("mapnpc").values()
         if (map_id := numeric_key(row.get("battle_id"))) in rooms_by_map and numeric_key(key) in table("storyChapter")
     }
+    regions_by_stage = {}
+    for key, area in table("lbs_world_boss_area").values():
+        for choice in area.get("weighted_battles", ()):
+            if isinstance(choice, list) and len(choice) == 2 and (stage_id := numeric_key(choice[0])):
+                regions_by_stage.setdefault(stage_id, []).append(key)
 
     def explicit(name, row):
         links = []
@@ -215,12 +249,14 @@ def encounter_index(source, load_rows):
             if route:
                 links.append(route)
         if name == "pve_stage_data":
+            stage_id = numeric_key(row.get("id"))
+            for key in regions_by_stage.get(stage_id, ()):
+                links.append({"table": "lbs_world_boss_area", "key": key, "label": "地域鬼王玩法入口", "found": True})
             tip = relation("normal_battle_tips", row.get("id"), "通用战斗规则", False)
             if tip:
                 links.append(tip)
             resource = RESOURCE_STAGES.get(row.get("name"))
             if resource:
-                stage_id = numeric_key(row.get("id"))
                 team = relation("battle_team_routes", resource[1], "当前玩法组队入口资料", False) if stage_id != "2111" else None
                 if team:
                     links.append(team)
@@ -253,10 +289,42 @@ def encounter_index(source, load_rows):
                 links.append(rule_reference(key, label))
         if name == "lbs_world_boss_area":
             for choice in row.get("weighted_battles", ()):
-                if isinstance(choice, list) and choice:
-                    resolved = relation("pve_stage_data", choice[0], "地域战斗", True)
+                if isinstance(choice, list) and len(choice) == 2:
+                    label = "静态战斗候选"
+                    if type(choice[1]) in (float, int):
+                        label += f"（权重 {choice[1]:g}）"
+                    resolved = relation("pve_stage_data", choice[0], label, True)
                     if resolved:
                         links.append(resolved)
+            for monster in row.get("monsters", ()):
+                ref = relation("monster", monster, "地域首领模板", True)
+                if ref:
+                    links.append(ref)
+            for pool_index, pool in enumerate(row.get("special_attacks", ()), 1):
+                weights = {}
+                for rule in pool if isinstance(pool, list) else ():
+                    if not isinstance(rule, list) or len(rule) != 2:
+                        continue
+                    if numeric_key(rule[0]) and type(rule[1]) in (float, int):
+                        weights.setdefault(rule[0], []).append(rule[1])
+                for key, values in weights.items():
+                    label = "普通特殊条件候选"
+                    qualifier = f"权重 {values[0]:g}" if len(values) == 1 else "权重 " + " + ".join(f"{value:g}" for value in values)
+                    ref = relation("lbs_world_boss_type", key, f"{label}（{qualifier}）", True)
+                    if ref:
+                        ref["pool"] = pool_index
+                        links.append(ref)
+            for destination, target, label in (
+                ("battle_mode_routes", 3004, "地域鬼王普通引擎"),
+                ("battle_mode_routes", 3023, "地域鬼王极难引擎及词条"),
+                ("team_assist_stage", 10020215, "地域鬼王普通阵容码目录"),
+                ("team_assist_stage", 10020216, "地域鬼王极难阵容码目录"),
+            ):
+                ref = relation(destination, target, label, False)
+                if ref:
+                    links.append(ref)
+        if name == "battle_mode_routes" and row.get("mode_symbol") == "MODE_LBS_WORLD_BOSSX":
+            links.extend(region_modifiers())
         if name == "guild_crevice_area":
             for key in str(row.get("monster_id", "")).replace("|", ",").split(","):
                 resolved = relation("guild_crevice_battle", key, "暗域敌人", True)
@@ -314,6 +382,8 @@ def encounter_index(source, load_rows):
         for link in pending:
             dest, key = link["table"], link["key"]
             identity = (dest, reference_key(key) or key)
+            if "pool" in link:
+                identity += (link["pool"],)
             if identity in seen:
                 continue
             seen.add(identity)
@@ -397,6 +467,8 @@ def encounter_index(source, load_rows):
                 title = " · ".join(filter(None, (f"战斗模式 {key}", symbol, scene.get("scene_engine"))))
             if scene_route:
                 title = " · ".join((f"战斗模式 {key}", row["mode_symbol"], row["scene_engine"]))
+                if row["mode_symbol"] == "MODE_LBS_WORLD_BOSSX":
+                    title = f"地域鬼王极难 · {title}"
             if not title and linked_battles:
                 _, battle = table("pve_stage_data")[numeric_key(linked_battles[0]["key"])]
                 title = name(battle)

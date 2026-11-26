@@ -36,7 +36,9 @@
     journey_normalbattle_yuhun: '京畿净化战斗参数 · 御魂',
     journey_normalbattle_juexing: '京畿净化战斗参数 · 觉醒',
     MZB_fengmo: '逢魔首领',
-    lbs_world_boss_type: '逢魔首领战斗规则',
+    lbs_world_boss_area: '地域鬼王',
+    lbs_world_boss_init: '地域鬼王地图分区',
+    lbs_world_boss_type: '地域鬼王普通特殊条件',
     shilian_stage_detail: '六道之门试炼',
     shilian_event_battles: '六道之门战斗配置',
     shilian_event_exam: '六道之门试炼关卡',
@@ -117,6 +119,12 @@
     hp: '生命参数', critical: '暴击参数', speed: '速度参数', weight: '权重',
   };
   const journeyBossFields = {hero_id: '首领编号', reward: '奖励编号', time: '时限参数', unlocked: '解锁参数'};
+  const tableFields = {
+    lbs_world_boss_area: {dist_id: '分区 ID', progress: '配置进度', reward: '世界排名奖励类型', group_reward: '分组奖励类型'},
+    lbs_world_boss_init: {dist_name: '分区'},
+    lbs_world_boss_type: {desc: '原版条件模板', detail: '战斗内条件提示模板', p1: '参数池 1', p2: '参数池 2', type: '条件类型'},
+    team_assist_stage: {search_id: '阵容码检索 ID', ss_num: '式神人数', yys_num: '阴阳师人数'},
+  };
   const state = { token: 0, index: null, entry: null, rows: [], matches: [], page: 0, selected: -1 };
   const stage = { token: 0, loading: false, rows: null, byKey: new Map(), matches: [], page: 0, selected: null, mode: 'tables' };
   const option = (label, value) => new Option(label, value);
@@ -130,7 +138,7 @@
   const keyText = key => typeof key === 'object' ? JSON.stringify(key) : String(key);
   const openingNumber = new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2});
   const entryKey = ({table, key}) => JSON.stringify([table, key]);
-  const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.chapter_name, row?.floordesc,
+  const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.area_name, row?.chapter_name, row?.floordesc,
     row?.typedesc, row?.skill_name, row?.StoryName, row?.MapEntryID != null ? row.desc : null]
     .find(value => typeof value === 'string' && value.trim()) || '';
 
@@ -138,7 +146,8 @@
     const fields = document.createElement('dl');
     const displayLabels = table?.startsWith('journey_normalbattle_') ? {...labels, ...journeyVariantFields} :
       table === 'journey_hardbattle' ? {...labels, ...journeyBossFields} :
-      table === 'dungeon_yuling' ? {...labels,strength:'原表体力字段'} : labels;
+      table === 'dungeon_yuling' ? {...labels,strength:'原表体力字段'} :
+      Object.hasOwn(tableFields, table) ? {...labels, ...tableFields[table]} : labels;
     for (const [field, label] of Object.entries(displayLabels)) {
       if (row == null || !Object.hasOwn(row, field)) continue;
       const value = row[field];
@@ -354,6 +363,15 @@
   }
 
   function appendSpecialDetails(block, table, row) {
+    if (table === 'lbs_world_boss_area') {
+      block.append(node('p', '普通难度的每日条件及其实际参数由服务器下发。下方列出客户端静态候选、权重及原版引擎。', 'caption'));
+    }
+    if (table === 'battle_mode_routes' && row?.mode_symbol === 'MODE_LBS_WORLD_BOSSX') {
+      block.append(node('p', '极难入口额外提交挑战星级和玩家勾选的词条。部分词条会改变计分或胜负条件。', 'caption'));
+    }
+    if (table === 'skill' && (row?.combatDesc || row?.desc)) {
+      block.append(node('p', row.combatDesc || row.desc, 'encounter-rule-text'));
+    }
     if(table==='dungeon_challenge_series'&&matchesOpeningSource(window.AtlasSecretOpenings)){
       if(row.type===20)block.append(node('p','原版召唤裁判，选技时限为 45 秒。','caption'));
       if(row.type===35&&row.floor_num>=8){
@@ -712,7 +730,9 @@
     if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
+      const regional=entry.refs.some(ref=>ref.table==='lbs_world_boss_area');
       if(window.AtlasResourceEncounters.isResourceStage(row))showResourceEncounter(destination,stageId,row,formation);
+      else if (regional) destination.append(node('p','此编组供地域鬼王入口使用。离线演练还需要该玩法下发的实际参数。','caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&
           formation?.row?.MonstersInfos?.length&&!['no_yys','replace_yysid','isplot','sl_file'].some(field=>row[field])) {
@@ -721,7 +741,8 @@
     }
     for (const {ref,row,error,waves} of groups) {
       const block = node('section', '', 'encounter-source');
-      const heading = ref.primary?[ref.label]:[ref.label, rowTitle(row), keyText(ref.key)].filter(Boolean);
+      const pool = ref.pool && groups[0].row?.special_attacks?.length > 1 ? `候选池 ${ref.pool}` : '';
+      const heading = ref.primary?[ref.label]:[ref.label, pool, rowTitle(row), keyText(ref.key)].filter(Boolean);
       block.append(node('h4', heading.join(' · ')));
       if (!row) {
         block.append(node('p', error ? '资料读取失败。' + error : '本资源中未找到对应记录。', 'caption'));
