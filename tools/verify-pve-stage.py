@@ -320,7 +320,10 @@ def replay(args, runtime, work):
         group_id, wave_count = stage["monsterid"], 1
         route = "awake-ordinary-solo"
     elif args.mode == 266:
-        route = "secret-team-solo" if stage["need_team"] else "secret-ordinary-solo"
+        if stage["advanced"]:
+            route = "secret-race-solo"
+        else:
+            route = "secret-team-solo" if stage["need_team"] else "secret-ordinary-solo"
     elif args.mode == RESOURCE_MODE:
         route = resource.route
     elif args.mode == YULING_MODE:

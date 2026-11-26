@@ -445,6 +445,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
  const engine=sixRealmsRoute?{name:sixRealmsRoute.engine,sha256:sixRealmsRoute.sha256,
   route:`six-realms-${sixRealmsState?'configured':'full-health'}-${sixRealmsEvent?'encounter':'trial'}`}:
   resource?{name:resource.engine,route:resource.route,sha256:resource.engineSHA256??resourceEncounters.engineSHA256}:
+  secret?.entrance==='race'?{...engines[battleMode],route:'secret-race-solo'}:
   secret?.entrance==='team'?{...engines[battleMode],route:'secret-team-solo'}:engines[battleMode];
  const awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;

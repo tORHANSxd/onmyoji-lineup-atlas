@@ -320,6 +320,7 @@ async function main(){
   const notes='资源 0.0.816，6 场离线结算。我方伤害取下限。阴阳师普攻 1 级。开场操作。入场前把第1位式神设为自动普攻。手动开场，首动普攻首领后切自动。红标首领。绿标第3位式神。全分支待验证。';
   const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
+   known('secret-race',10700011,5),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),
@@ -614,8 +615,10 @@ async function main(){
     secretMechanic:{setup:secretOpenings.floors[191].mechanic,openingObserved:true,counters:{}}}),
    /裁判已上场，选技时限 45 秒/);
    await ui('qaSecretEncounter(1071,"山兔大暴走 开心的山兔")');
-   await until(panel+'.textContent.includes("竞速配置")');
-   assert.equal(await ui(start+'===null'),true);
+   await until(start+'!==null');
+   assert.match(await ui(panel+'.textContent'),/竞速配置.*该层原版竞速编组.*本地复跑耗时/s);
+   assert.match(await run('secret-race',{stageId:1071,groupId:1071,battleMode:266},{waveCount:3,wavesCleared:3}),
+    /已知阵容 secret-race/);
    await ui('qaSecretEncounter(358,"溯问鲤踪 捌 鲤影")');
    await until(start+'!==null');
    assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-liyu']);

@@ -53,8 +53,11 @@ def secret_stage(floor):
 
 def secret_solo(config):
     # The ordinary panel dispatches need_team=1 through attack_team_copy,
-    # the client's single-player team challenge.
+    # the client's single-player team challenge. The race panel uses the
+    # separate attack_advanced_copy entrance and the advanced formation.
     replacement = bool(config["yys_replacement_id"])
+    if config["advanced"] == 1:
+        return config["need_team"] == 1 and not replacement
     return (config["advanced"] == 0 and config["need_team"] in (0, 1)
             and replacement == (config["type"] in REPLACEMENT_TYPES))
 

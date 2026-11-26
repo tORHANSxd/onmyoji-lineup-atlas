@@ -494,6 +494,7 @@
     if(entry.table!=='dungeon_challenge_series'||!matchesOpeningSource(source))return null;
     const opening=source.floors[entry.key],waves=group.waves.filter(wave=>wave.length>0);
     if(!opening||opening.sceneId!==group.row?.scene||waves.length!==opening.waves.length||
+       (opening.entrance==='race')!==(group.row.advanced===1)||
        (group.row.type===19?!opening.replacement:(opening.replacement?.templateId??0)!==(group.row.yys_replacement_id??0))||
        !opening.waves.every((wave,i)=>wave.length===waves[i].length&&wave.every((unit,j)=>
          ['id','position','level'].every(key=>unit[key]===waves[i][j][key]))))return null;
@@ -1199,8 +1200,10 @@
       }
       if(!secret.solo&&!config.advanced)
         destination.append(node('p','该层的独立机制仍待离线复跑核验。','caption'));
+      if(secret.solo&&secret.entrance==='race')destination.append(node('p',
+        '使用该层原版竞速编组。可手动选择已知阵容，战报显示本地复跑耗时。','caption'));
       if(secret.solo)window.AtlasPveWorkbench?.mount(destination,{stageId:Number(entry.key),groupId:Number(entry.key),memberCount:5,
-        battleMode:266,waveCount:secret.waves.length,label:secret.protection?'溯问鲤踪 · 保护挑战':
+        battleMode:266,waveCount:secret.waves.length,label:secret.entrance==='race'?'秘闻竞速 · 本地演练':secret.protection?'溯问鲤踪 · 保护挑战':
           config.need_team?'秘闻单人组队挑战':'秘闻普通单人',version:state.index.resourceVersion,
         codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?secret.codeStageId:null,codeLabel:codeScene?.name,
         replacementActor:secret.replacement,
