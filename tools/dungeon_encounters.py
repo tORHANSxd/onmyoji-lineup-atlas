@@ -3,6 +3,7 @@
 from collections import Counter
 from functools import cache
 from dojo_area_stage import DOJO_AREA_TEAM
+from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from guild_forest_stage import FOREST_MODE, FOREST_STAGES, FOREST_TEAM
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
@@ -34,6 +35,7 @@ ROOTS = {
     "dungeon_challenge_race": ("daily", "秘闻竞速"),
     "dungeon_yuling": ("daily", "御灵"),
     "MZB_fengmo": ("daily", "逢魔木桩练习"),
+    "fengmo_band_personal_boss": ("event", "逢魔乐队单人首领"),
     "lbs_world_boss_area": ("daily", "地域鬼王"),
     "lbs_world_boss_type": ("daily", "地域鬼王规则"),
     "shilian_event_battles": ("daily", "六道之门"),
@@ -134,6 +136,8 @@ EDGES = {
                                  ("activity_time", "activity", "开放配置")),
     "dungeon_yuling": (("scene", "Combinesceneinfo", "关卡场景"),),
     "MZB_fengmo": (("boss_id", "monster", "首领"),),
+    "fengmo_band_personal_boss": (("battleid", "pve_stage_data", "单人挑战关卡"),
+                                   ("monster_id", "monster", "首领原型")),
     "lbs_world_boss_area": (("dist_id", "lbs_world_boss_init", "地图分区"),),
     "act_team_battle": (("act_id", "activity", "活动开放配置"),),
     "xinghen_battle": (("stage_id", "pve_stage_data", "彼世逢魔关卡"),),
@@ -235,6 +239,10 @@ def encounter_index(source, load_rows):
         if match is None:
             return None if not unresolved else {"table": destination, "key": value, "label": label, "found": False}
         return {"table": destination, "key": match[0], "label": label, "found": True}
+
+    def fengmo_band_buffs(row):
+        return [ref for field, label in (("camp1_buff", "我方增益"), ("camp2_buff", "敌方首领增益"))
+                for buff in row.get(field, ()) if (ref := relation("buff", {"$tuple": [buff, 1]}, label, False))]
 
     tianfa_by_stage = {numeric_key(row.get("stage_id")): key for key, row in table("xinghen_battle").values()}
     dojo_area_by_stage, dojo_area_activities = {}, {}
@@ -632,6 +640,15 @@ def encounter_index(source, load_rows):
                     ("monster", 1250180, "白茧"),
                 ])
             links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
+        if name == "fengmo_band_personal_boss":
+            refs = [
+                ("BattleMonstersInfo", row.get("battleid"), "敌方编组"),
+                ("battle_team_routes", FENGMO_BAND_TEAM, "原版单人入口"),
+                ("activity", FENGMO_BAND_ACTIVITY, "活动开放期"),
+                *(("fengmo_band_bandskill", role, "乐队技能") for role in range(1, 4)),
+            ]
+            links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
+            links.extend(fengmo_band_buffs(row))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
             links.extend(ref for dest, key in dojo_area_by_stage.get(stage_id, ())
@@ -642,6 +659,14 @@ def encounter_index(source, load_rows):
                 if ref := relation("battle_team_routes", FOREST_TEAM, "单队战斗入口", False):
                     links.append(ref)
             stage_number = int(stage_id or 0)
+            if stage_number in FENGMO_BAND_STAGES:
+                boss_id = stage_number - FENGMO_BAND_STAGE_BASE
+                if ref := relation("fengmo_band_personal_boss", boss_id, "逢魔乐队单人首领", False):
+                    links.append(ref)
+                    _, boss = table("fengmo_band_personal_boss")[str(boss_id)]
+                    links.extend(fengmo_band_buffs(boss))
+                    if route := relation("battle_team_routes", FENGMO_BAND_TEAM, "原版单人入口", False):
+                        links.append(route)
             if is_ten_anniversary_stage(stage_number):
                 if stage_number in TEN_TOWER_STAGES:
                     team, mode, code, activity = 2320, 9591, 100998, 12132
@@ -1151,6 +1176,8 @@ def encounter_index(source, load_rows):
                          12134: "拾光永恒 · 巡于黄金之河", 12135: "拾光永恒 · 炼石成金"}[key]
             if table_name in ("ten_anni_2026_event", "ten_anni_2026_dungeon_battle"):
                 title = f"巡于黄金之河 · {title} · {key}"
+            if table_name == "fengmo_band_personal_boss":
+                title = f"逢魔乐队 · {title} · {row['battleid']}"
             if table_name == "guild_fake_god_event":
                 label = FOREST_EVENT_TYPES.get(row.get("type"), "事件")
                 title = f"青森之秘 · {label} · {title.strip()} · {key}"

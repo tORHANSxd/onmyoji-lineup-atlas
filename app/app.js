@@ -198,6 +198,7 @@ function sampleBattleMarkup(samples){
   const hunt=sample.guildHunt;
   const retreat=sample.guildRetreat;
   const yanwu=sample.fengmoYanwu;
+  const band=sample.fengmoBand;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -244,6 +245,8 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${retreat.damage.toLocaleString('zh-CN')} · 作战 ${retreat.combatSeconds.toFixed(2)} / ${retreat.windowSeconds} 秒 · ${retreat.phases.length} 次阶段切换`:
    yanwu?`${!sample.completed?'结算待确认':yanwu.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${yanwu.damage.toLocaleString('zh-CN')} · 作战 ${yanwu.combatSeconds.toFixed(2)} 秒`:
+   band?`${!sample.completed?'结算待确认':band.timedOut?'达到计分时限':band.enemiesRemaining>0?`剩余 ${band.enemiesRemaining} 位敌人`:'已清场'} · `+
+    `个人伤害 ${band.damage.toLocaleString('zh-CN')} · 作战 ${band.combatSeconds.toFixed(2)} / ${band.deadlineSeconds} 秒`:
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+

@@ -15,6 +15,7 @@ const guildRetreatOpenings=require('../app/guild-retreat-openings.js');
 const guildCrevice=require('../app/guild-crevice.js');
 const superGhost=require('../app/superghost.js');
 const fengmoYanwu=require('../app/fengmo-yanwu.js');
+const fengmoBand=require('../app/fengmo-band.js');
 const activityScore=require('../app/general-soul-trial.js');
 const dojoAreaRules=require('../app/dojo-area.js');
 const forestRules=require('../app/guild-forest.js');
@@ -58,6 +59,7 @@ const engines={
  [qilingGroups.battleMode]:{name:'QiLingGroupBossBattleEngine',route:'qiling-collective-local-window',sha256:qilingGroups.engineSHA256},
  3023:{name:'LBSWorldBossXEngine',route:'regional-boss-hard-scenario',sha256:'a4268deb478a53610e6ef6e23e833f3bf18d2be826f7cd703aaca7e1a54df38f'},
  [fengmoYanwu.battleMode]:{name:'FengMoEquipBattleEngine',route:'fengmo-yanwu-solo',sha256:fengmoYanwu.engineSHA256},
+ [fengmoBand.battleMode]:fengmoBand.engine,
  ...Object.fromEntries(Object.values(activityScore.modes).map(({battleMode,engine,route,engineSHA256})=>
   [battleMode,{name:engine,route,sha256:engineSHA256}])),
  [tianfa.battleMode]:{name:tianfa.engine,route:tianfa.route,sha256:tianfa.engineSHA256},
@@ -399,6 +401,23 @@ function validQinfeiBoss(report,options,plan){
   validScoringTactics(data,plan,profile.enemyId);
 }
 
+function validFengmoBand(report,stageId){
+ const band=report.fengmoBand,opening=band?.opening;
+ return report.sceneId===fengmoBand.sceneId&&report.waveCount===1&&report.formationsVerified===1&&
+  band?.bossId===fengmoBand.bossFor(stageId)&&band.deadlineSeconds===fengmoBand.deadlineSeconds&&
+  Number.isSafeInteger(band.damage)&&band.damage>=0&&Number.isFinite(band.combatSeconds)&&band.combatSeconds>=0&&
+  typeof band.timedOut==='boolean'&&(!band.timedOut||band.combatSeconds>=band.deadlineSeconds-1)&&
+  Array.isArray(opening)&&opening.length===6&&opening[0]?.id===band.monsterId&&
+  opening.every((unit,i)=>unit?.position===i+1&&positive(unit.id)&&positive(unit.level)&&Number.isFinite(unit.hp)&&unit.hp>0)&&
+  Number.isSafeInteger(band.enemiesRemaining)&&band.enemiesRemaining>=0&&band.enemiesRemaining<=opening.length&&
+  report.wavesCleared===Number(band.enemiesRemaining===0)&&
+  Array.isArray(band.allyBuffs)&&band.allyBuffs.every(positive)&&Array.isArray(band.enemyBuffs)&&band.enemyBuffs.every(positive)&&
+  sameTactics(band.buffRecipients,Object.fromEntries([
+   ...band.allyBuffs.map(id=>[id,id===fengmoBand.actorOnlyBuff?[1]:[1,2,3,4,5,6]]),
+   ...band.enemyBuffs.map(id=>[id,[1]]),
+  ]));
+}
+
 function validFengmoYanwu(report,entry,plan){
  const data=report.fengmoYanwu;
  return data&&report.sceneId===entry.sceneId&&report.waveCount===1&&data.actId===entry.actId&&data.deadlineSeconds===300&&
@@ -728,6 +747,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (!qinfeiSide&&(pveDeadlineSeconds!==undefined||pveDeadline!==undefined)&&
      (battleMode!==3||!positive(expectedPveDeadline)||!validPveClock(report,pveDeadline,expectedPveDeadline)))||
     (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
+    (battleMode===fengmoBand.battleMode&&!validFengmoBand(report,stageId))||
     (activityScore.modes[battleMode]&&!validActivityScore(report,rounds[0],activityScore.modes[battleMode]))||
     (battleMode===tianfa.battleMode&&!validTianfaReport(report,tianfa.stages[stageId],tianfaTeam))||
     (journeyRoute&&!validJourneyReport(report,journeyRoute,journeySettings))||
@@ -776,13 +796,14 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice,ghost,mapBossAvailable,qinfeiAvailable,dojoAreaAvailable,forestAvailable,tenAvailable,tenBossAvailable,tenExploreAvailable]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,band,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice,ghost,mapBossAvailable,qinfeiAvailable,dojoAreaAvailable,forestAvailable,tenAvailable,tenBossAvailable,tenExploreAvailable]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
      has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),
-     has('fengmo_yanwu_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py'),
+     has('fengmo_yanwu_stage.py'),has('fengmo_band_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py'),
      Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py'),has('tianfa_stage.py'),has('guild_crevice_stage.py'),has('superghost_stage.py'),has('map_boss_stage.py'),has('qinfei_boss_stage.py'),has('dojo_area_stage.py'),has('guild_forest_stage.py'),has('ten_anniversary_stage.py'),has('ten_anniversary_boss.py'),has('ten_anniversary_explore.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
-     ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
+     ...(yanwu?[fengmoYanwu.battleMode]:[]),...(band?[fengmoBand.battleMode]:[]),
+     ...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
      ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
      ...(generalSoul?Object.keys(activityScore.modes).map(Number):[]),...(journey?[journeyHard.battleMode]:[]),...(tianfaAvailable?[tianfa.battleMode]:[]),
      ...(crevice?[guildCrevice.battleMode]:[]),...(ghost?[superGhost.battleMode,superGhost.historicalBattleMode]:[]),
@@ -878,6 +899,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
        plan.members.length!==5)throw Error('青森之秘需要原版事件、地形和五位自有式神');
    }else if(forest!==undefined)throw Error('青森之秘事件配置仅适用于其活动入口');
    if(battleMode===3&&ten.isStage(stageId))throw Error('拾光永恒需要原版活动战斗入口');
+   if(battleMode===3&&fengmoBand.isStage(stageId))throw Error('逢魔乐队需要原版单人战斗入口');
+   if(battleMode===fengmoBand.battleMode&&(!fengmoBand.isStage(stageId)||groupId!==stageId||plan.members.length!==5))
+    throw Error('逢魔乐队单人首领需要对应编组和五位自有式神');
    if(ten.modes[battleMode]){
     if(!ten.validBonuses(tenBonuses??[]))throw Error(`拾光永恒最多可选 ${ten.bonusSlots} 项不同的额外增益`);
     if(ten.resourceVersion!==resourceVersion||ten.modeFor(stageId)!==battleMode||stageId!==groupId||

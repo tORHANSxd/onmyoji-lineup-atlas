@@ -4,6 +4,7 @@
   common?require('./rune-lineup.js'):root.AtlasRuneLineup,
   common?require('./rune-search.js'):root.AtlasRuneSearch,
   common?require('./fengmo-yanwu.js'):root.AtlasFengmoYanwu,
+  common?require('./fengmo-band.js'):root.AtlasFengmoBand,
   common?require('./qiling-group-openings.js'):root.AtlasQiLingGroups,
   common?require('./guild-crevice.js'):root.AtlasGuildCrevice,
   common?require('./superghost.js'):root.AtlasSuperGhost,
@@ -13,7 +14,7 @@
   (common?require('./ten-anniversary.js'):root.AtlasTenAnniversary).bossRoute,
   common?require('./general-soul-trial.js'):root.AtlasGeneralSoulTrial);
  if(common)module.exports=api;else root.AtlasRuneCandidate=api;
-})(globalThis,function(G,R,S,yanwu,qiling,crevice,ghost,qinfei,dojo,forest,tenBoss,generalSoul){
+})(globalThis,function(G,R,S,yanwu,band,qiling,crevice,ghost,qinfei,dojo,forest,tenBoss,generalSoul){
 'use strict';
 
 const mainAttrs={attack_rate:'atk_per',crit_rate:'critical_rate',crit_damage:'critical_pow',speed:'spd',
@@ -109,10 +110,10 @@ function pveGoalMet(report,battleMode){
  return report.wavesCleared===report.waveCount;
 }
 
-const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.qilingCollective??report.guildCrevice??
+const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.fengmoBand??report.qilingCollective??report.guildCrevice??
  report.superGhost??report.historicalSuperGhost??report.qinfeiBoss??report.dojoArea??report.guildForest??
  report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore;
-const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===qiling.battleMode||
+const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===band.battleMode||mode===qiling.battleMode||
  mode===crevice.battleMode||mode===ghost.battleMode||mode===ghost.historicalBattleMode||mode===qinfei.battleMode||mode===dojo.battleMode||
  mode===forest.battleMode||mode===tenBoss.battleMode||
  Object.hasOwn(generalSoul.modes,mode);

@@ -19,6 +19,7 @@ SPECIAL_NIAN_WALL_SECONDS = 145
 def replay(args, runtime, work):
     from dojo_area_stage import DOJO_AREA_MODE, DojoAreaReplay, dojo_area_stage, is_dojo_area_stage
     from game_resources import sha256
+    from fengmo_band_stage import FENGMO_BAND_MODE, FENGMO_BAND_STAGES, FengmoBandReplay
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE, FengmoYanwuReplay, fengmo_yanwu_stage
     from general_soul_stage import SCORE_STAGES, SOLO_SCORE_MODES, SoloScoreReplay, solo_score_stage
     from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, CREVICE_WALL_SECONDS, CreviceReplay
@@ -71,6 +72,7 @@ def replay(args, runtime, work):
     raid_battle = retreat or qinfei_boss
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
+    fengmo_band = args.mode == FENGMO_BAND_MODE
     activity_score = SOLO_SCORE_MODES.get(args.mode)
     dojo_area = args.mode == DOJO_AREA_MODE
     forest = args.mode == FOREST_MODE
@@ -207,6 +209,14 @@ def replay(args, runtime, work):
         if len(fighters) != member_count:
             raise ValueError("The selected roster does not match the original solo Fengmo Yanwu route")
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif fengmo_band:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Fengmo Band personal bosses require five owned shikigami")
+        band = FengmoBandReplay(modules, args.stage)
+        engine, group, const = band.engine, band.group, band.const
+        group_id, wave_count = group["ID"], 1
     elif ten_explore:
         from DynamicConfigData import DATA_HERO
 
@@ -361,6 +371,8 @@ def replay(args, runtime, work):
             raise ValueError("Forest of Secrets requires its original scoring engine and event")
         if is_ten_anniversary_stage(args.stage):
             raise ValueError("Shichangji activity stages require their original activity route")
+        if args.stage in FENGMO_BAND_STAGES:
+            raise ValueError("Fengmo Band personal bosses require their original activity route")
         if args.stage in SCORE_STAGES:
             raise ValueError("This activity requires its dedicated original score battle engine")
         if args.stage in (*TIANFA_STAGES, TIANFA_LOBBY_STAGE):
@@ -444,6 +456,8 @@ def replay(args, runtime, work):
         route = "regional-boss-ordinary-scenario" if args.mode == REGION_MODE else "regional-boss-hard-scenario"
     elif yanwu:
         route = "fengmo-yanwu-solo"
+    elif fengmo_band:
+        route = "fengmo-band-personal-boss"
     elif dojo_area:
         route = "dojo-area-solo-score"
     elif forest:
@@ -631,7 +645,7 @@ def replay(args, runtime, work):
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == ten_groups[0]["resindex"]
                              and engine.defeat_monster_wave == 0 and engine.monster_wave_count == len(ten_groups)
                              and tuple(engine.wave_pve_flag_list) == tuple(group["ID"] for group in ten_groups))
-    elif yanwu or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
+    elif yanwu or fengmo_band or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -712,6 +726,8 @@ def replay(args, runtime, work):
             break
         if yanwu_replay:
             yanwu_replay.update()
+        if fengmo_band:
+            band.update()
         if score_replay:
             score_replay.update()
         if dojo_area_replay:
@@ -875,6 +891,10 @@ def replay(args, runtime, work):
         report["fengmoYanwu"] = yanwu_replay.report(completed)
         if instructions:
             report["fengmoYanwu"].update(instructions.report())
+    if fengmo_band:
+        report["fengmoBand"] = band.report()
+        report["formationsVerified"] = 1
+        report["wavesCleared"] = int(report["fengmoBand"]["enemiesRemaining"] == 0)
     if score_replay:
         report[activity_score.report_key] = score_replay.report(completed, [row["heroId"] for row in fighters.values()],
                                                                actor_id, score_activity_id)
@@ -976,6 +996,7 @@ def replay(args, runtime, work):
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from fengmo_band_stage import FENGMO_BAND_MODE
     from dojo_area_stage import DOJO_AREA_ACTIVITY, DOJO_AREA_MODE
     from map_boss_stage import (MODES as MAP_BOSS_MODES, QINFEI_FOOD_CHAIN_SECONDS, QINFEI_FOOD_MODE,
                                 SPECIAL_NIAN_MODE, party_positions, qinfei_food_sequence)
@@ -1010,7 +1031,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--dojo-area", type=int, nargs=3, metavar=("YEAR", "PLAY", "REGION_STATE"))
     parser.add_argument("--forest-event", type=int)
     parser.add_argument("--ten-bonuses", type=int, nargs="+", choices=TEN_OPTIONAL_BONUSES, default=[])

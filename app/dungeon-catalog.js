@@ -44,6 +44,8 @@
     journey_normalbattle_yuhun: '京畿净化战斗参数 · 御魂',
     journey_normalbattle_juexing: '京畿净化战斗参数 · 觉醒',
     MZB_fengmo: '逢魔木桩练习',
+    fengmo_band_personal_boss: '逢魔乐队单人首领',
+    fengmo_band_bandskill: '逢魔乐队技能',
     event4: '逢魔实战首领',
     event4_honor_limit: '极逢魔实战门槛',
     event4_timescore: '逢魔用时积分',
@@ -595,6 +597,32 @@
       battleMode:source.battleMode,waveCount:1,label:`逢魔演武·${entry.name}个人伤害`,version:source.resourceVersion,
       scoreWindowSeconds:300,
       codeStageId:scene?.actors===1&&scene.shikigami===entry.memberCount?entry.codeStageId:null,codeLabel:scene?.name});
+    return true;
+  }
+
+  function showFengmoBand(destination,entry,groups){
+    const source=window.AtlasFengmoBand;
+    const boss=groups.find(({ref})=>ref.table==='fengmo_band_personal_boss')?.row;
+    const stageId=boss?.battleid??Number(entry.key);
+    if(!['fengmo_band_personal_boss','pve_stage_data'].includes(entry.table)||!source.isStage(stageId))return false;
+    const stage=groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===stageId)?.row;
+    const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===stage?.groupid);
+    const route=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===source.teamType)?.row;
+    if(!matchesOpeningSource(source)||boss?.id!==source.bossFor(stageId)||stage?.groupid!==stageId||
+       stage.shishentotal!==5||stage.battleTime!==source.deadlineSeconds||formation?.row?.resindex!==source.sceneId||
+       formation.waves?.length!==1||formation.waves[0].length!==6||formation.waves[0][0]?.id!==boss.monster_id||
+       route?.battleMode!==source.battleMode||route.route_sha256!==source.routeSHA256){
+      destination.append(node('p','原版复跑需要同版本的首领、编组和单人入口资料。','caption'));
+      return true;
+    }
+    const buffNames=side=>boss[side].map(id=>{
+      const name=groups.find(({ref})=>ref.table==='buff'&&ref.key?.$tuple?.[0]===id)?.row?.name??id;
+      return id===source.actorOnlyBuff?`${name}（阴阳师）`:name;
+    }).join('、')||'无';
+    destination.append(node('p',`我方增益 ${buffNames('camp1_buff')} · 敌方首领增益 ${buffNames('camp2_buff')}`,'caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,waveCount:1,
+      battleMode:source.battleMode,version:source.resourceVersion,label:`逢魔乐队 · ${boss.name}`,
+      scoreWindowSeconds:source.deadlineSeconds});
     return true;
   }
 
@@ -1661,6 +1689,7 @@
     showFengmoLive(destination,entry,groups);
     showTuzhizhuPractice(destination,entry,groups);
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
+    const bandMounted=showFengmoBand(destination,entry,groups);
     showActivityScore(destination,entry,groups);
     showJourneyHard(destination,entry,groups);
     showTianfa(destination,entry,groups);
@@ -1733,7 +1762,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
