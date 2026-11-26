@@ -535,6 +535,32 @@ class TeamBattleType: pass
         self.assertFalse(by_key["guild_boss_show", 1]["refs"][0]["found"])
         self.assertEqual(result["unresolvedReferences"], 2)
 
+    def test_flying_tournament_events_join_battle_ids_and_keep_training_distinct(self):
+        tables = {
+            "urdtg_event": [[3, {"id": 3, "name": "赛车对决", "type": 1, "params": [101]}],
+                            [5, {"id": 5, "name": "备赛训练", "type": 7, "params": [101]}]],
+            "urdtg_dungeon_battle": [[101, {"monster_id": 101, "battle_id": "12140016", "name": "九命猫"}]],
+            "pve_stage_data": [["12140016", {"id": "12140016", "groupid": 12140016}]],
+            "BattleMonstersInfo": [[12140016, {}]],
+            "battle_team_routes": [[6089, {"team_type": 6089, "battleMode": 6089}]],
+            "system_rule_dsc": [["ur_datiangou_tansuo_tips", {"rule_dsc": "围场赛事"}],
+                                ["ur_datiangou_battle_tips", {"rule_dsc": "天狗面具"}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "other",
+                      "fields": list({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        data = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], entry["key"]): entry for entry in data["entries"]}
+
+        def refs(table, key):
+            return {(ref["table"], ref["key"]) for ref in entries[table, key]["refs"] if ref["found"]}
+
+        self.assertIn(("urdtg_dungeon_battle", 101), refs("urdtg_event", 3))
+        self.assertIn(("pve_stage_data", "12140016"), refs("urdtg_event", 3))
+        self.assertNotIn(("urdtg_dungeon_battle", 101), refs("urdtg_event", 5))
+        self.assertIn(("urdtg_event", 3), refs("urdtg_dungeon_battle", 101))
+        self.assertIn(("battle_team_routes", 6089), refs("pve_stage_data", "12140016"))
+        self.assertIn(("system_rule_dsc", "ur_datiangou_battle_tips"), refs("pve_stage_data", "12140016"))
+
     def test_exploration_room_and_story_process_use_distinct_id_namespaces(self):
         tables = {
             "storyChapter": [[18, {"id": 18, "name": "阴阳之理", "BossList": [39], "guanKaProcess": [[1, 2]]}]],

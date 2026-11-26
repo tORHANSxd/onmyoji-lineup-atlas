@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -1293,6 +1293,38 @@ async function main(){
     assert.match(await ui(reports+'.textContent'),/限时计分/);
     await encounter('event','炼石成金 第 5 层 12135005');
     assert.match(await ui(panel+'.textContent'),/末层后，首领继续存活，小怪清空后会重新出现/);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='12140016'&&entry.kind==='围场赛事')){
+    await ui('qaEncounterInput("event","围场赛事 九命猫 12140016")');
+    const startExplore='document.querySelector("[data-explore-start]")';
+    await until(startExplore+'!==null');
+    assert.equal(await ui(start+'===null'),true);
+    assert.match(await ui(panel+'.textContent'),/战斗时限 180 秒.*大天狗·高天铁羽.*天狗面具/s);
+    await ui(`(()=>{
+      for(const [attr,value] of [['known','qa-known-ten-explore'],['skill','2'],['masks','125']]){
+       const field=document.querySelector('[data-explore-'+attr+']');
+       field.value=value;field.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+    })()`);
+    const plan={actorLevel:40,skillLevel:2,masks:125,members:[[591,40],[379,40]]},seen=[];
+    mockPve=async (party,request)=>{
+     assert.deepEqual(party,plan);
+     assert.deepEqual(request,{battleMode:6089,stageId:12140016,groupId:12140016,seed:request.seed,damageFloor:true});
+     seen.push(request.seed);
+     if(pve&&request.seed===0){
+      const native=await pve.run(party,request);
+      assert.equal(native.outcome,'win');
+      assert.deepEqual(native.urdtgExplore.maskRecipients,[80611]);
+      return native;
+     }
+     const opening=[[80611,40],...plan.members].map(([id,level],index)=>({id,level,position:index+1,speed:128,attack:1200,hp:6000}));
+     return {...sample,...request,urdtgExplore:{...plan,party:opening,maskRecipients:[80611],combatSeconds:30.24,timedOut:false}};
+    };
+    await until(startExplore+'.disabled===false');
+    await ui(startExplore+'.click()');
+    await until('document.querySelector("[data-explore-status]").textContent.includes("6 / 6 个采样种子通关")',30000);
+    assert.deepEqual(seen,[0,1,2,3,7,42]);
+    assert.match(await ui('document.querySelector("[data-explore-results]").textContent'),/万风钧落 2 级 · 天狗面具 125 个 · 2 位招募式神.*天狗面具增伤生效/s);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='11112'&&entry.refs.some(ref=>!ref.found))){
     await ui('qaEncounterInput("battle","结界入侵 11112")');

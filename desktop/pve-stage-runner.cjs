@@ -27,6 +27,7 @@ const forestRules=require('../app/guild-forest.js');
 const ten=require('../app/ten-anniversary.js');
 const tenBoss=ten.bossRoute;
 const tenExplore=ten.exploreRoute;
+const urdtgExplore=require('../app/urdtg-explore.js');
 const tianfa=require('../app/tianfa.js');
 const journeyHard=require('../app/journey-hard.js');
 const yinYang=journeyHard.boss;
@@ -50,6 +51,7 @@ const engines={
  ...ten.modes,
  [tenBoss.battleMode]:tenBoss.engine,
  [tenExplore.battleMode]:tenExplore.engine,
+ [urdtgExplore.battleMode]:urdtgExplore.engine,
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  [storyExplorationMode]:{name:'TeamFbEngine',route:'story-exploration-solo',sha256:'35ec64c1f9d84913a748971711635906034bb36fe9d48005193be8d6c775bbd2'},
  [friendChallengeMode]:{name:'FriendFbEngine',route:'chapter-shikigami-challenge',sha256:'70b5b28c85d9d364b3800415b1c05aa7e5fbc5aa2cd102a28b440d2c1155dde6'},
@@ -1202,10 +1204,9 @@ function validTenBoss(report){
    positive(assist.heroId)&&[101,102,103].includes(assist.position));
 }
 
-function validTenExplore(report,plan){
- const data=report.tenAnniversaryExplore,limit=tenExplore.deadlineSeconds;
- const expected=[[tenExplore.actorId,plan.actorLevel===1?10:plan.actorLevel],...plan.members];
- return report.waveCount===1&&report.formationsVerified===1&&data?.actId===12130&&
+function validRecruitedBattle(report,data,plan,route,actorLevel){
+ const limit=route.deadlineSeconds,expected=[[route.actorId,actorLevel],...plan.members];
+ return report.waveCount===1&&report.formationsVerified===1&&data&&
   data.actorLevel===plan.actorLevel&&data.deadlineSeconds===limit&&
   Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&
   typeof data.timedOut==='boolean'&&(!data.timedOut||data.combatSeconds>=limit-1)&&
@@ -1214,6 +1215,20 @@ function validTenExplore(report,plan){
    positive(unit.suitId)&&Array.isArray(unit.suitSkills)&&unit.suitSkills.every(positive)&&
    Array.isArray(unit.skills)&&unit.suitSkills.every(id=>unit.skills.some(([skill,level])=>skill===id&&level===1))&&
    [unit.hp,unit.speed,unit.attack,unit.defense,unit.critRate].every(Number.isFinite))&&Array.isArray(data.opening)&&data.opening.length>0;
+}
+
+function validTenExplore(report,plan){
+ const data=report.tenAnniversaryExplore;
+ return data?.actId===12130&&validRecruitedBattle(report,data,plan,tenExplore,plan.actorLevel===1?10:plan.actorLevel);
+}
+
+function validUrDtgExplore(report,plan){
+ const data=report.urdtgExplore;
+ const recipients=plan.masks?[urdtgExplore.actorId,...plan.members.map(([id])=>id)]
+  .filter(id=>urdtgExplore.maskRecipients.includes(id)).sort((a,b)=>a-b):[];
+ return validRecruitedBattle(report,data,plan,urdtgExplore,plan.actorLevel)&&
+  data.skillLevel===plan.skillLevel&&data.masks===plan.masks&&sameTactics(data.maskRecipients,recipients)&&
+  data.party[0].skills.some(([id,level])=>id===806113&&level===plan.skillLevel);
 }
 
 function validVerifiedWaves(report){
@@ -1283,6 +1298,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (ten.modes[battleMode]&&!validTenAnniversary(report,stageId,tenBonuses??[]))||
     (battleMode===tenBoss.battleMode&&!validTenBoss(report))||
     (battleMode===tenExplore.battleMode&&!validTenExplore(report,rounds[0]))||
+    (battleMode===urdtgExplore.battleMode&&!validUrDtgExplore(report,rounds[0]))||
     (!qinfeiSide&&(pveDeadlineSeconds!==undefined||pveDeadline!==undefined)&&
      (battleMode!==3||!positive(expectedPveDeadline)||!validPveClock(report,pveDeadline,expectedPveDeadline)))||
     (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
@@ -1366,7 +1382,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(mapBossAvailable?mapBoss.battleModes:[]),...(qinfeiAvailable&&retreat?[qinfei.battleMode]:[]),
      ...(dojoAreaAvailable&&yanwu?[dojoAreaRules.battleMode]:[]),...(forestAvailable?[forestRules.battleMode]:[]),
      ...(tenAvailable&&yanwu?Object.keys(ten.modes).map(Number):[]),...(tenAvailable&&tenBossAvailable?[tenBoss.battleMode]:[]),
-     ...(tenAvailable&&yanwu&&tenExploreAvailable?[tenExplore.battleMode]:[])]};
+     ...(tenAvailable&&yanwu&&tenExploreAvailable?[tenExplore.battleMode]:[]),
+     ...(yanwu&&tenExploreAvailable&&await has('urdtg_explore.py')?[urdtgExplore.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -1377,8 +1394,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const minMembers=battleMode===2001?5:1;
    const maxMembers=[fengmoYanwu.battleMode,songstress.battleMode,orochi.battleMode,tianfa.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
    const stageActor=battleMode===tenBoss.battleMode||battleMode===266&&secretOpenings.floors[stageId]?.replacement;
-   const explore=battleMode===tenExplore.battleMode;
-   const validPlan=explore?tenExplore.validPlan(plan):Array.isArray(rounds)&&rounds.length>=1&&rounds.length<=4&&
+   const explore=battleMode===tenExplore.battleMode?tenExplore:battleMode===urdtgExplore.battleMode?urdtgExplore:null;
+   const validPlan=explore?explore.validPlan(plan):Array.isArray(rounds)&&rounds.length>=1&&rounds.length<=4&&
     rounds.every(row=>row&&(stageActor||row.onmyoji)&&Array.isArray(row.members)&&
      row.members.length>=minMembers&&row.members.length<=maxMembers&&validTactics(row,battleMode));
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
@@ -1414,6 +1431,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===orochi.battleMode&&(stageId!==orochi.stageId||groupId!==orochi.firstFloor||!validOrochiPlan(plan)))
     throw Error('真蛇需要六位首发、四位不同的备选式神和两名不同的阴阳师，御魂不可复用');
    if(battleMode===3&&orochi.isFloor(stageId))throw Error('真蛇需要使用原版十层复跑入口');
+   if(battleMode===3&&urdtgExplore.isStage(stageId))throw Error('围场赛事需要使用原版车队招募入口');
    const hunlingRoute=hunling.battleModes.includes(battleMode)?hunling.routes[stageId]:null;
    if(hunling.battleModes.includes(battleMode)&&(hunling.resourceVersion!==resourceVersion||
       hunlingRoute?.battleMode!==battleMode||hunlingRoute.groupId!==groupId||plan.members.length!==5))
@@ -1534,8 +1552,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    }else if(tenBonuses!==undefined)throw Error('石长姬养成增益仅适用于虚无精锐和遭遇战');
    if(battleMode===tenBoss.battleMode&&(ten.resourceVersion!==resourceVersion||stageId!==tenBoss.stageId||
       groupId!==stageId||plan.members.length!==5))throw Error('炼石成金从第一层开始，需要五位自有式神');
-   if(explore&&(ten.resourceVersion!==resourceVersion||!ten.exploration(stageId)||groupId!==stageId))
+   if(battleMode===tenExplore.battleMode&&(ten.resourceVersion!==resourceVersion||!ten.exploration(stageId)||groupId!==stageId))
     throw Error('巡于黄金之河需要对应的普通探索关卡');
+   if(battleMode===urdtgExplore.battleMode&&
+      (urdtgExplore.resourceVersion!==resourceVersion||!urdtgExplore.isStage(stageId)||groupId!==stageId))
+    throw Error('围场赛事需要对应的原版活动关卡');
    if(battleMode===3&&activityScore.stages[stageId])throw Error(`${activityScore.stages[stageId].label}需要使用原版活动计分入口`);
    const tianfaStage=tianfa.stages[stageId];
    if(typeof tianfaTeam!=='boolean'||tianfaTeam&&battleMode!==tianfa.battleMode)throw Error('三人复跑设置只适用于彼世逢魔');

@@ -21,6 +21,7 @@ from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_
 from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EXPLORATION_STAGES,
                                    TEN_TOWER_STAGES, is_ten_anniversary_stage)
 from ten_anniversary_boss import TEN_BOSS_ACT, TEN_BOSS_MODE, TEN_BOSS_STAGE, TEN_BOSS_TEAM
+from urdtg_explore import URDTG_ACTIVITY, URDTG_EXPLORE_MODE, URDTG_MASK_SKILL, URDTG_STAGES
 
 
 TOWER_EVENT_SOURCES = {
@@ -109,6 +110,9 @@ ROOTS = {
     "defence_dungeon_multiple_buff": ("event", "秘境强力加成"),
     "ten_anni_2026_event": ("event", "巡于黄金之河事件"),
     "ten_anni_2026_dungeon_battle": ("event", "巡于黄金之河战斗配置"),
+    "urdtg_ui": ("event", "飞羽凌云玩法"),
+    "urdtg_event": ("event", "围场赛事事件"),
+    "urdtg_dungeon_battle": ("event", "围场赛事战斗"),
 }
 
 JOURNEY_BATTLE_VARIANTS = {
@@ -401,6 +405,12 @@ def encounter_index(source, load_rows):
     for key, row in table("battle_team_routes").values():
         teams_by_mode.setdefault(row["battleMode"], []).append(key)
     rooms_by_map, rooms_by_stage = {}, {}
+    urdtg_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("urdtg_dungeon_battle").values()}
+    urdtg_events_by_battle = {}
+    for key, row in table("urdtg_event").values():
+        params = row.get("params")
+        if row.get("type") in (1, 2) and params:
+            urdtg_events_by_battle.setdefault(numeric_key(params[0]), []).append(key)
     for key, row in table("story_room").values():
         map_id = numeric_key(row.get("MapEntryID"))
         if map_id is not None:
@@ -623,6 +633,27 @@ def encounter_index(source, load_rows):
             data_id = ten_dungeon_by_stage.get(numeric_key(row["battle_id"]))
             links.extend(ref for key in ten_map_events.get(data_id, ())
                          if (ref := relation("ten_anni_2026_event", key, "对应地图事件", False)))
+        if name == "urdtg_ui":
+            if tip := row.get("tip"):
+                links.append(rule_reference(tip, "飞羽凌云原版规则"))
+            if row.get("id") == 2:
+                links.extend(ref for dest, key, label in (("activity", URDTG_ACTIVITY, "围场赛事开放期"),
+                    ("battle_team_routes", URDTG_EXPLORE_MODE, "活动探索入口"))
+                    if (ref := relation(dest, key, label, False)))
+        if name == "urdtg_event":
+            links.extend(ref for dest, key, label in (("urdtg_event", row.get("pre_id"), "前置活动事件"),
+                ("urdtg_event_type", row.get("type"), "事件类型"), ("reward", row.get("reward_id"), "活动事件奖励"))
+                if (ref := relation(dest, key, label, False)))
+            params = row.get("params")
+            if row.get("type") in (1, 2) and params:
+                battle = table("urdtg_dungeon_battle").get(numeric_key(params[0]))
+                if battle:
+                    links.extend(ref for dest, key, label in (("urdtg_dungeon_battle", battle[0], "围场赛事战斗配置"),
+                        ("pve_stage_data", battle[1].get("battle_id"), "原版活动战斗关卡"))
+                        if (ref := relation(dest, key, label, False)))
+        if name == "urdtg_dungeon_battle":
+            links.extend(ref for key in urdtg_events_by_battle.get(numeric_key(row.get("monster_id")), ())
+                         if (ref := relation("urdtg_event", key, "对应地图事件", False)))
         if name == "storyChapter":
             entrance = relation("mapnpc", row.get("id"), "地图探索入口", False)
             if entrance:
@@ -752,6 +783,17 @@ def encounter_index(source, load_rows):
                 links.append(relation("pve_stage_data", row.get("fightId"), "姥姥火·合魂敌方关卡", True))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
+            if stage_id in urdtg_by_stage:
+                links.extend(ref for dest, key, label in (
+                    ("urdtg_dungeon_battle", urdtg_by_stage[stage_id], "围场赛事战斗配置"),
+                    ("battle_team_routes", URDTG_EXPLORE_MODE, "活动探索原版入口"),
+                    ("activity", URDTG_ACTIVITY, "围场赛事开放期"),
+                    ("normal_battle_develop_skill", URDTG_MASK_SKILL, "天狗面具战斗技能"),
+                    ("urdtg_const", 308, "天狗面具数量上限"),
+                    ("urdtg_const", 312, "天狗面具适用式神"),
+                ) if (ref := relation(dest, key, label, False)))
+                links.append(rule_reference("ur_datiangou_tansuo_tips", "围场赛事规则"))
+                links.append(rule_reference("ur_datiangou_battle_tips", "天狗面具规则"))
             links.extend(ref for key in sorted(rooms_by_stage.get(stage_id, ()), key=int)
                          if (ref := relation("story_room", key, "使用此编组的探索战斗点", False)))
             if stage_id in chapter_entrances and numeric_key(row.get("groupid")) not in table("BattleMonstersInfo"):
@@ -1336,6 +1378,10 @@ def encounter_index(source, load_rows):
                          12134: "拾光永恒 · 巡于黄金之河", 12135: "拾光永恒 · 炼石成金"}[key]
             if table_name in ("ten_anni_2026_event", "ten_anni_2026_dungeon_battle"):
                 title = f"巡于黄金之河 · {title} · {key}"
+            if table_name == "urdtg_ui":
+                title = f"飞羽凌云 · {title}"
+            if table_name in ("urdtg_event", "urdtg_dungeon_battle"):
+                title = f"围场赛事 · {title} · {key}"
             if table_name == "fengmo_band_personal_boss":
                 title = f"逢魔乐队 · {title} · {row['battleid']}"
             if table_name == "fengmo_band_together_battle":
@@ -1443,7 +1489,11 @@ def encounter_index(source, load_rows):
                 title = f"{entry_kind} · 新服首次" if numeric_key(key) == "2111" else f"{entry_kind} · 编组 {row['groupid']}"
             if table_name == "pve_stage_data":
                 stage_id = int(numeric_key(key) or 0)
-                if stage_id == YINYANG_BOSS_STAGE:
+                if stage_id in URDTG_STAGES:
+                    entry_family, entry_kind = "event", "围场赛事"
+                    _, battle = table("urdtg_dungeon_battle").get(numeric_key(urdtg_by_stage.get(str(stage_id))), (None, {}))
+                    title = " · ".join(filter(None, (entry_kind, name(battle), str(stage_id))))
+                elif stage_id == YINYANG_BOSS_STAGE:
                     entry_family, entry_kind = "event", "秘境鬼王"
                     title = "阴阳之守 · 秘境鬼王 · 大岳丸"
                 elif numeric_key(key) in tower_by_stage:

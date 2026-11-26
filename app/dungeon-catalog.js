@@ -80,6 +80,9 @@
     BossTower: '探索式神挑战',
     friend_fb: '式神挑战战斗编组',
     BossTowerLevel: '式神挑战难度',
+    urdtg_event: '围场赛事事件',
+    urdtg_dungeon_battle: '围场赛事战斗',
+    urdtg_ui: '飞羽凌云玩法',
     DramaProcess: '主线剧情进程',
     DramaLevel: '剧情关卡',
     hunling_noraml_boss_battle: '契灵之境首领奖励',
@@ -158,6 +161,8 @@
   };
   const journeyBossFields = {hero_id: '首领编号', reward: '奖励编号', time: '时限参数', unlocked: '解锁参数'};
   const tableFields = {
+    urdtg_event:{pre_id:'前置事件',unlock_time:'解锁时间',task_desc:'任务目标',params:'事件参数'},
+    urdtg_dungeon_battle:{cost:'体力消耗',exp:'车队经验',level:'原表等级',battle_id:'活动战斗关卡'},
     SuperGhost_mission: {crazy_time:'单次追击时限',private_time:'发现者专属时长',remain_time:'首领剩余时长',
       minus_fatigue:'疲劳参数',spec_skill:'任务表词条',gk_list:'敌方编组',score_mul:'积分系数',help_mul:'协战系数'},
     SuperGhost_bossmission: {challenge_time:'历史挑战时限',begin_time:'开放时间',end_time:'结束时间',
@@ -1718,6 +1723,39 @@
     return true;
   }
 
+  function mountActivityRecruits(destination,stageId,table,route,workbenchRoute){
+    const host=node('div'),message=node('p','正在读取原版活动招募名单…','caption');
+    host.append(message);
+    destination.append(host);
+    const ids=Object.keys(route.recruitLevels).map(Number);
+    api.records(table,ids).then(profiles=>{
+      if(!host.isConnected)return;
+      if(!Array.isArray(profiles)||profiles.length!==ids.length||!profiles.every((row,index)=>
+          row?.hero_id===ids[index]&&row.init_lv===route.recruitLevels[ids[index]]&&typeof row.name==='string')){
+        message.textContent='活动招募名单与此版本的原表不一致。';
+        return;
+      }
+      host.replaceChildren();
+      window.AtlasTenExploreWorkbench?.mount(host,stageId,profiles,workbenchRoute);
+    }).catch(()=>{message.textContent='无法读取活动招募名单。';});
+  }
+
+  function showUrDtgExplore(destination,entry,groups){
+    if(!['pve_stage_data','urdtg_event','urdtg_dungeon_battle'].includes(entry.table))return false;
+    const route=window.AtlasUrDtgExplore;
+    const battle=groups.find(({ref})=>ref.table==='urdtg_dungeon_battle')?.row;
+    const stageId=entry.table==='pve_stage_data'?Number(entry.key):Number(battle?.battle_id);
+    if(!route?.isStage(stageId))return false;
+    const stage=groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===stageId)?.row;
+    const registration=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===route.teamType)?.row;
+    const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===stage?.groupid);
+    if(!matchesOpeningSource(route)||registration?.battleMode!==route.battleMode||registration.route_sha256!==route.routeSHA256||
+       stage?.groupid!==stageId||stage.battleTime!==route.deadlineSeconds||formation?.waves.length!==1)return true;
+    destination.append(node('p',`战斗时限 ${route.deadlineSeconds} 秒。大天狗·高天铁羽替换阴阳师，招募成员与队长均为活动 40 级。`,'caption'));
+    mountActivityRecruits(destination,stageId,'urdtg_hero',route,route);
+    return true;
+  }
+
   function showTenAnniversary(destination,entry,groups){
     if(!['pve_stage_data','ten_anni_2026_event','ten_anni_2026_dungeon_battle'].includes(entry.table))return false;
     const source=window.AtlasTenAnniversary,primary=groups[0].row;
@@ -1735,21 +1773,7 @@
          !matchesOpeningSource({resourceVersion:source.resourceVersion,tableSHA256:route.tableSHA256})||
          registration?.battleMode!==route.battleMode||registration.route_sha256!==route.routeSHA256||
          stage?.groupid!==stageId||stage.battleTime!==route.deadlineSeconds)return true;
-      const host=node('div');
-      const message=node('p','正在读取原版活动招募名单…','caption');
-      host.append(message);
-      destination.append(host);
-      const ids=Object.keys(route.recruitLevels).map(Number);
-      api.records('ten_anni_2026_hero',ids).then(profiles=>{
-        if(!host.isConnected)return;
-        if(!Array.isArray(profiles)||profiles.length!==ids.length||!profiles.every((row,index)=>
-            row?.hero_id===ids[index]&&row.init_lv===route.recruitLevels[ids[index]]&&typeof row.name==='string')){
-          message.textContent='活动招募名单与此版本的原表不一致。';
-          return;
-        }
-        host.replaceChildren();
-        window.AtlasTenExploreWorkbench?.mount(host,stageId,profiles);
-      }).catch(()=>{message.textContent='无法读取活动招募名单。';});
+      mountActivityRecruits(destination,stageId,'ten_anni_2026_hero',route);
       return true;
     }
     const route=source.modes[battleMode];
@@ -2108,12 +2132,13 @@
     const dojoAreaMounted=showDojoArea(destination,entry,groups);
     const forestMounted=showGuildForest(destination,entry,groups);
     const tenMounted=showTenAnniversary(destination,entry,groups);
+    const urdtgMounted=showUrDtgExplore(destination,entry,groups);
     showTenAnniversaryBoss(destination,entry,groups);
     showQinfeiBoss(destination,entry,groups);
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
