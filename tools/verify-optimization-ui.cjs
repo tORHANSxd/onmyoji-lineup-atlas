@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -869,6 +869,33 @@ async function main(){
     await encounter('event','百妖退治 妖灵退治单体战 463001');
     assert.equal(await ui('document.querySelector("[data-pve-tower-continue]")'),null);
     assert.match(await ui(panel+'.textContent'),/敌方编组 · 463001/);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='462021'&&entry.kind==='姥姥火挑战')){
+    await encounter('event','鬼王之宴 姥姥火来袭 冥火姥姥 困难 462021');
+    assert.match(await ui(panel+'.textContent'),/敌方 3 波 · 客户端默认时限 180 秒.*不同关卡回目数不同/s);
+    await choose('superghost-five');
+    const faith='document.querySelector("[data-pve-laolao-faith]")';
+    await ui(faith+'.value="-1";'+faith+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(faith+'.getAttribute("aria-invalid")'),'true');
+    await ui(`(()=>{
+     const faith=${faith};faith.value='150';faith.dispatchEvent(new Event('input'));
+     document.querySelector('[data-pve-laolao-faction][value="1101"]').click();
+     document.querySelector('[data-pve-laolao-faction][value="1103"]').click();
+    })()`);
+    assert.match(await ui(panel+'.textContent'),/初始速度提高100/);
+    const laolaoSettings={faith:150,factions:[1101,1103]};
+    assert.match(await run('superghost-five',{stageId:462021,groupId:462021,battleMode:503,laolaoSettings},
+     {waveCount:3,wavesCleared:3,laolaoChallenge:{settings:laolaoSettings,timedOut:false,deadlineSeconds:180,combatSeconds:43.24}}),
+     /已清场 · 通过 3 \/ 3 波 · 战斗与结算 43\.24 秒 · 时限 180 秒 · 信仰之佑 150 层/);
+    win.setContentSize(720,960);
+    assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);
+    await ui(faith+'.scrollIntoView({block:"center",behavior:"instant"})');
+    await capture('client-laolao-challenge');
+    win.setContentSize(1440,1000);
+    await ui('qaEncounterInput("event","鬼王之宴 姥姥火·合魂 460000")');
+    await until(panel+'.textContent.includes("合魂集结规则")');
+    assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');

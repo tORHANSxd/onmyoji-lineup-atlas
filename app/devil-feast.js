@@ -25,10 +25,12 @@
   const {blessings,factions,enemyHp}=settings;
   if(!Array.isArray(blessings)||blessings.length>6||!Array.from(blessings).every(row=>
    Array.isArray(row)&&row.length===2&&ranged(row[0],1,18)&&ranged(row[1],1,11))||
-   new Set(blessings.map(row=>row[0])).size!==blessings.length||!Array.isArray(factions)||
-   !Array.from(factions).every(id=>ranged(id,1100,1105))||new Set(factions).size!==factions.length)return false;
+   new Set(blessings.map(row=>row[0])).size!==blessings.length||!validFactions(factions))return false;
   return !Object.hasOwn(settings,'enemyHp')||kind==='boss'&&Array.isArray(enemyHp)&&enemyHp.length===6&&
    Array.from(enemyHp).every(hp=>typeof hp==='number'&&hp>=0&&hp<=Number.MAX_SAFE_INTEGER)&&enemyHp.some(Boolean);
+ }
+ function validFactions(factions){
+  return Array.isArray(factions)&&Array.from(factions).every(id=>ranged(id,1100,1105))&&new Set(factions).size===factions.length;
  }
  const tower={
   resourceVersion:'0.0.816',battleMode:502,teamType:211,stage:towerStage,validSettings:validTowerSettings,
@@ -47,8 +49,31 @@
    BattleMonstersInfo:'8747286d03333c0073d5d2d72e3cec1e89a25f043efb920ee4fcaa8b55b29111',
   },
  };
+ const laolao={
+  resourceVersion:'0.0.816',battleMode:503,teamType:213,sceneId:400205,memberCount:5,deadlineSeconds:180,
+  fusionStageId:460000,eventTable:'feast_for_devils_tower_event7',faithTable:'feast_for_devils_tower_event6_b',
+  faithIds:[1,2,3,4,5,6,7],factionIds:tower.factionIds,
+  engine:{name:'JSHardEngine',route:'laolao-challenge-solo',
+   sha256:'a5151052ddf183faa283c58de0cbb0a1660b2469aaf7955b080f8a12aa76761f'},
+  routeSHA256:'acd6781b45eae54a90c245e1645b0a1ffbf0c35d33db4bcd6e618aa9723e3d0c',
+  tableSHA256:{
+   feast_for_devils_tower_event7:'38fbdb5e579ad26317547181a7ff245a3ffc1f58e4c806daeffc7f6ad4146c41',
+   feast_for_devils_tower_event6_b:'1284803ff36003056b274994bafa63584d3c91d5f5206ae002a72020f077a7d9',
+   feast_for_devils_dawnexpedition:tower.tableSHA256.feast_for_devils_dawnexpedition,
+   feast_for_devils_const:tower.tableSHA256.feast_for_devils_const,
+   pve_stage_data:tower.tableSHA256.pve_stage_data,
+   BattleMonstersInfo:tower.tableSHA256.BattleMonstersInfo,
+  },
+  validSettings:settings=>settings&&Object.keys(settings).length===2&&Number.isSafeInteger(settings.faith)&&settings.faith>=0&&
+   validFactions(settings.factions),
+  stage:id=>{
+   if(!ranged(id,462001,462024)||!ranged(id%10,1,4))return null;
+   const ghost=id%10,difficulty=Math.floor((id-462000)/10)+1;
+   return {ghost,difficulty,label:['简单','普通','困难'][difficulty-1],waveCount:ghost===1?3:1};
+  },
+ };
  return {
-  resourceVersion:'0.0.816',battleMode:445,teamType:190,stage,tower,
+  resourceVersion:'0.0.816',battleMode:445,teamType:190,stage,tower,laolao,
   validHp:hp=>typeof hp==='number'&&Number.isFinite(hp)&&hp>0&&hp<=Number.MAX_SAFE_INTEGER,
   engine:{name:'DevilFeastEngine',route:'devil-feast-activity',
    sha256:'63b9fd2c3a691fd0cf5b0f1290d30bb08c8552873bcf86d25c865d669e9b7695'},

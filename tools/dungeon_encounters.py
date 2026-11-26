@@ -2,7 +2,7 @@
 
 from collections import Counter
 from functools import cache
-from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM, TOWER_TEAM
+from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM, LAOLAO_FUSION_MODE, LAOLAO_TEAM, TOWER_TEAM
 from dojo_area_stage import DOJO_AREA_TEAM
 from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
 from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
@@ -729,6 +729,9 @@ def encounter_index(source, load_rows):
                 links.extend(ref for suffix, label in (("1", "简单或合魂"), ("2", "普通"), ("3", "困难"))
                              if row.get(f"fightId{suffix}") and
                              (ref := relation("pve_stage_data", row[f"fightId{suffix}"], label, True)))
+                links.append(rule_reference("king2_tips_12" if row["id"] <= 4 else "king2_tips_11", "挑战规则原文"))
+                if row["id"] == 5:
+                    links.append(rule_reference("king2_tips_01", "合魂集结规则"))
             if name == "feast_for_devils_tower_event7_b":
                 links.append(relation("pve_stage_data", row.get("fightId"), "姥姥火·合魂敌方关卡", True))
         if name == "pve_stage_data":
@@ -753,8 +756,18 @@ def encounter_index(source, load_rows):
                 links.append(rule_reference("feast_for_devils_tower_buff_tips", "神谕之时祝福规则"))
                 links.append(rule_reference("feast_for_devils_dawnexpedition_tips", "鬼宴之宾阵营规则"))
             if stage_id in laolao_by_stage:
-                if ref := relation("feast_for_devils_tower_event7", laolao_by_stage[stage_id], "姥姥火活动挑战", False):
-                    links.append(ref)
+                ghost = laolao_by_stage[stage_id]
+                links.extend(ref for dest, key, label in (
+                    ("feast_for_devils_tower_event7", ghost, "姥姥火活动挑战"),
+                    ("battle_team_routes", LAOLAO_TEAM, "姥姥火来袭原版战斗入口"),
+                    ("feast_for_devils_const", 25, "鬼宴之宾属性参数"),
+                ) if (ghost <= 4 or dest == "feast_for_devils_tower_event7") and
+                             (ref := relation(dest, key, label, False)))
+                links.append(rule_reference("king2_tips_12" if ghost <= 4 else "king2_tips_11", "挑战规则原文"))
+                if ghost == 5:
+                    if ref := relation("battle_mode_routes", LAOLAO_FUSION_MODE, "姥姥火·合魂原版引擎", False):
+                        links.append(ref)
+                    links.append(rule_reference("king2_tips_01", "合魂集结规则"))
             if stage_number == YINYANG_BOSS_STAGE:
                 links.extend(ref for dest, key, label in (
                     ("battle_mode_routes", YINYANG_BOSS_MODE, "秘境鬼王原版战斗场景"),
@@ -1418,7 +1431,11 @@ def encounter_index(source, load_rows):
                     title = f"百妖退治 · {entry_kind} · {title}"
                 elif numeric_key(key) in laolao_by_stage:
                     entry_family, entry_kind = "event", "姥姥火挑战"
-                    title = f"鬼王之宴 · {title}"
+                    ghost_key = laolao_by_stage[numeric_key(key)]
+                    _, laolao_event = table("feast_for_devils_tower_event7")[numeric_key(ghost_key)]
+                    ghost_name = laolao_event["name"]
+                    difficulty = title.split("-")[-1] if ghost_key <= 4 else ""
+                    title = " · ".join(filter(None, ("鬼王之宴", "姥姥火来袭" if difficulty else "", ghost_name, difficulty)))
                 elif numeric_key(key) in dojo_area_by_stage:
                     entry_family, entry_kind = "event", "八百八狸战斗"
                 elif stage_id in FOREST_STAGES:

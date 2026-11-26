@@ -202,6 +202,7 @@ function sampleBattleMarkup(samples){
   const bandTogether=sample.fengmoBandTogether;
   const devilFeast=sample.devilFeast;
   const ghostKingTower=sample.ghostKingTower;
+  const laolao=sample.laolaoChallenge;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -264,6 +265,9 @@ function sampleBattleMarkup(samples){
     (ghostKingTower.deadlineSeconds?` · 时限 ${ghostKingTower.deadlineSeconds} 秒`:'')+
     (ghostKingTower.settings.blessings.length?` · 祝福 ${ghostKingTower.settings.blessings.length} 种`:'')+
     (ghostKingTower.settings.factions.length?` · 解锁阵营 ${ghostKingTower.settings.factions.length} 个`:''):
+   laolao?`${!sample.completed?'结算待确认':laolao.timedOut?'达到原版时限':sample.outcome==='win'?'已清场':'队伍落败'} · `+
+    `通过 ${sample.wavesCleared} / ${sample.waveCount} 波 · 战斗与结算 ${laolao.combatSeconds.toFixed(2)} 秒 · `+
+    `时限 ${laolao.deadlineSeconds} 秒 · 信仰之佑 ${laolao.settings.faith} 层`:
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+

@@ -1,5 +1,6 @@
 """Inventory replays for the Devil Feast and Kyoto Investigation battle routes."""
 
+from sys import _getframe
 from types import FunctionType, MethodType, SimpleNamespace
 
 
@@ -17,6 +18,12 @@ TOWER_GROUP_STAGES = range(461001, 461177)
 TOWER_SOLO_STAGES = range(463001, 463131)
 TOWER_BOSS_STAGES = range(462026, 462177)
 TOWER_WALL_SECONDS = 175
+LAOLAO_MODE = 503
+LAOLAO_TEAM = 213
+LAOLAO_STAGES = tuple(462000 + spirit + 10 * difficulty for spirit in range(1, 5) for difficulty in range(3))
+LAOLAO_WALL_SECONDS = 175
+LAOLAO_FUSION_MODE = 3016
+LAOLAO_FUSION_STAGE = 460000
 SOURCES = {
     "battleengine.engine.DevilFeastEngine": "63b9fd2c3a691fd0cf5b0f1290d30bb08c8552873bcf86d25c865d669e9b7695",
     "module.devil_feast.Const": "3b685a517c0a8c614d6acdba795b2da28aeaf619f53622f141773d6b79509311",
@@ -41,6 +48,54 @@ TOWER_SOURCES = {
     "com.data.cdata.pve_stage_data": "7d376d64c733f53882acc6e88291a4607b6c290828981fbad7adc3dcf7ad36b0",
     "com.data.cdata.BattleMonstersInfo": "8747286d03333c0073d5d2d72e3cec1e89a25f043efb920ee4fcaa8b55b29111",
 }
+LAOLAO_SOURCES = {
+    **{name: TOWER_SOURCES[name] for name in ("battleengine.engine.GhostKingEngine",
+                                             "com.data.cdata.feast_for_devils_dawnexpedition",
+                                             "com.data.cdata.feast_for_devils_const", "com.data.cdata.pve_stage_data",
+                                             "com.data.cdata.BattleMonstersInfo")},
+    "battleengine.engine.JSHardEngine": "a5151052ddf183faa283c58de0cbb0a1660b2469aaf7955b080f8a12aa76761f",
+    "module.team_types.team_type_ghost_king_hard": "acd6781b45eae54a90c245e1645b0a1ffbf0c35d33db4bcd6e618aa9723e3d0c",
+    "module.guiwangxialaolao.GuiWangLaoLaoLaixiPanel": "a4aa5163e2f0a5603df45ee0f4486f124c5b0ae4a84dc16c4a1498e973c156b5",
+    "com.data.cdata.feast_for_devils_tower_event7": "38fbdb5e579ad26317547181a7ff245a3ffc1f58e4c806daeffc7f6ad4146c41",
+    "com.data.cdata.feast_for_devils_tower_event6_b": "1284803ff36003056b274994bafa63584d3c91d5f5206ae002a72020f077a7d9",
+}
+
+
+def unlocked_guests(factions, records):
+    return sorted({hero for faction in factions for hero in records[faction]["herolist"]})
+
+
+def bind_ghost_king_constants(engine, table):
+    native = engine.onEntityCreated.__func__
+    import_original = native.__builtins__["__import__"]
+    # The engine uses the older table name. The client UI reads the same
+    # five values from feast_for_devils_const via GHOSTKING_EX_CONST.
+    original_constants = SimpleNamespace(ghost_king_const=SimpleNamespace(
+        get_values=lambda key: tuple(map(float, table[key]["value"].split("|")))))
+
+    def import_constants(name, globals_=None, locals_=None, fromlist=(), level=0):
+        if name == "cdata.ghost_king_const":
+            return original_constants
+        return import_original(name, globals_, locals_, fromlist, level)
+
+    bindings = dict(native.__globals__, __builtins__=dict(native.__builtins__, __import__=import_constants))
+    engine.onEntityCreated = MethodType(FunctionType(native.__code__, bindings, closure=native.__closure__), engine)
+
+
+def bind_ghost_king_clock(engine):
+    timer = engine.getHaltBattleTime.__func__
+    clock = dict(timer.__globals__, time=SimpleNamespace(time=engine.now_time))
+    engine.getHaltBattleTime = MethodType(FunctionType(timer.__code__, clock), engine)
+
+
+def valid_factions(factions):
+    return (type(factions) is list and all(type(faction) is int and 1100 <= faction <= 1105 for faction in factions)
+            and len(set(factions)) == len(factions))
+
+
+def valid_laolao_settings(settings):
+    return (type(settings) is dict and set(settings) == {"faith", "factions"} and type(settings["faith"]) is int
+            and 0 <= settings["faith"] < 2 ** 53 and valid_factions(settings["factions"]))
 
 
 def tower_stage_kind(stage_id):
@@ -59,9 +114,7 @@ def valid_tower_settings(settings, kind):
             or any(type(row) is not list or len(row) != 2 or type(row[0]) is not int or not 1 <= row[0] <= 18
                    or type(row[1]) is not int or not 1 <= row[1] <= 11 for row in blessings)
             or len({row[0] for row in blessings}) != len(blessings)
-            or not isinstance(factions := settings.get("factions"), list)
-            or any(type(faction) is not int or not 1100 <= faction <= 1105 for faction in factions)
-            or len(set(factions)) != len(factions)):
+            or not valid_factions(settings.get("factions"))):
         return False
     if "enemyHp" not in settings:
         return True
@@ -190,8 +243,7 @@ class GhostKingTowerReplay:
                 or (boss and (len(self.config_ids) != 1 or [unit[0] for unit in self.formation] != list(range(1, 7))))):
             raise RuntimeError("Unexpected original Kyoto Investigation configuration")
         blessings, factions = settings["blessings"], settings["factions"]
-        self.guest_ids = sorted({hero for faction in factions
-                                 for hero in feast_for_devils_dawnexpedition.data[faction]["herolist"]})
+        self.guest_ids = unlocked_guests(factions, feast_for_devils_dawnexpedition.data)
         self.blessing_skills = [DATA_HAPPYDINNER_EVENT6.data[buff][f"level{level - 1}"] for buff, level in blessings]
         self.settings, self.const, self.started, self.enemies = settings, const, None, []
         self.hp = settings.get("enemyHp")
@@ -206,26 +258,10 @@ class GhostKingTowerReplay:
         self.limit = engine.get_limit_seconds()
         if self.limit != (120 if boss else 0) or engine.get_choose_buff_skill() != self.blessing_skills:
             raise RuntimeError("The original Kyoto Investigation engine resolved different battle rules")
-        native = engine.onEntityCreated.__func__
-        import_original = native.__builtins__["__import__"]
-
-        # The original engine uses the older table name. Its client UI reads the
-        # same five values from feast_for_devils_const via GHOSTKING_EX_CONST.
-        original_constants = SimpleNamespace(
-            ghost_king_const=SimpleNamespace(get_values=lambda key: tuple(map(float, feast_for_devils_const.data[key]["value"].split("|")))))
-
-        def import_constants(name, globals_=None, locals_=None, fromlist=(), level=0):
-            if name == "cdata.ghost_king_const":
-                return original_constants
-            return import_original(name, globals_, locals_, fromlist, level)
-
-        bindings = dict(native.__globals__, __builtins__=dict(native.__builtins__, __import__=import_constants))
-        engine.onEntityCreated = MethodType(FunctionType(native.__code__, bindings, closure=native.__closure__), engine)
+        bind_ghost_king_constants(engine, feast_for_devils_const.data)
         self.spawn = engine._createNextRoundMons
         engine._createNextRoundMons = self.observe_spawn
-        timer = engine.getHaltBattleTime.__func__
-        clock = dict(timer.__globals__, time=SimpleNamespace(time=engine.now_time))
-        engine.getHaltBattleTime = MethodType(FunctionType(timer.__code__, clock), engine)
+        bind_ghost_king_clock(engine)
 
     def observe_spawn(self):
         engine, create = self.engine, self.engine.createMonsterEntity
@@ -267,3 +303,94 @@ class GhostKingTowerReplay:
                 "enemies": [{"id": unit.protoid, "position": unit.posIndex, "level": unit.AttrComp.level,
                              "maxHp": maximum, "startingHp": hp, "remainingHp": max(0, unit.AttrComp.hp)}
                             for unit, hp, maximum in self.enemies]}
+
+
+class LaolaoChallengeReplay:
+    def __init__(self, modules, stage_id, settings):
+        from battleengine.engine.GhostKingEngine import get_total_level_buff_skill
+        from battleengine.engine.JSHardEngine import JSHardEngine, const
+        from com.data.cdata import feast_for_devils_const, feast_for_devils_dawnexpedition
+        from DynamicConfigData import BattleMonstersInfo, DATA_PVE_STAGE_DATA, FEAST_FOR_EVENT7
+
+        if any(modules.rows[name]["marshalSHA256"] != digest for name, digest in LAOLAO_SOURCES.items()):
+            raise ValueError("The original Laolao Challenge battle route changed")
+        self.ghost, difficulty = stage_id % 10, (stage_id - 462000) // 10 + 1
+        self.difficulty, self.settings = difficulty, settings
+        config = FEAST_FOR_EVENT7.data[self.ghost]
+        stage = DATA_PVE_STAGE_DATA.data[str(stage_id)]
+        self.group = BattleMonstersInfo.data[stage["groupid"]]
+        if (config[f"fightId{difficulty}"] != stage_id or self.group["ID"] != stage_id or stage["shishentotal"] != 5
+                or self.group["resindex"] != 400205 or len(self.group["MonstersInfos"]) != (3 if self.ghost == 1 else 1)):
+            raise RuntimeError("Unexpected original Laolao Challenge formation")
+        self.formations = [sorted((pos, proto, level) for pos, proto, level, *_ in wave if proto)
+                           for wave in self.group["MonstersInfos"]]
+        self.guest_ids = unlocked_guests(settings["factions"], feast_for_devils_dawnexpedition.data)
+        self.faith_skills = get_total_level_buff_skill(settings["faith"])
+        self.const, self.started, self.waves = const, None, []
+        self.engine = engine = JSHardEngine({
+            "pve_data_flag": str(stage_id), "xinyang_buff_level": settings["faith"], "sa_heroes": self.guest_ids,
+        })
+        engine.battleMode = const.BattleMode.MODE_GHOST_KING_HARD
+        self.limit = engine.get_limit_seconds()
+        if self.limit != 180:
+            raise RuntimeError("The original Laolao Challenge default deadline changed")
+        bind_ghost_king_constants(engine, feast_for_devils_const.data)
+        bind_ghost_king_clock(engine)
+        self.spawn = engine._createNextRoundMons
+        engine._createNextRoundMons = self.observe_spawn
+        self.state_changed = engine.onBattleStateChanged
+        engine.onBattleStateChanged = self.observe_state
+
+    def observe_state(self):
+        engine, get_entities = self.engine, self.engine.getEntities
+        native_state = self.state_changed.__func__.__code__
+
+        def with_hero_profiles(*args, **kwargs):
+            entities = get_entities(*args, **kwargs)
+            if _getframe(1).f_code is native_state:
+                # This call only builds the original post-start roster report.
+                # Summons have no HeroComp in current battles.
+                return [entity for entity in entities if hasattr(entity, "HeroComp") and entity.HeroComp.heroData]
+            return entities
+
+        engine.getEntities = with_hero_profiles
+        try:
+            self.state_changed()
+        finally:
+            engine.getEntities = get_entities
+
+    def observe_spawn(self):
+        engine, create = self.engine, self.engine.createMonsterEntity
+        index = engine.finishedWaveCount
+        opening = []
+
+        def observe(camp, owner, placement):
+            unit = create(camp, owner, placement)
+            opening.append((unit.posIndex, unit.protoid, unit.AttrComp.level))
+            return unit
+
+        engine.createMonsterEntity = observe
+        try:
+            self.spawn()
+        finally:
+            engine.createMonsterEntity = create
+        opening.sort()
+        if index != len(self.waves) or index >= len(self.formations) or opening != self.formations[index]:
+            raise RuntimeError("The original Laolao Challenge engine created a different enemy wave")
+        self.waves.append([{"position": pos, "id": proto, "level": level} for pos, proto, level in opening])
+
+    def update(self):
+        engine = self.engine
+        if self.started is None and engine.battleState == self.const.BattleState.BS_STARTED:
+            self.started = engine.now_time()
+            if abs(engine.haltBattleTime - self.started - self.limit) > 1:
+                raise RuntimeError("The original Laolao Challenge engine set a different deadline")
+
+    def report(self):
+        if self.started is None or not self.waves:
+            raise RuntimeError("The original Laolao Challenge did not start")
+        engine = self.engine
+        return {"ghostId": self.ghost, "difficulty": self.difficulty, "settings": self.settings,
+                "guestIds": self.guest_ids, "faithSkills": self.faith_skills, "actorFaithSkills": engine.yys_extra_skill,
+                "deadlineSeconds": self.limit, "combatSeconds": round(engine.now_time() - self.started, 6),
+                "timedOut": bool(engine.isHaltBattle), "waves": self.waves}

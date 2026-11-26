@@ -5,6 +5,7 @@
  const isDamageMode=AtlasRuneCandidate.damageMode;
  const yinYang=AtlasJourneyHard.boss;
  const ghostKingTower=AtlasDevilFeast.tower;
+ const laolao=AtlasDevilFeast.laolao;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -166,6 +167,17 @@
      '祝福等级应为 1 至 11 的整数。':'续战需填写六个敌位的有效生命值，至少一位仍存活。';
    for(const button of pane.results.querySelectorAll('[data-tower-carry]'))button.disabled=blocked;
   }
+  const laolaoSettings=pane.laolaoFaith?{faith:pane.laolaoFaith.valueAsNumber,
+   factions:pane.laolaoFactions.filter(input=>input.checked).map(input=>Number(input.value))}:null;
+  const laolaoReady=!laolaoSettings||laolao.validSettings(laolaoSettings);
+  pane.laolaoSettings=laolaoReady?laolaoSettings:null;
+  if(pane.laolaoFaith){
+   for(const field of [pane.laolaoFaith,...pane.laolaoFactions])field.disabled=blocked;
+   pane.laolaoFaith.setAttribute('aria-invalid',String(!laolaoReady));
+   const effects=laolaoReady&&pane.laolao.faith.filter(row=>row.level>0&&row.level<=laolaoSettings.faith);
+   pane.laolaoHint.textContent=!laolaoReady?'请输入大于或等于 0 的整数。':
+    effects.length?effects.map(row=>row.dsc).join(' · '):'达到 10 层会解锁首个额外加成。';
+  }
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   const coins=pane.artifactCoins?.valueAsNumber;
@@ -210,7 +222,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -223,6 +235,7 @@
    !eventReady?'前行步数应为大于或等于 0 的整数。':
    !journeyReady?'请填写正整数战斗时限和非负整数祝福层数。':
    !towerReady?'请核对百妖退治的挑战条件。':
+   !laolaoReady?'请核对信仰之佑层数。':
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
@@ -316,6 +329,19 @@
     </fieldset>`:''}
     <p class="caption" id="pve-tower-hint" data-pve-tower-hint role="status"></p>
    </details>`:''}
+   ${config.laolao?`<fieldset class="pve-reserve">
+    <legend>姥姥火挑战条件</legend>
+    <label class="pve-lineup-field">信仰之佑层数
+     <input data-pve-laolao-faith type="number" value="0" min="0" max="${Number.MAX_SAFE_INTEGER}" step="1"
+      aria-describedby="pve-laolao-hint" required>
+    </label>
+    <p id="pve-laolao-hint" class="caption" data-pve-laolao-hint role="status"></p>
+    <fieldset class="pve-reserve">
+     <legend>已解锁的鬼宴之宾阵营</legend>
+     <div class="actions">${config.laolao.factions.map(row=>`<label class="pve-tower-toggle">
+      <input data-pve-laolao-faction type="checkbox" value="${row.id}"> ${esc(row.title)}</label>`).join('')}</div>
+    </fieldset>
+   </fieldset>`:''}
    ${config.shilianEventId?`<div class="actions">
     <label class="pve-lineup-field">难度档位 <select data-pve-event-difficulty>
     ${[1,2,3].map(value=>`<option value="${value}">${value}</option>`).join('')}
@@ -400,6 +426,7 @@
    towerConditions:part('tower-conditions'),towerBlessingRows:all('tower-blessing-row'),
    towerChoices:all('tower-choice'),towerLevels:all('tower-level'),towerFactions:all('tower-faction'),
    towerContinue:part('tower-continue'),towerHpPanel:part('tower-hp-panel'),towerHp:all('tower-hp'),towerHint:part('tower-hint'),
+   laolaoFaith:part('laolao-faith'),laolaoFactions:all('laolao-faction'),laolaoHint:part('laolao-hint'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
@@ -411,12 +438,12 @@
   pane.start.onclick=()=>void run();
   for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
-   ...pane.towerChoices,...pane.towerFactions,pane.towerContinue].filter(Boolean))field.onchange=()=>{
+   ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
   for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
-   ...pane.towerLevels,...pane.towerHp,
+   ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
@@ -549,6 +576,7 @@
     ...(run.journeyHard?{journeyHard:run.journeyHard}:{}),...(creviceWindow?{creviceWindow}:{}),...(ghostSettings?{ghostSettings}:{}),
     ...(run.yinyangBoss?{yinyangBoss:run.yinyangBoss}:{}),
     ...(run.towerSettings?{towerSettings:run.towerSettings}:{}),
+    ...(run.laolaoSettings?{laolaoSettings:run.laolaoSettings}:{}),
     ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(mapBossPlayers?{mapBossPlayers}:{}),...(tianfaTeam?{tianfaTeam}:{}),
     ...(qinfeiBoss?{qinfeiBoss}:{}),
@@ -585,7 +613,7 @@
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
-   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower)?.timedOut===true;
+   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
@@ -717,7 +745,8 @@
   const selected=selectedForReplay(knownLineups());
   const inventory=account(),reserve=orochiReserve(selected,inventory);
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
-     pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||pane.tower&&!pane.towerSettings)return;
+     pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
+     pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
@@ -728,6 +757,7 @@
    journeyHard:pane.journeySettings,
    yinyangBoss:pane.yinYangSettings?{...pane.yinYangSettings,buffIds:pane.yinYangSettings.buffIds.slice()}:null,
    towerSettings:pane.towerSettings,
+   laolaoSettings:pane.laolaoSettings,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
    sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins||guard?

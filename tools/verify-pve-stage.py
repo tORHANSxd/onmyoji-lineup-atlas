@@ -18,7 +18,9 @@ SPECIAL_NIAN_WALL_SECONDS = 145
 
 def replay(args, runtime, work):
     from devil_feast_stage import (DEVIL_FEAST_MODE, DEVIL_FEAST_STAGES, DEVIL_FEAST_WALL_SECONDS,
-                                  TOWER_MODE, TOWER_WALL_SECONDS, DevilFeastReplay, GhostKingTowerReplay, tower_stage_kind)
+                                  LAOLAO_FUSION_STAGE, LAOLAO_MODE, LAOLAO_STAGES, LAOLAO_WALL_SECONDS,
+                                  TOWER_MODE, TOWER_WALL_SECONDS,
+                                  DevilFeastReplay, GhostKingTowerReplay, LaolaoChallengeReplay, tower_stage_kind)
     from dojo_area_stage import DOJO_AREA_MODE, DojoAreaReplay, dojo_area_stage, is_dojo_area_stage
     from game_resources import sha256
     from fengmo_band_stage import FENGMO_BAND_MODE, FENGMO_BAND_STAGES, FengmoBandReplay
@@ -81,6 +83,7 @@ def replay(args, runtime, work):
     band_together = args.mode == BAND_TOGETHER_MODE
     devil_feast = args.mode == DEVIL_FEAST_MODE
     ghost_king_tower = args.mode == TOWER_MODE
+    laolao_challenge = args.mode == LAOLAO_MODE
     activity_score = SOLO_SCORE_MODES.get(args.mode)
     dojo_area = args.mode == DOJO_AREA_MODE
     forest = args.mode == FOREST_MODE
@@ -301,6 +304,14 @@ def replay(args, runtime, work):
         tower = GhostKingTowerReplay(modules, args.stage, args.tower_settings)
         engine, group, const = tower.engine, tower.group, tower.const
         group_id, wave_count = group["ID"], 1
+    elif laolao_challenge:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Laolao Challenge requires five owned shikigami")
+        laolao = LaolaoChallengeReplay(modules, args.stage, args.laolao_settings)
+        engine, group, const = laolao.engine, laolao.group, laolao.const
+        group_id, wave_count = group["ID"], len(group["MonstersInfos"])
     elif journey_hard:
         from DynamicConfigData import DATA_HERO
 
@@ -418,6 +429,8 @@ def replay(args, runtime, work):
             raise ValueError("Devil Feast stages require their original activity route")
         if tower_stage_kind(args.stage):
             raise ValueError("Kyoto Investigation stages require their archived activity route")
+        if args.stage in (*LAOLAO_STAGES, LAOLAO_FUSION_STAGE):
+            raise ValueError("Laolao battles require their original activity route")
         if args.stage == YINYANG_BOSS_STAGE:
             raise ValueError("The Yin Yang Defence boss requires its original activity route")
         if args.stage in SCORE_STAGES:
@@ -509,6 +522,8 @@ def replay(args, runtime, work):
         route = "devil-feast-activity"
     elif ghost_king_tower:
         route = "ghost-king-tower-archive"
+    elif laolao_challenge:
+        route = "laolao-challenge-solo"
     elif band_together:
         route = "fengmo-band-together-practice"
     elif dojo_area:
@@ -702,7 +717,7 @@ def replay(args, runtime, work):
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == ten_groups[0]["resindex"]
                              and engine.defeat_monster_wave == 0 and engine.monster_wave_count == len(ten_groups)
                              and tuple(engine.wave_pve_flag_list) == tuple(group["ID"] for group in ten_groups))
-    elif yanwu or fengmo_band or band_together or devil_feast or ghost_king_tower or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or yinyang_boss or spider or hunling or qiling or shilian:
+    elif yanwu or fengmo_band or band_together or devil_feast or ghost_king_tower or laolao_challenge or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or yinyang_boss or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -742,6 +757,7 @@ def replay(args, runtime, work):
                       else BAND_TOGETHER_WALL_SECONDS if band_together
                       else DEVIL_FEAST_WALL_SECONDS if devil_feast
                       else TOWER_WALL_SECONDS if ghost_king_tower
+                      else LAOLAO_WALL_SECONDS if laolao_challenge
                       else YINYANG_BOSS_WALL_SECONDS if yinyang_boss
                       else TEN_REPLAY_SECONDS if ten_anniversary or ten_boss or ten_explore
                       else OROCHI_REPLAY_SECONDS if orochi
@@ -802,6 +818,8 @@ def replay(args, runtime, work):
         engine.update()
         if ghost_king_tower:
             tower.update()
+        if laolao_challenge:
+            laolao.update()
         if qinfei_food:
             map_boss_replay.advance_pile(controller)
         if secret_mechanic_replay:
@@ -1015,6 +1033,9 @@ def replay(args, runtime, work):
     if ghost_king_tower:
         report["ghostKingTower"] = tower.report()
         report["formationsVerified"] = 1
+    if laolao_challenge:
+        report["laolaoChallenge"] = laolao.report()
+        report["formationsVerified"] = len(laolao.waves)
     if map_boss_replay:
         report["mapBoss"] = map_boss_replay.report(report["outcome"])
         report["formationsVerified"] = len(map_boss_replay.waves)
@@ -1092,7 +1113,8 @@ def replay(args, runtime, work):
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from devil_feast_stage import (DEVIL_FEAST_BOSSES, DEVIL_FEAST_MODE, DEVIL_FEAST_STAGES, DEVIL_FEAST_WALL_SECONDS,
-                                  TOWER_MODE, TOWER_WALL_SECONDS, tower_stage_kind, valid_tower_settings)
+                                  LAOLAO_MODE, LAOLAO_STAGES, LAOLAO_WALL_SECONDS, TOWER_MODE, TOWER_WALL_SECONDS,
+                                  tower_stage_kind, valid_laolao_settings, valid_tower_settings)
     from fengmo_band_stage import FENGMO_BAND_MODE
     from fengmo_band_together import BAND_TOGETHER_MODE, BAND_TOGETHER_STAGES, BAND_TOGETHER_WALL_SECONDS
     from dojo_area_stage import DOJO_AREA_ACTIVITY, DOJO_AREA_MODE
@@ -1130,8 +1152,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
+    parser.add_argument("--laolao-settings", type=json.loads)
     parser.add_argument("--yinyang-drums", type=int, choices=range(10))
     parser.add_argument("--yinyang-buffs", type=int, nargs="+", choices=YINYANG_BOSS_BUFF_IDS)
     parser.add_argument("--devil-feast-hp", type=float)
@@ -1178,6 +1201,11 @@ def main():
             parser.error("Kyoto Investigation needs an original stage and valid archived conditions")
     elif args.tower_settings is not None:
         parser.error("Kyoto Investigation conditions only apply to its archived route")
+    if args.mode == LAOLAO_MODE:
+        if args.stage not in LAOLAO_STAGES or not valid_laolao_settings(args.laolao_settings):
+            parser.error("Laolao Challenge requires one of its twelve stages and valid faith settings")
+    elif args.laolao_settings is not None:
+        parser.error("Laolao Challenge conditions apply only to its original mode")
     if args.mode == YINYANG_BOSS_MODE:
         if args.stage != YINYANG_BOSS_STAGE or args.yinyang_drums is None:
             parser.error("Yin Yang Defence boss needs its original stage and the remaining drum count")
@@ -1272,6 +1300,7 @@ def main():
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
                         DEVIL_FEAST_WALL_SECONDS + 20 if args.mode == DEVIL_FEAST_MODE else
                         TOWER_WALL_SECONDS + 20 if args.mode == TOWER_MODE else
+                        LAOLAO_WALL_SECONDS + 20 if args.mode == LAOLAO_MODE else
                         YINYANG_BOSS_WALL_SECONDS + 20 if args.mode == YINYANG_BOSS_MODE else
                         BAND_TOGETHER_WALL_SECONDS + 20 if args.mode == BAND_TOGETHER_MODE else
                         TEN_REPLAY_SECONDS + 20 if args.mode in (*TEN_OWNED_MODES, TEN_BOSS_MODE, TEN_EXPLORE_MODE) else
