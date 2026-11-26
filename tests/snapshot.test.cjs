@@ -166,10 +166,23 @@ test('增量档案省略御魂预设时继续使用旧预设，明确导出的�
  delete restricted.equipPresets;
  const merged=C.mergeAccount(initial,C.parseAccount(restricted));
  assert.deepEqual(merged.presets,initial.presets);
+ assert.deepEqual(merged.snapshot.equipPresets,initial.snapshot.equipPresets);
  assert.equal(merged.retainedSections.equipPresets,initial.capturedAt);
  assert.deepEqual(C.restoreAccount(JSON.parse(JSON.stringify(merged))).presets,merged.presets);
  const cleared=C.mergeAccount(merged,C.parseAccount(snapshot({equipPresets:[]})));
  assert.deepEqual(cleared.presets,[]);
+ assert.deepEqual(cleared.snapshot.equipPresets,[]);
+});
+
+test('旧版御魂预设保留同名项和原始记录，解析空方案与实例引用',()=>{
+ const equipPresets=[['同名',['example-soul','missing']],['同名',[]],['异常',[null]]];
+ const parsed=C.parseAccount(snapshot({equipPresets}));
+ const restored=C.restoreAccount(JSON.parse(JSON.stringify(parsed)));
+ assert.deepEqual(restored.raw.equipPresets,equipPresets);
+ assert.deepEqual(restored.snapshot.equipPresets,[
+  {name:'同名',references:['example-soul','missing']},{name:'同名',references:[]},
+ ]);
+ assert.ok(restored.warnings.some(warning=>warning.includes('部分御魂预设格式待核对')));
 });
 
 test('平安志版本 1 保留原版队伍和御魂方案的分组引用与绑定',()=>{

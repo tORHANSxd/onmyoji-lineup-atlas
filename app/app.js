@@ -954,6 +954,37 @@ function accountLineupPresets(a){
   `<p class="caption">沿用 ${esc(a.retainedSections.lineupPresets||'时间未知')} 的旧记录。</p>`:'';
  return `<details class="inventory-notes" id="account-game-lineup-presets"><summary>游戏阵容预设</summary>${retained}${records(teams,'队伍',row=>heroLabels(row.references))}${groupLabels(teamGroups,teams,'队伍分组')}${records(plans,'御魂方案',soulLabels)}${groupLabels(planGroups,plans,'御魂方案分组')}</details>`;
 }
+function accountEquipPresets(a){
+ const presets=a.snapshot.equipPresets;
+ if(!presets?.length)return '';
+ const counts=new Map(),seen=new Map();
+ for(const {name} of presets)counts.set(name,(counts.get(name)??0)+1);
+ const options=presets.map(({name},index)=>{
+  const occurrence=(seen.get(name)??0)+1;
+  seen.set(name,occurrence);
+  return `<option value="${index}">${esc(name||'未命名')}${counts.get(name)>1?`（${occurrence}）`:''}</option>`;
+ });
+ const retained=Object.hasOwn(a.retainedSections||{},'equipPresets')?
+  `<p class="caption">沿用 ${esc(a.retainedSections.equipPresets||'时间未知')} 的旧记录。</p>`:'';
+ return `<details class="inventory-notes" id="account-equip-presets"><summary>御魂预设 · ${presets.length} 套</summary>${retained}
+  <div class="actions"><label class="pve-lineup-field">选择预设 <select id="account-equip-preset-select">${options.join('')}</select></label></div>
+  <div id="account-equip-preset-detail"></div></details>`;
+}
+function renderAccountEquipPreset(a){
+ const select=$('account-equip-preset-select'),detail=$('account-equip-preset-detail');
+ if(!select||!detail)return;
+ const preset=a.snapshot.equipPresets[Number(select.value)];
+ if(!preset)return;
+ const refs=preset.references.filter(Boolean),pieces=refs.flatMap(ref=>Object.hasOwn(a.souls,ref)?[a.souls[ref]]:[]);
+ const missing=refs.length-pieces.length,full=pieces.length===6&&new Set(pieces.map(piece=>piece.slot)).size===6&&
+  pieces.every(piece=>piece.unknown.length===0);
+ const status=refs.length?`引用 ${refs.length} 件 · 找到 ${pieces.length} 件${missing?` · 库存未提供 ${missing} 件`:''}`:'此预设没有引用御魂';
+ detail.innerHTML=`<p class="caption" role="status">${status}${full?' · 六槽齐全，可用于配装核对':''}</p>${pieces.length?
+  `<div class="scroll-table"><table><thead><tr><th>槽位</th><th>套装</th><th>星级与等级</th><th>属性</th></tr></thead><tbody>${pieces
+   .sort((left,right)=>left.slot-right.slot).map(piece=>`<tr><td>${piece.slot} 号位</td>
+    <td class="inventory-suit">${gameImage(soulAsset(piece.set))}<span>${esc(piece.set)}</span></td>
+    <td>${piece.star} 星 · +${piece.level}</td><td>${piece.unknown.length?'有未识别属性':'已识别'}</td></tr>`).join('')}</tbody></table></div>`:''}`;
+}
 function accountAssets(a){
  const balances=a.snapshot.sections.currency==null?[]:
   Object.entries(ACCOUNT_CURRENCIES).filter(([key])=>Number.isFinite(a.raw.currency[key]));
@@ -970,12 +1001,13 @@ function accountAssets(a){
   }).join('');
   return `<li><div class="account-spirit-heading">${gameImage(asset)}<div><strong>${esc(name)}</strong><p>${q.star} 星 · ${q.lv} 级</p></div></div>${marks?`<ul class="account-spirit-marks">${marks}</ul>`:'<p class="caption">无术印</p>'}</li>`;
  }).join('')}</ul>${spirits.length>120?'<p class="caption">显示前 120 个，其余保留在账号备份中。</p>':''}</details>`:'';
- return resourceStrip+spiritList+accountLineupPresets(a);
+ return resourceStrip+spiritList+accountEquipPresets(a)+accountLineupPresets(a);
 }
 function renderAccounts(recommendations=true){if(view!=='accounts')return;if(recommendations)renderRecommendations();
  const a=account();$('account-pagination').hidden=!a;
  if(!a){$('account-summary').innerHTML='';$('account-heroes').innerHTML='<p class="muted">导入平安志 JSON 后选择账号。</p>';$('account-souls').innerHTML='';return;}
  const expanded=accountInventoryCache?.account.id===a.id?[...$('account-summary').querySelectorAll('details[open]')].map(el=>el.id):[];
+ const selectedPreset=accountInventoryCache?.account===a?$('account-equip-preset-select')?.value:null;
  if(accountInventoryCache?.account!==a){const heroes=Object.values(a.heroes).sort((a,b)=>b.level-a.level||Number(b.shikigamiId)-Number(a.shikigamiId)||a.instanceId.localeCompare(b.instanceId)),souls=Object.values(a.souls),suitCounts=new Map();for(const s of souls){const count=suitCounts.get(s.set)||{total:0,maxed:0};count.total++;if(s.star===6&&s.level===15)count.maxed++;suitCounts.set(s.set,count);}accountInventoryCache={account:a,heroes,souls,suitCounts};}
  const {heroes,souls,suitCounts}=accountInventoryCache;
  const ownership=accountInventorySolver.equipmentOwnership(a);
@@ -984,6 +1016,12 @@ function renderAccounts(recommendations=true){if(view!=='accounts')return;if(rec
   : '全仓库的穿戴归属待核对。';
  $('account-summary').innerHTML=`<div class="overview"><div><strong>${heroes.length}</strong><span>角色实例（含素材）</span></div><div><strong>${new Set(heroes.map(h=>h.shikigamiId)).size}</strong><span>角色类型</span></div><div><strong>${souls.length}</strong><span>御魂</span></div><div><strong>${a.presets.length}</strong><span>御魂预设</span></div></div><details class="inventory-notes" id="account-inventory-notes"><summary>库存信息${a.warnings.length?' · '+a.warnings.length+' 项提醒':''}</summary><p>采集时间：${esc(a.capturedAt)}。${Number.isFinite(a.raw?.player?.level)?'账号等级：'+esc(a.raw.player.level)+'。':''}式神：${C.inventoryComplete(a,'heroes')?'完整':'待核对'}。御魂：${C.inventoryComplete(a,'souls')?'完整':'待核对'}。</p><p>${equipmentStatus}</p>${a.warnings.slice(0,30).map(w=>'<p>'+esc(w)+'</p>').join('')}${a.warnings.length>30?'<p>其余提醒保留在原始导出与备份中。</p>':''}</details>${accountAssets(a)}${snapshotDetails(a)}`;
  for(const id of expanded)if(id&&$(id))$(id).open=true;
+ const presetSelect=$('account-equip-preset-select');
+ if(presetSelect){
+  if(selectedPreset!=null)presetSelect.value=selectedPreset;
+  presetSelect.onchange=()=>renderAccountEquipPreset(a);
+  renderAccountEquipPreset(a);
+ }
  const q=$('account-search').value.trim(),kind=$('account-kind').value;
  const filtered=heroes.filter(h=>{const r=rosterById(h.shikigamiId);return `${accountHeroName(h,r)} ${h.shikigamiId}`.includes(q)&&(!kind||(kind==='material'?r?.isMaterial:!r?.isMaterial));});
  const slice=C.paginate(filtered,accountPage,$('account-page-size').value);accountPage=slice.page;

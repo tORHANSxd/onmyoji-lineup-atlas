@@ -205,6 +205,13 @@ function readLineupPresets(raw,warnings){
   row=>({name:row.name,references:row[key]}));
  return {teams,plans,teamGroups:groups(raw.teamPresets,'teamIds',textId),planGroups:groups(raw.soulPlans,'boxIds',boxId)};
 }
+function readEquipPresets(raw,warnings){
+ if(!Array.isArray(raw))return null;
+ const rows=raw.filter(row=>Array.isArray(row)&&row.length===2&&typeof row[0]==='string'&&
+  Array.isArray(row[1])&&row[1].length<=6&&row[1].every(id=>typeof id==='string'));
+ if(rows.length!==raw.length)warnings.push('部分御魂预设格式待核对，原始记录已保留');
+ return rows.map(([name,references])=>({name,references}));
+}
 function snapshotInfo(raw,warnings){
  const scope=object(raw.scope)?raw.scope:{},sections={};
  if(raw.scope!=null&&!object(raw.scope))warnings.push('采集范围格式异常，请重新导出库存');
@@ -233,7 +240,7 @@ function snapshotInfo(raw,warnings){
  ).map(({id,lv,star,marks})=>({id,lv,star,marks})):null;
  if(spirits&&spirits.length!==raw.hunlings.length)warnings.push('部分契灵格式待核对，原始记录已保留');
  const lineupPresets=readLineupPresets(raw.lineupPresets,warnings);
- return {version:1,scope,sections,stackedHeroes,spirits,lineupPresets};
+ return {version:1,scope,sections,stackedHeroes,spirits,lineupPresets,equipPresets:readEquipPresets(raw.equipPresets,warnings)};
 }
 function inventoryComplete(account,kind){
  if(account.completeness!=='complete'||account.merged)return false;

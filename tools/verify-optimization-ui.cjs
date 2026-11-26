@@ -1211,7 +1211,47 @@ async function main(){
   await ui('document.getElementById("ta-enter").click()');win.webContents.setZoomFactor(2);await sleep(100);
   for(const page of ['library','accounts','decode','manage','audit']){await ui('selectView('+JSON.stringify(page)+')');await check(page+' 200%缩放',async()=>assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true));}
  }
- const report={version:require('../package.json').version,results,errors,synthetic:true,method:'生产 Electron 页面、预加载脚本与合成 IPC；失败注入、慢保存竞态、1440/900/720 像素及 200% 缩放。真实手机扫码与网易服务未在本轮实测。'};
+ await check('旧版御魂预设区分同名方案并显示已找到御魂和缺口',async()=>{
+  const soul={id:'preset-soul',slot:6,quality:6,level:15,setId:'火灵',mainAttrType:'crit_rate',mainAttrValue:.55,subAttributes:[]};
+  const inventory={...raw,hero_equips:[soul],equipPresets:[['同名方案',['preset-soul','missing']],['同名方案',[]]]};
+  await ui('importMode="accounts";$("merge-import").checked=false;handleFiles('+file(inventory)+')');
+  await ui('selectView("accounts");$("account-equip-presets").open=true');
+  assert.deepEqual(await ui('[...$("account-equip-preset-select").options].map(option=>option.textContent)'),['同名方案（1）','同名方案（2）']);
+  assert.match(await ui('$("account-equip-preset-detail").textContent'),/引用 2 件 · 找到 1 件 · 库存未提供 1 件.*6 号位.*火灵.*6 星 · \+15/s);
+  await ui('$("account-equip-preset-select").value="1";$("account-equip-preset-select").dispatchEvent(new Event("change"));renderAccounts(false)');
+  assert.deepEqual(await ui('[$("account-equip-presets").open,$("account-equip-preset-select").value]'),[true,'1']);
+  assert.match(await ui('$("account-equip-preset-detail").textContent'),/此预设没有引用御魂/);
+  win.setContentSize(720,960);
+  try{
+   const widths=await ui('[document.documentElement.scrollWidth,innerWidth]');
+   assert.ok(widths[0]<=widths[1]+2,`窄窗口横向范围 ${widths[0]} / ${widths[1]}`);
+  }finally{win.setContentSize(1440,960);}
+ });
+ const nativeExportDir=process.env.YUQI_PINGANZHI_EXPORT_DIR;
+ if(nativeExportDir)await check('平安志实际导出通过账号文件入口和预设显示',async()=>{
+  const files=(await fs.readdir(nativeExportDir,{withFileTypes:true})).filter(entry=>entry.isFile()&&entry.name.endsWith('.json'));
+  assert.ok(files.length,'缺少平安志实际导出');
+  const documents=await Promise.all(files.map(async entry=>{
+   const text=await fs.readFile(path.join(nativeExportDir,entry.name),'utf8');
+   return {text,raw:JSON.parse(text.replace(/^\uFEFF/,''))};
+  }));
+  const ids=new Set(documents.map(({raw})=>`${raw.player.serverId}:${raw.player.shortId}`));
+  await ui('selectView("accounts");STATE={...STATE,accounts:[],activeAccount:""};importMode="accounts";$("merge-import").checked=false');
+  const sources=documents.map(({text},index)=>`{name:"角色档案-${index+1}.json",size:${Buffer.byteLength(text)},text:async()=>${JSON.stringify(text)}}`);
+  await win.webContents.executeJavaScript(`handleFiles([${sources.join(',\n')}])`);
+  assert.equal(stored.accounts.length,ids.size);
+  for(const {raw} of documents){
+   const account=stored.accounts.find(entry=>entry.id===`${raw.player.serverId}:${raw.player.shortId}`);
+   assert.ok(account,'未保存对应导出库存');
+   assert.equal(Object.keys(account.heroes).length,Object.keys(raw.heroes).length);
+   assert.equal(Object.keys(account.souls).length,(raw.souls??raw.hero_equips).length);
+   assert.equal(account.snapshot.equipPresets?.length,raw.equipPresets?.length);
+  }
+  assert.equal(await ui('$("account-equip-preset-select")?.options.length'),stored.accounts.at(-1).snapshot.equipPresets.length);
+  assert.equal(await ui('C.restoreAccount(STATE.accounts.at(-1)).snapshot.equipPresets.length'),stored.accounts.at(-1).snapshot.equipPresets.length);
+ });
+ const report={version:require('../package.json').version,results,errors,synthetic:true,nativeExports:!!nativeExportDir,method:'生产 Electron 页面、预加载脚本与本地 IPC 测试。'+
+  (nativeExportDir?'另用平安志实际导出验收库存入口。':'使用合成库存与失败注入。')+'真实手机扫码与网易服务未在本轮实测。'};
  await background.close();
  await fs.writeFile(path.join(profile,'report.json'),JSON.stringify(report,null,2));
   await fs.mkdir(path.join(root,'verification'),{recursive:true});await fs.writeFile(process.env.YUQI_UI_REPORT||path.join(root,'verification','optimization-ui-v'+report.version.replaceAll('.','')+'.json'),JSON.stringify(report,null,2)+'\n');
