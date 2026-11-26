@@ -500,6 +500,99 @@
       codeStageId:scene?.actors===1&&scene.shikigami===5?opening.codeStageId:null,codeLabel:scene?.name});
   }
 
+  const regionalRuleFields = {
+    1: ['回合上限'], 2: ['最少存活单位数'], 3: ['最少上阵数', '稀有度'], 4: ['治疗效果降低（%）'],
+    5: ['自动回复鬼火减少量'], 7: ['指定阴阳师'], 8: ['最少上阵数', '指定式神'], 9: ['式神属性编号'],
+  };
+
+  function showRegionalBoss(destination, entry, groups, monsters) {
+    if (entry.table !== 'lbs_world_boss_area' || state.index.resourceVersion !== AtlasRuneLineup.resourceVersion) return;
+    const stages = groups.filter(group => group.ref.table === 'pve_stage_data' && group.row?.shishentotal === 5);
+    const conditions = new Map(groups.flatMap(({ref,row}) => {
+      const fields = ref.table === 'lbs_world_boss_type' && regionalRuleFields[row?.type];
+      return fields && fields.every((_,index) => {
+        const range = row['p'+(index+1)];
+        return Array.isArray(range) && range.length && range.length<=3 && range.every(Number.isFinite) &&
+          (range[1]??range[0])>=range[0] && (range[2]??1)>0;
+      }) ? [[String(ref.key),row]] : [];
+    }));
+    if (!stages.length || !conditions.size) return;
+    const panel = node('section', '', 'encounter-source');
+    const controls = node('div', '', 'dungeon-controls'), params = node('div', '', 'dungeon-controls');
+    const workbench = node('div');
+    const wrap = (caption, control) => {
+      const label = node('label', caption);
+      label.append(control);
+      return label;
+    };
+    const stageField = node('select');
+    for (const {ref,row} of stages) stageField.add(option(row.name || keyText(ref.key), ref.key));
+    const level = node('input');
+    Object.assign(level, {type:'number', min:'1', max:'60', step:'1', value:'60', required:true});
+    const condition = node('select');
+    for (const [id,rule] of conditions) condition.add(option(regionalRuleFields[rule.type][0]+' · '+id, id));
+    const stageLabel = wrap('战斗候选', stageField);
+    if (stages.length > 1) controls.append(stageLabel);
+    controls.append(wrap('难度等级', level), wrap('普通特殊条件', condition));
+    panel.append(node('h4', '普通地域鬼王离线演练'),
+      node('p', '按游戏内显示选择等级和条件，或试算下列静态候选。战报显示清波、回合数和我方承伤。排行榜积分由游戏服务器计算。', 'caption'),
+      controls, params, workbench);
+    destination.append(panel);
+    const render = () => {
+      const rule = conditions.get(condition.value);
+      const fields = [...params.querySelectorAll('input,select')];
+      const selected = stages.find(group => String(group.ref.key) === stageField.value);
+      const groupId = selected.row.groupid;
+      const formation = groups.find(group => group.ref.table === 'BattleMonstersInfo' && group.ref.key === groupId);
+      if (!formation?.waves.length || [level, ...fields].some(field => !field.checkValidity())) {
+        window.AtlasPveWorkbench?.unmount();
+        workbench.replaceChildren(node('p', '请填写相符的等级和特殊条件参数。', 'caption'));
+        return;
+      }
+      const region = {areaId:Number(entry.key), level:level.valueAsNumber, ruleId:Number(condition.value),
+        params:fields.map(field => Number(field.value)/Number(field.dataset.scale||1))};
+      const areaName = groups[0].row.area_name;
+      const text = fields.map(field => field.selectedOptions?.[0]?.textContent ?? field.value+(field.dataset.scale?'%':''));
+      const scenario = `${areaName} · 普通 ${region.level} 级 · 条件 ${region.ruleId}（${text.join('、')}）`;
+      const baseSpeed = Math.max(0, ...formation.waves.flatMap(wave => wave.map(unit => Number(monsters.get(unit.id)?.baseSpeed)||0)));
+      const code = groups.find(group => group.ref.table === 'team_assist_stage' && group.ref.key === 10020215)?.row;
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench, {
+        stageId:Number(selected.ref.key), groupId, memberCount:5, battleMode:3004, waveCount:formation.waves.length,
+        openingSpeed:baseSpeed + (formation.row.spd_alter||0), label:scenario, region,
+        actorId:rule.type===7?region.params[0]:null, codeStageId:code?.ss_num===5&&code?.yys_num===1?code.id:null,
+        codeLabel:scenario, version:state.index.resourceVersion,
+      });
+    };
+    const updateRule = () => {
+      const rule = conditions.get(condition.value);
+      params.replaceChildren(...regionalRuleFields[rule.type].map((name,index) => {
+        const [min,max=min,step=1] = rule['p'+(index+1)];
+        if (rule.type===7 || index===1&&[3,8].includes(rule.type)) {
+          const field = node('select');
+          for (let value=min; value<=max; value+=step) {
+            const label = rule.type===3 ? ['','N','R','SR','SSR'][value] : DATA.gameConfig.heroes[value]?.name;
+            field.add(option(label||String(value),value));
+          }
+          field.addEventListener('change',render);
+          return wrap(name,field);
+        }
+        const scale = rule.type===4 ? 100 : 1;
+        const field = node('input');
+        Object.assign(field, {type:'number', min:String(min*scale), max:String(max*scale), step:String(step*scale),
+          value:String(min*scale), required:true});
+        if (scale!==1) field.dataset.scale=scale;
+        field.addEventListener('input',render);
+        return wrap(name, field);
+      }));
+      render();
+    };
+    condition.addEventListener('change',updateRule);
+    stageField.addEventListener('change',render);
+    level.addEventListener('input',render);
+    updateRule();
+  }
+
   function showUnderworld(destination,entry,config){
     if(entry.table!=='gve_battleinfo'||config?.difficulty!==100)return;
     const waveTable=state.index.tables.find(table=>table.name==='gve_monster_wave'&&table.status==='decoded');
@@ -722,6 +815,7 @@
     }
     showYulingEncounter(destination,entry,groups[0]);
     showGuildHunt(destination,entry,groups[0]);
+    showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
     if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;

@@ -62,7 +62,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001,3004]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
@@ -318,6 +318,38 @@ async function main(){
    await ui('qaEncounterInput("battle","30101 剧情：晴明单挑犬神")');
    await until('$("client-dungeons-encounter-detail").textContent.includes("剧情：晴明单挑犬神")');
    assert.equal(await ui('document.querySelector("[data-pve-start]")===null'),true);
+   if(catalog.entries.has('lbs_world_boss_area')){
+    const regionalCalls=[];
+    const region={areaId:10092,level:40,ruleId:70001,params:[13]};
+    mockPve=(plan,options)=>{
+     assert.deepEqual(options,{stageId:300092,groupId:300092,battleMode:3004,seed:options.seed,damageFloor:true,region});
+     assert.equal(plan.onmyoji.heroId,13);
+     assert.equal(plan.members.length,5);
+     regionalCalls.push(options.seed);
+     return {...sample,...options,waveCount:3,wavesCleared:3,regionalBoss:{...region,eligible:true,
+      metrics:{receivedDamage:1010,rounds:12}}};
+    };
+    await ui('selectedLineups.clear();renderSelection();qaEncounterInput("daily","地域鬼王 国王湖")');
+    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+    const regionalForm='[...$("client-dungeons-encounter-detail").querySelectorAll("section")].find(el=>el.firstChild.textContent==="普通地域鬼王离线演练")';
+    await ui(`{const form=${regionalForm},[level]=form.querySelectorAll("input[type=number]"),rule=form.querySelector("select");
+     level.value="61";level.dispatchEvent(new Event("input"));}`);
+    assert.match(await ui(regionalForm+'.textContent'),/请填写相符的等级和特殊条件参数/);
+    await ui(`{const form=${regionalForm},level=form.querySelector("input[type=number]"),rule=form.querySelector("select");
+     level.value="40";rule.value="70001";rule.dispatchEvent(new Event("change"));
+     const param=form.querySelectorAll("select")[1];param.value="13";param.dispatchEvent(new Event("change"));}`);
+    assert.match(await ui(regionalForm+'.textContent'),/源博雅/);
+    await ui(stock+'.click()');
+    await until(status+'.textContent.includes("全随机分支待验证")',20000);
+    assert.deepEqual(regionalCalls.slice(0,6),[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.textContent'),/12 回合 · 我方承伤 1,010/);
+    await ui(regionalForm+'.scrollIntoView({block:"start",behavior:"instant"})');
+    await capture('client-regional-boss-replay');
+    await ui('document.querySelector("[data-pve-code]").click()');
+    assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
+    assert.match(await ui('$("detail-heading").textContent'),/国王湖 · 普通 40 级 · 条件 70001/);
+    await ui('$("detail-dialog").close()');
+   }
    const awakeCalls=[];
    mockPve=(plan,options)=>{
     assert.deepEqual(options,{stageId:40,groupId:4,battleMode:29,seed:options.seed,damageFloor:true});

@@ -118,7 +118,7 @@
  }
 
  async function replay(run,row,plan,damageFloor=false,sampleCount=seeds.length){
-  const {stageId,groupId,battleMode,retreat}=run.pane,scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
+  const {stageId,groupId,battleMode,retreat,region}=run.pane,scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
   const teamKey=relay?AtlasRuneSearch.relayKey(plan):AtlasRuneSearch.teamKey(plan);
   for(const seed of seeds.slice(row.samples.length,sampleCount)){
    if(!active(run))return;
@@ -126,7 +126,8 @@
    update();
    let report;
    run.native=true;
-   try{report=await api.runPve(plan,{stageId,groupId,seed,...(battleMode?{battleMode}:{}),...(damageFloor?{damageFloor:true}:{}),...(retreat?{retreat}:{})});}
+   try{report=await api.runPve(plan,{stageId,groupId,seed,...(battleMode?{battleMode}:{}),...(damageFloor?{damageFloor:true}:{}),
+    ...(retreat?{retreat}:{}),...(region?{region}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
    row.samples.push(report);
@@ -145,6 +146,12 @@
     return;
    }
    const experience=report.experience;
+   if(report.regionalBoss?.eligible===false){
+    row.verdict='infeasible';
+    run.alternatives.push(teamKey);
+    row.state.textContent='原版引擎判定阵容未满足此特殊条件';
+    return;
+   }
    const ranOut=experience?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
@@ -198,9 +205,14 @@
    }
    row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码培养和技能复跑。普攻等级缺失时使用客户端最低等级。</p>');
    const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount);
+   if(run.pane.actorId&&plan.onmyoji.heroId!==run.pane.actorId){
+    row.verdict='infeasible';
+    row.state.textContent='阵容码的阴阳师与本场指定阴阳师不同';
+    return;
+   }
    const scoring=isDamageMode(run.pane.battleMode);
    const tactics=scoring&&Number(lineup.gameSceneId)===run.pane.codeStageId&&AtlasRuneCandidate.readScoreInstructions(lineup.notes);
-   await replay(run,row,tactics?{...plan,tactics}:plan,scoring);
+   await replay(run,row,tactics?{...plan,tactics}:plan,scoring||!!run.pane.region);
   }catch(error){
    if(active(run))row.state.textContent=runeError(error);
   }
@@ -252,6 +264,9 @@
   if(item.rounds){
    const names=item.rounds.map(round=>run.data.gameConfig.heroes[round.plan.onmyoji.heroId]?.name).join(' → ');
    row.details.insertAdjacentHTML('beforeend',`<p class="caption">阴阳师按 60 级及满技能计算，出场顺序为 ${esc(names)}。我方伤害浮动取下限。</p>`);
+  }else if(run.pane.actorId){
+   const name=run.data.gameConfig.heroes[run.pane.actorId]?.name||'指定阴阳师';
+   row.details.insertAdjacentHTML('beforeend',`<p class="caption">备选使用 60 级${esc(name)}和满级技能。我方伤害浮动取下限。</p>`);
   }else row.details.insertAdjacentHTML('beforeend','<p class="caption">备选使用 60 级晴明、满级言灵·星和言灵·守。我方伤害浮动取下限。</p>');
   return {item,row};
  }
@@ -365,7 +380,7 @@
   const alternatives=reuse?[...new Set(job.alternatives)]:[];
   const next=job={pane,data:DATA,account:account(),selected,alternatives,previous,rows:[],running:true,cancelled:false,
    originalsComplete:useStock&&exhausted(selected),pveMemberCount:pane.memberCount,
-   pveOpeningSpeed:pane.openingSpeed,pveBattleMode:pane.battleMode,message:'正在准备库存…'};
+   pveOpeningSpeed:pane.openingSpeed,pveBattleMode:pane.battleMode,pveActorId:pane.actorId,message:'正在准备库存…'};
   pane.results.replaceChildren(...previous.map(row=>row.el));
   update();
   if(focus)pane.stop.focus();

@@ -16,6 +16,7 @@ def replay(args, runtime, work):
     from game_resources import sha256
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
+    from regional_boss_stage import REGION_MODE, RegionalBossReplay, regional_boss_stage
     from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_player, underworld_stage, underworld_teams
     from yuling_stage import YULING_MODE
@@ -29,6 +30,7 @@ def replay(args, runtime, work):
     suits = json.loads(suit_bytes)
     relay = args.mode == UNDERWORLD_MODE
     retreat = args.mode == RETREAT_MODE
+    regional = args.mode == REGION_MODE
     if relay:
         heroes, inventory, actors, rounds = underworld_teams(plan, suits)
     else:
@@ -71,6 +73,14 @@ def replay(args, runtime, work):
 
         engine, stage, wave_count = underworld_stage(args.stage)
         group_id = args.stage
+    elif regional:
+        from battleengine.engine.LBSWorldBossEngine import const
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Ordinary Regional Boss requires five shikigami")
+        engine, formation, group_id = regional_boss_stage(args.stage, args.region, actor["heroId"])
+        wave_count = len(formation["MonstersInfos"])
     elif args.mode == 29:
         from awake_stage import awake_stage
         from battleengine.engine.AwakeFbEngine import const
@@ -162,6 +172,8 @@ def replay(args, runtime, work):
         raid_window = RetreatWindow(raid, const, args.window_seconds)
     elif relay:
         route = "underworld-gate-local-solo"
+    elif regional:
+        route = "regional-boss-ordinary-scenario"
     elif args.mode == 29:
         engine, stage, enemy_ids = awake_stage(args.stage)
         group_id, wave_count = stage["monsterid"], 1
@@ -223,6 +235,7 @@ def replay(args, runtime, work):
     engine.init_engine_state = init_record_clock
     engine.doBattleEnded = observe_end
     engine.onEntityCreated = observe_created
+    regional_replay = RegionalBossReplay(engine, formation, args.region) if regional else None
     verified_waves = set()
     if args.mode == 266:
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
@@ -259,6 +272,8 @@ def replay(args, runtime, work):
         formation_matches = (engine.fbId == args.stage and engine.combineSceneInfoId == stage["scene"]
                              and engine.myRoundCount == 1 and engine.spectatorHeroCount == 0
                              and engine.campData1.shareGuiHuo == 2 and engine.campData2.initGuihuo == 4)
+    elif regional:
+        formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == formation["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
     elif args.mode == 266:
@@ -295,6 +310,8 @@ def replay(args, runtime, work):
         engine.update()
         if host.oracle.unsupported:
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
+        if regional_replay and regional_replay.eligible is False:
+            break
         if instructions:
             instructions.update()
         if retreat:
@@ -358,6 +375,8 @@ def replay(args, runtime, work):
               "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
     if underworld:
         report["underworld"] = underworld.report()
+    if regional_replay:
+        report["regionalBoss"] = regional_replay.report(completed, winner)
     if retreat:
         report["waveCount"], report["wavesCleared"] = 1, int(outcome == "win")
         report["guildRetreat"] = {**raid_window.report(), "guildMembers": args.guild_members,
@@ -415,6 +434,7 @@ def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
+    from regional_boss_stage import REGION_MODE
     from resource_stage import RESOURCE_MODE
     from underworld_stage import UNDERWORLD_MODE
     from yuling_stage import YULING_MODE
@@ -422,7 +442,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, RETREAT_MODE), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, RETREAT_MODE, REGION_MODE), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -430,11 +450,14 @@ def main():
     parser.add_argument("--raid-round", type=int, choices=(1, 2, 3), default=1)
     parser.add_argument("--guild-members", type=int, default=0)
     parser.add_argument("--window-seconds", type=int, default=1800)
+    parser.add_argument("--region", type=json.loads)
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
     if args.mode == RETREAT_MODE and (args.boss is None or not 0 <= args.guild_members <= 50 or not 30 <= args.window_seconds <= 1800):
         parser.error("The retreat needs a boss, 0 to 50 guild members and a 30 to 1800-second window")
+    if (args.mode == REGION_MODE) != (args.region is not None):
+        parser.error("--region is required only for an ordinary Regional Boss scenario")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
     faulthandler.dump_traceback_later(240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95, exit=True)

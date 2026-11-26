@@ -147,12 +147,19 @@ function readScoreInstructions(notes){
  return Object.keys(tactics).length?tactics:null;
 }
 
-async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeStageId,codeLabel}){
+async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeStageId,codeLabel,region}){
  const seeds=S.baseSampleSeeds;
  const instructions=scoreInstructions(row.plan.tactics);
+ const matchesRegion=report=>{
+  if(battleMode!==3004)return true;
+  const actual=report.regionalBoss;
+  return region&&actual?.eligible===true&&region.areaId===actual.areaId&&region.level===actual.level&&
+   region.ruleId===actual.ruleId&&actual.params?.length===region.params.length&&
+   region.params.every((value,index)=>value===actual.params[index]);
+ };
  if(!Number.isSafeInteger(waveCount)||waveCount<1||row.samples.length!==seeds.length||!row.samples.every((report,index)=>
   report.battleMode===battleMode&&report.stageId===stageId&&report.groupId===groupId&&report.seed===seeds[index]&&
-  report.completed&&(battleMode===306||report.outcome==='win')&&report.waveCount===waveCount&&pveGoalMet(report,battleMode)&&
+  report.completed&&(battleMode===306||report.outcome==='win')&&report.waveCount===waveCount&&pveGoalMet(report,battleMode)&&matchesRegion(report)&&
   (!instructions||damageMode(battleMode)&&scoreInstructions(personalScore(report)?.tactics)===instructions)))
   throw Error('完成本关的全部采样复跑后才可生成此阵容码');
  if(!row.panels?.every(Boolean)||row.plan.members.some(member=>member.souls.length!==6))

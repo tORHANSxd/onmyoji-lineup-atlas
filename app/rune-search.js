@@ -83,10 +83,12 @@ function searchProfile(dungeonId){
   bossSpeed:fastest(stage.waves[2])+1,earlySpeed:Math.max(...stage.waves.map(fastest))+2};
 }
 
-function actor(game){
- const heroId=10,awake=0;
- const skinfo=[1003,1008,1011].map(id=>[id,G.levels(game,id,awake).at(-1)?.level]);
- if(skinfo.some(([,level])=>!level))throw Error('当前版本缺少晴明的技能资料');
+function actor(game,heroId=10){
+ const awake=0,hero=game.heroes[heroId];
+ const skills=heroId===10?[1003,1008,1011]:hero?.skills;
+ if(hero?.kind!=='onmyoji'||skills?.length!==3)throw Error('当前版本缺少指定阴阳师的技能资料');
+ const skinfo=skills.map(id=>[id,G.levels(game,id,awake).at(-1)?.level]);
+ if(skinfo.some(([,level])=>!level))throw Error('当前版本缺少指定阴阳师的技能等级资料');
  return {heroId,level:60,star:2,awake,skinfo,aiSkill:2};
 }
 
@@ -249,7 +251,7 @@ function fitTeam(chosen,strategy,{openingSpeed,bossSpeed,earlySpeed},inventory,a
 }
 
 function buildCandidates(account,{gameConfig:game,roster,effects},profile,alternatives,dungeonId,max=limit){
- const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
+ const onmyoji=actor(game,profile.actorId??10),spirit=ownedSpirit(account,game,onmyoji.heroId);
  const heroes=Object.values(account.heroes),inventory=Object.values(account.souls).filter(allowedSoul);
  const rosterIndex=new Map(roster.map(row=>[String(row.id),row]));
  const names=new Set(profile.strategies.flatMap(strategy=>strategy.roles));
@@ -291,7 +293,7 @@ function scoreVariants(item,game){
  return variants;
 }
 
-function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpeed=0,battleMode=3){
+function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpeed=0,battleMode=3,actorId=null){
  const {gameConfig:game,roster}=data;
  const scoring=battleMode===2000||battleMode===306;
  const strategies=[
@@ -309,13 +311,13 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
  const speed=Number.isFinite(openingEnemySpeed)&&openingEnemySpeed>0?Math.floor(openingEnemySpeed)+1:0;
  const poolSize=scoring?10:limit,damageFirstLimit=scoring?2:1;
  const primaryLimit=scoring?poolSize-1-(speed?damageFirstLimit:0):limit-1;
- const candidates=buildCandidates(account,data,{strategies,openingSpeed:speed,bossSpeed:speed,earlySpeed:speed},alternatives,null,primaryLimit);
+ const candidates=buildCandidates(account,data,{strategies,actorId,openingSpeed:speed,bossSpeed:speed,earlySpeed:speed},alternatives,null,primaryLimit);
  if(speed){
   const tried=[...alternatives,...candidates.map(row=>teamKey(row.plan))];
-  const damageFirst=buildCandidates(account,data,{strategies,openingSpeed:0,bossSpeed:0,earlySpeed:0},tried,null,damageFirstLimit);
+  const damageFirst=buildCandidates(account,data,{strategies,actorId,openingSpeed:0,bossSpeed:0,earlySpeed:0},tried,null,damageFirstLimit);
   for(const row of damageFirst)candidates.push({...row,title:row.title+'（输出优先）'});
  }
- const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
+ const onmyoji=actor(game,actorId??10),spirit=ownedSpirit(account,game,onmyoji.heroId);
  const {byHero}=C.equipmentOwnership(account),kinds=game.heroes;
  const rosterIndex=new Map(roster.map(row=>[String(row.id),row]));
  const equipped=Object.values(account.heroes).flatMap(hero=>{

@@ -23,6 +23,7 @@ const engines={
  306:{name:'GuildBossEngine',route:'guild-retreat-personal-window',sha256:guildRetreatOpenings.engineSHA256},
  2000:{name:'GuildHuntingBattleEngine',route:'guild-hunting-local-owned',sha256:guildHuntOpenings.engineSHA256},
  2001:{name:'GuildLieFengEngine',route:'underworld-gate-local-solo',sha256:'5ee939050f18dc8de1960d88ce5181f5735fb89477c3736e1f32ac696426d625'},
+ 3004:{name:'LBSWorldBossEngine',route:'regional-boss-ordinary-scenario',sha256:'d7430531c4dd85fa2c3fc14b2c55677ee7d030e4703e8806887a3d55a0821174'},
  [firstExperience.battleMode]:{name:'NewExpEngine',route:'resource-first-new-server-exp',sha256:resourceEncounters.engineSHA256},
 };
 const positive=value=>Number.isSafeInteger(value)&&value>0;
@@ -69,6 +70,25 @@ function validScoringTactics(data,tactics,bossId){
   positive(action?.heroId)&&positive(action?.skillId)&&action.targetId===bossId:action===undefined);
 }
 
+function validRegion(region){
+ return region&&Object.keys(region).length===4&&positive(region.areaId)&&positive(region.ruleId)&&
+  positive(region.level)&&region.level<=60&&Array.isArray(region.params)&&region.params.length>=1&&
+  region.params.length<=2&&region.params.every(value=>Number.isFinite(value)&&value>=0);
+}
+
+function validRegionalReport(report,region){
+ const actual=report.regionalBoss;
+ return actual&&sameTactics(region,Object.fromEntries(Object.keys(region).map(key=>[key,actual[key]])))&&
+  [true,false,null].includes(actual.eligible)&&Array.isArray(actual.formations)&&
+  actual.formations.length>=report.wavesCleared&&actual.formations.length<=report.waveCount&&
+  actual.formations.every(wave=>Array.isArray(wave)&&wave.length&&wave.every(unit=>
+   positive(unit.position)&&positive(unit.id)&&unit.level===region.level&&Number.isFinite(unit.hp)&&
+   unit.hp>0&&Number.isFinite(unit.speed)&&unit.speed>0))&&
+  (report.completed?actual.eligible===true&&typeof actual.metrics==='object'&&
+   Number.isFinite(actual.metrics?.receivedDamage)&&actual.metrics.receivedDamage>=0&&
+   Number.isSafeInteger(actual.metrics.rounds)&&actual.metrics.rounds>=0:actual.metrics===null);
+}
+
 function validRetreat(report,panel,{raidRound,guildMembers,windowSeconds},tactics){
  const data=report.guildRetreat;
  const reasons={win:['boss-defeated'],loss:['window-expired','team-defeated'],unknown:[null]};
@@ -91,7 +111,7 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics,rounds,retreat}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics,rounds,retreat,region}){
  const engine=engines[battleMode],awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;
@@ -119,6 +139,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
     (retreatOpening&&!validRetreat(report,retreatOpening,retreat,tactics))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
+    (battleMode===3004&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
       report.formationsVerified>report.waveCount))||
@@ -142,15 +163,15 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
-     has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py')]);
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+     has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
-     ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[])]};
+     ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?[3004]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -180,6 +201,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('麒麟狩猎复跑需要已核验的战斗和五位自有式神');
    if(battleMode===2001&&(stageId!==groupId||![101,102,103].includes(stageId)))
     throw Error('阴界之门复跑需要已核验的单人入口');
+   if(battleMode===3004&&(!validRegion(region)||plan.members.length!==5))
+    throw Error('地域鬼王复跑需要地点、难度、当日特殊条件和五位自有式神');
    if(battleMode===firstExperience.battleMode&&(resourceEncounters.resourceVersion!==resourceVersion||
       stageId!==firstExperience.stageId||groupId!==firstExperience.groupId||plan.members.length!==firstExperience.memberCount))
     throw Error('此入口只适用于新服首次经验妖怪的五式神配装');
@@ -199,13 +222,14 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(damageFloor)args.push('--minimum-damage');
     if(battleMode===306)args.push('--boss',String(groupId),'--raid-round',String(retreat.raidRound),
      '--guild-members',String(retreat.guildMembers),'--window-seconds',String(retreat.windowSeconds));
+    if(battleMode===3004)args.push('--region',JSON.stringify(region));
     const code=await launch(config.python,args,dir,AbortSignal.any([cancel.signal,deadline]));
     cancel.signal.throwIfAborted();
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
     return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics:plan.tactics,rounds,
-     retreat:battleMode===306?retreat:null});
+     retreat:battleMode===306?retreat:null,region:battleMode===3004?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');
     if(deadline.aborted)throw Error('副本原版复跑超时');
