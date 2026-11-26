@@ -88,12 +88,12 @@ async function hun13Templates(row,data){
  return Promise.all(row.rounds.map((round,index)=>draft(round,data,R.hun13SceneId,`虚无第 ${index+1} 波`,row.samples.length)));
 }
 
-async function awakeTemplate(row,data,{stageId,groupId,codeStageId,codeLabel}){
+async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeStageId,codeLabel}){
  const seeds=S.baseSampleSeeds;
- if(row.samples.length!==seeds.length||!row.samples.every((report,index)=>
-  report.battleMode===29&&report.stageId===stageId&&report.groupId===groupId&&report.seed===seeds[index]&&
-  report.completed&&report.outcome==='win'&&report.waveCount===1&&report.wavesCleared===1))
-  throw Error('完成本层觉醒的全部采样复跑后才可生成此阵容码');
+ if(!Number.isSafeInteger(waveCount)||waveCount<1||row.samples.length!==seeds.length||!row.samples.every((report,index)=>
+  report.battleMode===battleMode&&report.stageId===stageId&&report.groupId===groupId&&report.seed===seeds[index]&&
+  report.completed&&report.outcome==='win'&&report.waveCount===waveCount&&report.wavesCleared===waveCount))
+  throw Error('完成本关的全部采样复跑后才可生成此阵容码');
  if(!row.panels?.every(Boolean)||row.plan.members.some(member=>member.souls.length!==6))
   throw Error('御魂条件需要每位式神穿齐六个位置并能够计算面板');
  return draft(row,data,codeStageId,codeLabel,row.samples.length);
@@ -166,5 +166,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,template,hun13Templates,awakeTemplate,receipt,receiptFor,restore};
+return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
 });

@@ -211,9 +211,14 @@
   function renderEncounters() {
     const start = stage.page * pageSize;
     const records = stage.matches.slice(start, start + pageSize);
+    const secret = window.AtlasSecretOpenings;
+    const secretFloors = matchesOpeningSource(secret) ? secret.floors : {};
+    const entranceNames = {solo:'单人',team:'组队',race:'竞速'};
     el('encounter-list').replaceChildren(...records.map((entry, index) => {
       const button = node('button', entry.title || titles[entry.table] || entry.kind, 'secondary');
-      button.append(node('small', (titles[entry.table] || entry.kind) + ' · ' + keyText(entry.key)));
+      const entrance=entry.table==='dungeon_challenge_series'&&entranceNames[secretFloors[entry.key]?.entrance];
+      const metadata=[titles[entry.table] || entry.kind,keyText(entry.key),entrance].filter(Boolean).join(' · ');
+      button.append(node('small',metadata));
       button.type = 'button';
       button.dataset.index = start + index;
       button.setAttribute('aria-pressed', String(entry === stage.selected));
@@ -247,8 +252,11 @@
     }
     if (Array.isArray(row.monsterWaves) && row.monsterWaves.every(wave => Array.isArray(wave) &&
         wave.every(item => item == null || Array.isArray(item) && item.length === 2 && Number.isSafeInteger(item[0])))) {
-      return row.monsterWaves.map(wave => wave.flatMap((unit, position) =>
-        unit && unit[0] > 0 ? [{position: position + 1, id: unit[0], level: unit[1]}] : []));
+      return row.monsterWaves.map(wave => wave.flatMap((unit, position) => {
+        if (!unit) return [];
+        const copy = table==='dungeon_challenge_series'&&unit[0]===-1;
+        return unit[0]>0||copy ? [{position:position+1,id:unit[0],level:unit[1],copy}] : [];
+      }));
     }
     if (table === 'dungeon_awake_monster' && Array.isArray(row.monsterids)) {
       return [row.monsterids.flatMap((id, i) => Number.isSafeInteger(id) && id > 0 ? [{id, position:i+1}] : [])];
@@ -287,16 +295,16 @@
     } catch (error) {target.textContent = '技能资料读取失败。' + error.message;}
   }
 
-  function appendWaves(block, waves, monsters) {
+  function appendWaves(block, waves, monsters, sequential=false) {
     if (!waves.some(wave => wave.length)) return;
     const grid = node('div', '', 'dungeon-encounter-waves');
     for (const [i, units] of waves.entries()) {
       if (!units.length) continue;
       const card = document.createElement('section'), list = document.createElement('ul');
-      card.append(node('strong', '编组 ' + (i + 1)), list);
+      card.append(node('strong', sequential?`第 ${i+1} 波`:'编组 ' + (i + 1)), list);
       for (const unit of units) {
         const monster = monsters.get(unit.id);
-        const label = [rowTitle(monster) || '怪物 ' + unit.id];
+        const label = [unit.copy?`复制我方 ${unit.position} 号位`:rowTitle(monster) || '怪物 ' + unit.id];
         if (Number.isSafeInteger(unit.level) && unit.level > 0) label.push(unit.level + ' 级');
         if (Number.isSafeInteger(unit.position)) label.push(unit.position + ' 号位');
         if (unit.opening) label.push('开场速度 ' + openingNumber.format(unit.opening.speed));
@@ -331,6 +339,18 @@
   }
 
   function appendSpecialDetails(block, table, row) {
+    if(table==='dungeon_challenge_series'&&matchesOpeningSource(window.AtlasSecretOpenings)){
+      if(row.type===20)block.append(node('p','原版召唤裁判，选技时限为 45 秒。','caption'));
+      if(row.type===35&&row.floor_num>=8){
+        const support=[31708001,31709001,31710001,31711001][row.floor_num-8];
+        if(support){
+          const link=node('button','查看助战单位配置','secondary');
+          link.type='button';
+          link.onclick=()=>openRecord('monster',support);
+          block.append(node('p',`开场在我方 101 号位召唤 40 级六星助战单位（${support}）。助战单位阵亡判负。敌方仅剩一个编号末三位为 209 的存活怪物时，独立结束条件允许判胜。`,'caption'),link);
+        }
+      }
+    }
     if (table === 'normal_battle_config') {
       block.append(node('p', '关卡时限和独立引擎可覆盖模式默认参数。', 'caption'));
     }
@@ -363,11 +383,15 @@
     }
   }
 
+  function matchesOpeningSource(source) {
+    return source?.resourceVersion===state.index.resourceVersion&&
+      Object.entries(source.tableSHA256).every(([name,hash])=>
+        state.index.tables.find(table=>table.name===name)?.source?.marshalSHA256===hash);
+  }
+
   function awakeOpening(entry,groups) {
     const source = window.AtlasAwakeOpenings;
-    if (entry.table!=='dungeon_awake'||source?.resourceVersion!==state.index.resourceVersion||
-        !Object.entries(source.tableSHA256).every(([name,hash])=>
-          state.index.tables.find(table=>table.name===name)?.source?.marshalSHA256===hash)) return null;
+    if (entry.table!=='dungeon_awake'||!matchesOpeningSource(source)) return null;
     const opening=source.floors[entry.key],config=groups[0].row;
     const formation=groups.find(group=>group.ref.table==='dungeon_awake_monster');
     const scene=groups.find(group=>group.ref.table==='dungeon_awake_scene');
@@ -376,6 +400,17 @@
         formation.row.monsterids.length!==opening.enemies.length||
         !opening.enemies.every((unit,i)=>unit.id===formation.row.monsterids[i]&&unit.position===i+1&&unit.level===config.level)) return null;
     formation.waves=[opening.enemies.map(unit=>({...unit,opening:unit}))];
+    return opening;
+  }
+
+  function secretOpening(entry,group) {
+    const source=window.AtlasSecretOpenings;
+    if(entry.table!=='dungeon_challenge_series'||!matchesOpeningSource(source))return null;
+    const opening=source.floors[entry.key],waves=group.waves.filter(wave=>wave.length>0);
+    if(!opening||opening.sceneId!==group.row?.scene||waves.length!==opening.waves.length||
+       !opening.waves.every((wave,i)=>wave.length===waves[i].length&&wave.every((unit,j)=>
+         ['id','position','level'].every(key=>unit[key]===waves[i][j][key]))))return null;
+    group.waves=opening.waves.map(wave=>wave.map(unit=>({...unit,opening:unit})));
     return opening;
   }
 
@@ -396,7 +431,7 @@
       const row = records[i].value?.[0];
       return {ref, row, error:records[i].reason?.message, waves:row ? enemyWaves(ref.table,row) : []};
     });
-    const ids = [...new Set(groups.flatMap(group => group.waves.flat(2).map(unit => unit.id)))];
+    const ids = [...new Set(groups.flatMap(group => group.waves.flat(2).filter(unit=>unit.id>0).map(unit => unit.id)))];
     const monsters = new Map();
     if (state.index.tables.some(t => t.name === 'monster' && t.status === 'decoded')) {
       await Promise.all(Array.from({length:Math.ceil(ids.length/64)}, async (_,index) => {
@@ -416,9 +451,26 @@
         (groups[0].row.floor_num===10?' · 第十层的实机单人队伍入口另行结算。':'');
       destination.append(node('p',note,'caption'));
       window.AtlasPveWorkbench?.mount(destination,{stageId:Number(entry.key),groupId:awake.groupId,memberCount:5,
-        battleMode:29,label:'觉醒普通单人编组',version:state.index.resourceVersion,
+        battleMode:29,waveCount:1,label:'觉醒普通单人编组',version:state.index.resourceVersion,
         codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?awake.codeStageId:null,codeLabel:codeScene?.name,
         openingSpeed:Math.max(...awake.enemies.map(unit=>unit.speed))});
+    }
+    const secret=secretOpening(entry,groups[0]);
+    if(secret){
+      const config=groups[0].row,codeScene=DATA.gameConfig.stages[secret.codeStageId];
+      const entryLabel=config.advanced?'竞速配置':config.need_team?'游戏内走组队入口':'游戏内走单人入口';
+      destination.append(node('p',[`${secret.waves.length} 波`,`我方开场 ${secret.allyOrbs} 火`,
+        `敌方开场 ${secret.enemyOrbs} 火`,`需阴阳师 ${config.level_limit} 级`,`消耗 ${config.strength} 体力`,entryLabel].join(' · '),'caption'));
+      if(!secret.solo&&!config.advanced&&!config.need_team)
+        destination.append(node('p','该层的独立机制仍待离线复跑核验。','caption'));
+      if(secret.solo)window.AtlasPveWorkbench?.mount(destination,{stageId:Number(entry.key),groupId:Number(entry.key),memberCount:5,
+        battleMode:266,waveCount:secret.waves.length,label:'秘闻普通单人',version:state.index.resourceVersion,
+        codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?secret.codeStageId:null,codeLabel:codeScene?.name,
+        openingSpeed:Math.max(...secret.waves.flat().map(unit=>unit.speed))});
+    }
+    if(entry.table==='dungeon_challenge_series'&&matchesOpeningSource(window.AtlasSecretOpenings)&&
+       window.AtlasSecretOpenings.skipped.includes(entry.key)&&groups[0].waves.some(wave=>wave.some(unit=>unit.copy))){
+      destination.append(node('p','复制位读取我方同号位的式神及御魂技能。缺少可复制模板时使用原版默认怪物。','caption'));
     }
     if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -441,7 +493,7 @@
       const fields = fieldsFor(row, ref.table);
       if (fields.childElementCount) block.append(fields);
       appendSpecialDetails(block, ref.table, row);
-      appendWaves(block,waves,monsters);
+      appendWaves(block,waves,monsters,entry.table==='dungeon_challenge_series'&&ref.primary);
       const details = document.createElement('details');
       const source = state.index.tables.find(t => t.name === ref.table)?.source;
       details.append(node('summary', '全部原始字段'),

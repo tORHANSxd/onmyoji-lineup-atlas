@@ -197,6 +197,11 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
  if(!strategies)throw Error('当前关卡的上阵人数未接入库存备选');
  const speed=Number.isFinite(openingEnemySpeed)&&openingEnemySpeed>0?Math.floor(openingEnemySpeed)+1:0;
  const candidates=buildCandidates(account,data,{strategies,openingSpeed:speed,bossSpeed:speed,earlySpeed:speed},alternatives,null,limit-1);
+ if(speed){
+  const tried=[...alternatives,...candidates.map(row=>teamKey(row.plan))];
+  const damageFirst=buildCandidates(account,data,{strategies,openingSpeed:0,bossSpeed:0,earlySpeed:0},tried,null,1);
+  for(const row of damageFirst)candidates.push({...row,title:row.title+'（输出优先）'});
+ }
  const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
  const {byHero}=C.equipmentOwnership(account),kinds=game.heroes;
  const equipped=Object.values(account.heroes).flatMap(hero=>{

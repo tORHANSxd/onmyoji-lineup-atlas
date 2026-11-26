@@ -1,4 +1,4 @@
-"""Replay selected inventory in the client's ordinary solo PvE or Awakening engine."""
+"""Replay selected inventory in a verified original solo PvE engine."""
 
 import argparse
 import faulthandler
@@ -47,6 +47,15 @@ def replay(args, runtime, work):
 
         if len(fighters) != 5:
             raise ValueError("Ordinary solo Awakening requires five shikigami")
+    elif args.mode == 266:
+        from battleengine.engine.ChallengeFbEngine import const
+        from DynamicConfigData import DATA_HERO
+        from secret_stage import placements, secret_solo, secret_stage
+
+        engine, stage, waves = secret_stage(args.stage)
+        if not secret_solo(stage) or len(fighters) != 5:
+            raise ValueError("This Secret Zone floor does not use the verified five-shikigami solo route")
+        group_id, wave_count = args.stage, len(waves)
     else:
         from battleengine.engine.MonstarGuanKaEngine import MonstarGuanKaEngine, const
         from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA
@@ -89,6 +98,8 @@ def replay(args, runtime, work):
         engine, stage, enemy_ids = awake_stage(args.stage)
         group_id, wave_count = stage["monsterid"], 1
         route = "awake-ordinary-solo"
+    elif args.mode == 266:
+        route = "secret-ordinary-solo"
     else:
         engine = MonstarGuanKaEngine({"pve_data_flag": stage_id})
         if engine.isDramaGuanKa or not engine.selectHeroEnabled:
@@ -134,9 +145,41 @@ def replay(args, runtime, work):
     engine.init_engine_state = init_record_clock
     engine.doBattleEnded = observe_end
     engine.onEntityCreated = observe_created
+    verified_waves = set()
+    if args.mode == 266:
+        spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
+
+        def verify_spawn():
+            wave = engine.finishedWaveCount
+            if not 0 <= wave < wave_count:
+                raise RuntimeError("Unexpected original Secret Zone wave index")
+            observed = []
+
+            def observe(camp, owner, placement):
+                entity = create(camp, owner, placement)
+                observed.append((placement.Index, placement.level, entity.protoid))
+                return entity
+
+            engine.createMonsterEntity = observe
+            try:
+                result = spawn()
+            finally:
+                engine.createMonsterEntity = create
+            if observed != placements(waves[wave]):
+                raise RuntimeError(f"The original Secret Zone generated a different formation in wave {wave + 1}")
+            verified_waves.add(wave)
+            return result
+
+        engine._createNextRoundMons = verify_spawn
     engine._time, engine.delta_time = 1000.0, .020
     engine.init()
-    formation_matches = engine.bossId == enemy_ids if args.mode == 29 else engine.monstergroup == group_id
+    if args.mode == 29:
+        formation_matches = engine.bossId == enemy_ids
+    elif args.mode == 266:
+        formation_matches = (engine.getFbConfig() is stage and engine.fbId == args.stage
+                             and engine.combineSceneInfoId == stage["scene"])
+    else:
+        formation_matches = engine.monstergroup == group_id
     if (engine.seed != args.seed or engine.random is not random_record or engine.battleMode != args.mode
             or engine.monsterWaveCount != wave_count or not formation_matches):
         raise RuntimeError("The original engine initialized a different battle")
@@ -195,6 +238,8 @@ def replay(args, runtime, work):
               "completed": completed, "outcome": outcome if completed else "unknown", "waveCount": engine.monsterWaveCount,
               "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,
               "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
+    if args.mode == 266:
+        report["formationsVerified"] = len(verified_waves)
     try:
         report["monsterHealth"] = monster_waves(record)["waves"]
     except (KeyError, IndexError, TypeError, ValueError):
@@ -215,7 +260,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     args = parser.parse_args()

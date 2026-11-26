@@ -192,7 +192,7 @@
    return saved;
   }
   action.onclick=()=>{
-   if(valid())openCandidateCode(output.lineup.title,'觉醒离线采样通过 · 全随机分支待验证',output,{
+   if(valid())openCandidateCode(output.lineup.title,'离线采样通过 · 全随机分支待验证',output,{
     valid,save,savedMessage:'阵容码已保存到阵容库。',
    });
   };
@@ -213,7 +213,7 @@
    catch(error){if(active(run))row.state.textContent=runeError(error);}
    if(!active(run)||row.verdict!=='pass'||!run.pane.codeStageId)continue;
    try{
-    const request=await AtlasRuneCandidate.awakeTemplate({...item,samples:row.samples},run.data,run.pane);
+    const request=await AtlasRuneCandidate.pveTemplate({...item,samples:row.samples},run.data,run.pane);
     if(!active(run))return;
     const output=await window.atlas.buildLineup(request);
     if(!active(run))return;

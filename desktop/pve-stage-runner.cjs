@@ -8,10 +8,12 @@ const {createHash}=require('node:crypto');
 const {readConfig}=require('./rune-runner.cjs');
 const {resourceVersion}=require('../app/rune-lineup.js');
 const awakeOpenings=require('../app/awake-openings.js');
+const secretOpenings=require('../app/secret-openings.js');
 
 const engines={
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  29:{name:'AwakeFbEngine',route:'awake-ordinary-solo',sha256:awakeOpenings.engineSHA256},
+ 266:{name:'ChallengeFbEngine',route:'secret-ordinary-solo',sha256:secretOpenings.engineSHA256},
 };
 const positive=value=>Number.isSafeInteger(value)&&value>0;
 const sha256=value=>createHash('sha256').update(value).digest('hex');
@@ -29,9 +31,13 @@ function launch(python,args,cwd,signal){
 
 function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput}){
  const engine=engines[battleMode],awake=battleMode===29?awakeOpenings.floors[stageId]:null;
+ const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  if(report?.resourceVersion!==resourceVersion||report.route!==engine.route||report.engineClass!==engine.name||
     report.engineSHA256!==engine.sha256||report.battleMode!==battleMode||report.stageId!==stageId||report.groupId!==groupId||
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
+    (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
+      !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
+      report.formationsVerified>report.waveCount))||
     report.seed!==seed||report.fixedStepMs!==20||report.teamSHA256!==sha256(input)||report.suitIndexSHA256!==sha256(suitInput)||
     !validHash(report.nativeSHA256)||!validHash(report.scriptIndexSHA256)||!validHash(report.recordSHA256)||
     report.recordSHA256===sha256('')||!positive(report.recordLines)||!positive(report.waveCount)||
@@ -50,20 +56,24 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
   async status(){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
-    const awake=await fs.access(path.join(scriptRoot,'awake_stage.py')).then(()=>true,()=>false);
-    return {available:true,resourceVersion,battleModes:awake?[3,29]:[3]};
+    const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
+    const [awake,secret]=await Promise.all([has('awake_stage.py'),has('secret_stage.py')]);
+    return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
   async run(plan,{battleMode=3,stageId,groupId,seed}={}){
    if(current)throw Error('已有库存复跑正在运行');
-   if(![3,29].includes(battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
+   if(![3,29,266].includes(battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
       !plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length<1||plan.members.length>5)
     throw Error('无效的关卡、种子或配装');
    if(battleMode===29&&(awakeOpenings.resourceVersion!==resourceVersion||
       awakeOpenings.floors[stageId]?.groupId!==groupId||plan.members.length!==5))
     throw Error('当前觉醒关卡、编组或阵容与普通单人规则不一致');
+   if(battleMode===266&&(secretOpenings.resourceVersion!==resourceVersion||stageId!==groupId||
+      !secretOpenings.floors[stageId]?.solo||plan.members.length!==5))
+    throw Error('当前秘闻关卡或阵容与已核验的单人入口不一致');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
    const cancel=new AbortController(),deadline=AbortSignal.timeout(100000);
