@@ -2,7 +2,7 @@
 
 from collections import Counter
 from functools import cache
-from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM
+from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM, TOWER_TEAM
 from dojo_area_stage import DOJO_AREA_TEAM
 from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
 from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
@@ -21,6 +21,25 @@ from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_
 from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EXPLORATION_STAGES,
                                    TEN_TOWER_STAGES, is_ten_anniversary_stage)
 from ten_anniversary_boss import TEN_BOSS_ACT, TEN_BOSS_MODE, TEN_BOSS_STAGE, TEN_BOSS_TEAM
+
+
+TOWER_EVENT_SOURCES = {
+    "feast_for_devils_tower_event1": ("妖灵退治群体战", "feast_for_devils_tower_event1_tips"),
+    "feast_for_devils_tower_event1_danti": ("妖灵退治单体战", "feast_for_devils_tower_event1_tips"),
+    "feast_for_devils_tower_event1_boss": ("鬼王来袭", "feast_for_devils_tower_eventboss_tips"),
+}
+DEVIL_TOWER_RULES = {
+    "feast_for_devils_tower_event2": ("神秘商店", "feast_for_devils_tower_event2_tips"),
+    "feast_for_devils_tower_event4": ("奇遇事件", "feast_for_devils_tower_event4_tips"),
+    "feast_for_devils_tower_event5": ("开卷取士", "feast_for_devils_tower_event5_tips"),
+    "feast_for_devils_tower_event6": ("神谕之时祝福", "feast_for_devils_tower_buff_tips"),
+    "feast_for_devils_tower_event6_b": ("姥姥火信仰加成", "feast_for_devils_tips"),
+    "feast_for_devils_tower_event7": ("姥姥火挑战", "feast_for_devils_tips"),
+    "feast_for_devils_tower_event7_b": ("姥姥火合魂伤害奖励", "feast_for_devils_tips"),
+    "feast_for_devils_tower_event7_c": ("姥姥火合魂积分档", "feast_for_devils_tips"),
+    "feast_for_devils_dawnexpedition": ("破晓之征阵营", "feast_for_devils_dawnexpedition_tips"),
+}
+DEVIL_TOWER_TABLES = {**TOWER_EVENT_SOURCES, **DEVIL_TOWER_RULES}
 
 
 ROOTS = {
@@ -44,6 +63,7 @@ ROOTS = {
     "devil_feast_event5": ("event", "鬼王之宴灵气激发"),
     "devil_feast_event6": ("event", "鬼王之宴大妖考验"),
     "devil_feast_event7": ("event", "鬼王之宴涤荡妖气"),
+    **{table: ("event", f"鬼王之宴{label}") for table, (label, _) in DEVIL_TOWER_TABLES.items()},
     "lbs_world_boss_area": ("daily", "地域鬼王"),
     "lbs_world_boss_type": ("daily", "地域鬼王规则"),
     "shilian_event_battles": ("daily", "六道之门"),
@@ -260,6 +280,12 @@ def encounter_index(source, load_rows):
     devil_feast_by_stage = {numeric_key(row["battle_id"]): (source, key)
                            for source in ("devil_battle", "devil_feast_event5", "devil_feast_event6")
                            for key, row in table(source).values()}
+    tower_by_stage = {}
+    for event_source in TOWER_EVENT_SOURCES:
+        for key, row in sorted(table(event_source).values()):
+            tower_by_stage.setdefault(numeric_key(row["battleId"]), (event_source, key))
+    laolao_by_stage = {numeric_key(row[field]): key for key, row in table("feast_for_devils_tower_event7").values()
+                       for field in ("fightId1", "fightId2", "fightId3") if row[field]}
     dojo_area_by_stage, dojo_area_activities = {}, {}
     for year in (2025, 2026):
         plays = f"dojo{year}_bbbl_block_play"
@@ -691,6 +717,20 @@ def encounter_index(source, load_rows):
             if name != "devil_feast_event7":
                 refs.append(("BattleMonstersInfo", row.get("battle_id"), "敌方编组"))
             links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
+        if name in DEVIL_TOWER_TABLES:
+            _, rule = DEVIL_TOWER_TABLES[name]
+            links.append(rule_reference(rule, "活动玩法原文"))
+            if name in TOWER_EVENT_SOURCES:
+                links.extend(ref for dest, target, label in (
+                    ("pve_stage_data", row.get("battleId"), "百妖退治原版关卡"),
+                    ("hero", row.get("heroId"), "战斗事件展示式神"),
+                ) if (ref := relation(dest, target, label, False)))
+            if name == "feast_for_devils_tower_event7":
+                links.extend(ref for suffix, label in (("1", "简单或合魂"), ("2", "普通"), ("3", "困难"))
+                             if row.get(f"fightId{suffix}") and
+                             (ref := relation("pve_stage_data", row[f"fightId{suffix}"], label, True)))
+            if name == "feast_for_devils_tower_event7_b":
+                links.append(relation("pve_stage_data", row.get("fightId"), "姥姥火·合魂敌方关卡", True))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
             links.extend(ref for dest, key in dojo_area_by_stage.get(stage_id, ())
@@ -701,6 +741,20 @@ def encounter_index(source, load_rows):
                 if ref := relation("battle_team_routes", FOREST_TEAM, "单队战斗入口", False):
                     links.append(ref)
             stage_number = int(stage_id or 0)
+            if stage_id in tower_by_stage:
+                source, key = tower_by_stage[stage_id]
+                links.extend(ref for dest, target, label in (
+                    (source, key, "百妖退治事件配置"),
+                    ("battle_team_routes", TOWER_TEAM, "百妖退治客户端入口"),
+                    ("activity", DEVIL_FEAST_ACTIVITY, "鬼王之宴活动日期"),
+                    ("feast_for_devils_const", 25, "鬼宴之宾属性参数"),
+                ) if (ref := relation(dest, target, label, False)))
+                links.append(rule_reference(TOWER_EVENT_SOURCES[source][1], "妖灵退治战斗规则"))
+                links.append(rule_reference("feast_for_devils_tower_buff_tips", "神谕之时祝福规则"))
+                links.append(rule_reference("feast_for_devils_dawnexpedition_tips", "鬼宴之宾阵营规则"))
+            if stage_id in laolao_by_stage:
+                if ref := relation("feast_for_devils_tower_event7", laolao_by_stage[stage_id], "姥姥火活动挑战", False):
+                    links.append(ref)
             if stage_number == YINYANG_BOSS_STAGE:
                 links.extend(ref for dest, key, label in (
                     ("battle_mode_routes", YINYANG_BOSS_MODE, "秘境鬼王原版战斗场景"),
@@ -1199,7 +1253,7 @@ def encounter_index(source, load_rows):
             family, kind = "event", "京畿净化战斗参数"
         # The four resource tables are registered separately from the normal
         # fight panel's journey_normalbattle lookup. A numeric match is insufficient.
-        generic_edges = [] if variant or table_name in {"journey_hardbattle", "ten_anni_2026_dungeon_battle"} else [
+        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle"} else [
             field for field in BATTLE_ID_FIELDS if field in manifest["fields"]
         ]
         for key, row in load_rows(table_name):
@@ -1227,6 +1281,15 @@ def encounter_index(source, load_rows):
             if scene_route:
                 entry_kind = "初始场景引擎"
             title = name(row)
+            if table_name in DEVIL_TOWER_TABLES:
+                label, _ = DEVIL_TOWER_TABLES[table_name]
+                if table_name in TOWER_EVENT_SOURCES:
+                    _, battle = table("pve_stage_data").get(numeric_key(row["battleId"]), (None, {}))
+                    _, hero = table("hero").get(numeric_key(row["heroId"]), (None, {}))
+                    title = " · ".join(filter(None, ("百妖退治", label, name(battle), name(hero), f"事件 {key}")))
+                else:
+                    detail = row.get("title") or row.get("q") or row.get("name") or row.get("dsc")
+                    title = " · ".join(filter(None, ("鬼王之宴", label, detail, f"配置 {key}")))
             if qinfei_activity:
                 entry_family, entry_kind = "guild", "寝肥合战"
             if dojo_area_activity:
@@ -1349,6 +1412,13 @@ def encounter_index(source, load_rows):
                 if stage_id == YINYANG_BOSS_STAGE:
                     entry_family, entry_kind = "event", "秘境鬼王"
                     title = "阴阳之守 · 秘境鬼王 · 大岳丸"
+                elif numeric_key(key) in tower_by_stage:
+                    event_source, _ = tower_by_stage[numeric_key(key)]
+                    entry_family, entry_kind = "event", TOWER_EVENT_SOURCES[event_source][0]
+                    title = f"百妖退治 · {entry_kind} · {title}"
+                elif numeric_key(key) in laolao_by_stage:
+                    entry_family, entry_kind = "event", "姥姥火挑战"
+                    title = f"鬼王之宴 · {title}"
                 elif numeric_key(key) in dojo_area_by_stage:
                     entry_family, entry_kind = "event", "八百八狸战斗"
                 elif stage_id in FOREST_STAGES:

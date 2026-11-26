@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -824,6 +824,51 @@ async function main(){
     await ui('qaEncounterInput("event","鬼王之宴 涤荡妖气 事件 1")');
     await until(panel+'.textContent.includes("离线复跑待接入")');
     assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='462176'&&entry.kind==='鬼王来袭')){
+    await encounter('event','百妖退治 鬼王来袭 462176');
+    assert.match(await ui(panel+'.textContent'),/每次限时 120 秒.*神谕之时祝福规则.*鬼宴之宾阵营规则/s);
+    await choose('superghost-five');
+    assert.equal(await ui('document.querySelectorAll("[data-pve-tower-blessing-row]:not([hidden])").length'),1);
+    await ui(`(()=>{
+     document.querySelector('[data-pve-tower-conditions]').open=true;
+     const choices=[...document.querySelectorAll('[data-pve-tower-choice]')];
+     for(const select of choices.slice(0,2)){select.value='1';select.dispatchEvent(new Event('change'));}
+    })()`);
+    assert.equal(await ui('document.querySelectorAll("[data-pve-tower-blessing-row]:not([hidden])").length'),3);
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.match(await ui(panel+'.textContent'),/每种祝福只能启用一次/);
+    await ui(`(()=>{
+     const choice=document.querySelectorAll('[data-pve-tower-choice]')[1];
+     choice.value='';choice.dispatchEvent(new Event('change'));
+     const level=document.querySelector('[data-pve-tower-level]');level.value='3';level.dispatchEvent(new Event('input'));
+     document.querySelector('[data-pve-tower-faction][value="1101"]').click();
+    })()`);
+    const towerSettings={blessings:[[1,3]],factions:[1101]};
+    const boss={stageId:462176,groupId:462176,battleMode:502};
+    const report={kind:'boss',settings:towerSettings,deadlineSeconds:120,combatSeconds:123,timedOut:true,
+     enemies:[{position:1,remainingHp:26999.35682999},{position:2,remainingHp:0}]};
+    mockPve=(_plan,request)=>{
+     assert.deepEqual(request,{...boss,towerSettings,seed:0,damageFloor:true});
+     return {...sample,...request,outcome:'loss',wavesCleared:0,ghostKingTower:report};
+    };
+    await ui(start+'.click()');
+    await until(reports+'.textContent.includes("达到原版时限")&&'+status+'.textContent.includes("未通过本次采样")');
+    await ui(reports+'.closest("details").open=true;'+reports+'.querySelector("[data-tower-carry]").click()');
+    assert.deepEqual(await ui('[...document.querySelectorAll("[data-pve-tower-hp]")].map(input=>input.valueAsNumber)'),
+     [26999.35682999,0,0,0,0,0]);
+    assert.equal(await ui('document.activeElement.matches("[data-pve-tower-hp]")'),true);
+    win.setContentSize(720,960);
+    assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);
+    await capture('client-ghost-king-tower-carry');
+    win.setContentSize(1440,1000);
+    const carry={...towerSettings,enemyHp:[26999.35682999,0,0,0,0,0]};
+    assert.match(await run('superghost-five',{...boss,towerSettings:carry},
+     {ghostKingTower:{...report,settings:carry,timedOut:false,combatSeconds:12.6,enemies:[{position:1,remainingHp:0}]}}),
+     /已清场 · 战斗与结算 12\.60 秒 · 时限 120 秒 · 祝福 1 种 · 解锁阵营 1 个/);
+    await encounter('event','百妖退治 妖灵退治单体战 463001');
+    assert.equal(await ui('document.querySelector("[data-pve-tower-continue]")'),null);
+    assert.match(await ui(panel+'.textContent'),/敌方编组 · 463001/);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');

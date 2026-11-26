@@ -201,6 +201,7 @@ function sampleBattleMarkup(samples){
   const band=sample.fengmoBand;
   const bandTogether=sample.fengmoBandTogether;
   const devilFeast=sample.devilFeast;
+  const ghostKingTower=sample.ghostKingTower;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -258,6 +259,11 @@ function sampleBattleMarkup(samples){
    devilFeast?`${!sample.completed?'结算待确认':devilFeast.timedOut?'超过时限':sample.outcome==='win'?'已清场':'队伍落败'} · `+
     `战斗与结算 ${devilFeast.combatSeconds.toFixed(2)} / ${devilFeast.deadlineSeconds} 秒`+
     (devilFeast.kind==='boss'?` · 首领剩余生命 ${devilFeast.enemies[0].remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:6})}`:''):
+   ghostKingTower?`${!sample.completed?'结算待确认':ghostKingTower.timedOut?'达到原版时限':sample.outcome==='win'?'已清场':'队伍落败'} · `+
+    `战斗与结算 ${ghostKingTower.combatSeconds.toFixed(2)} 秒`+
+    (ghostKingTower.deadlineSeconds?` · 时限 ${ghostKingTower.deadlineSeconds} 秒`:'')+
+    (ghostKingTower.settings.blessings.length?` · 祝福 ${ghostKingTower.settings.blessings.length} 种`:'')+
+    (ghostKingTower.settings.factions.length?` · 解锁阵营 ${ghostKingTower.settings.factions.length} 个`:''):
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+
@@ -346,6 +352,10 @@ function sampleBattleMarkup(samples){
    return `<li>${esc(`${unit.position} 号位 · ${unit.copied?'复制':'默认怪物'} ${name}${skills?' · 御魂技能 '+skills:''}`)}</li>`;
   }).join('')}</ol></details>`:'';
   const mechanic=secretMechanicSummary(sample.secretMechanic);
+  const towerLife=ghostKingTower?.kind==='boss'?`<div class="caption">敌方余血 · ${esc(ghostKingTower.enemies.map(unit=>
+   `${unit.position} 号位 ${unit.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})}`).join(' · '))}
+   ${sample.completed&&ghostKingTower.enemies.some(unit=>unit.remainingHp>0)?
+    `<button class="secondary" type="button" data-tower-carry="${esc(sample.seed)}">使用这场余血续战</button>`:''}</div>`:'';
   const life=damageWindow?`<div class="caption">${damageWindow.sharedHp||ghost?'共享':''}生命余量 · ${esc(damageWindow.enemies.map(unit=>
    `${unit.position} 号位 ${Math.round(unit.remainingHp).toLocaleString('zh-CN')} / ${Math.round(unit.startingHp).toLocaleString('zh-CN')}`).join(' · '))}</div>`:'';
   const special=ghost?.specialAttack.length?`<div class="caption">特攻加成 · ${esc(ghost.specialAttack.map(unit=>
@@ -361,7 +371,7 @@ function sampleBattleMarkup(samples){
    return `<li>${esc(name)} · 原版实体 ${unit.level} 级 · 速度 ${unit.speed.toFixed(2)} · `+
     `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}</li>`;
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}</li>`;
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}</li>`;
  }).join('');
 }
 

@@ -497,7 +497,8 @@
   }
 
   function encounterKind(entry) {
-    return entry.fengmoLive||['阴界之门入口','妖气封印','现世鬼王','现世妖约·策划鼠','秘境鬼王'].includes(entry.kind)||
+    return entry.fengmoLive||['阴界之门入口','妖气封印','现世鬼王','现世妖约·策划鼠','秘境鬼王',
+      '妖灵退治群体战','妖灵退治单体战','鬼王来袭','姥姥火挑战'].includes(entry.kind)||
       entry.table==='pve_stage_data'&&['daily','guild'].includes(entry.family)?entry.kind:titles[entry.table]||entry.kind;
   }
 
@@ -760,6 +761,27 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:source.memberCount,
       battleMode:source.battleMode,waveCount:1,label:`京畿净化 · ${challenge.title}`,version:source.resourceVersion,
       journeyHard:true});
+  }
+
+  function showGhostKingTower(destination,groups,stageId,profile,options){
+    const source=AtlasDevilFeast.tower;
+    const stage=groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===stageId)?.row;
+    const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===stageId);
+    const event=groups.find(({ref})=>ref.table===profile.table)?.row;
+    const route=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===source.teamType)?.row;
+    if(!matchesOpeningSource(source)||stage?.groupid!==stageId||stage.shishentotal!==5||formation?.waves?.length!==1||
+       event?.battleId!==stageId||route?.battleMode!==source.battleMode||route.route_sha256!==source.routeSHA256||
+       profile.kind==='boss'&&(event.id!==profile.configId||event.time_limit*60!==profile.seconds)||
+       !source.blessingIds.every((id,i)=>options?.[0]?.[i]?.id===id)||!source.factionIds.every((id,i)=>options?.[1]?.[i]?.id===id)){
+      destination.append(node('p','复跑需要同版本的活动配置、敌方编组和原版入口。','caption'));
+      return;
+    }
+    const timing=profile.seconds?`每次限时 ${profile.seconds} 秒。可从满血开始，或填写各敌位的剩余生命续战。`:
+      '使用原版编组和战斗胜负判定。';
+    destination.append(node('p',`历史活动 · 单队离线演练。消耗与奖励规则见下方原文。${timing}`,'caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,version:source.resourceVersion,battleMode:source.battleMode,
+      memberCount:5,waveCount:1,label:`百妖退治 · ${profile.label}`,
+      tower:{kind:profile.kind,blessings:options[0],factions:options[1]}});
   }
 
   function showYinYangBoss(destination,groups,buffRows){
@@ -1748,9 +1770,15 @@
     const refs = [{table:entry.table,key:entry.key,label:'关卡配置',primary:true,found:true}, ...entry.refs];
     const yinYang=AtlasJourneyHard.boss;
     const isYinYang=entry.table==='pve_stage_data'&&Number(entry.key)===yinYang.stageId;
-    const [records,buffRows] = await Promise.all([
+    const tower=AtlasDevilFeast.tower;
+    const towerStageId=Number(entry.table==='pve_stage_data'?entry.key:entry.refs.find(ref=>ref.table==='pve_stage_data')?.key);
+    const towerRoute=tower.stage(towerStageId);
+    const isTower=towerRoute&&['pve_stage_data',towerRoute.table].includes(entry.table);
+    const [records,buffRows,towerOptions] = await Promise.all([
       Promise.allSettled(refs.map(ref => ref.found ? api.records(ref.table, [ref.key]) : null)),
       isYinYang&&matchesOpeningSource(yinYang)?api.records('defence_dungeon_multiple_buff',yinYang.buffIds).catch(()=>null):null,
+      isTower&&matchesOpeningSource(tower)?Promise.all([api.records('feast_for_devils_tower_event6',tower.blessingIds),
+        api.records('feast_for_devils_dawnexpedition',tower.factionIds)]).catch(()=>null):null,
     ]);
     if (token !== stage.token) return;
     const groups = refs.map((ref,i) => {
@@ -1819,6 +1847,7 @@
     showActivityScore(destination,entry,groups);
     showJourneyHard(destination,entry,groups);
     if(isYinYang)showYinYangBoss(destination,groups,buffRows);
+    if(isTower)showGhostKingTower(destination,groups,towerStageId,towerRoute,towerOptions);
     showTianfa(destination,entry,groups);
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
@@ -1889,7 +1918,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!isYinYang&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!isYinYang&&!isTower&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -1901,6 +1930,8 @@
       const spiritRoute=matchesOpeningSource(hunling)?hunling.routes[stageId]:null;
       const practice=Object.values(window.AtlasTuzhizhuPractice?.modes??{}).some(mode=>mode.groupId===stageId);
       if(practice)destination.append(node('p','请在「逢魔木桩练习」中选择普通入口或极词条，再按对应原版引擎复跑。','caption'));
+      else if(entry.refs.some(ref=>ref.table==='feast_for_devils_tower_event7'))
+        destination.append(node('p','可查看姥姥火历史敌方编组及活动规则。原版复跑待接入。','caption'));
       else if(window.AtlasGuildCrevice.routes[stageId])mountCreviceWindow(destination,stageId,row,formation);
       else if(AtlasJourneyHard.routes[stageId])destination.append(node('p','从关联的京畿净化首领挑战入口填写祝福和时限。','caption'));
       else if(window.AtlasFengmoLive?.isLiveStage(stageId))destination.append(node('p','此编组用于逢魔实战。集结、评级与联机战报条件见逢魔实战入口。','caption'));

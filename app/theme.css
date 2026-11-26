@@ -101,6 +101,12 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-stock-card [data-stock-audit]{margin:4px 0 8px}
 .pve-lineup-field{display:grid;gap:4px;min-width:0;max-width:min(100%,32rem)}
 .pve-lineup-field select{width:100%;min-width:0}
+.pve-tower-blessing[hidden]{display:none}
+.pve-tower-blessing input{width:5rem}
+.pve-tower-toggle{display:inline-flex;align-items:center;gap:6px}
+.pve-tower-toggle input{margin:0}
+.pve-tower-hp-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));gap:8px}
+.pve-tower-hp-fields input{width:100%}
 .pve-reserve{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:10px;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:5px;min-width:0}
 .pve-reserve .caption{grid-column:1/-1;margin:0}
 .pve-run-skills,.pve-run-skills>.actions,.pve-run-skills>ul{grid-column:1/-1}

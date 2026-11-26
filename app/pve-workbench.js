@@ -4,6 +4,7 @@
  const seeds=AtlasRuneSearch.baseSampleSeeds;
  const isDamageMode=AtlasRuneCandidate.damageMode;
  const yinYang=AtlasJourneyHard.boss;
+ const ghostKingTower=AtlasDevilFeast.tower;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -135,6 +136,36 @@
    pane.yinYangDeadline.textContent=yinYangReady?`原版时限 ${yinYang.deadlineSeconds(yinYangSettings)} 秒`:
     `剩余烽鼓应为 0 至 ${yinYang.maxDrums} 的整数。`;
   }
+  const towerSettings=pane.tower?{
+   blessings:pane.towerChoices.flatMap((choice,i)=>choice.value?[[Number(choice.value),pane.towerLevels[i].valueAsNumber]]:[]),
+   factions:pane.towerFactions.filter(input=>input.checked).map(input=>Number(input.value)),
+   ...(pane.towerContinue?.checked?{enemyHp:pane.towerHp.map(input=>input.valueAsNumber)}:{}),
+  }:null;
+  const towerReady=!towerSettings||ghostKingTower.validSettings(towerSettings,pane.tower.kind);
+  pane.towerSettings=towerReady?towerSettings:null;
+  if(pane.tower){
+   const nextChoice=pane.towerChoices.find(choice=>!choice.value);
+   for(const [i,choice] of pane.towerChoices.entries()){
+    pane.towerBlessingRows[i].hidden=!choice.value&&choice!==nextChoice;
+    choice.disabled=blocked;
+    choice.setAttribute('aria-invalid',String(!!choice.value&&pane.towerChoices.some(other=>other!==choice&&other.value===choice.value)));
+    pane.towerLevels[i].disabled=blocked||!choice.value;
+    pane.towerLevels[i].setAttribute('aria-invalid',String(!!choice.value&&!pane.towerLevels[i].validity.valid));
+   }
+   for(const field of pane.towerFactions)field.disabled=blocked;
+   if(pane.towerContinue){
+    pane.towerContinue.disabled=blocked;
+    pane.towerHpPanel.hidden=!pane.towerContinue.checked;
+    for(const field of pane.towerHp){
+     field.disabled=blocked||!pane.towerContinue.checked;
+     field.setAttribute('aria-invalid',String(pane.towerContinue.checked&&!field.validity.valid));
+    }
+   }
+   pane.towerHint.textContent=towerReady?'':towerSettings.blessings.some(([id],i,rows)=>rows.findIndex(([other])=>id===other)!==i)?
+    '每种祝福只能启用一次。':pane.towerLevels.some(input=>!input.disabled&&!input.validity.valid)?
+     '祝福等级应为 1 至 11 的整数。':'续战需填写六个敌位的有效生命值，至少一位仍存活。';
+   for(const button of pane.results.querySelectorAll('[data-tower-carry]'))button.disabled=blocked;
+  }
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   const coins=pane.artifactCoins?.valueAsNumber;
@@ -179,7 +210,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -191,6 +222,7 @@
    !captureReady?'请选择三个不同的出战式神位置。':
    !eventReady?'前行步数应为大于或等于 0 的整数。':
    !journeyReady?'请填写正整数战斗时限和非负整数祝福层数。':
+   !towerReady?'请核对百妖退治的挑战条件。':
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
@@ -255,6 +287,35 @@
     <p class="caption" id="pve-yinyang-deadline" data-pve-yinyang-deadline role="status"></p>
     <ul data-pve-yinyang-buff-list aria-label="已选强力加成"></ul>
    </fieldset>`:''}
+   ${config.tower?`<details class="pve-reserve" data-pve-tower-conditions>
+    <summary>设置百妖退治挑战条件</summary>
+    <fieldset class="pve-reserve">
+     <legend>神谕之时</legend>
+     <p class="caption">最多启用 6 种祝福。礼帖额外加 1 级，含礼帖最高 11 级。</p>
+     ${Array.from({length:6},(_,i)=>`<div class="actions pve-tower-blessing" data-pve-tower-blessing-row${i?' hidden':''}>
+      <label class="pve-lineup-field">第 ${i+1} 种祝福 <select data-pve-tower-choice aria-describedby="pve-tower-hint">
+       <option value="">未启用</option>${config.tower.blessings.map(row=>`<option value="${row.id}">${esc(row.name)}</option>`).join('')}
+      </select></label>
+      <label class="pve-lineup-field">等级
+       <input data-pve-tower-level type="number" min="1" max="11" step="1" value="1" aria-label="第 ${i+1} 种祝福等级"
+        aria-describedby="pve-tower-hint" required></label>
+     </div>`).join('')}
+    </fieldset>
+    <fieldset class="pve-reserve">
+     <legend>鬼宴之宾</legend>
+     <div class="actions">${config.tower.factions.map(row=>`<label class="pve-tower-toggle"><input type="checkbox" data-pve-tower-faction value="${row.id}"> ${esc(row.title)}</label>`).join('')}</div>
+    </fieldset>
+    ${config.tower.kind==='boss'?`<fieldset class="pve-reserve">
+     <legend>鬼王来袭余血</legend>
+     <label class="pve-tower-toggle"><input data-pve-tower-continue type="checkbox" aria-describedby="pve-tower-hint"> 按上次战斗余血继续</label>
+     <div data-pve-tower-hp-panel hidden><p class="caption">已击败的敌位填 0。</p>
+      <div class="pve-tower-hp-fields">${Array.from({length:6},(_,i)=>`<label class="pve-lineup-field">敌方 ${i+1} 号位剩余生命
+       <input data-pve-tower-hp type="number" min="0" max="${Number.MAX_SAFE_INTEGER}" step="any" aria-describedby="pve-tower-hint" required>
+      </label>`).join('')}</div>
+     </div>
+    </fieldset>`:''}
+    <p class="caption" id="pve-tower-hint" data-pve-tower-hint role="status"></p>
+   </details>`:''}
    ${config.shilianEventId?`<div class="actions">
     <label class="pve-lineup-field">难度档位 <select data-pve-event-difficulty>
     ${[1,2,3].map(value=>`<option value="${value}">${value}</option>`).join('')}
@@ -331,10 +392,14 @@
    </fieldset>`:''}
    <ol class="dungeon-battle-list" data-pve-results></ol>`;
   const part=name=>section.querySelector(`[data-pve-${name}]`);
+  const all=name=>[...section.querySelectorAll(`[data-pve-${name}]`)];
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
    journeyDeadline:part('journey-deadline'),journeyBlessings:part('journey-blessings'),
    yinYangDrums:part('yinyang-drums'),yinYangDeadline:part('yinyang-deadline'),yinYangBuffChoice:part('yinyang-buff'),
    addYinYangBuff:part('add-yinyang-buff'),yinYangBuffList:part('yinyang-buff-list'),yinYangBuffIds:[],
+   towerConditions:part('tower-conditions'),towerBlessingRows:all('tower-blessing-row'),
+   towerChoices:all('tower-choice'),towerLevels:all('tower-level'),towerFactions:all('tower-faction'),
+   towerContinue:part('tower-continue'),towerHpPanel:part('tower-hp-panel'),towerHp:all('tower-hp'),towerHint:part('tower-hint'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
@@ -345,11 +410,13 @@
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
   for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
-   pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice].filter(Boolean))field.onchange=()=>{
+   pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
+   ...pane.towerChoices,...pane.towerFactions,pane.towerContinue].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
   for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
+   ...pane.towerLevels,...pane.towerHp,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
@@ -446,6 +513,21 @@
    <details hidden><summary>查看采样战报</summary><ul class="dungeon-stock-samples"></ul></details>`;
   const row={el,state:el.querySelector('[data-state]'),details:el.querySelector('details'),
    report:el.querySelector('ul'),samples:[],verdict:'unknown',index:run.rows.length+1};
+  if(run.pane.towerContinue)row.report.onclick=event=>{
+   const button=event.target.closest('[data-tower-carry]');
+   if(!button||runeBusy()||pane!==run.pane)return;
+   const battle=row.samples.find(sample=>sample.seed===Number(button.dataset.towerCarry))?.ghostKingTower;
+   if(!battle?.enemies.some(unit=>unit.remainingHp>0))return;
+   const health=Array(6).fill(0);
+   for(const unit of battle.enemies)health[unit.position-1]=unit.remainingHp;
+   pane.towerContinue.checked=true;
+   pane.towerConditions.open=true;
+   pane.towerHp.forEach((field,i)=>{field.value=health[i];});
+   run.notice='已填入该场战报的各敌位余血。';
+   update();
+   pane.towerHpPanel.scrollIntoView({block:'nearest'});
+   pane.towerHp[0].focus({preventScroll:true});
+  };
   run.rows.push(row);
   run.pane.results.append(el);
   return row;
@@ -466,6 +548,7 @@
     ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{}),...(qilingWindow?{qilingWindow}:{}),
     ...(run.journeyHard?{journeyHard:run.journeyHard}:{}),...(creviceWindow?{creviceWindow}:{}),...(ghostSettings?{ghostSettings}:{}),
     ...(run.yinyangBoss?{yinyangBoss:run.yinyangBoss}:{}),
+    ...(run.towerSettings?{towerSettings:run.towerSettings}:{}),
     ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(mapBossPlayers?{mapBossPlayers}:{}),...(tianfaTeam?{tianfaTeam}:{}),
     ...(qinfeiBoss?{qinfeiBoss}:{}),
@@ -502,7 +585,7 @@
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
-   const ranOut=(experience??report.coins??report.journeyHard)?.timedOut===true;
+   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
@@ -634,7 +717,7 @@
   const selected=selectedForReplay(knownLineups());
   const inventory=account(),reserve=orochiReserve(selected,inventory);
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
-     pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings)return;
+     pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||pane.tower&&!pane.towerSettings)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
@@ -644,6 +727,7 @@
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    journeyHard:pane.journeySettings,
    yinyangBoss:pane.yinYangSettings?{...pane.yinYangSettings,buffIds:pane.yinYangSettings.buffIds.slice()}:null,
+   towerSettings:pane.towerSettings,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
    sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins||guard?
