@@ -1241,23 +1241,29 @@ const ACCOUNT_CURRENCIES={
 };
 const accountNumber=new Intl.NumberFormat('zh-CN');
 function accountLineupPresets(a){
- const {teams,plans}=a.snapshot.lineupPresets||{};
- if(teams==null&&plans==null)return '';
+ const {teams,plans,teamGroups,planGroups}=a.snapshot.lineupPresets||{};
+ if(teams==null&&plans==null&&teamGroups==null&&planGroups==null)return '';
  const records=(rows,label,detail)=>rows==null?'':`<section><h4>${label} · ${rows.length} 条</h4>${rows.length?
-  `<ul>${rows.slice(0,120).map(row=>`<li><strong>${esc(row.name||'未命名')}</strong> <span>${esc(detail(row.references))}</span></li>`).join('')}</ul>`:
+  `<ul>${rows.slice(0,120).map(row=>`<li><strong>${esc(row.name||'未命名')}</strong> <span>${esc(detail(row))}</span></li>`).join('')}</ul>`:
   '<p class="caption">无记录</p>'}${rows.length>120?'<p class="caption">显示前 120 条，其余保留在账号备份中。</p>':''}</section>`;
  const heroLabels=refs=>refs.map(ref=>{
   if(!ref)return '空位';
   const id=Object.hasOwn(a.heroes,ref)?a.heroes[ref].shikigamiId:null;
   return id?DATA.gameConfig?.heroes?.[id]?.name||`未收录式神 ${id}`:'库存未提供该式神';
  }).join('、')||'空阵容';
- const soulLabels=refs=>{
-  const described=refs.filter(Boolean),available=described.filter(id=>Object.hasOwn(a.souls,id));
-  return `引用 ${described.length} 件御魂 · 库存中可找到 ${available.length} 件`;
+ const soulLabels=row=>{
+  const described=row.references.filter(Boolean),available=described.filter(id=>Object.hasOwn(a.souls,id));
+  return `引用 ${described.length} 件御魂 · 库存中可找到 ${available.length} 件`+
+   (row.bindings?.length?` · ${row.bindings.length} 条绑定`:'');
+ };
+ const groupLabels=(groups,rows,label)=>{
+  if(!groups?.length)return '';
+  const names=new Map((rows||[]).filter(row=>row.id!=null).map(row=>[row.id,row.name||'未命名']));
+  return records(groups,label,group=>group.references.map(id=>names.get(id)||'库存未提供该预设').join('、')||'空分组');
  };
  const retained=Object.hasOwn(a.retainedSections||{},'lineupPresets')?
   `<p class="caption">沿用 ${esc(a.retainedSections.lineupPresets||'时间未知')} 的旧记录。</p>`:'';
- return `<details class="inventory-notes" id="account-game-lineup-presets"><summary>游戏阵容预设</summary>${retained}${records(teams,'队伍',heroLabels)}${records(plans,'御魂方案',soulLabels)}</details>`;
+ return `<details class="inventory-notes" id="account-game-lineup-presets"><summary>游戏阵容预设</summary>${retained}${records(teams,'队伍',row=>heroLabels(row.references))}${groupLabels(teamGroups,teams,'队伍分组')}${records(plans,'御魂方案',soulLabels)}${groupLabels(planGroups,plans,'御魂方案分组')}</details>`;
 }
 function accountAssets(a){
  const balances=a.snapshot.sections.currency==null?[]:

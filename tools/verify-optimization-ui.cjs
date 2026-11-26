@@ -489,8 +489,8 @@ async function main(){
    assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);await ui('document.getElementById("toast").classList.remove("show");document.getElementById("account-snapshot-extra").scrollIntoView({block:"start",behavior:"instant"})');await capture('snapshot-v094-narrow');win.setContentSize(1440,960);
   });
   const desktopRaw={...raw,capturedAt:'2026-11-25T00:00:00Z',format:'yys-desktop-cache-v1',heroCount:1,inventoryCount:1,retainedCount:1,excludedCount:0,heroes:{a:{...raw.heroes.a,equips:['desktop-first']}},souls:[{id:'desktop-first',slot:1,quality:6,level:15,setId:'招财猫',mainAttrType:'attack_flat',mainAttrValue:25,subAttributes:[{type:'crit_rate',value:.03}],equippedState:null}],equipPresets:[['合成桌面预设',['desktop-first']]],lineupPresets:{version:1,
-   teamPresets:{groups:[],teams:[{id:1,name:'离线验收队伍',heroIds:['a',null,'unknown']}]},
-   soulPlans:{groups:[],plans:[{boxId:1,name:'离线验收方案',equipIds:['desktop-first','unknown'],bindings:[]}]}},
+   teamPresets:{groups:[{id:'qa-group',name:'日常队伍分组',teamIds:['qa-team','missing-team']}],teams:[{id:'qa-team',name:'离线验收队伍',heroIds:['a',null,'unknown']}]},
+   soulPlans:{groups:[{name:'常用御魂分组',boxIds:[1]}],plans:[{boxId:1,name:'离线验收方案',equipIds:['desktop-first','unknown'],bindings:[['a','qa-ref']]}]}},
    accountComparison:{version:1,items:{synthetic:1},realm:{synthetic:2}}};
   delete desktopRaw.hero_equips;
   const desktopCache={version:2,rawSha256:'a'.repeat(64),sourceKind:'desktop',sourcePayload:desktopRaw,normalizedSouls:[]};
@@ -505,7 +505,9 @@ async function main(){
    await ui('$("account-game-lineup-presets").open=true;$("account-game-lineup-presets").scrollIntoView({block:"center",behavior:"instant"})');
    const presets=await ui('$("account-game-lineup-presets").textContent');
    assert.match(presets,/离线验收队伍.*空位、库存未提供该式神/s);
-   assert.match(presets,/离线验收方案.*引用 2 件御魂 · 库存中可找到 1 件/s);
+   assert.match(presets,/日常队伍分组.*离线验收队伍、库存未提供该预设/s);
+   assert.match(presets,/离线验收方案.*引用 2 件御魂 · 库存中可找到 1 件 · 1 条绑定/s);
+   assert.match(presets,/常用御魂分组.*离线验收方案/s);
    await capture('snapshot-desktop-cache');
   });
   await check('桌面与旧版库存交叉合并，导出备份、重启和恢复均保留旧御魂',async()=>{

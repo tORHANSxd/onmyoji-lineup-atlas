@@ -178,21 +178,32 @@ const SNAPSHOT_OBJECT_SECTIONS=new Set([
 ]);
 function readLineupPresets(raw,warnings){
  if(!object(raw)||raw.version!==1)return null;
- const rows=(section,key,referenceKey)=>{
+ const incomplete='部分游戏阵容预设格式待核对，原始记录已保留';
+ const textId=value=>typeof value==='string';
+ const boxId=value=>Number.isInteger(value)&&value>=0&&value<=0xffffffff;
+ const rows=(section,key,valid,adapt)=>{
   if(section==null)return null;
   const records=object(section)?section[key]:null;
   if(!Array.isArray(records)){
-   warnings.push('部分游戏阵容预设格式待核对，原始记录已保留');
+   if(key!=='groups'||records!=null)warnings.push(incomplete);
    return null;
   }
-  const entries=records.filter(row=>object(row)&&typeof row.name==='string'&&Array.isArray(row[referenceKey])&&
-   row[referenceKey].every(ref=>ref==null||typeof ref==='string'));
-  if(entries.length!==records.length)warnings.push('部分游戏阵容预设格式待核对，原始记录已保留');
-  return entries.map(row=>({name:row.name,references:row[referenceKey]}));
+  const entries=records.filter(row=>object(row)&&typeof row.name==='string'&&valid(row));
+  if(entries.length!==records.length)warnings.push(incomplete);
+  return entries.map(adapt);
  };
- const teams=rows(raw.teamPresets,'teams','heroIds');
- const plans=rows(raw.soulPlans,'plans','equipIds');
- return {teams,plans};
+ const references=(row,key)=>Array.isArray(row[key])&&row[key].every(ref=>ref==null||textId(ref));
+ const teams=rows(raw.teamPresets,'teams',row=>references(row,'heroIds'),
+  row=>({name:row.name,id:textId(row.id)?row.id:null,references:row.heroIds}));
+ const plans=rows(raw.soulPlans,'plans',row=>references(row,'equipIds'),row=>{
+  const bindings=Array.isArray(row.bindings)&&row.bindings.every(pair=>Array.isArray(pair)&&pair.length===2&&pair.every(textId))?
+   row.bindings:null;
+  if(row.bindings!=null&&bindings===null)warnings.push(incomplete);
+  return {name:row.name,id:boxId(row.boxId)?row.boxId:null,references:row.equipIds,bindings};
+ });
+ const groups=(section,key,valid)=>rows(section,'groups',row=>Array.isArray(row[key])&&row[key].every(valid),
+  row=>({name:row.name,references:row[key]}));
+ return {teams,plans,teamGroups:groups(raw.teamPresets,'teamIds',textId),planGroups:groups(raw.soulPlans,'boxIds',boxId)};
 }
 function snapshotInfo(raw,warnings){
  const scope=object(raw.scope)?raw.scope:{},sections={};
