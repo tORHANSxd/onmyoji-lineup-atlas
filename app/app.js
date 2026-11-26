@@ -195,6 +195,7 @@ function sampleBattleMarkup(samples){
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
+  const mirror=sample.secretMirror;
   const journey=sample.journeyHard;
   const journeyBonus=journey?Object.entries({attack:'攻击',defense:'防御',hp:'生命',speed:'速度',crit:'暴击',critDamage:'暴击伤害'})
    .flatMap(([key,label])=>journey.blessingBonus[key]?[`${label} +${key==='speed'?journey.blessingBonus[key]:
@@ -263,7 +264,12 @@ function sampleBattleMarkup(samples){
   const roster=orochi?`<details><summary>查看各层出战与生命上限</summary><ol>${orochi.starts.map(({floor,lineup})=>
    `<li>第 ${floor} 层 · ${lineup.map(unit=>`${esc(DATA.gameConfig.heroes[unit.id]?.name||String(unit.id))} · ${Math.round(unit.hp)}/${Math.round(unit.maxHp)}`).join('，')}</li>`
   ).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}</li>`;
+  const mirrors=mirror?.units.length?`<details><summary>第 ${mirror.wave} 波 · 镜像阵容</summary><ol>${mirror.units.map(unit=>{
+   const name=DATA.gameConfig.heroes[unit.monsterId]?.name??unit.monsterId;
+   const skills=unit.soulSkills.map(([id,level])=>`${id}（${level} 级）`).join('、');
+   return `<li>${esc(`${unit.position} 号位 · ${unit.copied?'复制':'默认怪物'} ${name}${skills?' · 御魂技能 '+skills:''}`)}</li>`;
+  }).join('')}</ol></details>`:'';
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}</li>`;
  }).join('');
 }
 

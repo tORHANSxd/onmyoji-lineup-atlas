@@ -15,7 +15,8 @@ from tempfile import TemporaryDirectory
 
 def extract(runtime, work, part, workers):
     from rune_floor_host import prepare_runtime
-    from secret_stage import DynamicFormation, placements, secret_protection, secret_solo, secret_stage
+    from secret_stage import (DynamicFormation, MIRROR_FLOOR, MIRROR_WAVE, mirror_fallback,
+                              placements, secret_protection, secret_solo, secret_stage)
 
     modules, host, source = prepare_runtime(runtime, work)
     from battleengine.BattleCommon import BattleAvatar
@@ -57,14 +58,20 @@ def extract(runtime, work, part, workers):
             return entity
 
         engine.createMonsterEntity = observe
+        fallback = mirror_fallback() if floor == MIRROR_FLOOR else None
         for index, formation in enumerate(configured):
             created.clear()
             engine._finishedWaveCount = index
             engine._createNextRoundMons()
-            if [(pos, level, entity.protoid) for pos, level, entity in created] != placements(formation):
+            expected = placements(formation)
+            if [(pos, level, entity.protoid) for pos, level, entity in created] != [
+                    (pos, level, fallback if proto == -1 else proto) for pos, level, proto in expected]:
                 raise RuntimeError(f"Unexpected original placements for Secret Zone floor {floor}, wave {index + 1}")
             panels = []
-            for position, level, entity in created:
+            for (position, level, proto), (_, _, entity) in zip(expected, created):
+                if proto == -1:
+                    panels.append({"id": proto, "position": position, "level": level})
+                    continue
                 attr = entity.AttrComp
                 stats = (attr.hp, attr.speed, attr.attack, attr.defense, attr.critRate)
                 if not all(type(value) in (int, float) and isfinite(value) for value in stats):
@@ -82,6 +89,8 @@ def extract(runtime, work, part, workers):
                          "codeStageId": codes[0] if len(codes) == 1 else None,
                          "allyOrbs": engine.campData1.shareGuiHuo, "enemyOrbs": engine.campData2.initGuihuo,
                          "waves": waves}
+        if fallback is not None:
+            floors[floor]["mirror"] = {"wave": MIRROR_WAVE, "fallbackId": fallback}
         if protection := secret_protection(config):
             support, target = protection
             if len(waves) != 1 or sum(unit["id"] == target for unit in waves[0]) != 1:
@@ -165,9 +174,9 @@ def write_openings(output, data):
     js = "(function(root){\n const data = " + metadata + ',\n  "floors":{\n' + rows + "\n  }\n };\n"
     js += " if(typeof module==='object'&&module.exports)module.exports=data;else root.AtlasSecretOpenings=data;\n})(globalThis);\n"
     output.write_text(js, encoding="utf-8", newline="\n")
-    placements = sum(len(wave) for row in floors.values() for wave in row["waves"])
+    placements = sum(unit["id"] > 0 for row in floors.values() for wave in row["waves"] for unit in wave)
     print(f"{len(floors)} floors, {sum(row['solo'] for row in floors.values())} solo entries, "
-          f"{placements} enemy placements, {len(data['skipped'])} dynamic formations", flush=True)
+          f"{placements} fixed enemy placements, {len(data['skipped'])} skipped formations", flush=True)
 
 
 if __name__ == "__main__":

@@ -360,6 +360,20 @@ function validSecretProtection(report,expected){
   (report.outcome!=='win'||report.wavesCleared===report.waveCount):settlement===null;
 }
 
+function validSecretMirror(report,stage){
+ const expected=stage.mirror,data=report.secretMirror;
+ if(!expected)return data===undefined;
+ if(data?.wave!==expected.wave||!Array.isArray(data.units))return false;
+ if(report.formationsVerified<expected.wave)return data.units.length===0;
+ const slots=stage.waves[expected.wave-1].filter(unit=>unit.id===-1);
+ return data.units.length===slots.length&&data.units.every((unit,i)=>
+  unit?.position===slots[i].position&&unit.level===slots[i].level&&typeof unit.copied==='boolean'&&
+  (unit.sourceId===null||positive(unit.sourceId))&&Array.isArray(unit.soulSkills)&&
+  (unit.copied?positive(unit.sourceId)&&unit.monsterId===unit.sourceId&&unit.soulSkills.every(skill=>
+   Array.isArray(skill)&&skill.length===2&&skill.every(positive)):
+   unit.monsterId===expected.fallbackId&&unit.soulSkills.length===0));
+}
+
 function validJourneyReport(report,route,settings){
  const data=report.journeyHard;
  return data&&report.sceneId===journeyHard.sceneId&&report.waveCount===1&&data.challengeId===route.challengeId&&
@@ -419,11 +433,12 @@ function launch(python,args,cwd,signal){
 }
 
 function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings}){
+ const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const engine=sixRealmsRoute?{name:sixRealmsRoute.engine,sha256:sixRealmsRoute.sha256,
   route:`six-realms-${sixRealmsState?'configured':'full-health'}-${sixRealmsEvent?'encounter':'trial'}`}:
-  resource?{name:resource.engine,route:resource.route,sha256:resource.engineSHA256??resourceEncounters.engineSHA256}:engines[battleMode];
+  resource?{name:resource.engine,route:resource.route,sha256:resource.engineSHA256??resourceEncounters.engineSHA256}:
+  secret?.entrance==='team'?{...engines[battleMode],route:'secret-team-solo'}:engines[battleMode];
  const awake=battleMode===29?awakeOpenings.floors[stageId]:null;
- const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;
  const hunt=battleMode===2000?guildHuntOpenings.floors[stageId]:null;
  const huntReport=report?.guildHunt;
@@ -462,7 +477,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
-      report.formationsVerified>report.waveCount||!validSecretProtection(report,secret.protection)))||
+      report.formationsVerified>report.waveCount||!validSecretProtection(report,secret.protection)||!validSecretMirror(report,secret)))||
     (resource&&!validResource(report,resource))||report.seed!==seed||report.fixedStepMs!==20||report.teamSHA256!==sha256(input)||report.suitIndexSHA256!==sha256(suitInput)||
     !matchesDamagePolicy(report,damageFloor)||
     !validHash(report.nativeSHA256)||!validHash(report.scriptIndexSHA256)||!validHash(report.recordSHA256)||

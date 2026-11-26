@@ -322,7 +322,7 @@ async function main(){
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),
-   known('liyu',10733004,5),
+   known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
    known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
   const trial=known('six-realms',110151,6);
@@ -580,7 +580,19 @@ async function main(){
    await until(start+'!==null');
    assert.match(await run('secret',{stageId:11,groupId:11,battleMode:266},{waveCount:3,wavesCleared:3}),/已知阵容 secret/);
    await ui('qaSecretEncounter(18,"红叶的羁绊 捌 痴迷")');
-   await until(panel+'.textContent.includes("游戏内走组队入口")');
+   await until(start+'!==null');
+   assert.match(await ui(panel+'.textContent'),/游戏内走单人组队挑战/);
+   assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-secret-team']);
+   assert.match(await run('secret-team',{stageId:18,groupId:18,battleMode:266},{waveCount:3,wavesCleared:3}),/已知阵容 secret-team/);
+   await ui('qaSecretEncounter(118,"海怪的温柔 捌 惴惴")');
+   await until(start+'!==null');
+   assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-secret-mirror']);
+   assert.match(await ui(panel+'.textContent'),/复制我方 2 号位.*复制我方 6 号位/s);
+   assert.match(await run('secret-mirror',{stageId:118,groupId:118,battleMode:266},{waveCount:3,wavesCleared:3,
+    secretMirror:{wave:3,units:ids.slice(0,5).map((hero,i)=>({position:i+2,level:40,sourceId:hero,monsterId:hero,
+     copied:true,soulSkills:[[20019,1]]}))}}),/第 3 波 · 镜像阵容.*御魂技能 20019（1 级）/s);
+   await ui('qaSecretEncounter(191,"呱士无双 壹 立直")');
+   await until(panel+'.textContent.includes("该层的独立机制仍待离线复跑核验")');
    assert.equal(await ui(start+'===null'),true);
    await ui('qaSecretEncounter(358,"溯问鲤踪 捌 鲤影")');
    await until(start+'!==null');

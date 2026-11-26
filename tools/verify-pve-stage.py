@@ -181,7 +181,8 @@ def replay(args, runtime, work):
     elif args.mode == 266:
         from battleengine.engine.ChallengeFbEngine import const
         from DynamicConfigData import DATA_HERO
-        from secret_stage import SecretProtectionReplay, placements, secret_protection, secret_solo, secret_stage
+        from secret_stage import (MIRROR_FLOOR, SecretMirrorReplay, SecretProtectionReplay,
+                                  placements, secret_protection, secret_solo, secret_stage)
 
         engine, stage, waves = secret_stage(args.stage)
         if not secret_solo(stage) or len(fighters) != 5:
@@ -307,7 +308,7 @@ def replay(args, runtime, work):
         group_id, wave_count = stage["monsterid"], 1
         route = "awake-ordinary-solo"
     elif args.mode == 266:
-        route = "secret-ordinary-solo"
+        route = "secret-team-solo" if stage["need_team"] else "secret-ordinary-solo"
     elif args.mode == RESOURCE_MODE:
         route = resource.route
     elif args.mode == YULING_MODE:
@@ -374,10 +375,13 @@ def replay(args, runtime, work):
     spider_replay = TsuchigumoPractice(engine, stage, group, const) if spider else None
     verified_waves = set()
     secret_protection_replay = None
+    secret_mirror_replay = None
     if args.mode == 266:
         protection = secret_protection(stage)
         if protection:
             secret_protection_replay = SecretProtectionReplay(engine, const, protection)
+        if args.stage == MIRROR_FLOOR:
+            secret_mirror_replay = SecretMirrorReplay(engine, const)
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
 
         def verify_spawn():
@@ -385,6 +389,8 @@ def replay(args, runtime, work):
             if not 0 <= wave < wave_count:
                 raise RuntimeError("Unexpected original Secret Zone wave index")
             observed = []
+            expected, mirror_units = (secret_mirror_replay.formation(waves[wave]) if secret_mirror_replay
+                                      else (placements(waves[wave]), []))
 
             def observe(camp, owner, placement):
                 entity = create(camp, owner, placement)
@@ -396,8 +402,10 @@ def replay(args, runtime, work):
                 result = spawn()
             finally:
                 engine.createMonsterEntity = create
-            if observed != placements(waves[wave]):
+            if observed != expected:
                 raise RuntimeError(f"The original Secret Zone generated a different formation in wave {wave + 1}")
+            if secret_mirror_replay:
+                secret_mirror_replay.observe(expected, mirror_units)
             verified_waves.add(wave)
             return result
 
@@ -426,7 +434,8 @@ def replay(args, runtime, work):
         formation_matches = engine.bossId == enemy_ids
     elif args.mode == 266:
         formation_matches = (engine.getFbConfig() is stage and engine.fbId == args.stage
-                             and engine.combineSceneInfoId == stage["scene"])
+                             and engine.combineSceneInfoId == stage["scene"] and len(engine.battlePlayers) == 1
+                             and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
     elif args.mode == RESOURCE_MODE:
         formation_matches = resource.matches()
     elif args.mode == YULING_MODE:
@@ -627,6 +636,8 @@ def replay(args, runtime, work):
         report["formationsVerified"] = len(verified_waves)
         if secret_protection_replay:
             report["secretProtection"] = secret_protection_replay.report(completed)
+        if secret_mirror_replay:
+            report["secretMirror"] = secret_mirror_replay.report()
     if args.mode == RESOURCE_MODE:
         key, result = resource.report(report["outcome"])
         report[key] = result

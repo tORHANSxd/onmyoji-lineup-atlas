@@ -2,6 +2,8 @@
 
 
 LIYUJING_TYPE = 35
+MIRROR_FLOOR = 118
+MIRROR_WAVE = 3
 PROTECTION_FLOORS = {
     358: (31708001, 31708209),
     359: (31709001, 31709209),
@@ -24,9 +26,14 @@ def secret_stage(floor):
     while waves and not any(waves[-1]):
         waves = waves[:-1]
     if not waves or any(not any(wave) or any(
-            enemy and (len(enemy) != 2 or type(enemy[0]) is not int or enemy[0] <= 0)
+            enemy and (len(enemy) != 2 or type(enemy[0]) is not int or (enemy[0] <= 0 and enemy[0] != -1))
             for enemy in wave) for wave in waves):
         raise DynamicFormation(f"Secret Zone floor {floor} has a dynamic formation")
+    mirror_slots = [(number, position) for number, wave in enumerate(waves, 1)
+                    for position, _, proto in placements(wave) if proto == -1]
+    if mirror_slots and (floor != MIRROR_FLOOR or len(waves) != MIRROR_WAVE
+                         or mirror_slots != [(MIRROR_WAVE, position) for position in range(2, 7)]):
+        raise DynamicFormation(f"Secret Zone floor {floor} has unverified mirror positions")
     engine = ChallengeFbEngine({"fbId": floor, "fbType": config["type"],
                                 "floor_num": config["floor_num"], "allRewards": {}})
     engine.battleMode = const.BattleMode.MODE_CHALLENGE
@@ -34,10 +41,11 @@ def secret_stage(floor):
 
 
 def secret_solo(config):
-    # Separate entries and engine branches that need mechanics outside the basic solo roster.
+    # The ordinary panel dispatches need_team=1 through attack_team_copy,
+    # the client's single-player team challenge. Special mechanics are separate.
     special_rules = {19, 20, 27, 31, 32, 34, 36, 37, 39}
-    return (config["advanced"] == 0 and not config["yys_replacement_id"] and config["type"] not in special_rules
-            and (config["need_team"] == 0 or secret_protection(config) is not None))
+    return (config["advanced"] == 0 and config["need_team"] in (0, 1) and not config["yys_replacement_id"]
+            and config["type"] not in special_rules)
 
 
 def secret_protection(config):
@@ -46,6 +54,57 @@ def secret_protection(config):
 
 def placements(formation):
     return [(position, unit[1], unit[0]) for position, unit in enumerate(formation, 1) if unit]
+
+
+def mirror_fallback():
+    from DynamicConfigData import DATA_CONSTANT
+
+    return DATA_CONSTANT.data.get(4065, {}).get("value", (200,))[0]
+
+
+class SecretMirrorReplay:
+    def __init__(self, engine, const):
+        self.engine, self.const = engine, const
+        self.fallback = mirror_fallback()
+        self.units, self.copied = [], {}
+        self.copy_skills = engine.copy_soulcard_skill
+        engine.copy_soulcard_skill = self.copy
+
+    def copy(self, entity, target):
+        skills = [(skill.skillId, skill.skillLevel) for skill in target.SkillMgrComp.skillCompList if skill.fromCardId]
+        result = self.copy_skills(entity, target)
+        if any(entity.SkillMgrComp.getSkillById(skill_id) is None for skill_id, _ in skills):
+            raise RuntimeError("The original Secret Zone mirror is missing a copied soul skill")
+        self.copied[entity.posIndex] = (target.protoid, skills)
+        return result
+
+    def formation(self, configured):
+        from DynamicConfigData import DATA_MONSTER
+
+        expected, mirror_units = [], []
+        for position, level, proto in placements(configured):
+            if proto == -1:
+                target = self.engine.get_camp_index_entity(self.const.CampFlag.CAMP1, position)
+                source = target.protoid if target else None
+                can_copy = source is not None and bool(DATA_MONSTER.data.get(source))
+                proto = source if can_copy else self.fallback
+                mirror_units.append((position, level, source, can_copy))
+            expected.append((position, level, proto))
+        return expected, mirror_units
+
+    def observe(self, expected, mirror_units):
+        prototypes = {position: proto for position, _, proto in expected}
+        for position, level, source, can_copy in mirror_units:
+            copied = self.copied.pop(position, None)
+            if (copied is not None) != can_copy or (copied is not None and copied[0] != source):
+                raise RuntimeError("The original Secret Zone used a different mirror source")
+            self.units.append({"position": position, "level": level, "sourceId": source,
+                               "monsterId": prototypes[position], "copied": can_copy, "soulSkills": copied[1] if copied else []})
+        if self.copied:
+            raise RuntimeError("The original Secret Zone copied an unexpected mirror position")
+
+    def report(self):
+        return {"wave": MIRROR_WAVE, "units": self.units}
 
 
 class SecretProtectionReplay:

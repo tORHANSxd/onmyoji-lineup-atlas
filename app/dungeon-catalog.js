@@ -496,7 +496,7 @@
     if(!opening||opening.sceneId!==group.row?.scene||waves.length!==opening.waves.length||
        !opening.waves.every((wave,i)=>wave.length===waves[i].length&&wave.every((unit,j)=>
          ['id','position','level'].every(key=>unit[key]===waves[i][j][key]))))return null;
-    group.waves=opening.waves.map(wave=>wave.map(unit=>({...unit,opening:unit})));
+    group.waves=opening.waves.map(wave=>wave.map(unit=>unit.id===-1?{...unit,copy:true}:{...unit,opening:unit}));
     return opening;
   }
 
@@ -1188,19 +1188,20 @@
     const secret=secretOpening(entry,groups[0]);
     if(secret){
       const config=groups[0].row,codeScene=DATA.gameConfig.stages[secret.codeStageId];
-      const entryLabel=config.advanced?'竞速配置':secret.protection?'游戏内走单人组队挑战':
+      const entryLabel=config.advanced?'竞速配置':secret.solo&&config.need_team?'游戏内走单人组队挑战':
         config.need_team?'游戏内走组队入口':'游戏内走单人入口';
       destination.append(node('p',[`${secret.waves.length} 波`,`我方开场 ${secret.allyOrbs} 火`,
         `敌方开场 ${secret.enemyOrbs} 火`,`需阴阳师 ${config.level_limit} 级`,`消耗 ${config.strength} 体力`,entryLabel].join(' · '),'caption'));
-      if(!secret.solo&&!config.advanced&&!config.need_team)
+      if(!secret.solo&&!config.advanced)
         destination.append(node('p','该层的独立机制仍待离线复跑核验。','caption'));
       if(secret.solo)window.AtlasPveWorkbench?.mount(destination,{stageId:Number(entry.key),groupId:Number(entry.key),memberCount:5,
-        battleMode:266,waveCount:secret.waves.length,label:secret.protection?'溯问鲤踪 · 保护挑战':'秘闻普通单人',version:state.index.resourceVersion,
+        battleMode:266,waveCount:secret.waves.length,label:secret.protection?'溯问鲤踪 · 保护挑战':
+          config.need_team?'秘闻单人组队挑战':'秘闻普通单人',version:state.index.resourceVersion,
         codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?secret.codeStageId:null,codeLabel:codeScene?.name,
-        openingSpeed:Math.max(...secret.waves.flat().map(unit=>unit.speed))});
+        openingSpeed:Math.max(...secret.waves.flat().filter(unit=>unit.id>0).map(unit=>unit.speed))});
     }
     if(entry.table==='dungeon_challenge_series'&&matchesOpeningSource(window.AtlasSecretOpenings)&&
-       window.AtlasSecretOpenings.skipped.includes(entry.key)&&groups[0].waves.some(wave=>wave.some(unit=>unit.copy))){
+       groups[0].waves.some(wave=>wave.some(unit=>unit.copy))){
       destination.append(node('p','复制位读取我方同号位的式神及御魂技能。缺少可复制模板时使用原版默认怪物。','caption'));
     }
     showYulingEncounter(destination,entry,groups[0]);
