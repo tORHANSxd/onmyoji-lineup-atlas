@@ -14,6 +14,7 @@ import time
 def replay(args, runtime, work):
     from game_resources import sha256
     from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
+    from yuling_stage import YULING_MODE
     from rune_floor_host import prepare_runtime
     from rune_replay import monster_waves, project_playback, read_models
     from rune_team import battle_spirit, selected_team
@@ -70,6 +71,15 @@ def replay(args, runtime, work):
         if len(fighters) != stage["shishentotal"]:
             raise ValueError("The first experience encounter requires the five combat slots")
         group_id, wave_count = stage["groupid"], len(formation["MonstersInfos"])
+    elif args.mode == YULING_MODE:
+        from battleengine.engine.GorenFbEngine import const
+        from DynamicConfigData import DATA_HERO
+        from yuling_stage import observe_yuling_opening, yuling_stage
+
+        engine, stage = yuling_stage(args.stage)
+        if len(fighters) != 5:
+            raise ValueError("Solo Undying Guardian requires five shikigami")
+        group_id, wave_count = args.stage, 1
     else:
         from battleengine.engine.MonstarGuanKaEngine import MonstarGuanKaEngine, const
         from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA
@@ -119,6 +129,9 @@ def replay(args, runtime, work):
     elif args.mode == RESOURCE_MODE:
         route = "resource-first-new-server-exp"
         experience_opening = observe_experience_opening(engine, const, formation)
+    elif args.mode == YULING_MODE:
+        route = "yuling-solo"
+        yuling_opening = observe_yuling_opening(engine, stage)
     else:
         engine = MonstarGuanKaEngine({"pve_data_flag": stage_id})
         if engine.isDramaGuanKa or not engine.selectHeroEnabled:
@@ -200,6 +213,8 @@ def replay(args, runtime, work):
     elif args.mode == RESOURCE_MODE:
         formation_matches = (engine.pve_data_flag == str(FIRST_EXP_STAGE) and engine.is_local_newbie_battle
                              and engine.spectatorHeroCount == 4 and engine.get_timeout_seconds() == 150)
+    elif args.mode == YULING_MODE:
+        formation_matches = engine.fbId == args.stage and engine.combineSceneInfoId == stage["scene"]
     else:
         formation_matches = engine.monstergroup == group_id
     if (engine.seed != args.seed or engine.random is not random_record or engine.battleMode != args.mode
@@ -268,6 +283,11 @@ def replay(args, runtime, work):
         report["experience"] = {"kills": engine.get_kill_monster_count(), "requiredKills": 30,
                                 "timedOut": engine.is_timeout, "deadlineSeconds": engine.get_timeout_seconds(),
                                 "opening": experience_opening}
+    if args.mode == YULING_MODE:
+        if not yuling_opening:
+            raise RuntimeError("The original Undying Guardian never created its opening formation")
+        report["formationsVerified"] = 1
+        report["opening"] = yuling_opening
     if args.minimum_damage:
         report["minimumDamage"] = minimum
     try:
@@ -289,11 +309,12 @@ def replay(args, runtime, work):
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from resource_stage import RESOURCE_MODE
+    from yuling_stage import YULING_MODE
 
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, RESOURCE_MODE), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")

@@ -130,7 +130,8 @@
   function fieldsFor(row, table) {
     const fields = document.createElement('dl');
     const displayLabels = table?.startsWith('journey_normalbattle_') ? {...labels, ...journeyVariantFields} :
-      table === 'journey_hardbattle' ? {...labels, ...journeyBossFields} : labels;
+      table === 'journey_hardbattle' ? {...labels, ...journeyBossFields} :
+      table === 'dungeon_yuling' ? {...labels,strength:'原表体力字段'} : labels;
     for (const [field, label] of Object.entries(displayLabels)) {
       if (row == null || !Object.hasOwn(row, field)) continue;
       const value = row[field];
@@ -438,6 +439,23 @@
     }
   }
 
+  function showYulingEncounter(destination,entry,group){
+    const source=window.AtlasYulingOpenings;
+    if(entry.table!=='dungeon_yuling'||!matchesOpeningSource(source))return;
+    const opening=source.floors[entry.key],initial=group.waves[0],config=group.row;
+    if(!opening||opening.sceneId!==config?.scene||group.waves.length!==1||initial.length!==opening.enemies.length||
+       !opening.enemies.every((unit,i)=>['id','position','level'].every(key=>unit[key]===initial[i][key])))return;
+    group.waves=[opening.enemies.map(unit=>({...unit,opening:unit}))];
+    const codeScene=DATA.gameConfig.stages[opening.codeStageId],ticket=config.menpiao?.[1];
+    destination.append(node('p',`1 波 · 我方开场 ${opening.allyOrbs} 火 · 敌方开场 ${opening.enemyOrbs} 火 · `+
+      `消耗 ${ticket} 张御灵境之钥 · 阴阳师 ${source.minPlayerLevel} 级 · 御灵 ${source.minGuardianLevel} 级`,'caption'));
+    destination.append(node('p','小纸人不能被敌方选中或标记，只有第一只参与行动。首领会反击，并随战斗推进强化。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:Number(entry.key),groupId:Number(entry.key),memberCount:5,
+      battleMode:267,waveCount:1,label:'御灵单人配装',version:source.resourceVersion,
+      codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?opening.codeStageId:null,codeLabel:codeScene?.name,
+      openingSpeed:opening.enemies[0].speed});
+  }
+
   async function showEncounter(entry) {
     if (!entry) return;
     window.AtlasPveWorkbench?.unmount();
@@ -496,6 +514,7 @@
        window.AtlasSecretOpenings.skipped.includes(entry.key)&&groups[0].waves.some(wave=>wave.some(unit=>unit.copy))){
       destination.append(node('p','复制位读取我方同号位的式神及御魂技能。缺少可复制模板时使用原版默认怪物。','caption'));
     }
+    showYulingEncounter(destination,entry,groups[0]);
     if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);

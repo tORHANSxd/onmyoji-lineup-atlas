@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,528]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,528]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
@@ -356,6 +356,28 @@ async function main(){
     await until('$("client-dungeons-encounter-detail").textContent.includes("金币结算随首领剩余生命变化")');
     assert.equal(await ui('document.querySelector("[data-pve-stock]")===null'),true);
    }
+   const yulingCalls=[];
+   mockPve=(plan,options)=>{
+    assert.deepEqual(options,{stageId:3,groupId:3,battleMode:267,seed:options.seed,damageFloor:true});
+    assert.equal(plan.members.length,5);
+    yulingCalls.push(options.seed);
+    return {...sample,...options,waveCount:1,wavesCleared:1,formationsVerified:1};
+   };
+   await ui('qaEncounterInput("daily","暗·神龙 叁层")');
+   await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+   const guardian=await ui('$("client-dungeons-encounter-detail").textContent');
+   assert.match(guardian,/开场 3 火.*消耗 1 张御灵境之钥.*阴阳师 40 级 · 御灵 40 级.*只有第一只参与行动.*御灵单人配装/s);
+   assert.match(guardian,/暗·神龙 · 40 级 · 1 号位 · 开场速度 170.*生命 517,762/s);
+   await ui('[...document.querySelectorAll(".dungeon-encounter-waves summary")].find(el=>el.textContent.includes("暗·神龙 · 40 级")).click()');
+   await until('$("client-dungeons-encounter-detail").textContent.includes("多段攻击不重复触发")');
+   await ui(stock+'.click()');
+   await until(status+'.textContent.includes("全随机分支待验证")',20000);
+   assert.deepEqual(yulingCalls.slice(0,6),[0,1,2,3,7,42]);
+   await ui('document.querySelector("[data-pve-code]").click()');
+   assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
+   assert.match(await ui('$("detail-heading").textContent'),/神龙·叁层/);
+   await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
+   await capture('client-yuling-solo');
   }finally{
    mockPve=null;stopPve=null;
    await ui(`stopMatch();STATE=${boot};selectedLineups.clear();$('client-dungeons').open=false;renderSelection();`);

@@ -62,6 +62,25 @@ $env:PYTHONHASHSEED = '0'
 
 资源 `0.0.816` 的 `AwakeFbEngine` marshal SHA-256 为 `c763bfc82cf6fce267a05c82114b0f78ca646e33e2378a367dec01eed3aaf2e6`。`AwakeLevelNewPanel` 的同类校验值为 `204baa32f3bc1ff6512089621e85bd1da464149baecd4350eb606f488f5bff1e`。
 
+## 御灵副本
+
+暗·神龙、暗·白藏主、暗·孔雀和暗·黑豹各有三层。御契从模式 267 的 `GorenFbEngine` 提取了十二层、48 个原版开场敌位。每层一波，包含一个 40 级首领和三只小纸人。我方开场 3 火、敌方 2 火。暗·神龙叁层开场速度 170，生命 517,762，暗·黑豹叁层开场速度 185。
+
+三只小纸人的血条隐藏，无法被敌方选中或手动标记，只有第一只的行动位有效。展开首领可查看每层原版技能。叁层首领受击后有 15% 概率群体反击并驱散一个增益，多段攻击只检查一次。神龙反击可能眩晕，白藏主可能施毒，孔雀可能封印御魂和被动，黑豹可能降低防御。首领还会在战斗推进时获得强化，损失七成生命后进入狂暴。
+
+客户端面板使用 `Constant[184]`，要求阴阳师和当前御灵均达到 40 级，并按 `Dungeon_yuling_floor` 读取各类已解锁层。常规入口检查并提交一张御灵境之钥，所有层的开放星期均配置为一至日。游戏通过 `team_create_yuling` 发起挑战，离线工作台匹配原版单人配置的一位阴阳师和五位式神，逐位验证编组和当前库存配装。实时房间与奖励结算仍待联机核对。
+
+自找优先为首领分配高伤输出、增伤和供火，并保留续航配装。使用真实库存生成的首领双输出在种子 0 通过全部十二层，四类叁层还通过种子 1、2、3、7、42。各自最慢的开战至结算实测为神龙 67.80 秒、白藏主 53.20 秒、孔雀 69.06 秒、黑豹 67.08 秒。相同库存的当前穿戴在种子 0 的四场叁层均落败。完整随机分支仍待验证。
+
+原版 `GorenLevelNewPanel.on_click_team_assist` 将关卡 ID 加御灵类型值 `40000`，由 `TAHelper.get_target_id` 找到阵容码副本。十二层均有已核对的一位阴阳师和五位式神映射，如暗·神龙叁层对应 `10030001`。通过共同采样的配装可生成完整码及二维码并保存，官方短码和上传需要联机验收。
+
+```powershell
+& $YuqiPython tools/verify-yuling-openings.py --runtime <本地运行时JSON> --output app/yuling-openings.js
+& $YuqiPython tools/verify-pve-stage.py --mode 267 --stage 3 --seed 0 --minimum-damage --runtime <本地运行时JSON> --team <库存配装JSON> --suit-index <御魂套装JSON> --output <战报JSON>
+```
+
+资源 `0.0.816` 的 `GorenFbEngine` 和 `GorenLevelNewPanel` marshal SHA-256 分别为 `1874ad31fadadcba22bd27dfa15d9fab7ca054eea237c664f9eb7e387076d02a`、`01452b59981fa6d4214fb3dfdcb704a71beb5f6a9cd6665d9b7b0d052c58a8aa`。
+
 ## 经验妖怪与金币妖怪
 
 普通经验和金币分别注册组队类型 656、657，共用模式 528。原版 `team_type_new_exp_gold.TeamBattleType` 对两类均声明 `GoldBattleScene`、`NewExpEngine`、允许单人开战和强制自动战斗。`ResourceFightPanel` 的普通入口提交队伍创建请求。目录把 `2109` 经验编组和 `2009` 金币编组列入日常，保留相应组队入口、敌位和场景。`Constant[9820]` 与 `[9821]` 可查到两个原始 ID 列表，部分 ID 在本快照缺少关卡记录。组队服务器实际选择的配置、共享生命和最终奖励仍待联机核验。

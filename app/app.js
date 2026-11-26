@@ -677,7 +677,7 @@ function generateDungeonStock(job){
   candidates.onmessage=({data})=>data.error?reject(Error(data.error)):resolve(data.candidates);
   candidates.onerror=event=>reject(Error(event.message||'备选搜索未完成'));
   candidates.postMessage({account:job.account,roster,effects,gameConfig,alternatives:job.alternatives,
-   dungeonId:job.dungeonId,pveMemberCount:job.pveMemberCount,pveOpeningSpeed:job.pveOpeningSpeed});
+   dungeonId:job.dungeonId,pveMemberCount:job.pveMemberCount,pveOpeningSpeed:job.pveOpeningSpeed,pveBattleMode:job.pveBattleMode});
  }).finally(()=>{candidates.terminate();delete job.stopSearch;});
 }
 async function searchDungeonStock(){

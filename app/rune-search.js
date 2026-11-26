@@ -18,6 +18,8 @@ const roles={
  opener:{heroes:openings,metric:1,sets:['海月火玉','破势','狂骨'],damage:true},
  finisher:{heroes:finishers,metric:1,sets:['隐念','片叶之苇','心眼'],damage:true},
  fastFinisher:{heroes:finishers,metric:1,sets:['隐念','心眼'],damage:true},
+ bossDamage:{heroes:[[608,6083],[579,5793],[389,3893],[591,5913],[612,6123],[611,6113]],
+  metric:1,sets:['隐念','海月火玉','狂骨'],damage:true},
  debuff:{heroes:[[609,6093],[557,5573],[341,3413],[583,5832]],metric:7,sets:['元兴寺','遗念火']},
  orbs:{heroes:[[372,3722],...openingOrbs],metric:7,sets:['火灵']},
  openingOrbs:{heroes:openingOrbs,metric:7,sets:['火灵']},
@@ -29,6 +31,7 @@ const roles={
  criticalHeal:{heroes:[[554,5543],[594,5943],[200,2002]],metric:10,sets:['火灵','树妖'],auto:11},
  accelerate:{heroes:[[609,6093],[237,2372],[261,2612],[596,5963],[601]],metric:7,sets:['火灵','遗念火']},
  markAmp:{heroes:[[609,6093],[369,3693],[363,3632],[367,3672],[583,5832]],metric:7,sets:['遗念火','火灵']},
+ bossMark:{heroes:[[609,6093],[583,5832],[363,3632],[367,3673]],metric:7,sets:['遗念火','火灵']},
  lightDamage:{heroes:[...openings,[568,5683]],metric:1,sets:['海月火玉','破势','狂骨'],damage:true},
 };
 const groupBuff={name:'群疗增伤',roles:['orbs','amplify','groupHeal','opener','support']};
@@ -45,6 +48,13 @@ const hun13Mark={name:'拉条增伤',roles:['accelerate','orbs','markAmp','opene
 const hun13Hold={name:'拉条与治疗',roles:['accelerate','orbs','lightDamage','finisher','criticalHeal']};
 const hun13Strategies=[[hun13Pace,hun13Mark,hun13Hold,openingDamage,groupBuff,turnAdvance],
  [hun13Mark,hun13Hold,hun13Pace,sustain,openingDamage,groupDamage]];
+// Paper figures cannot be selected. Concentrate damage on the boss before it
+// accrues buffs and keep a recovery option for teams that take counterattacks.
+const yulingStrategies=[
+ {name:'首领双输出',roles:['accelerate','orbs','bossMark','bossDamage','bossDamage']},
+ {name:'增伤与首领输出',roles:['accelerate','orbs','bossMark','bossDamage','support']},
+ {name:'首领输出与续航',roles:['orbs','bossMark','bossDamage','criticalHeal','support']},
+];
 const limit=6;
 // Check the observed losing seed before the two long fights found in the full-domain audit.
 const baseSampleSeeds=Object.freeze([0,1,2,3,7,42]);
@@ -257,7 +267,7 @@ function buildCandidates(account,{gameConfig:game,roster,effects},profile,altern
  return sampled;
 }
 
-function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpeed=0){
+function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpeed=0,battleMode=3){
  const {gameConfig:game,roster}=data;
  const strategies=[
   [{name:'单式神输出',roles:['opener']},{name:'单式神持续输出',roles:['finisher']}],
@@ -266,7 +276,7 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
    {name:'拉条增伤与输出',roles:['accelerate','markAmp','lightDamage']}],
   [{name:'供火增伤与双输出',roles:['orbs','markAmp','opener','finisher']},
    {name:'拉条供火与治疗',roles:['accelerate','orbs','lightDamage','healer']}],
-  [hun13Pace,hun13Hold,groupBuff,turnAdvance,openingDamage,sustain],
+  battleMode===267?[...yulingStrategies,hun13Pace,turnAdvance]:[hun13Pace,hun13Hold,groupBuff,turnAdvance,openingDamage,sustain],
  ][memberCount-1];
  if(!strategies)throw Error('当前关卡的上阵人数未接入库存备选');
  const speed=Number.isFinite(openingEnemySpeed)&&openingEnemySpeed>0?Math.floor(openingEnemySpeed)+1:0;

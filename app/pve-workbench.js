@@ -241,7 +241,7 @@
   const alternatives=reuse?[...new Set(job.alternatives)]:[];
   const next=job={pane,data:DATA,account:account(),selected,alternatives,previous,rows:[],running:true,cancelled:false,
    originalsComplete:useStock&&exhausted(selected),pveMemberCount:pane.memberCount,
-   pveOpeningSpeed:pane.openingSpeed,message:'正在准备库存…'};
+   pveOpeningSpeed:pane.openingSpeed,pveBattleMode:pane.battleMode,message:'正在准备库存…'};
   pane.results.replaceChildren(...previous.map(row=>row.el));
   update();
   if(focus)pane.stop.focus();

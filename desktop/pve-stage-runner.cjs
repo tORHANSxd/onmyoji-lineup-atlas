@@ -9,6 +9,7 @@ const {readConfig,matchesDamagePolicy}=require('./rune-runner.cjs');
 const {resourceVersion}=require('../app/rune-lineup.js');
 const awakeOpenings=require('../app/awake-openings.js');
 const secretOpenings=require('../app/secret-openings.js');
+const yulingOpenings=require('../app/yuling-openings.js');
 const resourceEncounters=require('../app/resource-encounters.js');
 const {firstExperience}=resourceEncounters;
 
@@ -16,6 +17,7 @@ const engines={
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  29:{name:'AwakeFbEngine',route:'awake-ordinary-solo',sha256:awakeOpenings.engineSHA256},
  266:{name:'ChallengeFbEngine',route:'secret-ordinary-solo',sha256:secretOpenings.engineSHA256},
+ 267:{name:'GorenFbEngine',route:'yuling-solo',sha256:yulingOpenings.engineSHA256},
  [firstExperience.battleMode]:{name:'NewExpEngine',route:'resource-first-new-server-exp',sha256:resourceEncounters.engineSHA256},
 };
 const positive=value=>Number.isSafeInteger(value)&&value>0;
@@ -35,6 +37,9 @@ function launch(python,args,cwd,signal){
 function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor}){
  const engine=engines[battleMode],awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
+ const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;
+ const invalidYuling=yuling&&(!Array.isArray(report?.opening)||report.opening.length!==yuling.enemies.length||
+  !yuling.enemies.every((unit,index)=>Object.entries(unit).every(([key,value])=>report.opening[index]?.[key]===value)));
  const experience=battleMode===firstExperience.battleMode?report?.experience:null;
  const invalidExperience=battleMode===firstExperience.battleMode&&(!experience||report.sceneId!==firstExperience.sceneId||
   report.waveCount!==1||experience.requiredKills!==firstExperience.requiredKills||
@@ -47,6 +52,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
  if(report?.resourceVersion!==resourceVersion||report.route!==engine.route||report.engineClass!==engine.name||
     report.engineSHA256!==engine.sha256||report.battleMode!==battleMode||report.stageId!==stageId||report.groupId!==groupId||
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
+    (yuling&&(report.sceneId!==yuling.sceneId||report.waveCount!==1||report.formationsVerified!==1||invalidYuling))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
       report.formationsVerified>report.waveCount))||
@@ -70,8 +76,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,resource]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('resource_stage.py')]);
-    return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),
+    const [awake,secret,yuling,resource]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),has('resource_stage.py')]);
+    return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
@@ -88,6 +94,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===266&&(secretOpenings.resourceVersion!==resourceVersion||stageId!==groupId||
       !secretOpenings.floors[stageId]?.solo||plan.members.length!==5))
     throw Error('当前秘闻关卡或阵容与已核验的单人入口不一致');
+   if(battleMode===267&&(yulingOpenings.resourceVersion!==resourceVersion||stageId!==groupId||
+      !yulingOpenings.floors[stageId]||plan.members.length!==5))
+    throw Error('御灵复跑需要已核验的楼层和五式神配装');
    if(battleMode===firstExperience.battleMode&&(resourceEncounters.resourceVersion!==resourceVersion||
       stageId!==firstExperience.stageId||groupId!==firstExperience.groupId||plan.members.length!==firstExperience.memberCount))
     throw Error('此入口只适用于新服首次经验妖怪的五式神配装');
