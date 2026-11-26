@@ -89,6 +89,23 @@ async function main(){
    await until('$("client-dungeons-encounter-detail").textContent.includes("不能被复活")');
    await ui('qaEncounterInput("guild","狭间暗域 鬼童丸")');
    await until('$("client-dungeons-encounter-detail").textContent.includes("击败副将后，首领战中的同名怪物血量减少50%")');
+   if(catalog.entries.has('gve_monster_wave')){
+    await ui('qaEncounterInput("guild","阴界之门 入口 101")');
+    await until('$("client-dungeons-encounter-detail").textContent.includes("70 波 · 查看随机编组与属性修正")');
+    const detail='$("client-dungeons-encounter-detail")';
+    assert.match(await ui(detail+'.textContent'),/阴界之门入口 · 101.*我方起始共享鬼火 2.*敌方起始鬼火 4.*四轮队伍/s);
+    assert.equal(await ui(detail+'.querySelectorAll(".dungeon-encounter-waves").length'),0);
+    await ui(`window.qaOpenUnderworld=(text)=>[...${detail}.querySelectorAll('summary')].find(el=>el.textContent.includes(text)).click();qaOpenUnderworld('70 波 · 查看')`);
+    await until(detail+'.textContent.includes("第 70 波 · 40 级 · 随机组 300050")');
+    await ui('qaOpenUnderworld("第 1 波 · 10 级")');
+    await until(detail+'.textContent.includes("天邪鬼绿 · 10 级 · 2 号位")');
+    assert.equal(await ui(detail+'.querySelector("select").options.length'),207);
+    await ui(`{const menu=${detail}.querySelector('select');menu.value='1';menu.dispatchEvent(new Event('change'));}`);
+    await until(detail+'.textContent.includes("唐纸伞妖 · 10 级 · 2 号位")');
+    await ui('qaOpenUnderworld("第 70 波 · 40 级")');
+    await until(detail+'.textContent.includes("清姬【裂缝BOSS】 · 40 级 · 1 号位")');
+    assert.match(await ui(detail+'.textContent'),/攻击 \+1,300%.*速度 \+75/s);
+   }
    await ui('qaEncounterInput("event","将魂试炼")');
    await until('$("client-dungeons-encounter-detail").textContent.includes("2025-10-30 23:59")');
    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/活动开放配置.*敌方初始鬼火.*敌方编组/s);

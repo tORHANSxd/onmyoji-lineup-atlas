@@ -253,7 +253,7 @@
   }
 
   function enemyWaves(table, row) {
-    if (table==='gve_battleinfo'&&Array.isArray(row.monsters)) {
+    if (table==='gve_battleinfo'&&row.difficulty!==100&&Array.isArray(row.monsters)) {
       return [row.monsters.map(([id,level],index)=>({id,level,position:index+1}))];
     }
     if (table==='boss_troops'&&Array.isArray(row.monsterWaves)&&row.monsterWaves.every(unit=>Array.isArray(unit)&&unit.length===4)) {
@@ -309,13 +309,13 @@
     } catch (error) {target.textContent = '技能资料读取失败。' + error.message;}
   }
 
-  function appendWaves(block, waves, monsters, sequential=false) {
+  function appendWaves(block, waves, monsters, sequential=false, first=1) {
     if (!waves.some(wave => wave.length)) return;
     const grid = node('div', '', 'dungeon-encounter-waves');
     for (const [i, units] of waves.entries()) {
       if (!units.length) continue;
       const card = document.createElement('section'), list = document.createElement('ul');
-      card.append(node('strong', sequential?`第 ${i+1} 波`:'编组 ' + (i + 1)), list);
+      card.append(node('strong', sequential?`第 ${i+first} 波`:'编组 ' + (i+first)), list);
       for (const unit of units) {
         const monster = monsters.get(unit.id);
         const label = [unit.copy?`复制我方 ${unit.position} 号位`:rowTitle(monster) || '怪物 ' + unit.id];
@@ -405,7 +405,7 @@
   }
 
   function encounterKind(entry) {
-    return entry.table==='pve_stage_data'&&entry.family==='daily'?entry.kind:titles[entry.table]||entry.kind;
+    return entry.kind==='阴界之门入口'||entry.table==='pve_stage_data'&&entry.family==='daily'?entry.kind:titles[entry.table]||entry.kind;
   }
 
   function awakeOpening(entry,groups) {
@@ -484,6 +484,82 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,battleMode:2000,waveCount:1,
       label:'麒麟狩猎个人成绩',version:source.resourceVersion,openingSpeed:opening.enemy.speed,
       codeStageId:scene?.actors===1&&scene.shikigami===5?opening.codeStageId:null,codeLabel:scene?.name});
+  }
+
+  function showUnderworld(destination,entry,config){
+    if(entry.table!=='gve_battleinfo'||config?.difficulty!==100)return;
+    const waveTable=state.index.tables.find(table=>table.name==='gve_monster_wave'&&table.status==='decoded');
+    if(!waveTable)return;
+    const route=state.index.resourceVersion==='0.0.816';
+    const block=node('section','','encounter-source');
+    block.append(node('h4','阴界之门战斗波次'));
+    if(route){
+      block.append(node('p','单人可带一位阴阳师及五位式神。我方起始共享鬼火 2，敌方起始鬼火 4。原版最多上阵四轮队伍，战斗结束时按已清波数结算。','caption'),
+        node('p','换队时已上阵的式神实例不可再用。只剩一位可用阴阳师时，可以继续使用该阴阳师。','caption'));
+      for(const [label,table,key] of [['原版战斗入口','battle_mode_routes',2001],['阵容码目标','team_assist_stage',19005]]){
+        const button=node('button',label,'secondary');
+        button.type='button';
+        button.onclick=()=>openRecord(table,key);
+        block.append(button);
+      }
+    }
+    const waves=document.createElement('details'),body=node('div');
+    waves.append(node('summary',`${waveTable.rowCount} 波 · 查看随机编组与属性修正`),body);
+    block.append(waves);
+    destination.append(block);
+    waves.addEventListener('toggle',async()=>{
+      if(!waves.open||body.hasChildNodes())return;
+      body.textContent='正在读取波次…';
+      try{
+        const keys=Array.from({length:waveTable.rowCount},(_,i)=>i+1);
+        const rows=(await Promise.all(Array.from({length:Math.ceil(keys.length/64)},(_,i)=>
+          api.records('gve_monster_wave',keys.slice(i*64,i*64+64))))).flat();
+        if(rows.some((row,i)=>row?.mon_wave!==keys[i]))throw Error('波次记录与索引不一致');
+        body.replaceChildren(...rows.map(underworldWave));
+      }catch(error){body.textContent='波次资料读取失败。'+error.message;}
+    });
+  }
+
+  function underworldWave(row){
+    const detail=document.createElement('details'),body=node('div');
+    const rate=new Intl.NumberFormat('zh-CN',{style:'percent',maximumFractionDigits:2,signDisplay:'exceptZero'});
+    const extra=[['攻击',row.attack_factor],['防御',row.defence_factor],['生命',row.hp_factor]]
+      .map(([name,value])=>`${name} ${rate.format(value)}`);
+    detail.append(node('summary',`第 ${row.mon_wave} 波 · ${row.level} 级 · 随机组 ${row.mon_rand_group}`),
+      node('p',[...extra,`速度 ${row.speed_factor>0?'+':''}${row.speed_factor}`].join(' · '),'caption'),body);
+    detail.addEventListener('toggle',async()=>{
+      if(!detail.open||body.hasChildNodes())return;
+      body.textContent='正在读取编组…';
+      try{
+        const [choices]=await api.records('gve_monster_random',[row.mon_rand_group]);
+        if(!choices?.length||!choices.every(choice=>choice.weight>0&&Array.isArray(choice.mon_list)))throw Error('找不到有效随机编组');
+        const label=node('label','随机编组 '),menu=document.createElement('select'),preview=node('div');
+        choices.forEach((choice,i)=>{
+          const option=node('option',`方案 ${i+1} · 权重 ${choice.weight}`);
+          option.value=String(i);
+          menu.append(option);
+        });
+        label.append(menu);
+        body.replaceChildren(label,preview);
+        let request=0;
+        const render=async()=>{
+          const current=++request,selected=Number(menu.value),choice=choices[selected];
+          const units=choice.mon_list.flatMap((id,i)=>id>0?[{id,position:i+1,level:row.level}]:[]);
+          const ids=[...new Set(units.map(unit=>unit.id))],monsters=new Map();
+          preview.textContent='正在读取敌方阵容…';
+          try{
+            const records=await api.records('monster',ids);
+            ids.forEach((id,i)=>{if(records[i])monsters.set(id,records[i]);});
+          }catch{/* original IDs still identify the formation */}
+          if(current!==request)return;
+          preview.replaceChildren();
+          appendWaves(preview,[units],monsters,false,selected+1);
+        };
+        menu.onchange=()=>void render();
+        await render();
+      }catch(error){body.textContent='编组资料读取失败。'+error.message;}
+    });
+    return detail;
   }
 
   function appendRetreatDetails(block,table,row){
@@ -580,6 +656,7 @@
     }
     showYulingEncounter(destination,entry,groups[0]);
     showGuildHunt(destination,entry,groups[0]);
+    showUnderworld(destination,entry,groups[0].row);
     if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
