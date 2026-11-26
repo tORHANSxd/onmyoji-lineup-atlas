@@ -1,4 +1,4 @@
-"""Extract opening panels for the original 八岐大蛇 encounter configurations."""
+"""Extract opening panels for supported original soul encounters."""
 
 import argparse
 import faulthandler
@@ -17,6 +17,8 @@ def extract(runtime, work):
     from battleengine.BattleController import LocalBattleController
     from battleengine.engine.Hun13Engine import Hun13Engine
     from battleengine.engine.RuneFbEngine import DATA_RUNE_FB, RuneFbEngine, const
+    from com.data.cdata import currency, system_rule_dsc
+    from DynamicConfigData import DATA_SKILL
 
     def read_floor(floor, config):
         if floor == 103:
@@ -36,8 +38,11 @@ def extract(runtime, work):
         engine.addBattlePlayer(avatar)
         engine.init()
         configured = config["monsterWaves"]
-        if engine.monsterWaveCount != (2 if floor == 103 else len(configured)):
+        expected_waves = 2 if floor == 103 else 1 if config["type"] == 3 else len(configured)
+        if engine.monsterWaveCount != expected_waves:
             raise ValueError(f"Unexpected wave count for dungeon {floor}")
+        if config["type"] == 3 and any(any(wave) for wave in configured[expected_waves:]):
+            raise ValueError(f"Non-empty unused wave for dungeon {floor}")
 
         create = engine.createMonsterEntity
         created, waves = [], []
@@ -68,10 +73,17 @@ def extract(runtime, work):
                   "allyOrbs": engine.campData1.shareGuiHuo, "enemyOrbs": engine.campData2.initGuihuo, "waves": waves}
         if isinstance(engine, Hun13Engine):
             result["baseRoundSeconds"] = engine.get_totaltime()
+        if config["type"] == 2:
+            ticket_id, ticket_count = config["menpiao"]
+            result["ticket"] = {"id": ticket_id, "count": ticket_count, "name": currency.data[ticket_id]["name"]}
+            result["rules"] = [DATA_SKILL.data[(skill, 1, -1)]["desc"] for skill in (254, 255, 256)]
+        if config["type"] == 3:
+            text = system_rule_dsc.data[config["fbtips"]]["rule_dsc"]
+            result["rules"] = [line.removeprefix("※") for line in text.splitlines() if line.startswith("※")]
         return result
 
     configs = DATA_RUNE_FB.data
-    floors = {floor: read_floor(floor, configs[floor]) for floor in sorted(configs) if configs[floor]["type"] == 1}
+    floors = {floor: read_floor(floor, configs[floor]) for floor in sorted(configs) if configs[floor]["type"] in (1, 2, 3)}
     if not floors or host.oracle.unsupported:
         raise RuntimeError(f"Native opening verification incomplete: {host.oracle.unsupported}")
     engines = {name: modules.rows[f"battleengine.engine.{name}"]["marshalSHA256"] for name in ("RuneFbEngine", "Hun13Engine")}

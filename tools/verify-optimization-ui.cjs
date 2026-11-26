@@ -784,28 +784,36 @@ async function main(){
   await capture('dungeon-soul-11-replay');
   await ui('$("dungeon-rules-select").value="102";renderDungeonRules()');
   assert.equal(await ui('$("dungeon-battle-results").hidden'),true);
-  const first={...lineup,id:'qa-rune-01',gameSceneId:sceneForDungeon(1),code:'|TA|qa-rune-01',title:'御魂壹层已知阵容'};
-  const tenth={...lineup,id:'qa-rune-10',gameSceneId:sceneForDungeon(10),code:'|TA|qa-rune-10',title:'御魂拾层已知阵容'};
+  const floors=[[1,'御魂壹层',3],[10,'御魂拾层',3],[13,'业原火痴之阵',3],[1004,'日轮之陨日蚀',1]].map(([dungeonId,name,waves])=>({
+   dungeonId,waves,lineup:{...lineup,id:'qa-rune-'+dungeonId,gameSceneId:sceneForDungeon(dungeonId),
+    code:'|TA|qa-rune-'+dungeonId,title:name+'已知阵容'},
+  }));
   const ordinaryCalls=[];
   mockBattle=(plan,options)=>{
    assert.deepEqual(plan.spirit,spirit);
    assert.equal(plan.damageFloor,true);
+   const waves=floors.find(floor=>floor.dungeonId===options.dungeonId).waves;
    ordinaryCalls.push(options);
-   return {seed:options.seed,completed:true,outcome:'win',wavesCleared:3,formationsVerified:3,bouts:6,engineSeconds:13};
+   return {seed:options.seed,completed:true,outcome:'win',wavesCleared:waves,formationsVerified:waves,bouts:6,engineSeconds:13};
   };
   try{
-   await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify([first,tenth])}};`);
-   for(const [dungeonId,selected,other] of [[1,first,tenth],[10,tenth,first]]){
+   await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify(floors.map(floor=>floor.lineup))}};`);
+   for(const {dungeonId,waves,lineup:selected} of floors){
     await ui(`$("dungeon-rules-select").value="${dungeonId}";renderDungeonRules();$("dungeon-show-lineups").click();
-     selectedLineups=new Set(['qa-rune-01','qa-rune-10']);renderSelection();$("dungeon-match-selected").click()`);
+     selectedLineups=new Set(${JSON.stringify(floors.map(floor=>floor.lineup.id))});renderSelection();$("dungeon-match-selected").click()`);
     await until(`dungeonBattle?.dungeonId===${dungeonId}&&!dungeonBattle.running&&dungeonBattle.rows.length===1&&dungeonBattle.rows[0].state==="finished"`);
     const content=await ui('$("dungeon-battle-results").textContent');
-    assert.ok(content.includes(selected.title)&&!content.includes(other.title));
-    assert.match(content,/已通过 6 个采样种子.*已核对 3 波原版编组/s);
+    assert.ok(content.includes(selected.title)&&floors.every(floor=>floor.dungeonId===dungeonId||!content.includes(floor.lineup.title)));
+    assert.ok(content.includes('已通过 6 个采样种子')&&content.includes('已核对 '+waves+' 波原版编组'));
     assert.equal(await ui('document.querySelector("[data-battle-full]")'),null);
+    if(dungeonId===13)assert.match(await ui('$("dungeon-rules-details").textContent'),/痴念之卷 ×1.*原版特殊机制.*三个嗔面/s);
+    if(dungeonId===1004){
+     assert.match(await ui('$("dungeon-rules-details").textContent'),/原版战斗 1 波.*减伤至60%.*免疫回合后伤害/s);
+     assert.equal(await ui('$("dungeon-rules-details").querySelectorAll(".dungeon-wave").length'),1);
+    }
    }
   }finally{mockBattle=null;}
-  assert.deepEqual(ordinaryCalls,[1,10].flatMap(dungeonId=>[0,1,2,3,7,42].map(seed=>({dungeonId,seed,fixedStep:true}))));
+  assert.deepEqual(ordinaryCalls,floors.flatMap(({dungeonId})=>[0,1,2,3,7,42].map(seed=>({dungeonId,seed,fixedStep:true}))));
   await ui('stopMatch();$("clear-filters").click();$("dungeon-workbench").open=false');
  });
  await check('全种子通过结果显示单人本地范围和最慢一场',async()=>{

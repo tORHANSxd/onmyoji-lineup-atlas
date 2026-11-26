@@ -12,19 +12,19 @@ test('魂王的原版开场属性只适用于已核验版本和关卡',()=>{
  assert.equal(G.runeOpeningStats('0.0.817',stage.id,4740062),null);
  assert.equal(G.runeOpeningStats(source.resourceVersion,101,4740062),null);
 });
-test('八岐大蛇原版开场按副本、波次和槽位匹配，虚无按专用引擎核验两波',()=>{
+test('御魂原版开场按副本、波次和槽位匹配，日轮之陨只使用首波',()=>{
  const {source,dungeons}=require('../data/dungeon-rules.json');
  const {floors,dungeonTableSHA256}=require('../app/rune-openings.js');
  const {runeFloorIds,sceneForDungeon}=require('../app/rune-lineup.js');
  const version=source.resourceVersion;
  assert.equal(dungeonTableSHA256,source.tables.dungeon_rune.marshalSHA256);
- assert.equal(Object.keys(floors).length,13);
- assert.deepEqual(runeFloorIds,[1,2,3,4,5,6,7,8,9,10,101]);
+ assert.equal(Object.keys(floors).length,20);
+ assert.deepEqual(runeFloorIds,[1,2,3,4,5,6,7,8,9,10,11,12,13,101,1001,1002,1003,1004]);
  for(const [id,floor] of Object.entries(floors)){
   const raw=dungeons.find(row=>row.id===Number(id));
   assert.equal(floor.scene,raw.scene);
   assert.deepEqual([floor.allyOrbs,floor.enemyOrbs],[3,2]);
-  assert.equal(floor.waves.length,id==='103'?2:3);
+  assert.equal(floor.waves.length,raw.id===103?2:raw.id>=1001?1:3);
   if(runeFloorIds.includes(raw.id)){
    assert.equal(floor.battleMode,27);
    assert.equal(sceneForDungeon(raw.id),raw.gameSceneId);
@@ -42,6 +42,10 @@ test('八岐大蛇原版开场按副本、波次和槽位匹配，虚无按专�
  assert.equal(G.runeOpeningStage(version,103).battleMode,580);
  assert.equal(G.runeOpeningStage(version,103).baseRoundSeconds,120);
  assert.equal(G.runeOpeningStage(version,103,'changed-table'),null);
+ assert.deepEqual(floors[13].ticket,{id:900041,count:1,name:'痴念之卷'});
+ assert.match(floors[13].rules.join('\n'),/三个嗔面.*攻击提高100%/s);
+ assert.match(floors[1003].rules.join('\n'),/己方暴击伤害提高300%.*鬼火减2/s);
+ assert.match(floors[1004].rules.join('\n'),/最高减伤至60%.*免疫回合后伤害/s);
 });
 function lineup(){return {title:'官方结构测试',desc:'',select_stage_id:stage,hconf:[G.defaultMember(D,10),...[554,554,554,554,554].map(id=>G.defaultMember(D,id))]};}
 test('客户端技能与原图覆盖每个可用角色，等级和标签按数据读取',()=>{

@@ -15,16 +15,17 @@ const limits=[
  ['crit','critical_rate',100],['critDamage','critical_pow',100],['effectHit','debuff_acc',100],['effectResist','debuff_res',100],
 ];
 
-function sampleVerdict(report,seed){
+function sampleVerdict(report,seed,waveCount=3){
  if(report?.seed!==seed||report.completed!==true||!Number.isFinite(report.engineSeconds)||report.engineSeconds<0||
-  !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>3)return 'unknown';
+  !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>waveCount)return 'unknown';
  if(report.outcome==='loss')return 'loss';
- return report.outcome==='win'&&report.wavesCleared===3?'pass':'unknown';
+ return report.outcome==='win'&&report.wavesCleared===waveCount?'pass':'unknown';
 }
 
 function passed(samples,dungeonId=R.dungeonId){
  const seeds=S.samplesForDungeon(dungeonId);
- return !!seeds&&samples.length===seeds.length&&samples.every((r,i)=>sampleVerdict(r,seeds[i])==='pass');
+ const waves=G.runeOpeningStage(R.resourceVersion,dungeonId)?.waves.length;
+ return !!seeds&&!!waves&&samples.length===seeds.length&&samples.every((r,i)=>sampleVerdict(r,seeds[i],waves)==='pass');
 }
 
 function commonSampleTiming(rows){

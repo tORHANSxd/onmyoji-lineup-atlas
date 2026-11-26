@@ -6,9 +6,14 @@
 'use strict';
 const sceneId=1001001,resourceVersion='0.0.816',dungeonId=102;
 const hun13SceneId=1001000;
-const runeFloorIds=[1,2,3,4,5,6,7,8,9,10,101];
-const replayStages=new Map(runeFloorIds.map(id=>[id,id===101?1001002:1001013-id]));
-replayStages.set(dungeonId,sceneId);
+const replayStages=new Map([
+ [1,1001012],[2,1001011],[3,1001010],[4,1001009],[5,1001008],
+ [6,1001007],[7,1001006],[8,1001005],[9,1001004],[10,1001003],
+ [11,10011003],[12,10011002],[13,10011001],[101,1001002],
+ [1001,10012004],[1002,10012003],[1003,10012002],[1004,10012001],
+ [dungeonId,sceneId],
+]);
+const runeFloorIds=[...replayStages.keys()].filter(id=>id!==dungeonId);
 const sceneForDungeon=id=>replayStages.get(id)??null;
 
 function autoSkill(member,game,skills){

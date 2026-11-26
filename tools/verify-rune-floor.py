@@ -1,4 +1,4 @@
-"""Replay the client's regular 八岐大蛇 floors using selected inventory."""
+"""Replay known inventory in supported RuneFbEngine floors."""
 
 import argparse
 import faulthandler
@@ -69,8 +69,9 @@ def run(args, runtime, work):
 
     stage = DATA_RUNE_FB.data[args.dungeon]
     configured = stage["monsterWaves"]
-    if stage["type"] != 1 or len(configured) != 3:
-        raise ValueError("This floor does not use the three-wave 八岐大蛇 engine")
+    wave_count = 1 if stage["type"] == 3 else 3
+    if stage["type"] not in (1, 2, 3) or len(configured) != 3 or sum(bool(any(wave)) for wave in configured) != wave_count:
+        raise ValueError("Unexpected RuneFbEngine wave configuration")
     engine = RuneFbEngine({"fbId": args.dungeon})
     engine.battleMode = const.BattleMode.MODE_RUNE_FB
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
@@ -118,7 +119,7 @@ def run(args, runtime, work):
 
     def verify_wave():
         wave = engine.finishedWaveCount
-        if wave != len(formations) or wave >= len(configured):
+        if wave != len(formations) or wave >= wave_count:
             raise RuntimeError("Unexpected original enemy wave order")
         actual = []
 
@@ -142,8 +143,11 @@ def run(args, runtime, work):
     engine.onEntityCreated = observe_created
     engine._createNextRoundMons = verify_wave
     engine.init()
-    if engine.seed != args.seed or engine.monsterWaveCount != 3 or engine.random is not random_record:
+    if (engine.fbId != args.dungeon or engine.seed != args.seed or engine.monsterWaveCount != wave_count
+            or engine.random is not random_record):
         raise RuntimeError("Unexpected native battle initialization")
+    if stage["type"] == 3 and engine.statistics.is_rilunzzhan != args.dungeon:
+        raise RuntimeError("The original daily-wheel rule selector did not initialize")
     recorder = engine.battleRecorder or BattleRecorderRune(engine, controller)
     engine.battleRecorder = recorder
     engine.op_init(controller, actor["heroId"], list(fighters), [])
@@ -184,8 +188,9 @@ def run(args, runtime, work):
         engine.op_selectHeroOk(controller)
 
     replay = "".join(recorder.data_list).encode("utf-8")
-    result = {**evidence, "dungeonId": args.dungeon, "fixture": "selected-inventory", "seed": engine.seed,
+    result = {**evidence, "dungeonId": engine.fbId, "fixture": "selected-inventory", "seed": engine.seed,
               "battleMode": engine.battleMode, "sceneId": engine.combineSceneInfoId, "formations": formations,
+              "waveCount": engine.monsterWaveCount,
               "engineSHA256": modules.rows["battleengine.engine.RuneFbEngine"]["marshalSHA256"],
               "dungeonTableSHA256": modules.rows["com.data.cdata.dungeon_rune"]["marshalSHA256"],
               "fixedStepMs": 20, "teamSHA256": sha256(team_bytes), "suitIndexSHA256": sha256(suit_bytes),
@@ -217,7 +222,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--dungeon", required=True, type=int, choices=[*range(1, 11), 101])
+    parser.add_argument("--dungeon", required=True, type=int, choices=[*range(1, 14), 101, *range(1001, 1005)])
     parser.add_argument("--seed", required=True, type=int)
     args = parser.parse_args()
     if not 0 <= args.seed < 10000:

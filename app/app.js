@@ -154,6 +154,7 @@ function canReplayDungeon(dungeon){
 }
 const isSoulKing=id=>id===AtlasRuneLineup.dungeonId;
 const dungeonSampleSeeds=id=>AtlasRuneSearch.samplesForDungeon(id);
+const runeWaveCount=id=>AtlasGame.runeOpeningStage(AtlasRuneLineup.resourceVersion,id)?.waves.length;
 const supportsFullSeedAudit=id=>[101,102,103].includes(id);
 function usesDungeonInventory(job){
  const active=account(),selected=job?.account;
@@ -218,12 +219,13 @@ function sampleBattleMarkup(samples){
 }
 
 async function sampleDungeonTeam(plan,row,active,seeds=AtlasRuneSearch.sampleSeeds,dungeonId=AtlasRuneLineup.dungeonId){
+ const waveCount=runeWaveCount(dungeonId);
  for(const seed of seeds){
   if(!active())return 'unknown';
   const report=await window.runeBattle.run(plan,{seed,fixedStep:true,...(isSoulKing(dungeonId)?{}:{dungeonId})});
   if(!active())return 'unknown';
   row.samples.push(report);renderDungeonSelection();
-  const verdict=AtlasRuneCandidate.sampleVerdict(report,seed);
+  const verdict=AtlasRuneCandidate.sampleVerdict(report,seed,waveCount);
   if(verdict!=='pass')return verdict;
  }
  return 'pass';
@@ -255,7 +257,7 @@ async function verifyDungeonSeeds(job,row,selector){
  if(audit.verdict==='pass'||audit.verdict==='loss')return;
  planSeedAudits(job).set(row.teamKey,audit);
  if(audit.samples.length&&audit.verdict==='unknown'&&
-    AtlasRuneCandidate.sampleVerdict(audit.samples.at(-1),AtlasRuneSearch.extraSeeds[audit.samples.length-1])!=='pass')audit.samples.pop();
+    AtlasRuneCandidate.sampleVerdict(audit.samples.at(-1),AtlasRuneSearch.extraSeeds[audit.samples.length-1],runeWaveCount(job.dungeonId))!=='pass')audit.samples.pop();
  Object.assign(audit,{running:true,cancelled:false,error:null,verdict:null});
  job.activeSeedAudit=audit;
  const current=()=>usesDungeonInventory(job)&&dungeonBattle===job;
@@ -673,6 +675,7 @@ function renderDungeonRules(){
   const native=AtlasGame.runeOpeningStage(data.source.resourceVersion,dungeon.id,data.source.tables?.dungeon_rune?.marshalSHA256??null);
   const nativeWaves=native?.waves.length;
   const waves=dungeon.waves.map((wave,index)=>{
+   if(!wave.length)return '';
    const modifiers=waveRules.flatMap(([field,label,percent])=>{
     const value=dungeon.waveModifiers?.[field]?.[index];
     if(!Number.isFinite(value)||value===0)return [];
@@ -690,7 +693,9 @@ function renderDungeonRules(){
   }).join('');
   const rotation=native?.engine==='Hun13Engine'?
    `<p class="caption">每波基础时限 ${native.baseRoundSeconds} 秒。首波出战的式神实例不能参加第二波。首波通关时，剩余时间计入第二波。首波落败时，按首领剩余生命比例扣减第二波时间。</p>`:'';
-  details.innerHTML=`<p class="caption">客户端资源 ${esc(data.source.resourceVersion)} · ${dungeon.stamina} 体力 · ${native?`原版战斗 ${nativeWaves} 波 · 初始鬼火 我方 ${native.allyOrbs} / 敌方 ${native.enemyOrbs}`:`配置 ${dungeon.waves.length} 波`}</p>${rotation}<div class="dungeon-waves">${waves}</div><p class="caption">精算核对原码的库存与面板要求。实战胜率和动画耗时待验证。</p>`;
+  const cost=native?.ticket?`${native.ticket.name} ×${native.ticket.count}`:`${dungeon.stamina} 体力`;
+  const rules=native?.rules?.length?`<details class="dungeon-rune-mechanics"><summary>原版特殊机制</summary><ul>${native.rules.map(rule=>`<li>${esc(rule)}</li>`).join('')}</ul></details>`:'';
+  details.innerHTML=`<p class="caption">客户端资源 ${esc(data.source.resourceVersion)} · ${esc(cost)} · ${native?`原版战斗 ${nativeWaves} 波 · 初始鬼火 我方 ${native.allyOrbs} / 敌方 ${native.enemyOrbs}`:`配置 ${dungeon.waves.length} 波`}</p>${rotation}${rules}<div class="dungeon-waves">${waves}</div><p class="caption">精算核对原码的库存与面板要求。实战胜率和动画耗时待验证。</p>`;
  }
  renderDungeonSelection();
 }

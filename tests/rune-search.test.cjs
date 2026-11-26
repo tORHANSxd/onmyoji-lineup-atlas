@@ -8,6 +8,13 @@ const T=require('../desktop/ta-codec.cjs');
 const {candidates,pveCandidates,teamKey,sampleSeeds,baseSampleSeeds,hun13Candidates,hun13Key,hun13SampleSeeds}=require('../app/rune-search.js');
 const data=require('../data/bundle.json');
 
+test('日轮之陨的单波胜利算通过，误报三波视为结算异常',()=>{
+ const reports=baseSampleSeeds.map(seed=>({seed,completed:true,outcome:'win',engineSeconds:21,wavesCleared:1}));
+ assert.equal(R.passed(reports,1004),true);
+ assert.equal(R.passed(reports,13),false);
+ assert.equal(R.sampleVerdict({...reports[0],wavesCleared:3},0,1),'unknown');
+});
+
 test('地域鬼王只在共同种子回合与承伤均占优时判定更佳',()=>{
  const score=(seed,rounds,receivedDamage)=>({seed,completed:true,outcome:'win',regionalBoss:{metrics:{rounds,receivedDamage}}});
  const strong=R.regionalResult([score(0,4,500),score(1,5,600)]);

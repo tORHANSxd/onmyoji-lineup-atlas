@@ -68,7 +68,7 @@ function createRuneFloorRunner({configPath,scriptRoot,suits}){
     const floor=floors[dungeonId];
     if(report.resourceVersion!==resourceVersion||report.dungeonId!==dungeonId||report.fixture!=='selected-inventory'||
        report.battleMode!==floor.battleMode||report.sceneId!==floor.scene||report.engineSHA256!==engineSHA256[floor.engine]||
-       report.dungeonTableSHA256!==dungeonTableSHA256||!Array.isArray(report.formations)||
+       report.dungeonTableSHA256!==dungeonTableSHA256||report.waveCount!==floor.waves.length||!Array.isArray(report.formations)||
        report.formations.length<report.wavesCleared||report.formations.length>floor.waves.length||
        !report.formations.every((wave,index)=>JSON.stringify(wave)===JSON.stringify(
         floor.waves[index].map(({position,id,level})=>[position,id,level])))||
@@ -76,7 +76,7 @@ function createRuneFloorRunner({configPath,scriptRoot,suits}){
        !matchesDamagePolicy(report,plan.damageFloor===true)||
        typeof report.completed!=='boolean'||!['win','loss','unknown'].includes(report.outcome)||
        (report.completed&&(!/^[a-f0-9]{64}$/.test(report.recordSHA256)||report.recordSHA256===emptyReplay))||
-       !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>3||
+       !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>report.waveCount||
        !Number.isSafeInteger(report.bouts)||report.bouts<0||!Number.isFinite(report.engineSeconds)||report.engineSeconds<0){
      throw Error('御魂原版复跑没有返回与楼层和编组一致的结算');
     }

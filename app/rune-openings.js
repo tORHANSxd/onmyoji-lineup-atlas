@@ -969,6 +969,387 @@
         ]
       ]
     },
+    "11": {
+      "scene": 48,
+      "engine": "RuneFbEngine",
+      "battleMode": 27,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 400238,
+            "position": 1,
+            "level": 35,
+            "hp": 6590.100000000001,
+            "speed": 130.0,
+            "attack": 1230.0000000000002,
+            "defense": 288.0
+          },
+          {
+            "id": 401238,
+            "position": 2,
+            "level": 35,
+            "hp": 4942.650000000001,
+            "speed": 150.0,
+            "attack": 1230.0000000000002,
+            "defense": 288.0
+          },
+          {
+            "id": 400254,
+            "position": 3,
+            "level": 35,
+            "hp": 4942.650000000001,
+            "speed": 135.0,
+            "attack": 615.0000000000001,
+            "defense": 288.0
+          },
+          {
+            "id": 402238,
+            "position": 4,
+            "level": 35,
+            "hp": 7413.825000000001,
+            "speed": 155.0,
+            "attack": 369.00000000000006,
+            "defense": 288.0
+          }
+        ],
+        [
+          {
+            "id": 403238,
+            "position": 1,
+            "level": 35,
+            "hp": 6590.100000000001,
+            "speed": 140.0,
+            "attack": 1230.0000000000002,
+            "defense": 288.0
+          },
+          {
+            "id": 400202,
+            "position": 2,
+            "level": 35,
+            "hp": 4942.650000000001,
+            "speed": 115.0,
+            "attack": 615.0000000000001,
+            "defense": 288.0
+          },
+          {
+            "id": 400227,
+            "position": 3,
+            "level": 35,
+            "hp": 13179.900000000001,
+            "speed": 150.0,
+            "attack": 369.00000000000006,
+            "defense": 288.0
+          },
+          {
+            "id": 400241,
+            "position": 4,
+            "level": 35,
+            "hp": 8237.550000000001,
+            "speed": 145.0,
+            "attack": 369.00000000000006,
+            "defense": 288.0
+          }
+        ],
+        [
+          {
+            "id": 25,
+            "position": 1,
+            "level": 35,
+            "hp": 65898.3,
+            "speed": 150.0,
+            "attack": 1107.0000000000002,
+            "defense": 288.0
+          },
+          {
+            "id": 25,
+            "position": 5,
+            "level": 35,
+            "hp": 65898.3,
+            "speed": 150.0,
+            "attack": 1107.0000000000002,
+            "defense": 288.0
+          },
+          {
+            "id": 25,
+            "position": 6,
+            "level": 35,
+            "hp": 65898.3,
+            "speed": 150.0,
+            "attack": 1107.0000000000002,
+            "defense": 288.0
+          }
+        ]
+      ],
+      "ticket": {
+        "id": 900039,
+        "count": 1,
+        "name": "\u8d2a\u5ff5\u4e4b\u5377"
+      },
+      "rules": [
+        "\u5f53\u4e09\u4e2a\u55d4\u9762\u5728\u573a\u65f6\uff0c\u6311\u6218\u8005\u83b7\u5f97[\u5b9a]\u6548\u679c\uff0c\u653b\u51fb\u63d0\u9ad8100%\uff0c\u6301\u7eed3\u56de\u5408\u3002",
+        "\u5f53\u4e09\u4e2a\u75f4\u9762\u5728\u573a\u65f6\uff0c\u4e1a\u539f\u706b\u83b7\u5f97[\u6212]\u6548\u679c\uff0c\u9632\u5fa1\u964d\u4f4e75%\uff0c\u653b\u51fb\u964d\u4f4e20%\uff0c\u6301\u7eed3\u56de\u5408\u3002",
+        "\u5f53\u4e09\u4e2a\u8d2a\u9762\u5728\u573a\u65f6\uff0c\u6311\u6218\u8005\u7acb\u523b\u83b7\u5f973\u70b9\u9b3c\u706b\uff0c\u5e76\u653b\u51fb\u63d0\u9ad850%\uff0c\u6301\u7eed3\u56de\u5408\u3002"
+      ]
+    },
+    "12": {
+      "scene": 48,
+      "engine": "RuneFbEngine",
+      "battleMode": 27,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 400238,
+            "position": 1,
+            "level": 40,
+            "hp": 12944.5,
+            "speed": 150.0,
+            "attack": 2679.0,
+            "defense": 352.0
+          },
+          {
+            "id": 401238,
+            "position": 2,
+            "level": 40,
+            "hp": 9708.5,
+            "speed": 170.0,
+            "attack": 2679.0,
+            "defense": 352.0
+          },
+          {
+            "id": 400254,
+            "position": 3,
+            "level": 40,
+            "hp": 9708.5,
+            "speed": 155.0,
+            "attack": 1339.5,
+            "defense": 352.0
+          },
+          {
+            "id": 402238,
+            "position": 4,
+            "level": 40,
+            "hp": 14562.5,
+            "speed": 175.0,
+            "attack": 803.6999999999999,
+            "defense": 352.0
+          }
+        ],
+        [
+          {
+            "id": 404238,
+            "position": 1,
+            "level": 40,
+            "hp": 12944.5,
+            "speed": 160.0,
+            "attack": 2679.0,
+            "defense": 352.0
+          },
+          {
+            "id": 400202,
+            "position": 2,
+            "level": 40,
+            "hp": 9708.5,
+            "speed": 135.0,
+            "attack": 1339.5,
+            "defense": 352.0
+          },
+          {
+            "id": 400227,
+            "position": 3,
+            "level": 40,
+            "hp": 25888.5,
+            "speed": 170.0,
+            "attack": 803.6999999999999,
+            "defense": 352.0
+          },
+          {
+            "id": 400241,
+            "position": 4,
+            "level": 40,
+            "hp": 16180.5,
+            "speed": 165.0,
+            "attack": 803.6999999999999,
+            "defense": 352.0
+          }
+        ],
+        [
+          {
+            "id": 25,
+            "position": 1,
+            "level": 40,
+            "hp": 129440.5,
+            "speed": 170.0,
+            "attack": 2411.1,
+            "defense": 352.0
+          },
+          {
+            "id": 25,
+            "position": 5,
+            "level": 40,
+            "hp": 129440.5,
+            "speed": 170.0,
+            "attack": 2411.1,
+            "defense": 352.0
+          },
+          {
+            "id": 25,
+            "position": 6,
+            "level": 40,
+            "hp": 129440.5,
+            "speed": 170.0,
+            "attack": 2411.1,
+            "defense": 352.0
+          }
+        ]
+      ],
+      "ticket": {
+        "id": 900040,
+        "count": 1,
+        "name": "\u55d4\u5ff5\u4e4b\u5377"
+      },
+      "rules": [
+        "\u5f53\u4e09\u4e2a\u55d4\u9762\u5728\u573a\u65f6\uff0c\u6311\u6218\u8005\u83b7\u5f97[\u5b9a]\u6548\u679c\uff0c\u653b\u51fb\u63d0\u9ad8100%\uff0c\u6301\u7eed3\u56de\u5408\u3002",
+        "\u5f53\u4e09\u4e2a\u75f4\u9762\u5728\u573a\u65f6\uff0c\u4e1a\u539f\u706b\u83b7\u5f97[\u6212]\u6548\u679c\uff0c\u9632\u5fa1\u964d\u4f4e75%\uff0c\u653b\u51fb\u964d\u4f4e20%\uff0c\u6301\u7eed3\u56de\u5408\u3002",
+        "\u5f53\u4e09\u4e2a\u8d2a\u9762\u5728\u573a\u65f6\uff0c\u6311\u6218\u8005\u7acb\u523b\u83b7\u5f973\u70b9\u9b3c\u706b\uff0c\u5e76\u653b\u51fb\u63d0\u9ad850%\uff0c\u6301\u7eed3\u56de\u5408\u3002"
+      ]
+    },
+    "13": {
+      "scene": 48,
+      "engine": "RuneFbEngine",
+      "battleMode": 27,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 400238,
+            "position": 1,
+            "level": 40,
+            "hp": 18122.3,
+            "speed": 170.0,
+            "attack": 5358.0,
+            "defense": 352.0
+          },
+          {
+            "id": 401238,
+            "position": 2,
+            "level": 40,
+            "hp": 13591.9,
+            "speed": 190.0,
+            "attack": 5358.0,
+            "defense": 352.0
+          },
+          {
+            "id": 400254,
+            "position": 3,
+            "level": 40,
+            "hp": 13591.9,
+            "speed": 175.0,
+            "attack": 2679.0,
+            "defense": 352.0
+          },
+          {
+            "id": 402238,
+            "position": 4,
+            "level": 40,
+            "hp": 20387.5,
+            "speed": 195.0,
+            "attack": 1607.3999999999999,
+            "defense": 352.0
+          }
+        ],
+        [
+          {
+            "id": 404238,
+            "position": 2,
+            "level": 40,
+            "hp": 18122.3,
+            "speed": 180.0,
+            "attack": 5358.0,
+            "defense": 352.0
+          },
+          {
+            "id": 400202,
+            "position": 3,
+            "level": 40,
+            "hp": 13591.9,
+            "speed": 155.0,
+            "attack": 2679.0,
+            "defense": 352.0
+          },
+          {
+            "id": 400234,
+            "position": 4,
+            "level": 40,
+            "hp": 20387.5,
+            "speed": 160.0,
+            "attack": 1607.3999999999999,
+            "defense": 352.0
+          },
+          {
+            "id": 400227,
+            "position": 5,
+            "level": 40,
+            "hp": 36243.899999999994,
+            "speed": 190.0,
+            "attack": 1607.3999999999999,
+            "defense": 352.0
+          },
+          {
+            "id": 400241,
+            "position": 6,
+            "level": 40,
+            "hp": 22652.699999999997,
+            "speed": 185.0,
+            "attack": 1607.3999999999999,
+            "defense": 352.0
+          }
+        ],
+        [
+          {
+            "id": 25,
+            "position": 1,
+            "level": 40,
+            "hp": 181216.69999999998,
+            "speed": 190.0,
+            "attack": 4822.2,
+            "defense": 352.0
+          },
+          {
+            "id": 25,
+            "position": 5,
+            "level": 40,
+            "hp": 181216.69999999998,
+            "speed": 190.0,
+            "attack": 4822.2,
+            "defense": 352.0
+          },
+          {
+            "id": 25,
+            "position": 6,
+            "level": 40,
+            "hp": 181216.69999999998,
+            "speed": 190.0,
+            "attack": 4822.2,
+            "defense": 352.0
+          }
+        ]
+      ],
+      "ticket": {
+        "id": 900041,
+        "count": 1,
+        "name": "\u75f4\u5ff5\u4e4b\u5377"
+      },
+      "rules": [
+        "\u5f53\u4e09\u4e2a\u55d4\u9762\u5728\u573a\u65f6\uff0c\u6311\u6218\u8005\u83b7\u5f97[\u5b9a]\u6548\u679c\uff0c\u653b\u51fb\u63d0\u9ad8100%\uff0c\u6301\u7eed3\u56de\u5408\u3002",
+        "\u5f53\u4e09\u4e2a\u75f4\u9762\u5728\u573a\u65f6\uff0c\u4e1a\u539f\u706b\u83b7\u5f97[\u6212]\u6548\u679c\uff0c\u9632\u5fa1\u964d\u4f4e75%\uff0c\u653b\u51fb\u964d\u4f4e20%\uff0c\u6301\u7eed3\u56de\u5408\u3002",
+        "\u5f53\u4e09\u4e2a\u8d2a\u9762\u5728\u573a\u65f6\uff0c\u6311\u6218\u8005\u7acb\u523b\u83b7\u5f973\u70b9\u9b3c\u706b\uff0c\u5e76\u653b\u51fb\u63d0\u9ad850%\uff0c\u6301\u7eed3\u56de\u5408\u3002"
+      ]
+    },
     "101": {
       "scene": 40064,
       "engine": "RuneFbEngine",
@@ -1228,6 +1609,178 @@
         ]
       ],
       "baseRoundSeconds": 120
+    },
+    "1001": {
+      "scene": 40112,
+      "engine": "RuneFbEngine",
+      "battleMode": 27,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 7200010,
+            "position": 1,
+            "level": 40,
+            "hp": 1500000.499995536,
+            "speed": 145.0,
+            "attack": 924.2550000000001,
+            "defense": 133.76
+          },
+          {
+            "id": 7200011,
+            "position": 2,
+            "level": 40,
+            "hp": 152221.94,
+            "speed": 155.0,
+            "attack": 803.7000000000002,
+            "defense": 133.76
+          },
+          {
+            "id": 7200012,
+            "position": 3,
+            "level": 40,
+            "hp": 216488.90000000002,
+            "speed": 130.0,
+            "attack": 1205.5500000000002,
+            "defense": 147.84
+          }
+        ]
+      ],
+      "rules": [
+        "\u300c\u65e5\u8f6e\u5d29\u574f\uff0c\u9700\u5168\u795e\u8d2f\u6ce8\uff01\u300d\u5df1\u65b9\u66b4\u51fb\u4f24\u5bb3\u63d0\u9ad8300%\u3002",
+        "\u300c\u5728\u8f6e\u56de\u4e2d\uff0c\u5351\u5f25\u547c\u7684\u884c\u52a8\u5c06\u4e0d\u53ef\u9006\u8f6c\uff01\u300d\u6240\u6709\u6539\u53d8\u884c\u52a8\u6761\u7684\u6548\u679c\u90fd\u4e0d\u4f1a\u751f\u6548\u3002",
+        "\u300c\u4e13\u6ce8\u300d\u6240\u6709\u6280\u80fd\u6d88\u8017\u9b3c\u706b\u51cf2\u3002"
+      ]
+    },
+    "1002": {
+      "scene": 40112,
+      "engine": "RuneFbEngine",
+      "battleMode": 27,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 7200010,
+            "position": 1,
+            "level": 40,
+            "hp": 2100000.69999375,
+            "speed": 145.0,
+            "attack": 1540.425,
+            "defense": 133.76
+          },
+          {
+            "id": 7200011,
+            "position": 2,
+            "level": 40,
+            "hp": 213110.716,
+            "speed": 155.0,
+            "attack": 1339.5,
+            "defense": 133.76
+          },
+          {
+            "id": 7200012,
+            "position": 3,
+            "level": 40,
+            "hp": 303084.46,
+            "speed": 130.0,
+            "attack": 2009.25,
+            "defense": 147.84
+          }
+        ]
+      ],
+      "rules": [
+        "\u300c\u65e5\u8f6e\u5d29\u574f\uff0c\u9700\u5168\u795e\u8d2f\u6ce8\uff01\u300d\u5df1\u65b9\u66b4\u51fb\u4f24\u5bb3\u63d0\u9ad8300%\u3002",
+        "\u300c\u5728\u8f6e\u56de\u4e2d\uff0c\u5351\u5f25\u547c\u7684\u884c\u52a8\u5c06\u4e0d\u53ef\u9006\u8f6c\uff01\u300d\u6240\u6709\u6539\u53d8\u884c\u52a8\u6761\u7684\u6548\u679c\u90fd\u4e0d\u4f1a\u751f\u6548\u3002",
+        "\u300c\u4e13\u6ce8\u300d\u6240\u6709\u6280\u80fd\u6d88\u8017\u9b3c\u706b\u51cf2\u3002"
+      ]
+    },
+    "1003": {
+      "scene": 40112,
+      "engine": "RuneFbEngine",
+      "battleMode": 27,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 7200010,
+            "position": 1,
+            "level": 40,
+            "hp": 3000000.999991072,
+            "speed": 145.0,
+            "attack": 2156.595,
+            "defense": 133.76
+          },
+          {
+            "id": 7200011,
+            "position": 2,
+            "level": 40,
+            "hp": 304443.88,
+            "speed": 155.0,
+            "attack": 1875.3,
+            "defense": 133.76
+          },
+          {
+            "id": 7200012,
+            "position": 3,
+            "level": 40,
+            "hp": 432977.80000000005,
+            "speed": 130.0,
+            "attack": 2812.95,
+            "defense": 147.84
+          }
+        ]
+      ],
+      "rules": [
+        "\u300c\u65e5\u8f6e\u5d29\u574f\uff0c\u9700\u5168\u795e\u8d2f\u6ce8\uff01\u300d\u5df1\u65b9\u66b4\u51fb\u4f24\u5bb3\u63d0\u9ad8300%\u3002",
+        "\u300c\u5728\u8f6e\u56de\u4e2d\uff0c\u5351\u5f25\u547c\u7684\u884c\u52a8\u5c06\u4e0d\u53ef\u9006\u8f6c\uff01\u300d\u6240\u6709\u6539\u53d8\u884c\u52a8\u6761\u7684\u6548\u679c\u90fd\u4e0d\u4f1a\u751f\u6548\u3002",
+        "\u300c\u4e13\u6ce8\u300d\u6240\u6709\u6280\u80fd\u6d88\u8017\u9b3c\u706b\u51cf2\u3002"
+      ]
+    },
+    "1004": {
+      "scene": 40112,
+      "engine": "RuneFbEngine",
+      "battleMode": 27,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 7200013,
+            "position": 1,
+            "level": 40,
+            "hp": 8000000.995212801,
+            "speed": 145.0,
+            "attack": 2411.1,
+            "defense": 593.8240000000001
+          },
+          {
+            "id": 7200014,
+            "position": 2,
+            "level": 40,
+            "hp": 4021701.8,
+            "speed": 155.0,
+            "attack": 2679.0,
+            "defense": 511.104
+          },
+          {
+            "id": 7200015,
+            "position": 3,
+            "level": 40,
+            "hp": 4144669.8,
+            "speed": 130.0,
+            "attack": 4018.5,
+            "defense": 499.84
+          }
+        ]
+      ],
+      "rules": [
+        "\u5351\u5f25\u547c\u6bcf\u6b21\u53d7\u5230\u4f24\u5bb3\u65f6\uff0c\u589e\u52a0\u81ea\u8eab20%\u7684\u4f24\u5bb3\u51cf\u514d\uff0c\u6700\u9ad8\u51cf\u4f24\u81f360%\uff0c\u81ea\u8eab\u56de\u5408\u7ed3\u675f\u540e\u5f52\u96f6\u3002",
+        "\u5351\u5f25\u547c\u514d\u75ab\u56de\u5408\u540e\u4f24\u5bb3\u3002",
+        "\u9020\u6210\u7684\u66b4\u51fb\u4f24\u5bb3\u5927\u5e45\u63d0\u5347"
+      ]
     }
   }
 };
