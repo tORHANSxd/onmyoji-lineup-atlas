@@ -462,15 +462,27 @@ async function main(){
     const coins='document.querySelector("[data-pve-artifact-coins]")';
     await ui(coins+'.value="1234";'+coins+'.dispatchEvent(new Event("input"))');
     assert.match(await ui('document.querySelector("[data-pve-artifact-list]").textContent'),/乾坤袋 .*最早 0 回合/);
+    const guard='document.querySelector("[data-pve-guard-choice]")',guardLevel='document.querySelector("[data-pve-guard-level]")';
+    const breakthrough='document.querySelector("[data-pve-guard-breakthrough]")';
+    await ui(guard+'.value="2001";'+guard+'.dispatchEvent(new Event("change"))');
+    assert.equal(await ui(guard+'.selectedOptions[0].textContent'),'持国天');
+    assert.equal(await ui(breakthrough+'.disabled'),true);
+    await ui(guardLevel+'.value="30";'+guardLevel+'.dispatchEvent(new Event("change"));'+breakthrough+'.click()');
+    assert.equal(await ui(breakthrough+'.checked'),true);
+    await ui(guardLevel+'.value="29";'+guardLevel+'.dispatchEvent(new Event("change"))');
+    assert.equal(await ui(breakthrough+'.checked'),false);
+    await ui(guardLevel+'.value="30";'+guardLevel+'.dispatchEvent(new Event("change"));'+breakthrough+'.click()');
     assert.equal(await ui(start+'.disabled'),false);
     const state={lifeCaps:[98.75,0,100,100,100,100],marks:[0,0,0,0,0,670093],skills:[[650029,2]],
-     artifacts:[[660012,1,[0]]],coins:1234};
+     artifacts:[[660012,1,[0]]],coins:1234,guard:{id:2001,level:30,breakthrough:true}};
     mockPve=(plan,request)=>{
      assert.deepEqual(request,{battleMode:208,stageId:700101,groupId:700101,seed:request.seed,damageFloor:true,trialSlot:6,
       sixRealmsEvent:{id:113,difficulty:3,moves:12},sixRealmsState:state});
      return {...sample,seed:request.seed,sixRealms:{dao:2,trialSlot:6,trialHero:217,difficulty:3,rounds:4,
       eventId:113,moveCount:12,battleType:0,enemyAttributeBonus:.12,
       runState:{opening:state.lifeCaps.map((lifeCap,i)=>({lifeCap,markId:state.marks[i]})),
+       guard:{...state.guard,name:'持国天',stage:4,summonSkill:68078,attributes:{critical_pow:.1,debuff_acc:.2},
+        baseSkills:[68079],extraSkills:[68070,68071,68073]},
        skills:[{itemId:650029,skillId:66822,level:2,name:'生命加成'}],coins:1234,coinCost:1000,
        artifacts:[{itemId:660012,skillId:67612,name:'乾坤袋',amount:1,level:1,remainingUses:0,
         requests:[{notBeforeRound:0,requestedRound:0,castRound:0,castMs:4600}]}]}}};
@@ -478,7 +490,8 @@ async function main(){
     await ui(start+'.click()');
     await until(status+'.textContent.includes("全随机分支待验证")',20000);
     assert.match(await ui(reports+'.textContent'),/档位 3 · 前行 12 步 · 敌方属性系数加成 12%/);
-    assert.match(await ui(reports+'.textContent'),/开场生命上限 98\.75% \/ 0%.*印记 1 枚 · 途中技能 生命加成 2 级/);
+    assert.match(await ui(reports+'.textContent'),/开场生命上限 98\.75% \/ 0%.*印记 1 枚 .*途中技能 生命加成 2 级/);
+    assert.match(await ui(reports+'.textContent'),/守护 持国天 30 级（已突破） · 暴击伤害 \+10%、效果命中 \+20%/);
     assert.match(await ui(reports+'.textContent'),/秘宝 乾坤袋 · 剩余 0 次 · 第 0 回合施放（4\.60 秒） · 万相铃消耗 1000/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='800017'&&entry.kind==='契灵之境')){

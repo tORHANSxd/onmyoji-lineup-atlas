@@ -120,6 +120,13 @@
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   const coins=pane.artifactCoins?.valueAsNumber;
   const coinsReady=!pane.artifactCoins||Number.isSafeInteger(coins)&&coins>=0;
+  if(pane.guardChoice){
+   const selectedGuard=Boolean(pane.guardChoice.value);
+   pane.guardChoice.disabled=blocked;
+   pane.guardLevel.disabled=blocked||!selectedGuard;
+   pane.guardBreakthrough.disabled=blocked||!selectedGuard||Number(pane.guardLevel.value)!==pane.guardMaxLevel;
+   if(!selectedGuard||Number(pane.guardLevel.value)!==pane.guardMaxLevel)pane.guardBreakthrough.checked=false;
+  }
   for(const field of [...pane.lifeCaps,...pane.marks])field.disabled=blocked;
   if(pane.skillChoice){
    pane.skillChoice.disabled=blocked;
@@ -227,6 +234,18 @@
       ${config.markOptions.map(({id,name,level,source,owner})=>`<option value="${esc(id)}" title="${esc(source)}">${esc(name)} · ${esc(level)} 级${owner?' · '+esc(owner)+'专属':''}</option>`).join('')}
      </select></label>
     </div>`).join('')}
+    ${config.guardOptions?.length?`<fieldset class="pve-reserve pve-run-skills">
+     <legend>助战守护</legend>
+     <div class="actions">
+      <label class="pve-lineup-field">守护 <select data-pve-guard-choice><option value="">未出战</option>
+       ${config.guardOptions.map(({id,name})=>`<option value="${esc(id)}">${esc(name)}</option>`).join('')}
+      </select></label>
+      <label class="pve-lineup-field">等级 <select data-pve-guard-level>
+       ${Array.from({length:config.guardMaxLevel},(_,index)=>`<option value="${index+1}">${index+1} 级</option>`).join('')}
+      </select></label>
+      <label><input data-pve-guard-breakthrough type="checkbox"> 已突破（满级）</label>
+     </div>
+    </fieldset>`:''}
     ${config.skillOptions?.length?`<fieldset class="pve-reserve pve-run-skills">
      <legend>途中技能</legend>
      <p class="caption">按游戏当局填写，最多 ${config.maxRunSkills} 个。</p>
@@ -279,12 +298,14 @@
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
+   guardChoice:part('guard-choice'),guardLevel:part('guard-level'),guardBreakthrough:part('guard-breakthrough'),
    artifactChoice:part('artifact-choice'),artifactAmount:part('artifact-amount'),artifactRounds:part('artifact-rounds'),
    artifactCoins:part('artifact-coins'),artifactHint:part('artifact-hint'),addArtifact:part('add-artifact'),artifactList:part('artifact-list'),artifacts:[],
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.eventDifficulty,pane.skillChoice,pane.artifactChoice].filter(Boolean))field.onchange=()=>{
+  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
+   pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -531,11 +552,14 @@
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
+  const guard=pane.guardChoice?.value?{
+   id:Number(pane.guardChoice.value),level:Number(pane.guardLevel.value),breakthrough:pane.guardBreakthrough.checked,
+  }:null;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
-   sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins?
-    {lifeCaps,marks,...(skills.length?{skills}:{}),...(artifacts.length?{artifacts}:{}),...(coins?{coins}:{})}:null,
+   sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins||guard?
+    {lifeCaps,marks,...(skills.length?{skills}:{}),...(artifacts.length?{artifacts}:{}),...(coins?{coins}:{}),...(guard?{guard}:{})}:null,
    startingInventory:reserve?reserveInventory(reserve,inventory):inventory,
    pveMemberCount:pane.memberCount,message:'正在准备库存…'};
   pane.results.replaceChildren();

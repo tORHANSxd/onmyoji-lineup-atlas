@@ -199,6 +199,10 @@ function sampleBattleMarkup(samples){
   const qiling=sample.qilingCollective;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
+  const guard=trial?.runState?.guard;
+  const guardAttributeLabels={atk_per:'攻击加成',def_per:'防御加成',critical_pow:'暴击伤害',debuff_acc:'效果命中',debuff_res:'效果抵抗'};
+  const guardAttributes=guard?Object.entries(guard.attributes).map(([key,value])=>
+   `${guardAttributeLabels[key]??key} ${value.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2,signDisplay:'exceptZero'})}`):[];
   const artifacts=trial?.runState?.artifacts?.map(item=>{
    const casts=item.requests.map(request=>request.castRound===null?
     `计划第 ${request.notBeforeRound} 回合，待施放`:
@@ -233,6 +237,7 @@ function sampleBattleMarkup(samples){
     (trial.phases?` · 首领阶段 ${trial.phasesCleared} / ${sample.waveCount} · 服务端演出等待 ${(trial.montageWaitMs/1000).toFixed(2)} 秒`:'')+
     (trial.eventId?` · 档位 ${trial.difficulty} · 前行 ${trial.moveCount} 步 · 敌方属性系数加成 ${trial.enemyAttributeBonus.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}`:'')+
     (trial.runState?` · 开场生命上限 ${trial.runState.opening.map(unit=>unit.lifeCap+'%').join(' / ')} · 印记 ${trial.runState.opening.filter(unit=>unit.markId).length} 枚`:'')+
+    (guard?` · 守护 ${guard.name} ${guard.level} 级${guard.breakthrough?'（已突破）':''} · ${guardAttributes.join('、')}`:'')+
     (trial.runState?.skills?.length?` · 途中技能 ${trial.runState.skills.map(skill=>skill.name+' '+skill.level+' 级').join('、')}`:'')+
     (artifacts.length?` · 秘宝 ${artifacts.join('，')} · 万相铃消耗 ${trial.runState.coinCost}`:''):
    experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:

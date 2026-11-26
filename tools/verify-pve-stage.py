@@ -22,7 +22,7 @@ def replay(args, runtime, work):
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, SHILIAN_MODES
-    from shilian_stage import ArtifactReplay, MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, shilian_stage, verify_opening, verify_run_state
+    from shilian_stage import ArtifactReplay, MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, guard_battle_input, shilian_stage, verify_opening, verify_run_state
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
@@ -223,6 +223,8 @@ def replay(args, runtime, work):
 
     actor_id = rounds[0]["id"] if relay else actor["heroId"]
     player = preset_player(heroes, actors, actor_id) if relay or orochi else {"heroes": heroes, "yysid": actor_id}
+    if shilian and args.shilian_state and args.shilian_state.get("guard"):
+        player["behind_spirit_info"] = guard_battle_input(args.shilian_state["guard"])
     spirit = None if relay or orochi or shilian else plan.get("spirit")
     if spirit is not None:
         from AttrCalc import HunlingAttrCalc
@@ -659,7 +661,7 @@ def main():
     if (args.mode in SHILIAN_MODES) != (args.shilian_trial_slot is not None):
         parser.error("A Six Realms trial needs an explicit eligible roster position")
     if args.shilian_state is not None and (args.mode not in SHILIAN_MODES or not valid_run_state(args.shilian_state)):
-        parser.error("A Six Realms run state needs six life caps, six marks, and valid optional skills and artifacts")
+        parser.error("A Six Realms run state needs six life caps, six marks, and valid optional skills, artifacts and guard")
     event_options = (args.shilian_event_id, args.shilian_difficulty, args.shilian_moves)
     if args.mode == SHILIAN_EVENT_MODE:
         if any(value is None for value in event_options) or args.shilian_event_id <= 0 or not 0 <= args.shilian_moves < 2 ** 53:

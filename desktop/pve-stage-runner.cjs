@@ -54,7 +54,7 @@ function validSixRealmsEvent(event){
 }
 
 function validSixRealmsState(state){
- if(!state||Object.keys(state).some(key=>!['lifeCaps','marks','skills','artifacts','coins'].includes(key)))return false;
+ if(!state||Object.keys(state).some(key=>!['lifeCaps','marks','skills','artifacts','coins','guard'].includes(key)))return false;
  const {lifeCaps,marks,skills=[],artifacts=[],coins=0}=state;
  return Array.isArray(lifeCaps)&&lifeCaps.length===6&&lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100)&&
   Array.isArray(marks)&&marks.length===6&&marks.every(mark=>Number.isSafeInteger(mark)&&mark>=0)&&
@@ -64,7 +64,14 @@ function validSixRealmsState(state){
   Number.isSafeInteger(coins)&&coins>=0&&Array.isArray(artifacts)&&artifacts.length<=sixRealms.maxRunArtifacts&&
   artifacts.every(row=>Array.isArray(row)&&row.length===3&&positive(row[0])&&positive(row[1])&&
    Array.isArray(row[2])&&row[2].every(round=>Number.isSafeInteger(round)&&round>=0))&&
-  new Set(artifacts.map(row=>row[0])).size===artifacts.length;
+  new Set(artifacts.map(row=>row[0])).size===artifacts.length&&
+  (!Object.hasOwn(state,'guard')||validGuard(state.guard));
+}
+
+function validGuard(guard){
+ return guard&&Object.keys(guard).length===3&&[2000,2001,2002,2003,2004,2005].includes(guard.id)&&
+  positive(guard.level)&&guard.level<=sixRealms.guardMaxLevel&&typeof guard.breakthrough==='boolean'&&
+  (!guard.breakthrough||guard.level===sixRealms.guardMaxLevel);
 }
 
 function validSixRealmsStateReport(proof,state,dao){
@@ -76,7 +83,17 @@ function validSixRealmsStateReport(proof,state,dao){
   Math.abs(100*unit.maxHp/unit.baseHp-unit.lifeCap)<1e-7)&&
   (!state.skills?.length||Array.isArray(proof.skills)&&proof.skills.length===state.skills.length&&
    proof.skills.every((row,i)=>row?.itemId===state.skills[i][0]&&row.level===state.skills[i][1]&&positive(row.skillId)&&typeof row.name==='string'))&&
-  (!state.artifacts?.length||validArtifactReport(proof,state,dao));
+  (!state.artifacts?.length||validArtifactReport(proof,state,dao))&&
+  (!state.guard||validGuardReport(proof.guard,state.guard));
+}
+
+function validGuardReport(proof,guard){
+ return proof?.id===guard.id&&proof.level===guard.level&&proof.breakthrough===guard.breakthrough&&
+  typeof proof.name==='string'&&positive(proof.stage)&&positive(proof.summonSkill)&&
+  proof.attributes&&typeof proof.attributes==='object'&&!Array.isArray(proof.attributes)&&
+  Object.values(proof.attributes).every(Number.isFinite)&&
+  Array.isArray(proof.baseSkills)&&proof.baseSkills.every(positive)&&
+  Array.isArray(proof.extraSkills)&&proof.extraSkills.every(positive);
 }
 
 function validArtifactReport(proof,state,dao){

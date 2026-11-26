@@ -10,6 +10,7 @@ REPLAY_SECONDS = 145
 TRIAL_DIFFICULTY = 1
 MAX_RUN_SKILLS = 4
 MAX_RUN_ARTIFACTS = 3
+GUARD_MAX_LEVEL = 30
 
 
 def shilian_stage(stage_id, fighters, slot, event=None, run_state=None):
@@ -88,14 +89,50 @@ def run_state_inputs(state, roster, trial_id):
 
 
 def valid_run_state(state):
-    if not isinstance(state, dict) or set(state) - {"skills", "artifacts", "coins"} != {"lifeCaps", "marks"}:
+    if not isinstance(state, dict) or set(state) - {"skills", "artifacts", "coins", "guard"} != {"lifeCaps", "marks"}:
         return False
     caps, marks = state["lifeCaps"], state["marks"]
     return (isinstance(caps, list) and isinstance(marks, list) and len(caps) == len(marks) == 6
             and all(type(cap) in (int, float) and 0 <= cap <= 100 for cap in caps)
             and all(type(mark) is int and 0 <= mark < 2 ** 53 for mark in marks)
             and valid_run_skills(state.get("skills", [])) and valid_run_artifacts(state.get("artifacts", []))
+            and ("guard" not in state or valid_guard(state["guard"]))
             and type(state.get("coins", 0)) is int and 0 <= state.get("coins", 0) < 2 ** 53)
+
+
+def valid_guard(guard):
+    return (isinstance(guard, dict) and set(guard) == {"id", "level", "breakthrough"}
+            and type(guard["id"]) is int and 2000 <= guard["id"] <= 2005
+            and type(guard["level"]) is int and 1 <= guard["level"] <= GUARD_MAX_LEVEL
+            and type(guard["breakthrough"]) is bool
+            and (not guard["breakthrough"] or guard["level"] == GUARD_MAX_LEVEL))
+
+
+def guard_battle_input(guard):
+    from DynamicConfigData import DATA_SHILIAN_GUARD_GHOST
+
+    levels = DATA_SHILIAN_GUARD_GHOST.guard_ghost_data.get(guard["id"], {}).get("levels", {})
+    if guard["level"] not in levels:
+        raise ValueError("The selected Six Realms guard level is unavailable in the current runtime")
+    return {"choose_guard": guard["id"],
+            "trial_guard": {str(guard["id"]): {"level": guard["level"], "tupo": guard["breakthrough"]}}}
+
+
+def verify_guard(engine, camp, guard):
+    from com.data.cdata import shilian_guard_ghost
+
+    spirit = engine.getCampData(camp).behindSpiritEntity
+    if spirit is None or spirit.behind_spirit_id != guard["id"]:
+        raise RuntimeError("The original Six Realms engine did not summon the selected guard")
+    owner = engine.getEntity(spirit.behind_spirit_owner_uid)
+    skill_id = spirit.behind_spirit_summon_skill_id
+    skill = owner.SkillMgrComp.getSkillComp(skill_id) if owner else None
+    if skill is None:
+        raise RuntimeError("The original Six Realms engine did not install the guard summon skill")
+    name = next(row["name"] for row in shilian_guard_ghost.data.values() if row["guard_id"] == guard["id"])
+    return {**guard, "name": name, "stage": skill.behind_spirit_stage, "summonSkill": skill_id,
+            "attributes": skill.behind_spirit_add_attr, "baseSkills": sorted(skill.behind_spirit_base_skills_id),
+            "extraSkills": sorted(skill.behind_spirit_add_skills_id)}
 
 
 def valid_run_skills(skills):
@@ -187,6 +224,8 @@ def verify_run_state(engine, controller, run_state):
                 raise RuntimeError("The original Six Realms engine did not install the selected skill")
             observed.append({"itemId": item, "skillId": skill, "level": level, "name": name})
         report["skills"] = observed
+    if run_state.get("guard"):
+        report["guard"] = verify_guard(engine, members["member-1"].camp, run_state["guard"])
     return report
 
 
