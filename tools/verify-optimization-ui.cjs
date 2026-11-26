@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -245,6 +245,8 @@ async function main(){
    await until('$("client-dungeons-encounter-detail").textContent.includes("探索敌方编组 · 31811")');
    const detail=await ui('$("client-dungeons-encounter-detail").textContent');
    assert.match(detail,/阴阳之理 · 大天狗挑战难度1.*探索 PvE 关卡.*31811.*探索敌方编组 · 31811.*战斗站位/s);
+   assert.match(detail,/模拟已知阵容.*3 位式神.*探索原版战斗入口/s);
+   assert.ok(await ui('!!$("client-dungeons-encounter-detail").querySelector("[data-pve-start]")'));
    await capture('client-exploration-room');
    await ui('qaEncounterInput("daily","主线剧情进程 犬神战斗")');
    await until('$("client-dungeons-encounter-detail").textContent.includes("主线单场战斗")');
@@ -493,9 +495,9 @@ async function main(){
    await ui('stopMatch();STATE={...STATE,lineups:'+JSON.stringify(squads)+',accounts:[C.parseAccount('+
     JSON.stringify({...raw,heroes,hero_equips:items})+')]};STATE.activeAccount=STATE.accounts[0].id;selectView("library");'+
     '$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click();selectedLineups.clear();renderSelection()');
-   await encounter('battle','31811');
+   await encounter('daily','阴阳之理 大天狗挑战难度1 1801');
    assert.equal(await ui(start+'.disabled'),true);
-   assert.match(await run('story',{stageId:31811,groupId:31811},{},undefined,10,3,!!pve),/已知阵容 story.*(通过 6 个采样种子|种子 \d+ 未通关)/s);
+   assert.match(await run('story',{stageId:31811,groupId:31811,battleMode:1000,storyRoomId:1801},{},undefined,10,3,!!pve),/已知阵容 story.*(通过 6 个采样种子|种子 \d+ 未通关)/s);
    let held=false;
    mockPve=(_plan,{seed})=>new Promise(resolve=>{held=true;stopPve=()=>resolve({...sample,seed});});
    await ui(start+'.focus();'+start+'.click()');

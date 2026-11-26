@@ -550,6 +550,7 @@ class TeamBattleType: pass
                                ["30101", {"id": "30101", "groupid": 30101}]],
             "BattleMonstersInfo": [[31811, {"resindex": 11032}], [30101, {"resindex": 11032}]],
             "Combinesceneinfo": [[11032, {}]],
+            "battle_mode_routes": [[1000, {"mode_symbol": "MODE_TEAM_FB", "scene_engine": "TeamFbEngine"}]],
         }
         manifests = [
             {"name": name, "status": "decoded", "family": "other",
@@ -567,7 +568,9 @@ class TeamBattleType: pass
         self.assertEqual(entries["mapnpc", 18]["family"], "daily")
         self.assertEqual(entries["story_room", 1801]["title"], "阴阳之理 · 大天狗挑战难度1")
         self.assertEqual(refs("story_room", 1801), [("pve_stage_data", "31811"), ("BattleMonstersInfo", 31811),
-                                                   ("mapnpc", 18), ("Combinesceneinfo", 11032)])
+                                                   ("mapnpc", 18), ("battle_mode_routes", 1000), ("Combinesceneinfo", 11032)])
+        self.assertIn(("story_room", 1801), refs("pve_stage_data", "31811"))
+        self.assertEqual(refs("pve_stage_data", "18"), [("BattleMonstersInfo", 18), ("mapnpc", 18)])
         self.assertEqual(refs("DramaProcess", 1), [("DramaLevel", 1), ("pve_stage_data", "30101"),
                                                  ("BattleMonstersInfo", 30101), ("Combinesceneinfo", 11032)])
         self.assertEqual(refs("DramaProcess", 2), [("DramaLevel", 2)])

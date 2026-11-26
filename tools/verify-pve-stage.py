@@ -14,6 +14,7 @@ import time
 
 ENGINE_START_SECONDS = 1000
 SPECIAL_NIAN_WALL_SECONDS = 145
+STORY_EXPLORATION_MODE = 1000
 
 
 def replay(args, runtime, work):
@@ -75,6 +76,7 @@ def replay(args, runtime, work):
     team_bytes, suit_bytes = args.team.read_bytes(), args.suit_index.read_bytes()
     plan = json.loads(team_bytes)
     suits = json.loads(suit_bytes)
+    story_exploration = args.mode == STORY_EXPLORATION_MODE
     relay = args.mode == UNDERWORLD_MODE
     orochi = args.mode == OROCHI_MODE
     hunling = args.mode in HUNLING_MODES
@@ -516,12 +518,18 @@ def replay(args, runtime, work):
         from battleengine.engine.MonstarGuanKaEngine import MonstarGuanKaEngine, const
         from com.data.cdata import map_boss
         from com.data.cdata import shilian_event_battles, shilian_event_exam, shilian_liudao
-        from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA
+        from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA, StoryRoomData
 
         stage_id = str(args.stage)
         stage = DATA_PVE_STAGE_DATA.data.get(stage_id)
         if stage is None:
             raise ValueError(f"Unknown native PvE stage {stage_id}")
+        if story_exploration:
+            story_room = StoryRoomData.data.get(args.story_room)
+            if not story_room or story_room["MonsterID"] != args.stage:
+                raise ValueError("The exploration point does not select the requested PvE stage")
+        elif any(room.get("MonsterID") == args.stage for room in StoryRoomData.data.values()):
+            raise ValueError("Story exploration stages require their original battle entry")
         if is_dojo_area_stage(args.stage):
             raise ValueError("Eight-Hundred Tanuki requires its original scoring engine")
         if args.stage in FOREST_STAGES:
@@ -686,6 +694,13 @@ def replay(args, runtime, work):
     elif args.mode == GUILD_HUNT_MODE:
         route = "guild-hunting-local-owned"
         hunt_opening = observe_guild_hunt_opening(engine, stage)
+    elif story_exploration:
+        from battleengine.engine.TeamFbEngine import TeamFbEngine
+
+        engine = TeamFbEngine({"pve_data_flag": stage_id, "storyroom": args.story_room, "isExploreBattle": True})
+        engine.battleMode = const.BattleMode.MODE_TEAM_FB
+        wave_count = len(group["MonstersInfos"])
+        route = "story-exploration-solo"
     else:
         engine = MonstarGuanKaEngine({"pve_data_flag": stage_id})
         if engine.isDramaGuanKa or not engine.selectHeroEnabled:
@@ -784,15 +799,21 @@ def replay(args, runtime, work):
             secret_mirror_replay = SecretMirrorReplay(engine, const)
         if setup := secret_mechanic(stage):
             secret_mechanic_replay = SecretMechanicReplay(engine, controller, const, setup)
+    if story_exploration or args.mode == 266:
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
 
         def verify_spawn():
             wave = engine.finishedWaveCount
             if not 0 <= wave < wave_count:
-                raise RuntimeError("Unexpected original Secret Zone wave index")
+                raise RuntimeError("Unexpected original wave index")
             observed = []
-            expected, mirror_units = (secret_mirror_replay.formation(waves[wave]) if secret_mirror_replay
-                                      else (placements(waves[wave]), []))
+            if story_exploration:
+                expected = [(pos, level, proto) for pos, proto, level, *_ in group["MonstersInfos"][wave]]
+                mirror_units = []
+            elif secret_mirror_replay:
+                expected, mirror_units = secret_mirror_replay.formation(waves[wave])
+            else:
+                expected, mirror_units = placements(waves[wave]), []
 
             def observe(camp, owner, placement):
                 entity = create(camp, owner, placement)
@@ -807,7 +828,7 @@ def replay(args, runtime, work):
             finally:
                 engine.createMonsterEntity = create
             if observed != expected:
-                raise RuntimeError(f"The original Secret Zone generated a different formation in wave {wave + 1}")
+                raise RuntimeError(f"Original wave {wave + 1} differs from the expected formation: {observed} != {expected}")
             if secret_mirror_replay:
                 secret_mirror_replay.observe(expected, mirror_units)
             verified_waves.add(wave)
@@ -861,6 +882,9 @@ def replay(args, runtime, work):
     elif historical_ghost:
         formation_matches = (engine.pve_data_flag == args.stage and engine.combineSceneInfoId == ghost_replay.route["sceneId"]
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
+    elif story_exploration:
+        formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group.get("resindex", 11032)
+                             and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4])
     else:
         formation_matches = engine.monstergroup == group_id
     if (engine.seed != args.seed or engine.random is not random_record or engine.battleMode != args.mode
@@ -1277,6 +1301,10 @@ def replay(args, runtime, work):
         report["pveDeadline"] = pve_clock.report(report["outcome"])
     if tianfa:
         report["tianfa"] = tianfa_replay.report(completed)
+    if story_exploration:
+        report["storyExploration"] = {"pointId": story_room["id"], "mapId": story_room["MapEntryID"],
+                                      "difficulty": story_room["difficulty"], "positions": avatar.ssPosIndexList}
+        report["formationsVerified"] = len(verified_waves)
     if spider_replay:
         report["tuzhizhuPractice"] = spider_replay.report(report["outcome"])
     if retreat:
@@ -1394,7 +1422,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
     parser.add_argument("--fusion-settings", type=json.loads)
@@ -1419,6 +1447,7 @@ def main():
     parser.add_argument("--qinfei-food-next", type=int, nargs="+")
     parser.add_argument("--qinfei-profile", type=int, nargs=2, metavar=("RAID", "DIFFICULTY"))
     parser.add_argument("--stage", required=True, type=int)
+    parser.add_argument("--story-room", type=int)
     parser.add_argument("--pve-deadline", type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -1548,6 +1577,8 @@ def main():
             parser.error("Eight-Hundred Tanuki requires a configured cell and supported region state")
     elif args.dojo_area is not None:
         parser.error("Eight-Hundred Tanuki settings only apply to its original battle mode")
+    if (args.mode == STORY_EXPLORATION_MODE) != (args.story_room is not None) or args.story_room is not None and args.story_room < 1:
+        parser.error("--story-room must name an original battle point in exploration mode")
     if args.pve_deadline is not None and (args.mode != 3 or not 1 <= args.pve_deadline <= 10800):
         parser.error("A PvE table deadline requires mode 3 and a value in the supported client range")
     if (args.mode in MAP_BOSS_MODES) != (args.map_boss_players is not None):

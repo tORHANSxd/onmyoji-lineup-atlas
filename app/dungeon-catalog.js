@@ -1930,6 +1930,18 @@
     if (token !== stage.token) return;
     destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
     showSuperGhost(destination,entry,groups[0]);
+    if(entry.table==='story_room'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion){
+      const point=groups[0].row,battleMode=1000;
+      const stageRow=groups.find(group=>group.ref.table==='pve_stage_data'&&Number(group.ref.key)===point?.MonsterID)?.row;
+      const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===stageRow?.groupid);
+      const route=groups.find(group=>group.ref.table==='battle_mode_routes'&&group.ref.key===battleMode)?.row;
+      if((!route||route.scene_engine==='TeamFbEngine')&&point?.id===Number(entry.key)&&stageRow?.shishentotal===3&&formation?.waves.length){
+        destination.append(node('p','按此战斗点的原版单人规则复跑，使用一位阴阳师和三位已知阵容中的式神。','caption'));
+        destination.append(node('p',`开场鬼火 · 我方 ${stageRow.yysinitguihuo??0} · 敌方 ${stageRow.gwinitguihuo??0}`,'caption'));
+        window.AtlasPveWorkbench?.mount(destination,{stageId:point.MonsterID,groupId:stageRow.groupid,battleMode,storyRoomId:point.id,
+          memberCount:3,waveCount:formation.waves.length,version:state.index.resourceVersion,label:entry.title});
+      }
+    }
     const awake=awakeOpening(entry,groups);
     if (awake) {
       const codeScene=DATA.gameConfig.stages[awake.codeStageId];
@@ -2089,8 +2101,11 @@
         destination.append(node('p','寝肥食材战需要匹配版本的原版关卡、食材和敌方站位。','caption'));
       else if (window.AtlasMapBoss?.stages[stageId]) destination.append(node('p','地图首领组队复跑需要匹配的客户端关卡与编组资料。','caption'));
       else if (entry.refs.some(ref=>ref.table==='map_boss')) destination.append(node('p','对应玩法的入场与结算条件见关联的地图首领入口。','caption'));
+      else if(entry.refs.some(ref=>ref.table==='story_room'))
+        destination.append(node('p','打开关联的探索战斗点，可按该点的原版进场规则复跑。','caption'));
       else if(entry.refs.some(ref=>ref.table==='BattleMonstersInfo'&&!ref.found))
-        destination.append(node('p',`当前客户端保留了关卡配置，敌方编组 ${groupId} 未在原表中找到。`,'caption'));
+        destination.append(node('p',`敌方编组 ${groupId} 未在原表中找到。`+
+          (entry.refs.some(ref=>ref.label==='同编号的地图探索入口')?' 同编号的地图入口可打开章节和实际战斗点。':''),'caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&
           formation?.row?.MonstersInfos?.length&&!['no_yys','replace_yysid','isplot','sl_file'].some(field=>row[field])) {

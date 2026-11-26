@@ -400,11 +400,14 @@ def encounter_index(source, load_rows):
     teams_by_mode = {}
     for key, row in table("battle_team_routes").values():
         teams_by_mode.setdefault(row["battleMode"], []).append(key)
-    rooms_by_map = {}
+    rooms_by_map, rooms_by_stage = {}, {}
     for key, row in table("story_room").values():
         map_id = numeric_key(row.get("MapEntryID"))
         if map_id is not None:
             rooms_by_map.setdefault(map_id, []).append(key)
+        stage_id = numeric_key(row.get("MonsterID"))
+        if stage_id is not None:
+            rooms_by_stage.setdefault(stage_id, []).append(key)
     for keys in rooms_by_map.values():
         keys.sort(key=int)
     chapter_entrances = {
@@ -640,6 +643,8 @@ def encounter_index(source, load_rows):
             entrance = chapter_entrances.get(numeric_key(row.get("MapEntryID")))
             if entrance:
                 links.append({"table": "mapnpc", "key": entrance[0], "label": "地图探索入口", "found": True})
+            if ref := relation("battle_mode_routes", 1000, "探索原版战斗入口", False):
+                links.append(ref)
         if name == "DramaProcess":
             level = relation("DramaLevel", row.get("RelatedStory"), "剧情关卡", True)
             if level:
@@ -736,6 +741,11 @@ def encounter_index(source, load_rows):
                 links.append(relation("pve_stage_data", row.get("fightId"), "姥姥火·合魂敌方关卡", True))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
+            links.extend(ref for key in sorted(rooms_by_stage.get(stage_id, ()), key=int)
+                         if (ref := relation("story_room", key, "使用此编组的探索战斗点", False)))
+            if stage_id in chapter_entrances and numeric_key(row.get("groupid")) not in table("BattleMonstersInfo"):
+                entrance, _ = chapter_entrances[stage_id]
+                links.append({"table": "mapnpc", "key": entrance, "label": "同编号的地图探索入口", "found": True})
             links.extend(ref for dest, key in dojo_area_by_stage.get(stage_id, ())
                          if (ref := relation(dest, key, "八百八狸地格玩法", False)))
             if stage_id in forest_by_stage:
