@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,855,880,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -771,10 +771,26 @@ async function main(){
       {qinfeiSide:{timedOut:false,deadlineSeconds:180,combatSeconds:17}}),/原表时限 180 秒/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='5114001')){
-    await encounter('battle','5114001');
-    assert.match(await ui(panel+'.textContent'),/原表时限 60 秒/);
-    assert.match(await run('superghost-five',{stageId:5114001,groupId:5114001,pveDeadlineSeconds:60},
-      {pveDeadline:{timedOut:false,deadlineSeconds:60,combatSeconds:19}}),/原表时限 60 秒/);
+    await encounter('event','5114001');
+    assert.match(await ui(panel+'.textContent'),/普通战斗 · 60 秒 · 体力 6 · 自动战斗饱食度 3/);
+    const dojoArea={year:2025,playId:10001,blockType:1,regionState:0};
+    assert.match(await run('superghost-five',{stageId:5114001,groupId:5114001,battleMode:2182,dojoArea},
+      {waveCount:1,wavesCleared:0,dojoArea:{...dojoArea,timedOut:true,damage:2721280,deadlineSeconds:60,combatSeconds:61}}),
+      /达到计分时限 · 本队伤害 2,721,280/);
+    await encounter('event','2026 八百八狸 地格 275');
+    assert.match(await ui(panel+'.textContent'),/传送门 · 60 秒/);
+    const region='document.querySelector("[data-dojo-area-region]")';
+    await ui(region+'.value="3";'+region+'.dispatchEvent(new Event("change"))');
+    const portal={year:2026,playId:60002,blockType:6,regionState:3};
+    assert.match(await run('superghost-five',{stageId:5124039,groupId:5124039,battleMode:2182,dojoArea:portal},
+      {waveCount:1,wavesCleared:0,dojoArea:{...portal,timedOut:true,damage:500,deadlineSeconds:60,combatSeconds:62}}),
+      /本队伤害 500/);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='468300')){
+    await encounter('battle','468300');
+    assert.match(await ui(panel+'.textContent'),/原表时限 120 秒/);
+    assert.match(await run('superghost-five',{stageId:468300,groupId:468300,pveDeadlineSeconds:120},
+      {waveCount:1,wavesCleared:1,pveDeadline:{timedOut:false,deadlineSeconds:120,combatSeconds:19}}),/原表时限 120 秒/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='11112'&&entry.refs.some(ref=>!ref.found))){
     await ui('qaEncounterInput("battle","结界入侵 11112")');

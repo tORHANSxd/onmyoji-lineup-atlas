@@ -211,6 +211,7 @@ function sampleBattleMarkup(samples){
   const qinfei=sample.qinfeiBoss;
   const qinfeiSide=sample.qinfeiSide;
   const pveDeadline=sample.pveDeadline;
+  const dojoArea=sample.dojoArea;
   const damageWindow=sample.guildCrevice??ghost??historicalGhost;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
@@ -269,6 +270,8 @@ function sampleBattleMarkup(samples){
     (qinfeiSide.deadlineSeconds?` · 原表时限 ${qinfeiSide.deadlineSeconds} 秒`:''):
    pveDeadline?`${pveDeadline.timedOut?'原版判定超时':describeBattle(sample,false)} · `+
     `战斗与结算 ${pveDeadline.combatSeconds.toFixed(2)} 秒 · 原表时限 ${pveDeadline.deadlineSeconds} 秒`:
+   dojoArea?`${dojoArea.timedOut?'达到计分时限':'战斗结束'} · 本队伤害 ${dojoArea.damage.toLocaleString('zh-CN')} · `+
+    `战斗与结算 ${dojoArea.combatSeconds.toFixed(2)} 秒 · 时限 ${dojoArea.deadlineSeconds} 秒`:
    damageWindow?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':
     historicalGhost&&historicalGhost.windowSeconds<historicalGhost.deadlineSeconds?'达到计分窗口':'原版时限结束',
     'window-expired':'达到计分窗口'}[damageWindow.reason]||'结算待核对'} · `+

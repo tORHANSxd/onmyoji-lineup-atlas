@@ -1313,6 +1313,55 @@
       pveDeadlineSeconds:route.deadlineSeconds});
   }
 
+  function showDojoArea(destination,entry,groups){
+    const source=window.AtlasDojoArea,main=groups[0].row;
+    const mapEntry=/^dojo(2025|2026)_bbbl_map$/.exec(entry.table);
+    const playEntry=/^dojo(2025|2026)_bbbl_block_play$/.test(entry.table);
+    const stageEntry=entry.table==='pve_stage_data'&&source.isStage(Number(entry.key));
+    if(!stageEntry&&!playEntry&&(!mapEntry||!main?.work))return false;
+    const registration=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===source.teamType)?.row;
+    if(!matchesOpeningSource(source)||registration?.battleMode!==source.battleMode||
+       registration.route_sha256!==source.routeSHA256)return true;
+    const choices=groups.flatMap(({ref,row})=>{
+      const table=/^dojo(2025|2026)_bbbl_block_play$/.exec(ref.table);
+      if(!row||!table||playEntry&&!ref.primary||mapEntry&&
+         (table[1]!==mapEntry[1]||row.id!==main.work)||stageEntry&&row.battle_ids!==Number(entry.key))return [];
+      const year=Number(table[1]),stageId=row.battle_ids,blockType=row.block_type;
+      if(!source.stageMatches(stageId,year,blockType))return [];
+      const stage=groups.find(item=>item.ref.table==='pve_stage_data'&&Number(item.ref.key)===stageId)?.row;
+      const formation=groups.find(item=>item.ref.table==='BattleMonstersInfo'&&item.ref.key===stage?.groupid);
+      if(stage?.shishentotal!==5||stage.battleTime!==source.deadlineSeconds[blockType]||
+         formation?.waves?.length!==1||formation.waves[0].length!==(blockType===4?1:6))return [];
+      return [{year,stageId,blockType,playId:row.id,groupId:stage.groupid,tili:row.tili_cost,tokenCost:row.yingbing_cost}];
+    }).sort((a,b)=>a.playId-b.playId);
+    if(!choices.length)return true;
+    const controls=node('div','','actions'),details=node('p','','caption'),workbench=node('div');
+    const select=(labelText,marker,options)=>{
+      const field=node('label',labelText,'pve-lineup-field'),input=document.createElement('select');
+      input.dataset[marker]='';
+      input.replaceChildren(...options.map(([value,label])=>new Option(label,String(value))));
+      field.append(input);controls.append(field);
+      return input;
+    };
+    const play=choices.length>1?select('地格玩法','dojoAreaPlay',choices.map((item,i)=>
+      [i,`${source.types[item.blockType]} · ${item.playId}`])):null;
+    const region=choices[0].year===2026?select('区域状态','dojoAreaRegion',[[0,'常规状态'],[3,'状态 3 · 敌方生命强化']]):null;
+    if(controls.childElementCount)destination.append(controls);
+    destination.append(details,workbench);
+    const render=()=>{
+      const {year,playId,blockType,stageId,groupId,tili,tokenCost}=choices[Number(play?.value??0)];
+      details.textContent=`${source.types[blockType]} · ${source.deadlineSeconds[blockType]} 秒 · 体力 ${tili} · 自动战斗饱食度 ${tokenCost} · 满血开场 · 使用自有式神`;
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId,memberCount:5,battleMode:source.battleMode,waveCount:1,
+        label:`${year} 八百八狸 · ${source.types[blockType]} · ${playId}`,version:source.resourceVersion,
+        dojoArea:{year,playId,blockType,regionState:Number(region?.value??0)}});
+    };
+    play?.addEventListener('change',render);
+    region?.addEventListener('change',render);
+    render();
+    return true;
+  }
+
   function mountCreviceWindow(block,stageId,row,formation){
     const source=window.AtlasGuildCrevice,route=source.routes[stageId];
     if(!matchesOpeningSource(source)||row?.groupid!==route.groupId||row?.shishentotal!==5||
@@ -1530,11 +1579,12 @@
       });
     }
     const mapBossMounted=showMapBoss(destination,entry,groups);
+    const dojoAreaMounted=showDojoArea(destination,entry,groups);
     showQinfeiBoss(destination,entry,groups);
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!mapBossMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!mapBossMounted&&!dojoAreaMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
