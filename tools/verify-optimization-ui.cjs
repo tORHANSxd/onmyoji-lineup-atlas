@@ -223,6 +223,13 @@ async function main(){
   const hard=await ui(detail+'.textContent');
   assert.match(hard,/守护小纸人.*小纸人不阵亡.*群体加速.*全体提升20点.*蛇魔侵蚀\(召唤\).*额外提升2000积分/s);
   assert.equal(await ui(detail+'.querySelectorAll(".encounter-rule-text").length'),12);
+  assert.equal(await ui('$("client-dungeons-encounter-list").children.length'),1);
+  assert.match(await ui('$("client-dungeons-encounter-list").textContent'),/地域鬼王极难/);
+  const listFits=`[...$("client-dungeons-encounter-list").children].every(button=>button.getBoundingClientRect().right<=$("client-dungeons-encounter-list").getBoundingClientRect().right+1)`;
+  assert.equal(await ui(listFits),true);
+  win.setContentSize(720,960);
+  assert.equal(await ui(listFits),true);
+  win.setContentSize(1440,1000);
   await ui(detail+'.querySelector(".encounter-rule-text").closest("section").scrollIntoView({block:"start",behavior:"instant"})');
   await capture('client-regional-boss-hard-rules');
   await ui('$("client-dungeons").open=false');

@@ -209,11 +209,11 @@
     }
   }
 
-  function filterEncounters() {
+  function filterEncounters(relatedEntry) {
     if (!stage.rows) return;
     const family = el('encounter-family').value;
     const words = normalized(el('encounter-query').value).split(/\s+/);
-    stage.matches = stage.rows.filter(record => (!family || record.family === family) &&
+    stage.matches = relatedEntry ? [relatedEntry] : stage.rows.filter(record => (!family || record.family === family) &&
       words.every(word => record.search.includes(word)));
     stage.page = 0;
     if (!stage.matches.includes(stage.selected)) {
@@ -251,12 +251,8 @@
 
   function openEncounter(entry) {
     el('encounter-family').value = entry.family;
-    el('encounter-query').value = keyText(entry.key);
-    filterEncounters();
-    const index = stage.matches.indexOf(entry);
-    if (index < 0) return;
-    stage.page = Math.floor(index / pageSize);
-    renderEncounters();
+    el('encounter-query').value = entry.title || keyText(entry.key);
+    filterEncounters(entry);
     void showEncounter(entry);
     el('encounter-list').querySelector('[aria-pressed="true"]')?.focus();
   }
@@ -742,7 +738,8 @@
     for (const {ref,row,error,waves} of groups) {
       const block = node('section', '', 'encounter-source');
       const pool = ref.pool && groups[0].row?.special_attacks?.length > 1 ? `候选池 ${ref.pool}` : '';
-      const heading = ref.primary?[ref.label]:[ref.label, pool, rowTitle(row), keyText(ref.key)].filter(Boolean);
+      const id = ref.table === 'skill' && Array.isArray(ref.key?.$tuple) ? `技能 ${ref.key.$tuple[0]}` : keyText(ref.key);
+      const heading = ref.primary?[ref.label]:[ref.label, pool, rowTitle(row), id].filter(Boolean);
       block.append(node('h4', heading.join(' · ')));
       if (!row) {
         block.append(node('p', error ? '资料读取失败。' + error : '本资源中未找到对应记录。', 'caption'));
@@ -932,8 +929,8 @@
     setMode('tables');
     if (!state.entry && el('table').value) void selectTable(el('table').value);
   };
-  el('encounter-family').onchange = filterEncounters;
-  el('encounter-query').oninput = filterEncounters;
+  el('encounter-family').onchange = () => filterEncounters();
+  el('encounter-query').oninput = () => filterEncounters();
   el('encounter-list').onclick = event => {
     const button = event.target.closest('button[data-index]');
     if (button) void showEncounter(stage.matches[Number(button.dataset.index)]);

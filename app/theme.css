@@ -132,8 +132,8 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 #client-dungeons-status:empty,#client-dungeons-source:empty{display:none}
 #client-dungeons-source{overflow-wrap:anywhere}
 .dungeon-catalog-records{display:grid;grid-template-columns:minmax(180px,1fr) minmax(0,2fr);gap:16px;align-items:start}
-.dungeon-catalog-list{display:grid;gap:5px}
-.dungeon-catalog-list button{text-align:left;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.dungeon-catalog-list{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;min-width:0}
+.dungeon-catalog-list button{display:block;min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .dungeon-catalog-list button[aria-pressed=true]{color:var(--ink);outline:2px solid currentColor;outline-offset:-2px}
 #client-dungeons-detail,#client-dungeons-encounter-detail{min-width:0;overflow-wrap:anywhere}
 #client-dungeons :is(#client-dungeons-detail,#client-dungeons-encounter-detail) h3{margin:0 0 10px;text-wrap:balance}
