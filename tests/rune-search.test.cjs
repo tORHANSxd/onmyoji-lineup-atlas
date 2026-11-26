@@ -48,6 +48,13 @@ test('计分搜索允许第二套阵容凭开场操作反超，且决选使用�
  for(const trial of result.finalists)assert.deepEqual(trial.samples.map(report=>report.seed),baseSampleSeeds);
 });
 
+test('计分优先窗口内单场最高伤害，同分时优先较高的最低伤害',()=>{
+ const score=(...damage)=>R.damageResult(damage.map(value=>({completed:true,outcome:'win',guildRetreat:{damage:value}})));
+ const high=score(1200,400),stable=score(1000,1000),samePeak=score(1200,500),sameFloor=score(1200,400,1100);
+ assert.ok(high.average<stable.average);
+ assert.deepEqual([stable,high,samePeak,sameFloor].sort(R.compareDamage),[samePeak,sameFloor,high,stable]);
+});
+
 test('计分复评优先保留逐场伤害不同的操作',async()=>{
  const [item]=pveCandidates(C.parseAccount(inventory()),data,5);
  const result=await R.rankedDamageSearch([item],data.gameConfig,{active:()=>true,async measure(trial,count){

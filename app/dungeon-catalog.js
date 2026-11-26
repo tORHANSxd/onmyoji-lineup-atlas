@@ -514,6 +514,7 @@
     const stageId=Number(entry.key),scene=DATA.gameConfig.stages[opening.codeStageId];
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,battleMode:2000,waveCount:1,
       label:'麒麟狩猎个人成绩',version:source.resourceVersion,openingSpeed:opening.enemy.speed,
+      scoreWindowSeconds:240,
       codeStageId:scene?.actors===1&&scene.shikigami===5?opening.codeStageId:null,codeLabel:scene?.name});
   }
 
@@ -533,6 +534,7 @@
     const scene=DATA.gameConfig.stages[entry.codeStageId];
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:entry.memberCount,
       battleMode:source.battleMode,waveCount:1,label:`逢魔演武·${entry.name}个人伤害`,version:source.resourceVersion,
+      scoreWindowSeconds:300,
       codeStageId:scene?.actors===1&&scene.shikigami===entry.memberCount?entry.codeStageId:null,codeLabel:scene?.name});
     return true;
   }
@@ -975,7 +977,18 @@
       [id,DATA.gameConfig.stages[codeStageId]?.name?.split('·').at(-1)??`首领 ${id}`]));
     const boss=select('首领',Object.entries(names));
     const round=select('所在轮次',[[1,'第 1 轮'],[2,'第 2 轮'],[3,'第 3 轮']]);
-    const windowLength=select('比较时长',[[1800,'30 分钟'],[600,'10 分钟'],[300,'5 分钟'],[180,'3 分钟']]);
+    const windowLabel=node('label','计分窗口（秒） '),windowLength=document.createElement('input');
+    Object.assign(windowLength,{type:'number',min:'1',max:'1800',step:'1',value:'1800'});
+    windowLength.setAttribute('list','retreat-score-windows');
+    const suggested=document.createElement('datalist');
+    suggested.id='retreat-score-windows';
+    for(const [seconds,name] of [[60,'1 分钟'],[180,'3 分钟'],[300,'5 分钟'],[600,'10 分钟'],[1800,'30 分钟']]){
+      const option=node('option',name);
+      option.value=String(seconds);
+      suggested.append(option);
+    }
+    windowLabel.append(windowLength,suggested);
+    choices.append(windowLabel);
     const memberLabel=node('label','参加人数增伤 '),memberCount=document.createElement('input');
     Object.assign(memberCount,{type:'number',min:'0',max:'50',step:'1',value:'0'});
     memberLabel.append(memberCount);
@@ -983,9 +996,10 @@
     block.append(node('h5','原版开场与单队伤害演练'),choices,
       node('p','首领从满血开始。参加人数只用于计算集结增伤。演练只计入当前库存队伍的伤害。','caption'),panel,workbench);
     const render=()=>{
-      if(!memberCount.checkValidity()||memberCount.value===''){
+      const invalidWindow=!windowLength.checkValidity()||windowLength.value==='';
+      if(invalidWindow||!memberCount.checkValidity()||memberCount.value===''){
         window.AtlasPveWorkbench?.unmount();
-        workbench.replaceChildren(node('p','参加人数请输入 0 至 50 的整数。','caption'));
+        workbench.replaceChildren(node('p',invalidWindow?'计分窗口请输入 1 至 1,800 秒的整数。':'参加人数请输入 0 至 50 的整数。','caption'));
         return;
       }
       const groupId=Number(boss.value),raidRound=Number(round.value),guildMembers=Number(memberCount.value),windowSeconds=Number(windowLength.value);
@@ -996,7 +1010,8 @@
       workbench.replaceChildren();
       const {codeStageId}=source.bosses[groupId];
       window.AtlasPveWorkbench?.mount(workbench,{stageId:row.id,groupId,battleMode:306,memberCount:5,waveCount:1,
-        retreat:{raidRound,guildMembers,windowSeconds},openingSpeed:opening.speed,version:source.resourceVersion,
+        retreat:{raidRound,guildMembers,windowSeconds},scoreWindowSeconds:windowSeconds,
+        openingSpeed:opening.speed,version:source.resourceVersion,
         codeStageId,codeLabel:`${names[groupId]} · 退治难度 ${row.id} 第 ${raidRound} 轮`,label:`${names[groupId]} · 个人伤害`});
     };
     for(const field of [boss,round,windowLength,memberCount])field.addEventListener('change',render);

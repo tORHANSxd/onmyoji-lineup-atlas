@@ -566,7 +566,8 @@ async function main(){
     await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
     assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/挑战时限 240 秒.*30 秒和 150 秒触发分裂.*90 秒触发属性召唤/s);
     await ui(stock+'.click()');
-    await until(status+'.textContent.includes("按平均伤害排序")',20000);
+    await until(status+'.textContent.includes("按窗口内的单场最高伤害排序")',20000);
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/原版计分窗口 240 秒/);
     assert.deepEqual(huntingCalls.values().next().value,[0,1,2,3,7,42]);
     const winningCall=tacticalCalls.find(call=>call.alternate&&call.tactics.manualOpening?.target==='self');
     assert.ok(winningCall);
@@ -622,22 +623,28 @@ async function main(){
     const retreatCalls=[];
     mockPve=(plan,options)=>{
      assert.deepEqual(options,{stageId:1,groupId:103,battleMode:306,seed:options.seed,damageFloor:true,
-      retreat:{raidRound:3,guildMembers:5,windowSeconds:180}});
+      retreat:{raidRound:3,guildMembers:5,windowSeconds:97}});
      retreatCalls.push(options.seed);
      return {...sample,...options,outcome:'loss',waveCount:1,wavesCleared:0,guildRetreat:{
-      damage:plan.tactics?.redBoss?350000:300000,reason:'window-expired',combatSeconds:180,phases:['limao'],tactics:plan.tactics}};
+      damage:plan.tactics?.redBoss?350000:300000,reason:'window-expired',windowSeconds:97,combatSeconds:97,phases:['limao'],tactics:plan.tactics}};
     };
     await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+    await ui(`(() => {const input=$('client-dungeons-encounter-detail').querySelector('input[list="retreat-score-windows"]');
+      input.value='0';input.dispatchEvent(new Event('change'));})()`);
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/计分窗口请输入 1 至 1,800 秒的整数/);
+    assert.equal(await ui('document.querySelector("[data-pve-stock]")===null'),true);
     await ui(`(() => {const area=$('client-dungeons-encounter-detail');
       const fields=area.querySelectorAll('select');
-      ['103','3','180'].forEach((value,i)=>{fields[i].value=value;fields[i].dispatchEvent(new Event('change'));});
-      const members=area.querySelector('input[type=number]');members.value='5';members.dispatchEvent(new Event('change'));
+      ['103','3'].forEach((value,i)=>{fields[i].value=value;fields[i].dispatchEvent(new Event('change'));});
+      const [window,members]=area.querySelectorAll('input[type=number]');
+      window.value='97';window.dispatchEvent(new Event('change'));members.value='5';members.dispatchEvent(new Event('change'));
     })()`);
     assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/贪婪的铁鼠.*生命14,600,832.*个人伤害/s);
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/自定计分窗口 97 秒/);
     await ui(stock+'.click()');
-    await until(status+'.textContent.includes("按平均伤害排序")',20000);
+    await until(status+'.textContent.includes("按窗口内的单场最高伤害排序")',20000);
     assert.deepEqual(retreatCalls.slice(0,2),[0,1]);
-    assert.match(await ui(reports+'.firstElementChild.textContent'),/6 \/ 6 场有效结算.*平均伤害 350,000.*达到比较时长.*1 次阶段切换/s);
+    assert.match(await ui(reports+'.firstElementChild.textContent'),/6 \/ 6 场有效结算.*平均伤害 350,000.*达到计分窗口.*97\.00 \/ 97 秒.*1 次阶段切换/s);
     assert.doesNotMatch(await ui(reports+'.textContent'),/麒麟/);
     await ui('document.querySelector("[data-pve-code]").click()');
     const retreatCode=await ui('$("stock-candidate-code").value');
@@ -678,7 +685,8 @@ async function main(){
     await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
     assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/逢魔演武·鬼灵歌伎.*计分时限 300 秒.*自有式神 6 位/s);
     await ui(stock+'.click()');
-    await until(status+'.textContent.includes("按平均伤害排序")',25000);
+    await until(status+'.textContent.includes("按窗口内的单场最高伤害排序")',25000);
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/原版计分窗口 300 秒/);
     assert.deepEqual([...seenYanwu],[0,1,2,3,7,42]);
     assert.match(await ui(reports+'.firstElementChild.textContent'),/6 \/ 6 场有效结算.*含未清场样本.*达到计分时限.*个人伤害 750,000/s);
     await ui('document.querySelector("[data-pve-code]").click()');

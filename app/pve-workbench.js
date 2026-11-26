@@ -78,7 +78,8 @@
   const section=document.createElement('section');
   section.className='encounter-source';
   section.innerHTML=`<h4>用库存离线复跑</h4>
-   <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子</p>
+   <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子${config.scoreWindowSeconds?
+    ` · ${config.retreat?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
    <p class="caption" data-pve-status role="status"></p>
    <div class="actions">
     <button class="secondary" type="button" data-pve-start>复跑勾选原码</button>
@@ -331,7 +332,7 @@
   if(!active(run))return;
   for(const trial of trials.filter(trial=>trial.score&&!finalists.includes(trial))){
    const {row}=cards.get(trial);
-   row.state.textContent=`初筛 ${trial.samples.length} 场 · 平均伤害 ${damageText(trial.score.average)} · 未进入六场复评`;
+   row.state.textContent=`初筛 ${trial.samples.length} 场 · 单场最高 ${damageText(trial.score.max)} · 未进入六场复评`;
    run.alternatives.push(trial.key);
   }
   for(const trial of finalists)await makeCandidateCode(run,cards.get(trial));
@@ -420,7 +421,7 @@
    next.codeRows=passed;
    if(!useStock)next.originalsComplete=next.rows.every(row=>['loss','infeasible','scored'].includes(row.verdict));
    next.notice=passed.length?(relay?`${passed.length} 套接力已完成共同采样，按最低清波数排序。全随机分支待验证。`:
-    hunting?`${passed.length} 套完成共同采样，按平均伤害排序。全随机分支待验证。`:
+    hunting?`${passed.length} 套完成共同采样，按窗口内的单场最高伤害排序。全随机分支待验证。`:
     next.pane.region?`${passed.length} 套通过采样，优先显示回合数与承伤未被其他阵容同时超越的备选。全随机分支待验证。`:
     `${passed.length} 套通过采样，已按最慢样本用时排序。全随机分支待验证。`):
     useStock?(next.rows.length?'这一批库存备选未通过全部采样。':'当前库存不足以生成可复跑的新备选。'):

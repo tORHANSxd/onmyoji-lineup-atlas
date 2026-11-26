@@ -112,7 +112,7 @@ function damageResult(samples){
 }
 
 function compareDamage(a,b){
- return b.average-a.average||b.min-a.min||b.max-a.max;
+ return b.max-a.max||b.min-a.min||b.average-a.average;
 }
 
 function manualSkillVariants(trial,game){

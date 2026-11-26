@@ -284,7 +284,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(guildRetreatOpenings.resourceVersion!==resourceVersion||![1,2,3].includes(raidRound)||
        !guildRetreatOpenings.difficulties[stageId]?.[raidRound-1]?.[groupId]||plan.members.length!==5||
        !Number.isInteger(guildMembers)||guildMembers<0||guildMembers>50||
-       !Number.isInteger(windowSeconds)||windowSeconds<30||windowSeconds>1800)throw Error('无效的首领退治难度、轮次或演练时长');
+       !Number.isInteger(windowSeconds)||windowSeconds<1||windowSeconds>1800)throw Error('无效的首领退治难度、轮次或演练时长');
    }
    if(battleMode===2000&&(guildHuntOpenings.resourceVersion!==resourceVersion||stageId!==groupId||
       !guildHuntOpenings.floors[stageId]||plan.members.length!==5))

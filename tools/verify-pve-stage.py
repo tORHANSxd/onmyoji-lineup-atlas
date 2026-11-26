@@ -495,8 +495,8 @@ def main():
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
-    if args.mode == RETREAT_MODE and (args.boss is None or not 0 <= args.guild_members <= 50 or not 30 <= args.window_seconds <= 1800):
-        parser.error("The retreat needs a boss, 0 to 50 guild members and a 30 to 1800-second window")
+    if args.mode == RETREAT_MODE and (args.boss is None or not 0 <= args.guild_members <= 50 or not 1 <= args.window_seconds <= 1800):
+        parser.error("The retreat needs a boss, 0 to 50 guild members and a 1 to 1800-second window")
     if (args.mode in REGION_MODES) != (args.region is not None):
         parser.error("--region is required only for a Regional Boss scenario")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
