@@ -76,11 +76,14 @@ const baseSampleSeeds=Object.freeze([0,1,2,3,7,42]);
 const sampleSeeds=Object.freeze([...baseSampleSeeds,8929,2016,7698]);
 const extraSeeds=Object.freeze(Array.from({length:24},(_,seed)=>seed).filter(seed=>!sampleSeeds.includes(seed)));
 const hun13SampleSeeds=Object.freeze([0,1,2,3,7,42,9999]);
-const samplesForDungeon=id=>id===102?sampleSeeds:id===101?baseSampleSeeds:null;
+function samplesForDungeon(id){
+ if(id===102)return sampleSeeds;
+ return Number.isSafeInteger(id)&&G.runeOpeningStage('0.0.816',id)?.battleMode===27?baseSampleSeeds:null;
+}
 
 function searchProfile(dungeonId){
  const stage=G.runeOpeningStage('0.0.816',dungeonId);
- if(!stage||!samplesForDungeon(dungeonId))throw Error('当前副本未接入库存备选搜索');
+ if(!stage||![101,102].includes(dungeonId))throw Error('当前副本未接入库存备选搜索');
  if(dungeonId===102){
   return {strategies:soulKingStrategies,openingSpeed:G.runeOpeningStats('0.0.816',102,4742287).speed+1,
    bossSpeed:G.runeOpeningStats('0.0.816',102,4740061).speed+1,

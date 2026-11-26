@@ -4,6 +4,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),assert=require('n
 const {readIndex,readTable,readEncounters,readRecords}=require('../desktop/dungeon-catalog.cjs');
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
 const {createRuneFloorRunner}=require('../desktop/rune-floor-runner.cjs');
+const {runeFloorIds,sceneForDungeon}=require('../app/rune-lineup.js');
 const {createPveStageRunner}=require('../desktop/pve-stage-runner.cjs');
 const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
 const game=require('../app/game-config.js');
@@ -58,11 +59,11 @@ async function main(){
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
  const seedEvidence=(props={})=>({scope:'local-solo-rune',status:'incomplete',total:10000,wins:73,loss:null,
   slowest:{seed:13,engineSeconds:25.5,combatMs:14400},...props});
- local('rune-battle-status',async()=>runeEnabled?{...(await rune?.status()||{available:true,resourceVersion:'0.0.816'}),floors:[101,102,103]}:{available:false});
+ local('rune-battle-status',async()=>runeEnabled?{...(await rune?.status()||{available:true,resourceVersion:'0.0.816'}),floors:[...runeFloorIds,102,103]}:{available:false});
  local('rune-battle-run',(plan,options)=>{
   replayPlan=plan;
   if(options?.dungeonId===101)floorCalls.push(options);
-  const runner=options?.dungeonId===101?runeFloor:rune;
+  const runner=runeFloorIds.includes(options?.dungeonId)?runeFloor:rune;
   return mockBattle?.(plan,options)||runner?.run(plan,options)||{seed:options?.seed??0,engineSeconds:13,completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:plan.spirit&&{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};
  });
  local('rune-battle-seed-evidence',()=>null);
@@ -783,6 +784,28 @@ async function main(){
   await capture('dungeon-soul-11-replay');
   await ui('$("dungeon-rules-select").value="102";renderDungeonRules()');
   assert.equal(await ui('$("dungeon-battle-results").hidden'),true);
+  const first={...lineup,id:'qa-rune-01',gameSceneId:sceneForDungeon(1),code:'|TA|qa-rune-01',title:'御魂壹层已知阵容'};
+  const tenth={...lineup,id:'qa-rune-10',gameSceneId:sceneForDungeon(10),code:'|TA|qa-rune-10',title:'御魂拾层已知阵容'};
+  const ordinaryCalls=[];
+  mockBattle=(plan,options)=>{
+   assert.deepEqual(plan.spirit,spirit);
+   assert.equal(plan.damageFloor,true);
+   ordinaryCalls.push(options);
+   return {seed:options.seed,completed:true,outcome:'win',wavesCleared:3,formationsVerified:3,bouts:6,engineSeconds:13};
+  };
+  try{
+   await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify([first,tenth])}};`);
+   for(const [dungeonId,selected,other] of [[1,first,tenth],[10,tenth,first]]){
+    await ui(`$("dungeon-rules-select").value="${dungeonId}";renderDungeonRules();$("dungeon-show-lineups").click();
+     selectedLineups=new Set(['qa-rune-01','qa-rune-10']);renderSelection();$("dungeon-match-selected").click()`);
+    await until(`dungeonBattle?.dungeonId===${dungeonId}&&!dungeonBattle.running&&dungeonBattle.rows.length===1&&dungeonBattle.rows[0].state==="finished"`);
+    const content=await ui('$("dungeon-battle-results").textContent');
+    assert.ok(content.includes(selected.title)&&!content.includes(other.title));
+    assert.match(content,/已通过 6 个采样种子.*已核对 3 波原版编组/s);
+    assert.equal(await ui('document.querySelector("[data-battle-full]")'),null);
+   }
+  }finally{mockBattle=null;}
+  assert.deepEqual(ordinaryCalls,[1,10].flatMap(dungeonId=>[0,1,2,3,7,42].map(seed=>({dungeonId,seed,fixedStep:true}))));
   await ui('stopMatch();$("clear-filters").click();$("dungeon-workbench").open=false');
  });
  await check('全种子通过结果显示单人本地范围和最慢一场',async()=>{

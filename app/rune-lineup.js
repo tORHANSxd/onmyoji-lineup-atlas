@@ -6,7 +6,9 @@
 'use strict';
 const sceneId=1001001,resourceVersion='0.0.816',dungeonId=102;
 const hun13SceneId=1001000;
-const replayStages=new Map([[101,1001002],[dungeonId,sceneId]]);
+const runeFloorIds=[1,2,3,4,5,6,7,8,9,10,101];
+const replayStages=new Map(runeFloorIds.map(id=>[id,id===101?1001002:1001013-id]));
+replayStages.set(dungeonId,sceneId);
 const sceneForDungeon=id=>replayStages.get(id)??null;
 
 function autoSkill(member,game,skills){
@@ -134,5 +136,5 @@ function orderedPlan(rounds,result,account,game){
   assignment:assignments.filter(build=>build.index>=wave*5&&build.index<(wave+1)*5)},account,game))};
 }
 
-return {sceneId,resourceVersion,dungeonId,hun13SceneId,sceneForDungeon,team,selectedTeam,hun13Pair,hun13Plan,underworldLineups,underworldPlan};
+return {sceneId,resourceVersion,dungeonId,hun13SceneId,runeFloorIds,sceneForDungeon,team,selectedTeam,hun13Pair,hun13Plan,underworldLineups,underworldPlan};
 });

@@ -1,4 +1,4 @@
-"""Replay the current client’s 悲鸣 encounter using a selected inventory plan."""
+"""Replay the client's regular 八岐大蛇 floors using selected inventory."""
 
 import argparse
 import faulthandler
@@ -34,8 +34,9 @@ def run(args, runtime, work):
     host.oracle.api = host_api
     from battleengine.BattleCommon import BattleAvatar
     from battleengine.BattleController import LocalBattleController
+    from battleengine.BattleRecorder import BattleRecorderRune
     from battleengine.battle_tools.RandomRecord import RandomRecord
-    from battleengine.engine.RuneFbEngine import RuneFbEngine, const
+    from battleengine.engine.RuneFbEngine import DATA_RUNE_FB, RuneFbEngine, const
     from DynamicConfigData import DATA_HERO
 
     team_bytes, suit_bytes = args.team.read_bytes(), args.suit_index.read_bytes()
@@ -66,6 +67,10 @@ def run(args, runtime, work):
     avatar.inventory.update(inventory)
     avatar.defaultHeros = list(fighters)
 
+    stage = DATA_RUNE_FB.data[args.dungeon]
+    configured = stage["monsterWaves"]
+    if stage["type"] != 1 or len(configured) != 3:
+        raise ValueError("This floor does not use the three-wave 八岐大蛇 engine")
     engine = RuneFbEngine({"fbId": args.dungeon})
     engine.battleMode = const.BattleMode.MODE_RUNE_FB
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
@@ -92,6 +97,9 @@ def run(args, runtime, work):
     engine.delta_time = .020
     battle_ended = engine.doBattleEnded
     create_entity = engine.onEntityCreated
+    spawn_monsters = engine._createNextRoundMons
+    create_monster = engine.createMonsterEntity
+    formations = []
     winner, entity_models = None, {}
 
     def observe_end(camp):
@@ -108,11 +116,36 @@ def run(args, runtime, work):
             if entity_models.setdefault(uid, filename) != filename:
                 entity_models[uid] = None
 
+    def verify_wave():
+        wave = engine.finishedWaveCount
+        if wave != len(formations) or wave >= len(configured):
+            raise RuntimeError("Unexpected original enemy wave order")
+        actual = []
+
+        def record_monster(camp, owner, placement):
+            entity = create_monster(camp, owner, placement)
+            actual.append([placement.Index, entity.protoid, placement.level])
+            return entity
+
+        engine.createMonsterEntity = record_monster
+        try:
+            result = spawn_monsters()
+        finally:
+            engine.createMonsterEntity = create_monster
+        expected = [[pos, monster[0], monster[1]] for pos, monster in enumerate(configured[wave], 1) if monster]
+        if actual != expected:
+            raise RuntimeError(f"The original engine created a different enemy formation on wave {wave + 1}")
+        formations.append(actual)
+        return result
+
     engine.doBattleEnded = observe_end
     engine.onEntityCreated = observe_created
+    engine._createNextRoundMons = verify_wave
     engine.init()
     if engine.seed != args.seed or engine.monsterWaveCount != 3 or engine.random is not random_record:
         raise RuntimeError("Unexpected native battle initialization")
+    recorder = engine.battleRecorder or BattleRecorderRune(engine, controller)
+    engine.battleRecorder = recorder
     engine.op_init(controller, actor["heroId"], list(fighters), [])
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
@@ -150,8 +183,11 @@ def run(args, runtime, work):
         engine.op_setAuto(controller, True)
         engine.op_selectHeroOk(controller)
 
-    replay = "".join(engine.battleRecorder.data_list).encode("utf-8")
+    replay = "".join(recorder.data_list).encode("utf-8")
     result = {**evidence, "dungeonId": args.dungeon, "fixture": "selected-inventory", "seed": engine.seed,
+              "battleMode": engine.battleMode, "sceneId": engine.combineSceneInfoId, "formations": formations,
+              "engineSHA256": modules.rows["battleengine.engine.RuneFbEngine"]["marshalSHA256"],
+              "dungeonTableSHA256": modules.rows["com.data.cdata.dungeon_rune"]["marshalSHA256"],
               "fixedStepMs": 20, "teamSHA256": sha256(team_bytes), "suitIndexSHA256": sha256(suit_bytes),
               "recordSHA256": sha256(replay),
               "completed": engine.battleState == const.BattleState.BS_OVER,
@@ -181,7 +217,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--dungeon", required=True, type=int, choices=[101])
+    parser.add_argument("--dungeon", required=True, type=int, choices=[*range(1, 11), 101])
     parser.add_argument("--seed", required=True, type=int)
     args = parser.parse_args()
     if not 0 <= args.seed < 10000:

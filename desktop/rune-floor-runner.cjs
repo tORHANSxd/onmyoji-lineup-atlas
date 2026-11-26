@@ -6,7 +6,8 @@ const path=require('node:path');
 const {spawn}=require('node:child_process');
 const {createHash}=require('node:crypto');
 const {readConfig,matchesDamagePolicy}=require('./rune-runner.cjs');
-const {resourceVersion}=require('../app/rune-lineup.js');
+const {resourceVersion,runeFloorIds}=require('../app/rune-lineup.js');
+const {floors,engineSHA256,dungeonTableSHA256}=require('../app/rune-openings.js');
 const sha256=value=>createHash('sha256').update(value).digest('hex');
 const emptyReplay=sha256('');
 
@@ -43,8 +44,8 @@ function createRuneFloorRunner({configPath,scriptRoot,suits}){
  };
  async function runReport(plan,{dungeonId,seed,fixedStep}){
    if(current)throw Error('已有原版复跑正在运行');
-   if(dungeonId!==101||!Number.isSafeInteger(seed)||seed<0||seed>=10000||fixedStep!==true||
-      !plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length!==5)throw Error('无效的悲鸣复跑请求');
+   if(!runeFloorIds.includes(dungeonId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||fixedStep!==true||
+      !plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length!==5)throw Error('无效的御魂复跑请求');
    const input=JSON.stringify(plan);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑输入超过大小限制');
    const cancel=new AbortController();
@@ -62,23 +63,29 @@ function createRuneFloorRunner({configPath,scriptRoot,suits}){
     const deadline=AbortSignal.timeout(100000);
     const code=await runPython(config.python,argv,dir,AbortSignal.any([cancel.signal,deadline]));
     cancel.signal.throwIfAborted();
-    if(code!==0)throw Error('悲鸣原版引擎运行异常，请核对本机资料和阵容');
+    if(code!==0)throw Error('御魂原版引擎运行异常，请核对本机资料和阵容');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
+    const floor=floors[dungeonId];
     if(report.resourceVersion!==resourceVersion||report.dungeonId!==dungeonId||report.fixture!=='selected-inventory'||
+       report.battleMode!==floor.battleMode||report.sceneId!==floor.scene||report.engineSHA256!==engineSHA256[floor.engine]||
+       report.dungeonTableSHA256!==dungeonTableSHA256||!Array.isArray(report.formations)||
+       report.formations.length<report.wavesCleared||report.formations.length>floor.waves.length||
+       !report.formations.every((wave,index)=>JSON.stringify(wave)===JSON.stringify(
+        floor.waves[index].map(({position,id,level})=>[position,id,level])))||
        report.fixedStepMs!==20||report.seed!==seed||report.teamSHA256!==sha256(input)||report.suitIndexSHA256!==sha256(suitInput)||
        !matchesDamagePolicy(report,plan.damageFloor===true)||
        typeof report.completed!=='boolean'||!['win','loss','unknown'].includes(report.outcome)||
        (report.completed&&(!/^[a-f0-9]{64}$/.test(report.recordSHA256)||report.recordSHA256===emptyReplay))||
        !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>3||
        !Number.isSafeInteger(report.bouts)||report.bouts<0||!Number.isFinite(report.engineSeconds)||report.engineSeconds<0){
-     throw Error('悲鸣原版复跑没有返回可核验的结算');
+     throw Error('御魂原版复跑没有返回与楼层和编组一致的结算');
     }
     const {completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback,minimumDamage}=report;
-    return {report,result:{seed,completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback,
+    return {report,result:{seed,completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback,formationsVerified:report.formations.length,
      ...(minimumDamage?{minimumDamage}:{})}};
    }catch(error){
-    if(cancel.signal.aborted)throw Error('悲鸣复跑已停止');
-    if(error.name==='AbortError')throw Error('悲鸣原版复跑超时');
+    if(cancel.signal.aborted)throw Error('御魂复跑已停止');
+    if(error.name==='AbortError')throw Error('御魂原版复跑超时');
     throw error;
    }finally{
     try{if(dir)await fs.rm(dir,{recursive:true,force:true,maxRetries:2});}

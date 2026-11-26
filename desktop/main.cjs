@@ -13,6 +13,7 @@ const { TAResponseCache } = require('./ta-response-cache.cjs');
 const { readIndex: readDungeonIndex, readTable: readDungeonTable, readEncounters, readRecords } = require('./dungeon-catalog.cjs');
 const {createRuneRunner}=require('./rune-runner.cjs');
 const {createRuneFloorRunner}=require('./rune-floor-runner.cjs');
+const {runeFloorIds}=require('../app/rune-lineup.js');
 const {createSeedEvidenceRunner}=require('./rune-seed-evidence.cjs');
 const {createHun13Runner}=require('./hun13-runner.cjs');
 const {createPveStageRunner}=require('./pve-stage-runner.cjs');
@@ -96,12 +97,12 @@ app.whenReady().then(async () => {
   handleLocal('rune-battle-status',async()=>{
     const status=await runeRunner.status();
     const floors=status.available?[102]:[];
-    if(status.available&&await runeFloor.available())floors.push(101);
+    if(status.available&&await runeFloor.available())floors.push(...runeFloorIds);
     if(status.available&&await hun13.available())floors.push(103);
     return {...status,floors};
   });
   handleLocal('rune-battle-run',(_check,plan,options)=>runNativeReplay(()=>{
-    if(options?.dungeonId===101)return runeFloor.run(plan,options);
+    if(runeFloorIds.includes(options?.dungeonId))return runeFloor.run(plan,options);
     if(options?.dungeonId===103)return hun13.run(plan,options);
     if(options?.dungeonId!=null&&options.dungeonId!==102)throw Error('当前副本未接入原版复跑');
     return runeRunner.run(plan,options);

@@ -144,7 +144,9 @@ function checkedDungeonLineups(dungeon){
 }
 function hasRuneRuntime(dungeon){
  const scene=dungeon?.id===103?AtlasRuneLineup.hun13SceneId:AtlasRuneLineup.sceneForDungeon(dungeon?.id);
- return scene!==null&&dungeon.gameSceneId===scene&&DATA.dungeonRules.source.resourceVersion===AtlasRuneLineup.resourceVersion;
+ const source=DATA?.dungeonRules?.source;
+ return scene!==null&&dungeon.gameSceneId===scene&&
+  !!AtlasGame.runeOpeningStage(source?.resourceVersion,dungeon.id,source?.tables?.dungeon_rune?.marshalSHA256??null);
 }
 function canReplayDungeon(dungeon){
  return hasRuneRuntime(dungeon)&&runeStatus?.available&&runeStatus.resourceVersion===AtlasRuneLineup.resourceVersion&&
@@ -152,6 +154,7 @@ function canReplayDungeon(dungeon){
 }
 const isSoulKing=id=>id===AtlasRuneLineup.dungeonId;
 const dungeonSampleSeeds=id=>AtlasRuneSearch.samplesForDungeon(id);
+const supportsFullSeedAudit=id=>[101,102,103].includes(id);
 function usesDungeonInventory(job){
  const active=account(),selected=job?.account;
  return !!active&&!!selected&&active.id===selected.id&&active.raw===selected.raw&&active.heroes===selected.heroes&&active.souls===selected.souls;
@@ -168,6 +171,7 @@ function describeBattle(report){
  ]:report.overlapMs==null||report.unresolvedActions?[]:[`动作请求重叠 ${(report.overlapMs/1000).toFixed(2)} 秒`];
  const spirit=report.spirit,template=DATA.gameConfig.spirits?.[spirit?.id];
  return [outcome,`通过 ${report.wavesCleared} 波`,`共 ${report.bouts} 回合`,
+  ...(report.formationsVerified?[`已核对 ${report.formationsVerified} 波原版编组`]:[]),
   ...(report.minimumDamage?[`我方 ${report.minimumDamage.rolls} 次伤害浮动取下限`]:[]),...time,
   ...(spirit?[`已佩戴 ${template?.name||'契灵 '+spirit.id} ${spirit.star} 星 ${spirit.level} 级`]:[])].join(' · ');
 }
@@ -269,6 +273,7 @@ async function verifyDungeonSeeds(job,row,selector){
  }
 }
 function fullSeedAuditMarkup(row,action,busy,detailAction,dungeon){
+ if(!supportsFullSeedAudit(dungeon.id))return '';
  const audit=row.fullSeedAudit,progress=audit?.progress;
  const hun=dungeon.id===103;
  const loss=progress?.loss;
@@ -306,7 +311,7 @@ function fullSeedAuditMarkup(row,action,busy,detailAction,dungeon){
 const fullSeedPassed=row=>row.fullSeedAudit?.progress?.status==='all-local-seeds-passed';
 const failedSeedAudit=row=>row?.seedAudit?.verdict==='loss'||row?.fullSeedAudit?.progress?.status==='seed-loss';
 async function restoreFullSeedAudit(row,dungeonId,active){
- if(!window.runeBattle.seedEvidence)return;
+ if(!supportsFullSeedAudit(dungeonId)||!window.runeBattle.seedEvidence)return;
  try{
   const progress=await window.runeBattle.seedEvidence(row.plan,dungeonId);
   if(active()&&progress)row.fullSeedAudit={progress};
@@ -409,7 +414,7 @@ function renderDungeonBattle(dungeon){
    ${conditions?.length?`<p class="caption">${esc(conditions.join(' '))}</p>`:''}<ul class="dungeon-stock-samples">${sampleBattleMarkup(samples)}</ul></details>`:''}
    ${seedAuditMarkup(row,`data-battle-extra="${esc(lineup.id)}"`,`data-battle-samples="${esc(lineup.id+'-extra')}"${open.has(lineup.id+'-extra')?' open':''}`,busy)}
    ${fullSeedAuditMarkup(row,`data-battle-full="${esc(lineup.id)}"`,busy,`data-battle-wave-report="${esc(lineup.id)}"`,dungeon)}</li>`;
- }).join('')}</ul><p class="caption">全种子验收覆盖当前版本的常规单人本地入口和当前配装。实机动画耗时仍待验证。</p>`;
+ }).join('')}</ul><p class="caption">${supportsFullSeedAudit(dungeon.id)?'全种子验收覆盖当前版本的常规单人本地入口和当前配装。':'模拟覆盖战报所列的本地种子和当前配装。'}实机动画耗时仍待验证。</p>`;
  if(focused!==undefined)body.querySelector(`[data-battle-samples="${CSS.escape(focused)}"] summary`)?.focus();
 }
 function stopDungeonBattle(clear=false){
@@ -443,8 +448,9 @@ async function advanceDungeonBattle(){
      row.verdict=result.proof?.state==='infeasible'?'infeasible':'unknown';
      row.detail=row.verdict==='infeasible'?'库存精算已证明原码约束无解':'库存精算尚有条件待核对';
     }else{
-     const {plan,conditions}=row.savedPlan?{plan:row.savedPlan,conditions:['使用此账号保存的实际式神、御魂及阴阳师配置。']}:
+     const {plan:basePlan,conditions}=row.savedPlan?{plan:row.savedPlan,conditions:['使用此账号保存的实际式神、御魂及阴阳师配置。']}:
       AtlasRuneLineup.team(row.lineup,result,job.account,DATA.gameConfig,job.dungeonId);
+     const plan=supportsFullSeedAudit(job.dungeonId)?basePlan:{...basePlan,damageFloor:true};
      row.state='running';row.conditions=conditions;row.detail=row.savedPlan?'按已保存配装':row.savedNote;
      row.plan=plan;row.teamKey=AtlasRuneSearch.teamKey(plan);row.seedAudit=planSeedAudits(job).get(row.teamKey);renderDungeonSelection();
      row.verdict=await sampleDungeonTeam(plan,row,active,dungeonSampleSeeds(job.dungeonId),job.dungeonId);

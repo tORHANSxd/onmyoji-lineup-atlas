@@ -15,14 +15,21 @@ test('魂王的原版开场属性只适用于已核验版本和关卡',()=>{
 test('八岐大蛇原版开场按副本、波次和槽位匹配，虚无按专用引擎核验两波',()=>{
  const {source,dungeons}=require('../data/dungeon-rules.json');
  const {floors,dungeonTableSHA256}=require('../app/rune-openings.js');
+ const {runeFloorIds,sceneForDungeon}=require('../app/rune-lineup.js');
  const version=source.resourceVersion;
  assert.equal(dungeonTableSHA256,source.tables.dungeon_rune.marshalSHA256);
  assert.equal(Object.keys(floors).length,13);
+ assert.deepEqual(runeFloorIds,[1,2,3,4,5,6,7,8,9,10,101]);
  for(const [id,floor] of Object.entries(floors)){
   const raw=dungeons.find(row=>row.id===Number(id));
   assert.equal(floor.scene,raw.scene);
   assert.deepEqual([floor.allyOrbs,floor.enemyOrbs],[3,2]);
   assert.equal(floor.waves.length,id==='103'?2:3);
+  if(runeFloorIds.includes(raw.id)){
+   assert.equal(floor.battleMode,27);
+   assert.equal(sceneForDungeon(raw.id),raw.gameSceneId);
+   assert.deepEqual([D.stages[raw.gameSceneId].actors,D.stages[raw.gameSceneId].shikigami],[1,5]);
+  }
   for(const [i,wave] of floor.waves.entries()){
    assert.deepEqual(wave.map(({id,position,level})=>({id,position,level})),raw.waves[i].map(({id,position,level})=>({id,position,level})));
   }
