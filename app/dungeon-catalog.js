@@ -1296,6 +1296,22 @@
     render();
   }
 
+  function showQinfeiSide(destination,entry,groups){
+    const source=window.AtlasMapBoss.qinfeiSideSource,stageId=Number(entry.key);
+    const route=window.AtlasMapBoss.qinfeiSideBattles[stageId],stage=groups[0].row;
+    if(!route||!matchesOpeningSource(source)||stage?.groupid!==stageId||stage.shishentotal!==5||
+       (stage.battleTime??null)!==route.deadlineSeconds)return;
+    const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===stageId);
+    const link=groups.find(({ref})=>ref.table===route.table&&ref.key===route.key)?.row;
+    if(link?.value?.length!==1||link.value[0]!==stageId||formation?.row?.resindex!==route.sceneId||
+       formation.waves.length!==route.waves.length||!formation.waves.every((wave,i)=>wave.length===route.waves[i].length&&
+         wave.every(({position,id,level},slot)=>position===slot+1&&id===route.waves[i][slot]&&level===40)))return;
+    const limit=route.deadlineSeconds?` · 原表时限 ${route.deadlineSeconds} 秒`:` · 原表 ${route.waves.length} 波`;
+    destination.append(node('p',`原表编组演练${limit}。正式活动的入场配置由游戏服务器下发。`,'caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,battleMode:3,
+      waveCount:route.waves.length,label:`${entry.title} · 原表编组演练`,version:source.resourceVersion});
+  }
+
   function mountCreviceWindow(block,stageId,row,formation){
     const source=window.AtlasGuildCrevice,route=source.routes[stageId];
     if(!matchesOpeningSource(source)||row?.groupid!==route.groupId||row?.shishentotal!==5||
@@ -1546,6 +1562,7 @@
       else if (shilian) destination.append(node('p','此编组由六道之门专用引擎使用。请从关联入口核对试炼式神及途中规则。','caption'));
       else if (window.AtlasMapBoss?.archivedNianStages.includes(stageId))
         destination.append(node('p','此关卡可查阅历史编组，原版战斗入口待核对。','caption'));
+      else if (window.AtlasMapBoss?.qinfeiSideBattles[stageId])showQinfeiSide(destination,entry,groups);
       else if (window.AtlasMapBoss?.qinfeiStaticStages.includes(stageId))
         destination.append(node('p','此条目可查看寝肥合战原版配置。此关卡的独立复跑待接入。','caption'));
       else if (window.AtlasMapBoss?.stages[stageId]?.kind==='qinfeiFood')

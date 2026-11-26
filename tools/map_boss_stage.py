@@ -1,5 +1,7 @@
 """Replay versioned map boss battles with the original player positions."""
 
+from types import FunctionType, MethodType, SimpleNamespace
+
 from rune_team import assign_local_party, verify_local_party, verify_local_party_selection
 
 MODE = 3000
@@ -52,11 +54,20 @@ QINFEI_FOOD_TABLE = "com.data.cdata.boss_food_battle"
 QINFEI_FOODS = (900260, 900261, 900262, 900263)
 QINFEI_FOOD_STAGES = range(26300, 26324)
 QINFEI_ARCHIVED_FOOD = (*range(25006, 25014), *range(6902011, 6902015), *range(6902021, 6902025))
-QINFEI_STATIC_STAGES = (25005, 6902001, 26325, 501200)
+QINFEI_STATIC_STAGES = (25005, 6902001)
+QINFEI_SIDE_STAGES = {
+    26325: (40056, (4, 4, 6), None, "Constant", 3222),
+    501200: (400601, (6,), 180, "dojo_2024_const", 28),
+}
+QINFEI_SIDE_ENGINE = "battleengine.engine.MonstarGuanKaEngine"
 QINFEI_FOOD_SCENES = (40056, 40057, 40058, 40059)
 QINFEI_FOOD_MAX_PILES = 5
 QINFEI_FOOD_CHAIN_SECONDS = 145
 SOURCE_HASHES = {
+    QINFEI_SIDE_ENGINE: "1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b",
+    "battleengine.engine.PveBattleEngine": "9c8f25e3508c369d7d19761e608c055858fc6bc9380f4b3599949eb9d9838284",
+    "com.data.cdata.Constant": "41f1b29a54f6105bd47d75dcefaf9b5e4451fc6f54703c055d3c5a65c1e40b56",
+    "com.data.cdata.dojo_2024_const": "05f139b368168cfd40adbebd889e8fd44f11bd26f24dc028c14b2a99ec277fee",
     QINFEI_FOOD_ENGINE: "ce5a64f1e5daf5ee6ba826066df856b70d14d45d4cf854d45659a7ba5bab768d",
     QINFEI_FOOD_TABLE: "0c5b3887f7c88341a910bbd8fc6c6c74af95ac83fb79fa0123504a1ded52cf0d",
     NIAN_ENGINE: "294a00b948adb8855bf45e686b470ec987cd289b865a4c9dcdf9f1b5af8f4256",
@@ -300,6 +311,58 @@ class MapBossReplay:
             rewards = {"phaseDamageRatio": ratio, "paperManCount": paper_men}
         return {"kind": self.kind, "level": self.level, "bossId": self.boss_id, "players": len(self.positions),
                 "positions": self.positions, "opening": self.waves[0], "rewardInputs": rewards}
+
+
+class QinfeiSideReplay(MapBossReplay):
+    def __init__(self, modules, stage_id, stage, formation, engine):
+        from importlib import import_module
+
+        scene, wave_sizes, self.deadline, table, key = QINFEI_SIDE_STAGES[stage_id]
+        source = f"com.data.cdata.{table}"
+        if any(modules.rows[name]["marshalSHA256"] != SOURCE_HASHES[name] for name in (
+                QINFEI_SIDE_ENGINE, "battleengine.engine.PveBattleEngine", source)):
+            raise ValueError("The original Qinfei side-battle sources have changed")
+        waves = formation["MonstersInfos"]
+        if (tuple(import_module(source).data[key]["value"]) != (stage_id,) or stage["groupid"] != stage_id
+                or stage["shishentotal"] != 5 or stage.get("battleTime") != self.deadline
+                or formation["resindex"] != scene or tuple(map(len, waves)) != wave_sizes):
+            raise RuntimeError("The original Qinfei side-battle formation or deadline changed")
+        self.engine = engine
+        self.expected = [[tuple(enemy[:3]) for enemy in wave] for wave in waves]
+        self.wave_count = len(wave_sizes)
+        self.waves = []
+        self.started = None
+        self.observe_waves()
+        self.observe_clock()
+
+    def observe_clock(self):
+        if self.deadline is not None:
+            native_deadline = self.engine.getHaltBattleTime.__func__
+            # The client uses wall time for this deadline. Bind that single
+            # original method to the replay clock so native PvE checks can fire.
+            bindings = dict(native_deadline.__globals__, time=SimpleNamespace(time=self.engine.now_time))
+            self.engine.getHaltBattleTime = MethodType(FunctionType(native_deadline.__code__, bindings), self.engine)
+        set_deadline = self.engine.set_haltBattleTime
+
+        def record_deadline(value):
+            now = self.engine.now_time()
+            expected = None if self.deadline is None else int(now) + self.deadline
+            if value != expected or self.deadline is not None and self.started is not None:
+                raise RuntimeError("The original PvE engine set a different Qinfei deadline")
+            if self.started is None:
+                self.started = now
+            return set_deadline(value)
+
+        self.engine.set_haltBattleTime = record_deadline
+
+    def report(self, outcome):
+        if self.started is None or not self.waves or outcome == "win" and len(self.waves) != self.wave_count:
+            raise RuntimeError("The original PvE engine did not create the expected Qinfei waves")
+        timed_out = bool(self.engine.isHaltBattle)
+        if timed_out and (self.deadline is None or outcome == "win"):
+            raise RuntimeError("The original Qinfei side battle returned an invalid timeout")
+        return {"waves": self.waves, "deadlineSeconds": self.deadline, "timedOut": timed_out,
+                "combatSeconds": round(self.engine.now_time() - self.started, 6)}
 
 
 def qinfei_food_profile(stage_id):

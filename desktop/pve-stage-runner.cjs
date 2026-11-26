@@ -569,14 +569,28 @@ function validMapBossReport(report,route,players,qinfeiFoodPiles){
    rewards.paperManCount<=({stone:0,angryStone:4,yearBeast:5}[route.kind]):rewards===null);
 }
 
+function validQinfeiSide(report,route){
+ const data=report.qinfeiSide,count=data?.waves?.length;
+ return report.sceneId===route.sceneId&&report.waveCount===route.waves.length&&
+  Number.isSafeInteger(count)&&count>=1&&count<=report.waveCount&&report.formationsVerified===count&&
+  report.wavesCleared<=count&&(report.outcome!=='win'||report.wavesCleared===report.waveCount)&&
+  data.deadlineSeconds===route.deadlineSeconds&&typeof data.timedOut==='boolean'&&
+  Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&
+  (!data.timedOut||route.deadlineSeconds!==null&&report.outcome!=='win'&&data.combatSeconds>=route.deadlineSeconds)&&
+  Array.isArray(data.waves)&&data.waves.every((wave,i)=>sameTactics(wave,
+   route.waves[i].map((id,index)=>[index+1,id,40])));
+}
+
 function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
+ const qinfeiSide=battleMode===3?mapBoss.qinfeiSideBattles[stageId]:null;
  const engine=sixRealmsRoute?{name:sixRealmsRoute.engine,sha256:sixRealmsRoute.sha256,
   route:`six-realms-${sixRealmsState?'configured':'full-health'}-${sixRealmsEvent?'encounter':'trial'}`}:
   resource?{name:resource.engine,route:resource.route,sha256:resource.engineSHA256??resourceEncounters.engineSHA256}:
   secret?.entrance==='race'?{...engines[battleMode],route:'secret-race-solo'}:
   secret?.entrance==='team'?{...engines[battleMode],route:'secret-team-solo'}:
-  tianfaTeam?{...engines[battleMode],route:'tianfa-team'}:engines[battleMode];
+  tianfaTeam?{...engines[battleMode],route:'tianfa-team'}:
+  qinfeiSide?{...engines[battleMode],route:'qinfei-side-static-formation'}:engines[battleMode];
  const awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;
  const hunt=battleMode===2000?guildHuntOpenings.floors[stageId]:null;
@@ -604,6 +618,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
     (retreatOpening&&!validRetreat(report,retreatOpening,retreat,rounds[0]))||
     (qinfeiBoss&&!validQinfeiBoss(report,qinfeiBoss,rounds[0]))||
+    (qinfeiSide&&!validQinfeiSide(report,qinfeiSide))||
     (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
     (activityScore.modes[battleMode]&&!validActivityScore(report,rounds[0],activityScore.modes[battleMode]))||
     (battleMode===tianfa.battleMode&&!validTianfaReport(report,tianfa.stages[stageId],tianfaTeam))||
@@ -772,6 +787,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    }else if(qinfeiBoss!==undefined)throw Error('寝肥首领档仅适用于寝肥本体');
    if(battleMode===3&&(mapBoss.stages[stageId]?.kind==='qinfeiFood'||mapBoss.qinfeiStaticStages.includes(stageId)))
     throw Error('寝肥关卡需要使用该玩法的原版入口');
+   if(battleMode===3&&mapBoss.qinfeiSideBattles[stageId]&&
+      (mapBoss.qinfeiSideSource.resourceVersion!==resourceVersion||groupId!==stageId||plan.members.length!==5))
+    throw Error('寝肥编组演练需要匹配的原表编组和五位自有式神');
    if(battleMode===3&&(mapBoss.stages[stageId]||mapBoss.archivedNianStages.includes(stageId)))
     throw Error('该关卡需要地图首领的原版组队入口');
    const mapBossMode=mapBoss.battleModes.includes(battleMode);

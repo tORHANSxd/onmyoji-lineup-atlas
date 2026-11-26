@@ -759,6 +759,17 @@ async function main(){
     assert.match(await run('qinfei-boss',expected,{outcome:'loss',wavesCleared:0,qinfeiBoss:score},tactical),
       /达到计分窗口 · 本队伤害 1,335,888 · 作战 60\.00 \/ 60 秒/);
    }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='26325')){
+    await encounter('guild','入场券战斗 26325');
+    assert.match(await ui(panel+'.textContent'),/原表编组演练 · 原表 3 波/);
+    assert.match(await run('superghost-five',{stageId:26325,groupId:26325,battleMode:3},
+      {waveCount:3,wavesCleared:3,qinfeiSide:{timedOut:false,deadlineSeconds:null,combatSeconds:38.84}}),
+      /原表编组演练 · 战斗与结算 38\.84 秒/);
+    await encounter('guild','寝肥筹备副本 501200');
+    assert.match(await ui(panel+'.textContent'),/原表编组演练 · 原表时限 180 秒/);
+    assert.match(await run('superghost-five',{stageId:501200,groupId:501200,battleMode:3},
+      {qinfeiSide:{timedOut:false,deadlineSeconds:180,combatSeconds:17}}),/原表时限 180 秒/);
+   }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');
     const reserveActor='document.querySelector("[data-pve-reserve-actor]")';

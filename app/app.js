@@ -209,6 +209,7 @@ function sampleBattleMarkup(samples){
   const qiling=sample.qilingCollective;
   const ghost=sample.superGhost,historicalGhost=sample.historicalSuperGhost;
   const qinfei=sample.qinfeiBoss;
+  const qinfeiSide=sample.qinfeiSide;
   const damageWindow=sample.guildCrevice??ghost??historicalGhost;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
@@ -262,6 +263,9 @@ function sampleBattleMarkup(samples){
    qinfei?`${{'boss-defeated':'击败寝肥','team-defeated':'本队落败','window-expired':'达到计分窗口'}[qinfei.reason]||'结算待核对'} · `+
     `本队伤害 ${qinfei.damage.toLocaleString('zh-CN')} · 作战 ${qinfei.combatSeconds.toFixed(2)} / ${qinfei.windowSeconds} 秒 · `+
     `寝肥剩余生命 ${Math.round(qinfei.remainingHp).toLocaleString('zh-CN')}`:
+   qinfeiSide?`${qinfeiSide.timedOut?'原版判定超时':describeBattle(sample)} · 原表编组演练 · `+
+    `战斗与结算 ${qinfeiSide.combatSeconds.toFixed(2)} 秒`+
+    (qinfeiSide.deadlineSeconds?` · 原表时限 ${qinfeiSide.deadlineSeconds} 秒`:''):
    damageWindow?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':
     historicalGhost&&historicalGhost.windowSeconds<historicalGhost.deadlineSeconds?'达到计分窗口':'原版时限结束',
     'window-expired':'达到计分窗口'}[damageWindow.reason]||'结算待核对'} · `+

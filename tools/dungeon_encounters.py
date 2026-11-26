@@ -7,7 +7,7 @@ from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
 from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS, LBS_HISTORY_ENTRIES,
                             LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MEITUAN_SKILLS, MEITUAN_STAGES,
                             NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, QINFEI_ARCHIVED_FOOD,
-                            QINFEI_FOOD_MODE, QINFEI_FOOD_STAGES, QINFEI_FOODS, QINFEI_STATIC_STAGES, SEAL_MODE,
+                            QINFEI_FOOD_MODE, QINFEI_FOOD_STAGES, QINFEI_FOODS, QINFEI_SIDE_STAGES, QINFEI_STATIC_STAGES, SEAL_MODE,
                             SPECIAL_NIAN_MODE, SPECIAL_NIAN_STAGES, is_fragment_entry)
 from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES, QINFEI_BOSS_STAGE
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
@@ -493,7 +493,7 @@ def encounter_index(source, load_rows):
             elif qinfei_stage in QINFEI_ARCHIVED_FOOD:
                 if ref := relation("battle_mode_routes", QINFEI_FOOD_MODE, "旧版食材战原版引擎", False):
                     links.append(ref)
-            elif qinfei_stage in QINFEI_STATIC_STAGES:
+            elif qinfei_stage in QINFEI_STATIC_STAGES or qinfei_stage in QINFEI_SIDE_STAGES:
                 refs = []
                 if qinfei_stage in (QINFEI_BOSS_STAGE, 6902001):
                     refs.append(("battle_mode_routes", QINFEI_BOSS_MODE, "首领战原版引擎"))
@@ -1023,7 +1023,7 @@ def encounter_index(source, load_rows):
                 elif stage_id in QINFEI_ARCHIVED_FOOD:
                     entry_family, entry_kind = "guild", "旧版寝肥食材战"
                     title = f"旧版{title}"
-                elif stage_id in QINFEI_FOOD_STAGES or stage_id in QINFEI_STATIC_STAGES:
+                elif stage_id in QINFEI_FOOD_STAGES or stage_id in QINFEI_STATIC_STAGES or stage_id in QINFEI_SIDE_STAGES:
                     entry_family, entry_kind = "guild", "寝肥合战"
             if table_name == "pve_stage_data" and numeric_key(key) in crevice_stages:
                 entry_family, entry_kind = "guild", "狭间暗域战斗"

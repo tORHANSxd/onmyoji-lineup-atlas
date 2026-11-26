@@ -26,8 +26,9 @@ def replay(args, runtime, work):
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
     from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, MEITUAN_MODE, NIAN_MODES,
-                                QINFEI_FOOD_CHAIN_SECONDS, QINFEI_FOOD_MODE, QINFEI_STATIC_STAGES, SPECIAL_NIAN_MODE,
-                                MapBossReplay, MeituanReplay, NianReplay, QinfeiFoodReplay, entry_for_stage,
+                                QINFEI_FOOD_CHAIN_SECONDS, QINFEI_FOOD_MODE, QINFEI_SIDE_STAGES, QINFEI_STATIC_STAGES,
+                                SPECIAL_NIAN_MODE, MapBossReplay, MeituanReplay, NianReplay, QinfeiFoodReplay,
+                                QinfeiSideReplay, entry_for_stage,
                                 party_positions, qinfei_food_profile)
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_STAGE, QINFEI_BOSS_REPLAY_SECONDS, QinfeiBossRaid
@@ -67,6 +68,7 @@ def replay(args, runtime, work):
     tianfa = args.mode == TIANFA_MODE
     journey_hard = args.mode == JOURNEY_HARD_MODE
     map_boss_replay = None
+    qinfei_side_replay = None
     spider = args.mode in PRACTICE_MODES
     shilian = args.mode in SHILIAN_MODES
     secret_actor_config = None
@@ -416,6 +418,11 @@ def replay(args, runtime, work):
         engine.battleMode = const.BattleMode.MODE_PVE
         wave_count = len(group["MonstersInfos"])
         route = "mode-pve-default-solo"
+        if args.stage in QINFEI_SIDE_STAGES:
+            if len(fighters) != 5:
+                raise ValueError("The Qinfei formation preview requires five owned shikigami")
+            qinfei_side_replay = QinfeiSideReplay(modules, args.stage, stage, group, engine)
+            route = "qinfei-side-static-formation"
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
     engine.seed = args.seed
     generator = engine.random
@@ -781,6 +788,9 @@ def replay(args, runtime, work):
         report["formationsVerified"] = len(map_boss_replay.waves)
         if qinfei_food:
             report["waveCount"] = map_boss_replay.wave_count
+    if qinfei_side_replay:
+        report["qinfeiSide"] = qinfei_side_replay.report(report["outcome"])
+        report["formationsVerified"] = len(qinfei_side_replay.waves)
     if tianfa:
         report["tianfa"] = tianfa_replay.report(completed)
     if spider_replay:

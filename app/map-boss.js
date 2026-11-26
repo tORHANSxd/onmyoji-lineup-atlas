@@ -179,7 +179,18 @@
    sceneId:40056+index,foodId:900260+index,rewardId:900260+index+rewardOffset,level:0,archived:true,
    waves:[enemies.map((id,slot)=>[slot+1,id,40])],
   }]));
- const qinfeiStaticStages=[25005,6902001,26325,501200];
+ const qinfeiStaticStages=[25005,6902001];
+ const qinfeiSideBattles={
+  26325:{sceneId:40056,table:'Constant',key:3222,deadlineSeconds:null,
+   waves:[[14404,11404,12404,13404],[14405,14408,11407,12408],[77208,208,208,208,208,208]]},
+  501200:{sceneId:400601,table:'dojo_2024_const',key:28,deadlineSeconds:180,
+   waves:[[5012000,5012001,5012002,5012003,5012004,5012005]]},
+ };
+ const qinfeiSideSource={resourceVersion:'0.0.816',tableSHA256:{
+  pve_stage_data:tableSHA256.pve_stage_data,BattleMonstersInfo:tableSHA256.BattleMonstersInfo,
+  Constant:'41f1b29a54f6105bd47d75dcefaf9b5e4451fc6f54703c055d3c5a65c1e40b56',
+  dojo_2024_const:'05f139b368168cfd40adbebd889e8fd44f11bd26f24dc028c14b2a99ec277fee',
+ }};
  const qinfeiFoodMaxPiles=5;
  const qinfeiBoss={
   resourceVersion:'0.0.816',battleMode:320,stageId:25005,sceneId:40023,maxWindowSeconds:1200,codeStageId:101002,
@@ -215,7 +226,8 @@
   [lbsActivityMode]:{name:'LBSActivityBossEngine',sha256:'e5fceb3cace7a72b6b323b83db6cfafe6a5bfb4a1dce013a84388992b32b9062'},
  };
  const rules={resourceVersion:'0.0.816',battleModes:[bossMode,sealMode,lbsMode,lbsActivityMode,qinfeiFoodMode,...singleTeamModes],
-  lbsMode,lbsActivityMode,qinfeiBoss,qinfeiFoodMode,qinfeiFoodMaxPiles,qinfeiFoodTableHash,qinfeiStaticStages,tableSHA256,stages,engines,
+  lbsMode,lbsActivityMode,qinfeiBoss,qinfeiFoodMode,qinfeiFoodMaxPiles,qinfeiFoodTableHash,qinfeiSideBattles,
+  qinfeiSideSource,qinfeiStaticStages,tableSHA256,stages,engines,
   qinfeiFoodChoices:route=>Object.entries(stages).filter(([,candidate])=>candidate.kind==='qinfeiFood'&&
    candidate.foodId===route.foodId&&candidate.archived===route.archived),
   archivedNianStages:[3340033,3340034],
