@@ -220,6 +220,7 @@ function sampleBattleMarkup(samples){
   const spiderLive=sample.spiderLive;
   const spiderNormal=sample.spiderNormal;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
+  const asura=sample.asuraBattle;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
   const secretActor=sample.secretActor;
@@ -264,7 +265,11 @@ function sampleBattleMarkup(samples){
   })??[];
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
-  const outcome=hunt?`${sample.outcome==='win'?'个人结算成功':sample.completed?'个人结算失败':'结算待确认'} · `+
+  const outcome=asura?.deadlineSeconds?`${!sample.completed?'结算待确认':asura.bossDefeated?'击破帝释天':asura.timedOut?'达到计分时限':'原版结算'} · `+
+   `个人伤害 ${asura.damage.toLocaleString('zh-CN')} · 剩余生命 ${BigInt(asura.remainingHp).toLocaleString('zh-CN')} · `+
+   `交战 ${asura.combatSeconds.toFixed(2)} 秒 / 限时 ${asura.deadlineSeconds} 秒`+
+   (asura.damage<AtlasAsuraBoss.rewardMinimum?' · 未达到伤害奖励门槛':''):
+   hunt?`${sample.outcome==='win'?'个人结算成功':sample.completed?'个人结算失败':'结算待确认'} · `+
    `${sample.wavesCleared===sample.waveCount?'已清场':'未清场'} · 伤害 ${hunt.damage.toLocaleString('zh-CN')}`:
    retreat?`${{'boss-defeated':'击败首领','team-defeated':'队伍落败','window-expired':'达到计分窗口'}[retreat.reason]||'结算待确认'} · `+
     `个人伤害 ${retreat.damage.toLocaleString('zh-CN')} · 作战 ${retreat.combatSeconds.toFixed(2)} / ${retreat.windowSeconds} 秒 · ${retreat.phases.length} 次阶段切换`:

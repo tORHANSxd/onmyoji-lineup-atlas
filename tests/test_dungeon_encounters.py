@@ -11,6 +11,32 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_asura_phase_two_uses_different_original_entrances_for_score_and_towers(self):
+        tables = {
+            "activity": [[7041, {"id": 7041, "name": "第二阶段"}]],
+            "asura_p2_config": [[1, {"id": 1, "title": "圣帝·恶", "battle_id": 602002}],
+                               [7, {"id": 7, "title": "终末之战", "battle_id": 602000}]],
+            "pve_stage_data": [["602002", {"id": "602002", "groupid": 602002}],
+                               ["602000", {"id": "602000", "groupid": 602000}]],
+            "BattleMonstersInfo": [[602002, {"resindex": 42118}], [602000, {"resindex": 42134}]],
+            "battle_team_routes": [[188, {"battleMode": 3342}], [189, {"battleMode": 3344}]],
+            "asura_const": [[14, {"value": [240]}], [21, {"value": [500]}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(row["table"], row["key"]): row for row in catalog["entries"]}
+
+        def references(table, key):
+            return {(ref["table"], ref["key"]) for ref in entries[table, key]["refs"]}
+
+        self.assertIn(("battle_team_routes", 189), references("asura_p2_config", 1))
+        self.assertNotIn(("asura_const", 14), references("asura_p2_config", 1))
+        self.assertIn(("battle_team_routes", 188), references("asura_p2_config", 7))
+        self.assertIn(("asura_const", 14), references("asura_p2_config", 7))
+        self.assertIn(("asura_p2_config", 7), references("pve_stage_data", "602000"))
+        self.assertIn(("asura_p2_config", 1), references("activity", 7041))
+
     def test_dream_trials_link_fixed_roster_and_activity_without_matching_by_display_name(self):
         tables = {
             "activity": [[11721, {"id": 11721, "name": "QQ人睡眠活动-活动时间"}]],

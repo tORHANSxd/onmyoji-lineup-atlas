@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3342,3344,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -1383,6 +1383,25 @@ async function main(){
     await until('document.querySelector("[data-explore-status]").textContent.includes("6 / 6 个采样种子通关")',30000);
     assert.deepEqual(seen,[0,1,2,3,7,42]);
     assert.match(await ui('document.querySelector("[data-explore-results]").textContent'),/万风钧落 2 级 · 天狗面具 125 个 · 2 位招募式神.*天狗面具增伤生效/s);
+   }
+   if(cases.some(entry=>entry.table==='asura_p2_config'&&entry.key===7)){
+    await encounter('event','终末之战 asura_p2_config 7');
+    await choose('superghost-five');
+    const field='document.querySelector("[data-pve-asura-fields]")';
+    const skill='document.querySelector("[data-pve-asura-skill][value=\'31401\']")';
+    await ui(`${skill}.checked=true;${skill}.dispatchEvent(new Event('input',{bubbles:true}))`);
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(`${field}.querySelector('[data-pve-asura-level]').value='85';${field}.querySelector('[data-pve-asura-hp]').value='46321995087944608';
+     ${field}.querySelector('[data-pve-asura-enrage]').checked=true;${field}.querySelector('[data-pve-asura-tower][value="1"]').checked=true;
+     ${field}.querySelector('[data-pve-asura-key][value="3"]').checked=true;${skill}.dispatchEvent(new Event('input',{bubbles:true}))`);
+    await until(start+'?.disabled===false');
+    const asura={level:85,skills:[31401],specialKeys:[3],enrage:true,activeTowers:[1],bossHp:'46321995087944608'};
+    const asuraBattle={deadlineSeconds:240,timedOut:true,bossDefeated:false,remainingHp:'46321995078026464',damage:9918144,combatSeconds:242.86};
+    assert.match(await run('superghost-five',{stageId:602000,groupId:602000,battleMode:3342,asura},
+     {asuraBattle,wavesCleared:0}),/达到计分时限.*个人伤害 9,918,144.*剩余生命 46,321,995,078,026,464/s);
+    await encounter('event','圣帝·恶 asura_p2_config 1');
+    assert.equal(await ui('document.querySelector("[data-pve-asura-hp]")===null'),true);
+    assert.match(await run('superghost-five',{stageId:602002,groupId:602002,battleMode:3344,asura:{level:0,skills:[],specialKeys:[]}}),/通过 .*个采样种子/);
    }
    if(cases.some(entry=>entry.table==='urdtg_ui'&&entry.key===3&&entry.refs.some(ref=>ref.table==='pve_stage_data'))){
     await encounter('event','飞羽凌云玩法 赛事训练');

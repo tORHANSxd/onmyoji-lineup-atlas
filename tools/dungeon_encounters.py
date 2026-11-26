@@ -5,6 +5,7 @@ from functools import cache
 from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM, LAOLAO_FUSION_MODE, LAOLAO_TEAM, TOWER_TEAM
 from dojo_area_stage import DOJO_AREA_TEAM
 from dream_trial_stage import DREAM_TRIAL_MODE
+from asura_boss_stage import ASURA_ACTIVITY, ASURA_PHASE, ASURA_STAGES
 from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
 from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
@@ -54,6 +55,8 @@ DREAM_RULES = (("dream_self_tips", "幻游问梦开放与资源规则"),
                ("dream_act_self_guide_tips1", "睡眠事件与消耗"),
                ("dream_act_self_guide_tips2", "梦境互动与升星"),
                ("dream_act_self_guide_tips3", "解梦规则"))
+ASURA_RULES = (("asura_final_boss", "决战开放与全服规则"), ("asura_huanying", "帝释天降临与幻影结界"),
+               ("asura_boss", "终末之战伤害奖励与狂暴规则"), ("asura_tegong", "式神特攻解锁规则"))
 
 
 ROOTS = {
@@ -128,6 +131,8 @@ ROOTS = {
     "urdtg_event": ("event", "围场赛事事件"),
     "urdtg_dungeon_battle": ("event", "围场赛事战斗"),
     "dream_act_hero": ("event", "幻游问梦 · 梦境试炼"),
+    "asura_p2_config": ("event", "天魔归来 · 帝释天决战"),
+    "asura_phase_time": ("event", "天魔归来 · 活动阶段"),
 }
 
 JOURNEY_BATTLE_VARIANTS = {
@@ -603,6 +608,37 @@ def encounter_index(source, load_rows):
                 if ref := relation("currency", 9907030, "梦境互动道具", False):
                     links.append(ref)
             elif ref := relation("activity", DREAM_ACTIVITY, "活动开放配置", False):
+                links.append(ref)
+        if name == "asura_p2_config":
+            index = row.get("id")
+            final = index == 7
+            links.extend(ref for dest, key, label in (
+                ("pve_stage_data", row.get("battle_id"), "原版敌方编组入口"),
+                ("battle_team_routes", 188 if final else 189, "原版单人战斗入口"),
+                ("activity", ASURA_PHASE, "决战活动开放期"),
+                ("reward", row.get("reward"), "原表奖励"),
+                ("asura_const", 14 if final else 21, "单场计分时限" if final else "幻影挑战次数上限"),
+            ) if (ref := relation(dest, key, label, False)))
+            for field, label in (("tower_buff", "原版敌方机制"), ("crazy_boss_buff", "被吸收后首领获得的能力")):
+                if row.get(field) and (ref := relation("skill", level_one_skill(row[field]), label, False)):
+                    links.append(ref)
+            if final:
+                links.extend(ref for dest, key, label in (("asura_phase_time", 4, "结界阶段"), ("asura_phase_time", 5, "狂暴阶段"),
+                    ("asura_const", 25, "单场伤害奖励门槛"), ("asura_const", 26, "各档奖励编号"),
+                    *(("asura_p2_config", tower, "可吸收的圣帝幻影") for tower in range(1, 7)))
+                    if (ref := relation(dest, key, label, False)))
+        if name == "pve_stage_data" and (index := ASURA_STAGES.get(int(numeric_key(row.get("id")) or 0))):
+            links.extend(ref for dest, key, label in (("asura_p2_config", index, "对应天魔归来玩法"),
+                ("battle_team_routes", 188 if index == 7 else 189, "原版单人战斗入口"))
+                if (ref := relation(dest, key, label, False)))
+        if name == "asura_phase_time" and row.get("phase_activity_id"):
+            if ref := relation("activity", row["phase_activity_id"], "阶段对应的活动开放期", False):
+                links.append(ref)
+        if name == "activity" and row.get("id") in {ASURA_ACTIVITY, ASURA_PHASE}:
+            links.extend(rule_reference(key, label) for key, label in ASURA_RULES if key in rules)
+            links.extend(ref for phase in range(1, 8) if (ref := relation("asura_phase_time", phase, "原版活动阶段", False)))
+            links.extend(ref for index in range(1, 8) if (ref := relation("asura_p2_config", index, "决战关卡", False)))
+            if ref := relation("activity", ASURA_PHASE if row["id"] == ASURA_ACTIVITY else ASURA_ACTIVITY, "关联活动开放期", False):
                 links.append(ref)
         if name.startswith(("dojo2025_bbbl_", "dojo2026_bbbl_")):
             prefix, suffix = name.split("_bbbl_", 1)
@@ -1439,10 +1475,11 @@ def encounter_index(source, load_rows):
             forest_activity = table_name == "activity" and key == 7076
             ten_activity = table_name == "activity" and key in TEN_ACTIVITY_LINKS
             dream_activity = table_name == "activity" and key == DREAM_ACTIVITY
+            asura_activity = table_name == "activity" and key in {ASURA_ACTIVITY, ASURA_PHASE}
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not dinner_route and not linked_battles and not row.get("monsterWaves")
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
-                    and not ten_activity and not dream_activity):
+                    and not ten_activity and not dream_activity and not asura_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -1696,6 +1733,15 @@ def encounter_index(source, load_rows):
                     entry_family, entry_kind, title = "event", "幻游问梦", "幻游问梦 · 梦境试炼原版入口"
             if dream_activity:
                 entry_family, entry_kind, title = "event", "幻游问梦", "幻游问梦 · 活动开放与玩法规则"
+            if asura_activity:
+                entry_family, entry_kind = "event", "天魔归来"
+                title = "天魔归来 · " + ("帝释天决战开放与规则" if key == ASURA_PHASE else "主活动与决战规则")
+            if table_name in {"asura_p2_config", "asura_phase_time"}:
+                title = f"天魔归来 · {title}"
+            if table_name == "pve_stage_data" and (index := ASURA_STAGES.get(int(numeric_key(key) or 0))):
+                _, phase = table("asura_p2_config").get(str(index), (None, {}))
+                if phase:
+                    title = f"天魔归来 · {name(phase)} · {key}"
             if table_name == "dream_act_hero":
                 title = f"幻游问梦 · {row['name']} · {row['nightmare_name']}"
             if table_name == "pve_stage_data" and (dream_hero := dream_heroes_by_stage.get(numeric_key(key))):

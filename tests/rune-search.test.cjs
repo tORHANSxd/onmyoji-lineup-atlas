@@ -4,9 +4,26 @@ const assert=require('node:assert/strict');
 const C=require('../app/core.js');
 const G=require('../app/game-config.js');
 const R=require('../app/rune-candidate.js');
+const asuraBoss=require('../app/asura-boss.js');
 const T=require('../desktop/ta-codec.cjs');
 const {candidates,pveCandidates,teamKey,sampleSeeds,baseSampleSeeds,hun13Candidates,hun13Key,hun13SampleSeeds}=require('../app/rune-search.js');
 const data=require('../data/bundle.json');
+
+test('天魔归来保留共享生命整数精度、原版槽位和终末之战计分门槛',()=>{
+ const final=asuraBoss.entry(602000),tower=asuraBoss.entry(602002);
+ const settings={level:30,skills:[31403],specialKeys:[1,7,13],enrage:true,activeTowers:[1,6],bossHp:asuraBoss.maxHp};
+ assert.equal(asuraBoss.validSettings(settings,final),true);
+ assert.equal(asuraBoss.validSettings({...settings,bossHp:(BigInt(asuraBoss.maxHp)+1n).toString()},final),false);
+ assert.equal(asuraBoss.validSettings({...settings,level:29},final),false);
+ assert.equal(asuraBoss.validSettings(settings,tower),false);
+ assert.deepEqual(asuraBoss.monsterSkills(settings,final),[31425,31429]);
+ assert.deepEqual(asuraBoss.monsterSkills({...settings,enrage:false},final),[31436]);
+ assert.deepEqual(asuraBoss.monsterSkills(settings,tower),[31419]);
+ const samples=[99999,100000].map(damage=>({completed:true,outcome:'win',asuraBattle:{damage}}));
+ assert.equal(R.damageMode(final.battleMode),true);
+ assert.equal(R.damageMode(tower.battleMode),false);
+ assert.equal(R.damageResult(samples).credited,1);
+});
 
 test('日轮之陨的单波胜利算通过，误报三波视为结算异常',()=>{
  const reports=baseSampleSeeds.map(seed=>({seed,completed:true,outcome:'win',engineSeconds:21,wavesCleared:1}));

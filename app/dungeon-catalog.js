@@ -42,6 +42,9 @@
     dream_act_stage: '幻游问梦梦境图鉴',
     dream_act_battle_cond: '幻游问梦试炼胜负条件',
     DramaHeroInfo: '剧情固定出战配置',
+    asura_p2_config: '天魔归来决战关卡',
+    asura_phase_time: '天魔归来活动阶段',
+    asura_const: '天魔归来原版常量',
     guild_fake_god_event: '青森之秘事件',
     guild_fake_god_map: '青森之秘地格',
     guild_fake_god_route: '青森之秘路线',
@@ -174,6 +177,7 @@
   };
   const journeyBossFields = {hero_id: '首领编号', reward: '奖励编号', time: '时限参数', unlocked: '解锁参数'};
   const tableFields = {
+    asura_p2_config:{desc:'原版机制说明',cost:'消耗配置',tower_buff:'结界或幻影机制技能 ID',crazy_boss_buff:'狂暴技能 ID'},
     dream_act_battle_cond:{desc:'原版胜负条件',cond_type:'条件类型',param1:'回合上限'},
     dream_act_stage:{desc:'睡眠阶段'},
     urdtg_event:{pre_id:'前置事件',unlock_time:'解锁时间',task_desc:'任务目标',params:'事件参数'},
@@ -2035,6 +2039,7 @@
     destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
     appendGuildDinnerDetails(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
+    const asuraMounted=showAsuraBattle(destination, entry, groups);
     const chapterChallengeMounted=showChapterChallenge(destination,entry,groups,monsters,chapterDifficulties);
     showSuperGhost(destination,entry,groups[0]);
     if(entry.table==='story_room'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion){
@@ -2211,6 +2216,9 @@
       else if (entry.refs.some(ref=>ref.table==='map_boss')) destination.append(node('p','对应玩法的入场与结算条件见关联的地图首领入口。','caption'));
       else if(entry.refs.some(ref=>ref.table==='story_room'))
         destination.append(node('p','打开关联的探索战斗点，可按该点的原版进场规则复跑。','caption'));
+      else if(window.AtlasAsuraBoss?.entry(stageId)){
+        if(!asuraMounted)destination.append(node('p','天魔归来复跑需要对应的活动规则、编组与原版入口。','caption'));
+      }
       else if(entry.refs.some(ref=>ref.table==='BattleMonstersInfo'&&!ref.found))
         destination.append(node('p',`敌方编组 ${groupId} 未在原表中找到。`+
           (entry.refs.some(ref=>ref.label==='同编号的地图探索入口')?' 同编号的地图入口可打开章节和实际战斗点。':''),'caption'));
@@ -2343,6 +2351,22 @@
     const [, level, stars] = roster.heroIds[0];
     window.AtlasPveWorkbench?.mountFixedTrial(destination, {stageId, groupId:battle.groupid, battleMode:source.battleMode,
       version:source.resourceVersion, label:`${level} 级 ${stars} 星${hero.name}`, turnLimit:condition.param1});
+  }
+
+  function showAsuraBattle(destination, entry, groups) {
+    const source=window.AtlasAsuraBoss;
+    if(!matchesOpeningSource(source)||!['asura_p2_config','pve_stage_data'].includes(entry.table))return false;
+    const get=table=>groups.find(group=>group.ref.table===table)?.row;
+    const stage=get('asura_p2_config'), battle=get('pve_stage_data'), formation=get('BattleMonstersInfo');
+    const route=source.entry(stage?.battle_id);
+    if(!route||stage.id!==route.index||battle?.groupid!==route.stageId||formation?.resindex!==route.sceneId||
+      get('battle_team_routes')?.battleMode!==route.battleMode)return false;
+    destination.append(node('p',route.final?'使用六个幻影存活状态、狂暴阶段和帝释天入场生命复跑。战报显示个人伤害和实际剩余生命。':
+      '以原版单人编组复跑幻影战。原版全服幻影进度由游戏结算。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:route.stageId,groupId:battle.groupid,battleMode:route.battleMode,
+      version:source.resourceVersion,label:route.name,memberCount:5,waveCount:1,asura:route,
+      scoreWindowSeconds:route.final?source.deadlineSeconds:null});
+    return true;
   }
 
   async function selectTable(name, key = '') {

@@ -30,6 +30,7 @@ const tenExplore=ten.exploreRoute;
 const urdtgExplore=require('../app/urdtg-explore.js');
 const urdtgTrain=urdtgExplore.training;
 const dreamTrial=require('../app/dream-trial.js');
+const asuraBoss=require('../app/asura-boss.js');
 const tianfa=require('../app/tianfa.js');
 const journeyHard=require('../app/journey-hard.js');
 const yinYang=journeyHard.boss;
@@ -56,6 +57,7 @@ const engines={
  [urdtgExplore.battleMode]:urdtgExplore.engine,
  [urdtgTrain.battleMode]:urdtgTrain.engine,
  [dreamTrial.battleMode]:dreamTrial.engine,
+ ...asuraBoss.engines,
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  [storyExplorationMode]:{name:'TeamFbEngine',route:'story-exploration-solo',sha256:'35ec64c1f9d84913a748971711635906034bb36fe9d48005193be8d6c775bbd2'},
  [friendChallengeMode]:{name:'FriendFbEngine',route:'chapter-shikigami-challenge',sha256:'70b5b28c85d9d364b3800415b1c05aa7e5fbc5aa2cd102a28b440d2c1155dde6'},
@@ -1278,7 +1280,29 @@ function validDreamTrial(report, stageId, plan){
   (report.outcome!=='win'||report.wavesCleared===1&&report.bouts<=turnLimit);
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,dojoArea,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}){
+function validAsuraReport(report, settings, plan){
+ const entry=asuraBoss.entry(report.stageId), data=report.asuraBattle;
+ if(!entry||!data||report.sceneId!==entry.sceneId||report.waveCount!==1||report.formationsVerified!==1||
+    data.index!==entry.index||data.level!==settings.level||!sameTactics(data.skills,settings.skills)||
+    !sameTactics(data.specialKeys,settings.specialKeys)||data.slots!==asuraBoss.slotCount(settings.level)||
+    data.usedSlots!==asuraBoss.usedSlots(settings.skills)||!sameTactics(data.monsterSkills,asuraBoss.monsterSkills(settings,entry))||
+    !Array.isArray(data.opening)||data.opening.length<1||data.opening.length>6||
+    !data.opening.every(row=>Array.isArray(row)&&row.length===3&&row.every(positive))||
+    !Array.isArray(data.usedHeroIds)||!sameTactics(data.usedHeroIds.slice().sort(),
+     [plan.onmyoji.heroId,...plan.members.map(row=>row.hero.heroId)].map(Number).sort())||
+    !Number.isFinite(data.combatSeconds)||data.combatSeconds<0||data.combatSeconds>report.engineSeconds)return false;
+ if(!entry.final)return data.damage===undefined;
+ if(data.deadlineSeconds!==asuraBoss.deadlineSeconds||data.enrage!==settings.enrage||!sameTactics(data.activeTowers,settings.activeTowers)||
+    !Number.isSafeInteger(data.damage)||data.damage<0||typeof data.timedOut!=='boolean'||
+    typeof data.remainingHp!=='string'||!/^\d{1,18}$/.test(data.remainingHp)||
+    typeof data.startingHp!=='string'||!/^\d{1,18}$/.test(data.startingHp))return false;
+ const starting=BigInt(data.startingHp), remaining=BigInt(data.remainingHp);
+ return starting===BigInt(Number(settings.bossHp??asuraBoss.maxHp))&&remaining<=BigInt(asuraBoss.maxHp)&&
+  data.bossDefeated===(remaining===0n)&&report.wavesCleared===Number(data.bossDefeated)&&
+  (!report.completed||BigInt(data.damage)===(starting>remaining?starting-remaining:0n));
+}
+
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const qinfeiSide=battleMode===3?mapBoss.qinfeiSideBattles[stageId]:null;
  const pveDeadline=report?.pveDeadline;
@@ -1321,6 +1345,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===storyExplorationMode&&!validStoryExploration(report,storyRoomId))||
     (battleMode===friendChallengeMode&&!validFriendChallenge(report,friendChallenge))||
     (battleMode===dreamTrial.battleMode&&!validDreamTrial(report,stageId,rounds[0]))||
+    (asura&&!validAsuraReport(report,asura,rounds[0]))||
     (dojoArea&&!validDojoAreaReport(report,dojoArea))||
     (forest&&!validForestReport(report,forest,rounds[0]))||
     (ten.modes[battleMode]&&!validTenAnniversary(report,stageId,tenBonuses??[]))||
@@ -1413,12 +1438,13 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(tenAvailable&&yanwu?Object.keys(ten.modes).map(Number):[]),...(tenAvailable&&tenBossAvailable?[tenBoss.battleMode]:[]),
      ...(tenAvailable&&yanwu&&tenExploreAvailable?[tenExplore.battleMode]:[]),
      ...(yanwu&&tenExploreAvailable&&await has('urdtg_explore.py')?[urdtgExplore.battleMode,urdtgTrain.battleMode]:[]),
-     ...(await has('dream_trial_stage.py')?[dreamTrial.battleMode]:[])]};
+     ...(await has('dream_trial_stage.py')?[dreamTrial.battleMode]:[]),
+     ...(await has('asura_boss_stage.py')?[asuraBoss.finalMode,asuraBoss.towerMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,tianfaTeam=false,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,dojoArea,forest,tenBonuses,bandScores,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,tianfaTeam=false,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,forest,tenBonuses,bandScores,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -1443,6 +1469,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(fixedDream&&(dreamTrial.resourceVersion!==resourceVersion||!dreamTrial.heroId(stageId)||stageId!==groupId))
     throw Error('梦境试炼需要已核验的原版固定阵容关卡');
    if(battleMode===3&&dreamTrial.heroId(stageId))throw Error('梦境试炼需要使用原版固定阵容入口');
+   const asuraStage=asuraBoss.entry(stageId), isAsura=Object.hasOwn(asuraBoss.engines,battleMode);
+   if(isAsura?(!asuraStage||asuraStage.battleMode!==battleMode||groupId!==stageId||plan.members.length!==5||
+     asuraBoss.resourceVersion!==resourceVersion||!asuraBoss.validSettings(asura,asuraStage)):asura!==undefined)
+    throw Error('天魔归来需要原版关卡、五位自有式神和有效的活动条件');
+   if(battleMode===3&&asuraStage)throw Error('天魔归来需要使用原版活动战斗入口');
    if(battleMode===29&&(awakeOpenings.resourceVersion!==resourceVersion||
       awakeOpenings.floors[stageId]?.groupId!==groupId||plan.members.length!==5))
     throw Error('当前觉醒关卡、编组或阵容与普通单人规则不一致');
@@ -1670,7 +1701,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       historicalGhostWindow!==undefined&&!historicalGhostRoute)throw Error('超鬼王历史挑战需要正确的关卡、阵容和计分时长');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const deadlineMs=spider||spiderLiveMode||spiderNormalMode?645000:bandPractice?420000:fusionMode||duskMode||songMode||mirageMode||catfishMode||skeletonMode||skeletonXMode||longcheMode?325000:towerMode||laolaoMode?200000:yinYangMode||battleMode===306||qilingEntry||ghostRoute||historicalGhostRoute||qinfeiBoss?245000:feast||sixRealmsRoute||tianfaStage||creviceRoute||mapBossRoute?.raidWindowSeconds||qinfeiFoodPiles?175000:
+   const deadlineMs=spider||spiderLiveMode||spiderNormalMode?645000:bandPractice?420000:fusionMode||duskMode||songMode||mirageMode||catfishMode||skeletonMode||skeletonXMode||longcheMode?325000:towerMode||laolaoMode?200000:yinYangMode||battleMode===306||qilingEntry||ghostRoute||historicalGhostRoute||qinfeiBoss?245000:isAsura||feast||sixRealmsRoute||tianfaStage||creviceRoute||mapBossRoute?.raidWindowSeconds||qinfeiFoodPiles?175000:
     hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000+(pveDeadlineSeconds??0)*100;
    const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
    let release,dir;
@@ -1684,6 +1715,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     const args=['-X','utf8',entry,'--runtime',path.resolve(configPath),'--mode',String(battleMode),'--seed',String(seed),
      '--team',team,'--suit-index',suitIndex];
     if(damageFloor)args.push('--minimum-damage');
+    if(isAsura)args.push('--asura',JSON.stringify(asura));
     if(pveDeadlineSeconds!==undefined)args.push('--pve-deadline',String(pveDeadlineSeconds));
     if(storyRoomId!==undefined)args.push('--story-room',String(storyRoomId));
     if(urdtgTraining)args.push('--urdtg-training',String(urdtgTraining.skillLevel),String(urdtgTraining.masks));
@@ -1728,7 +1760,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(qinfeiFoodPiles)args.push('--qinfei-food-next',...qinfeiFoodPiles.map(String));
     if(qinfeiBoss)args.push('--qinfei-profile',String(qinfeiBoss.raidId),String(qinfeiBoss.difficulty),'--window-seconds',String(qinfeiBoss.windowSeconds));
     if(tianfaTeam)args.push('--tianfa-team');
-    const expected={battleMode,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,dojoArea,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings,
+    const expected={battleMode,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null};
     async function runStage(stageId,groupId,extra=[]){
      const output=path.join(dir,`battle-${stageId}.json`);
