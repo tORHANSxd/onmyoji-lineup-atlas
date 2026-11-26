@@ -271,8 +271,23 @@ function sampleBattleMarkup(samples){
    const skills=unit.soulSkills.map(([id,level])=>`${id}（${level} 级）`).join('、');
    return `<li>${esc(`${unit.position} 号位 · ${unit.copied?'复制':'默认怪物'} ${name}${skills?' · 御魂技能 '+skills:''}`)}</li>`;
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}</li>`;
+  const mechanic=secretMechanicSummary(sample.secretMechanic);
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}</li>`;
  }).join('');
+}
+
+function secretMechanicSummary(mechanic){
+ if(!mechanic?.openingObserved)return '';
+ const {setup,counters}=mechanic;
+ const names={energy_count:'灵视计数',bait_count:'诱饵材料',can_use_count:'可用止毒次数',
+  boss_die_count:'首领阵亡计数',boss_relive_count:'首领复活计数'};
+ const parts=[];
+ if(setup.refereeId)parts.push(`裁判已上场，选技时限 ${setup.skillWindowSeconds} 秒`);
+ if(setup.enemySkill)parts.push(`敌方已装入粉妆·极（${setup.enemySkill[0]}）`);
+ if(setup.supportId)parts.push('跳跳哥哥已在 101 号位入场');
+ if(setup.allySkill)parts.push(`我方场景技能 ${setup.allySkill[0]}（${setup.allySkill[1]} 级）`);
+ for(const [key,value] of Object.entries(counters))parts.push(`${names[key]??key} ${value}`);
+ return parts.length?' · '+parts.join(' · '):'';
 }
 
 async function sampleDungeonTeam(plan,row,active,seeds=AtlasRuneSearch.sampleSeeds,dungeonId=AtlasRuneLineup.dungeonId){

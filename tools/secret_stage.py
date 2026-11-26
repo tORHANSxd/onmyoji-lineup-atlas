@@ -2,6 +2,7 @@
 
 
 LIYUJING_TYPE = 35
+JINYUJI_TYPE = 19
 REPLACEMENT_TYPES = {25, 27}
 MIRROR_FLOOR = 118
 MIRROR_WAVE = 3
@@ -10,6 +11,15 @@ PROTECTION_FLOORS = {
     359: (31709001, 31709209),
     360: (31710001, 31710209),
     10351: (31711001, 31711209),
+}
+SECRET_MECHANIC_COUNTERS = {
+    20: (),  # Mahjong referee
+    31: ("energy_count",),
+    32: ("bait_count",),
+    34: (),  # Powder enhancement
+    36: ("can_use_count",),
+    37: ("boss_die_count", "boss_relive_count"),
+    39: (),  # Coffin support and temporary skills
 }
 
 
@@ -43,10 +53,9 @@ def secret_stage(floor):
 
 def secret_solo(config):
     # The ordinary panel dispatches need_team=1 through attack_team_copy,
-    # the client's single-player team challenge. Special mechanics are separate.
-    special_rules = {19, 20, 31, 32, 34, 36, 37, 39}
+    # the client's single-player team challenge.
     replacement = bool(config["yys_replacement_id"])
-    return (config["advanced"] == 0 and config["need_team"] in (0, 1) and config["type"] not in special_rules
+    return (config["advanced"] == 0 and config["need_team"] in (0, 1)
             and replacement == (config["type"] in REPLACEMENT_TYPES))
 
 
@@ -61,7 +70,11 @@ def placements(formation):
 def secret_replacement(engine):
     from DynamicConfigData import DATA_HERO
 
-    row = engine.getYYSReplacementData()
+    if engine.is_challenge_type(JINYUJI_TYPE):
+        template, level, skin = engine.getJinyujiInfo()
+        row = {"id": template, "heroId": 282, "level": level, "star": 6, "awake": 1, "isAI": 0, "skinId": skin}
+    else:
+        row = engine.getYYSReplacementData()
     if not row:
         raise ValueError("The original Secret Zone is missing its configured replacement")
     hero = DATA_HERO.data[row["id"]]
@@ -70,7 +83,7 @@ def secret_replacement(engine):
         raise ValueError("The original Secret Zone replacement has no skill configuration")
     return {"templateId": row["id"], "heroId": row["heroId"], "name": hero["name"],
             "level": row["level"], "star": row["star"], "awakening": row["awake"],
-            "autoActor": bool(row["isAI"]), "skills": skills}
+            "autoActor": bool(row["isAI"]), "skills": skills, **({"skinId": row["skinId"]} if "skinId" in row else {})}
 
 
 def secret_selection_placeholder():
@@ -84,7 +97,9 @@ def secret_selection_placeholder():
 
 
 def check_secret_actor(engine, controller, config):
-    unit = engine.getEntity(engine.yysReplacementUid) if engine.yysReplacementUid else None
+    jinyuji = engine.is_challenge_type(JINYUJI_TYPE)
+    uid = engine.jinyuji_uid if jinyuji else engine.yysReplacementUid
+    unit = engine.getEntity(uid) if uid else None
     if (not unit or unit.ownerController is not controller or unit.posIndex != 1
             or unit.HeroComp.heroData.heroUid == "selected-onmyoji" or any(unit.HeroComp.heroData.equips)):
         raise RuntimeError("The original Secret Zone did not use its configured actor")
@@ -92,9 +107,76 @@ def check_secret_actor(engine, controller, config):
     skills = sorted([[item.skillId, item.skillLevel] for item in unit.SkillMgrComp.skillCompList])
     report = {**config, "position": unit.posIndex, "heroId": unit.protoid, "level": attr.level, "star": attr.star,
               "awakening": unit.HeroComp.heroData.awake, "autoActor": bool(unit.isAutoUseSkill), "skills": skills}
-    if any(report[key] != config[key] for key in ("heroId", "level", "star", "awakening", "autoActor", "skills")):
+    if jinyuji:
+        report["skinId"] = unit.HeroComp.heroData.skinid
+    if any(report[key] != value for key, value in config.items()):
         raise RuntimeError("The original Secret Zone used a different configured actor")
     return report
+
+
+def secret_mechanic(stage):
+    kind, floor = stage["type"], stage["floor_num"]
+    if kind not in SECRET_MECHANIC_COUNTERS:
+        return None
+    setup = {"type": kind, "counters": list(SECRET_MECHANIC_COUNTERS[kind])}
+    if kind == 20:
+        setup.update(refereeId=25011, skillWindowSeconds=45)
+    if kind == 34 and floor >= 8:
+        setup["enemySkill"] = [31609, 1]
+    if kind == 39:
+        setup["supportId"] = 33500233
+        if floor >= 8:
+            setup["allySkill"] = [623301, 2 if floor >= 11 else 1]
+    return setup
+
+
+class SecretMechanicReplay:
+    def __init__(self, engine, controller, const, setup):
+        self.engine, self.controller, self.const, self.setup = engine, controller, const, setup
+        self.opening_observed = False
+
+    def ally(self, hero_id):
+        units = [unit for unit in self.engine.entities.values()
+                 if unit.protoid == hero_id and unit.camp == self.const.CampFlag.CAMP1]
+        if len(units) != 1:
+            raise RuntimeError("The original Secret Zone is missing its configured auxiliary unit")
+        return units[0]
+
+    def observe_enemy(self, unit):
+        if skill := self.setup.get("enemySkill"):
+            self.check_skill(unit, skill)
+
+    def check_opening(self):
+        if self.opening_observed or self.engine.battleState != self.const.BattleState.BS_STARTED:
+            return
+        if referee_id := self.setup.get("refereeId"):
+            referee = self.ally(referee_id)
+            if (referee.TurnComp.initAvailable or not referee.dont_remove_on_new_round
+                    or self.controller.selectSkillTimeout != self.setup["skillWindowSeconds"]):
+                raise RuntimeError("The original Secret Zone initialized a different referee")
+        if support_id := self.setup.get("supportId"):
+            support = self.ally(support_id)
+            if (support.posIndex, support.AttrComp.level, support.AttrComp.star) != (101, 40, 6):
+                raise RuntimeError("The original Secret Zone initialized a different support unit")
+        if skill := self.setup.get("allySkill"):
+            roster = [unit for unit in self.engine.heroEntities.values()
+                      if unit.ownerController is self.controller and unit.posIndex in range(1, 7)]
+            if len(roster) != 6:
+                raise RuntimeError("The original Secret Zone did not initialize the full roster")
+            for unit in roster:
+                self.check_skill(unit, skill)
+        self.opening_observed = True
+
+    @staticmethod
+    def check_skill(unit, expected):
+        if not any((skill.skillId, skill.skillLevel) == tuple(expected) for skill in unit.SkillMgrComp.skillCompList):
+            raise RuntimeError("The original Secret Zone did not install its configured mechanic skill")
+
+    def report(self):
+        counters = {key: getattr(self.engine, key) for key in self.setup["counters"]}
+        if any(type(value) is not int or value < 0 for value in counters.values()):
+            raise RuntimeError("The original Secret Zone returned an invalid mechanic counter")
+        return {"setup": self.setup, "openingObserved": self.opening_observed, "counters": counters}
 
 
 def mirror_fallback():

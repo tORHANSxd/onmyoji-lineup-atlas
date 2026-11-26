@@ -323,7 +323,7 @@ async function main(){
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),
-   known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),
+   known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
    known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
   const trial=known('six-realms',110151,6);
@@ -334,7 +334,9 @@ async function main(){
   stageActorOnly.members.shift();
   const stageActorWithSlot=known('stage-actor-slot',10725011,5);
   stageActorWithSlot.members[0].skills=[];
-  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot);
+  const jinyujiStageActor=known('secret-jinyuji',10717011,5);
+  jinyujiStageActor.members.shift();
+  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor);
   const boot=await ui('JSON.stringify(STATE)');
   const cases=JSON.parse(await readEncounters(catalog)).entries;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -596,17 +598,23 @@ async function main(){
    assert.match(await run('secret-mirror',{stageId:118,groupId:118,battleMode:266},{waveCount:3,wavesCleared:3,
     secretMirror:{wave:3,units:ids.slice(0,5).map((hero,i)=>({position:i+2,level:40,sourceId:hero,monsterId:hero,
      copied:true,soulSkills:[[20019,1]]}))}}),/第 3 波 · 镜像阵容.*御魂技能 20019（1 级）/s);
-   for(const [stage,query,lineup] of [[241,'骁武浪升 壹 入海','stage-actor-only'],[261,'逐路之争 壹 庆典','stage-actor-slot']]){
+   for(const [stage,query,lineup] of [[241,'骁武浪升 壹 入海','stage-actor-only'],[261,'逐路之争 壹 庆典','stage-actor-slot'],
+    [181,'征服世界 壹 温柔','secret-jinyuji']]){
     await ui('qaSecretEncounter('+stage+','+JSON.stringify(query)+')');
     await until(start+'!==null');
     assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-'+lineup]);
     assert.match(await ui(panel+'.textContent'),/阴阳师位由关卡指定.*指定角色技能模板/s);
     assert.match(await run(lineup,{stageId:stage,groupId:stage,battleMode:266},{
      secretActor:{...secretOpenings.floors[stage].replacement,position:1}},undefined,null),
-    /指定角色.* [34]\d 级 · 6 星/);
+    /指定角色.* \d+ 级 · 6 星/);
    }
    await ui('qaSecretEncounter(191,"呱士无双 壹 立直")');
-   await until(panel+'.textContent.includes("该层的独立机制仍待离线复跑核验")');
+   await until(start+'!==null');
+   assert.match(await run('secret-referee',{stageId:191,groupId:191,battleMode:266},{
+    secretMechanic:{setup:secretOpenings.floors[191].mechanic,openingObserved:true,counters:{}}}),
+   /裁判已上场，选技时限 45 秒/);
+   await ui('qaSecretEncounter(1071,"山兔大暴走 开心的山兔")');
+   await until(panel+'.textContent.includes("竞速配置")');
    assert.equal(await ui(start+'===null'),true);
    await ui('qaSecretEncounter(358,"溯问鲤踪 捌 鲤影")');
    await until(start+'!==null');

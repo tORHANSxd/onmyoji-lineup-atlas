@@ -387,6 +387,18 @@ def encounter_index(source, load_rows):
         if name == "dungeon_challenge_series" and (replacement := row.get("yys_replacement_id")):
             links.extend(ref for dest, label in (("yys_replacement", "关卡指定出战角色"), ("hero", "指定角色技能模板"))
                          if (ref := relation(dest, replacement, label, False)))
+        if name == "dungeon_challenge_series" and row.get("type") == 19:
+            for key, label in ((560, "各层金鱼姬模板"), (561, "各层金鱼姬等级"), (579, "各层金鱼姬皮肤")):
+                if ref := relation("Constant", key, label, False):
+                    links.append(ref)
+            _, templates = table("Constant").get("560", (None, {}))
+            variants = templates.get("value")
+            floor = row.get("floor_num")
+            if isinstance(variants, list) and type(floor) is int and 1 <= floor <= len(variants):
+                template = variants[floor - 1]
+                if type(template) in (int, float) and template > 0:
+                    if ref := relation("hero", int(template), "指定角色技能模板", False):
+                        links.append(ref)
         if name == "journey_hardbattle":
             links.append(rule_reference("defence_hard_battle", "京畿净化首领挑战规则"))
         if name == "xinghen_battle":

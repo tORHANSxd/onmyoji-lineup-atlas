@@ -374,6 +374,14 @@ function validSecretMirror(report,stage){
    unit.monsterId===expected.fallbackId&&unit.soulSkills.length===0));
 }
 
+function validSecretMechanic(report,expected){
+ const data=report.secretMechanic;
+ if(!expected)return data===undefined;
+ return data&&sameTactics(data.setup,expected)&&typeof data.openingObserved==='boolean'&&
+  (!report.completed||data.openingObserved)&&data.counters&&Object.keys(data.counters).length===expected.counters.length&&
+  expected.counters.every(key=>Number.isSafeInteger(data.counters[key])&&data.counters[key]>=0);
+}
+
 function validJourneyReport(report,route,settings){
  const data=report.journeyHard;
  return data&&report.sceneId===journeyHard.sceneId&&report.waveCount===1&&data.challengeId===route.challengeId&&
@@ -478,6 +486,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
       report.formationsVerified>report.waveCount||!validSecretProtection(report,secret.protection)||!validSecretMirror(report,secret)||
+      !validSecretMechanic(report,secret.mechanic)||
       (secret.replacement?!sameTactics(report.secretActor,{...secret.replacement,position:1}):report.secretActor!==undefined)))||
     (resource&&!validResource(report,resource))||report.seed!==seed||report.fixedStepMs!==20||report.teamSHA256!==sha256(input)||report.suitIndexSHA256!==sha256(suitInput)||
     !matchesDamagePolicy(report,damageFloor)||

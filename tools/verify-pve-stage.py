@@ -185,14 +185,15 @@ def replay(args, runtime, work):
     elif args.mode == 266:
         from battleengine.engine.ChallengeFbEngine import const
         from DynamicConfigData import DATA_HERO
-        from secret_stage import (MIRROR_FLOOR, SecretMirrorReplay, SecretProtectionReplay, check_secret_actor,
-                                  placements, secret_protection, secret_replacement, secret_selection_placeholder,
-                                  secret_solo, secret_stage)
+        from secret_stage import (JINYUJI_TYPE, MIRROR_FLOOR, SecretMechanicReplay, SecretMirrorReplay,
+                                  SecretProtectionReplay, check_secret_actor, placements, secret_mechanic,
+                                  secret_protection, secret_replacement, secret_selection_placeholder, secret_solo,
+                                  secret_stage)
 
         engine, stage, waves = secret_stage(args.stage)
         if not secret_solo(stage) or len(fighters) != 5:
             raise ValueError("This Secret Zone floor does not use the verified five-shikigami solo route")
-        if stage["yys_replacement_id"]:
+        if stage["yys_replacement_id"] or stage["type"] == JINYUJI_TYPE:
             secret_actor_config = secret_replacement(engine)
             actor = heroes["selected-onmyoji"] = secret_selection_placeholder()
             choices.pop("selected-onmyoji", None)
@@ -387,12 +388,15 @@ def replay(args, runtime, work):
     verified_waves = set()
     secret_protection_replay = None
     secret_mirror_replay = None
+    secret_mechanic_replay = None
     if args.mode == 266:
         protection = secret_protection(stage)
         if protection:
             secret_protection_replay = SecretProtectionReplay(engine, const, protection)
         if args.stage == MIRROR_FLOOR:
             secret_mirror_replay = SecretMirrorReplay(engine, const)
+        if setup := secret_mechanic(stage):
+            secret_mechanic_replay = SecretMechanicReplay(engine, controller, const, setup)
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
 
         def verify_spawn():
@@ -405,6 +409,8 @@ def replay(args, runtime, work):
 
             def observe(camp, owner, placement):
                 entity = create(camp, owner, placement)
+                if secret_mechanic_replay:
+                    secret_mechanic_replay.observe_enemy(entity)
                 observed.append((placement.Index, placement.level, entity.protoid))
                 return entity
 
@@ -484,6 +490,8 @@ def replay(args, runtime, work):
         instructions = HuntOpening(engine, controller, const, tactics, boss)
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
+        if secret_mechanic_replay:
+            secret_mechanic_replay.check_opening()
         if shilian and args.shilian_state and shilian_opening is None and engine.battleState == const.BattleState.BS_STARTED:
             shilian_opening = verify_run_state(engine, controller, args.shilian_state)
             if artifact_replay:
@@ -653,6 +661,8 @@ def replay(args, runtime, work):
             report["secretProtection"] = secret_protection_replay.report(completed)
         if secret_mirror_replay:
             report["secretMirror"] = secret_mirror_replay.report()
+        if secret_mechanic_replay:
+            report["secretMechanic"] = secret_mechanic_replay.report()
     if args.mode == RESOURCE_MODE:
         key, result = resource.report(report["outcome"])
         report[key] = result

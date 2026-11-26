@@ -494,7 +494,7 @@
     if(entry.table!=='dungeon_challenge_series'||!matchesOpeningSource(source))return null;
     const opening=source.floors[entry.key],waves=group.waves.filter(wave=>wave.length>0);
     if(!opening||opening.sceneId!==group.row?.scene||waves.length!==opening.waves.length||
-       (opening.replacement?.templateId??0)!==(group.row.yys_replacement_id??0)||
+       (group.row.type===19?!opening.replacement:(opening.replacement?.templateId??0)!==(group.row.yys_replacement_id??0))||
        !opening.waves.every((wave,i)=>wave.length===waves[i].length&&wave.every((unit,j)=>
          ['id','position','level'].every(key=>unit[key]===waves[i][j][key]))))return null;
     group.waves=opening.waves.map(wave=>wave.map(unit=>unit.id===-1?{...unit,copy:true}:{...unit,opening:unit}));
