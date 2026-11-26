@@ -1420,11 +1420,10 @@
       Number(primary?.battle_id):Number(groups.find(({ref})=>ref.table==='ten_anni_2026_dungeon_battle'&&
         ref.label==='地图战斗配置')?.row?.battle_id);
     if(!source.isStage(stageId))return false;
+    if(source.boss(stageId))return true;
     const battleMode=source.modeFor(stageId);
     if(!battleMode){
-      destination.append(node('p',source.exploration(stageId)?
-        '此战斗使用地图内招募的式神和培养等级。活动队伍复跑待接入。':
-        '炼石成金由原版首领引擎连续换场。当前可查战斗顺序、编组和计分规则。','caption'));
+      destination.append(node('p','此战斗使用地图内招募的式神和培养等级。活动队伍复跑待接入。','caption'));
       return true;
     }
     const route=source.modes[battleMode];
@@ -1458,6 +1457,27 @@
     details.addEventListener('change',render);
     render();
     return true;
+  }
+
+  function showTenAnniversaryBoss(destination,entry,groups){
+    const source=window.AtlasTenAnniversary,route=source.bossRoute;
+    const key=Number(entry.key);
+    const matches=entry.table==='activity'&&key===route.activityId||
+      entry.table==='pve_stage_data'&&source.boss(key)||
+      entry.table==='ten_anni_2026_event'&&groups[0].row?.type===11;
+    if(!matches||!matchesOpeningSource(source)||
+       !matchesOpeningSource({resourceVersion:source.resourceVersion,tableSHA256:route.tableSHA256}))return;
+    const get=(table,key)=>groups.find(group=>group.ref.table===table&&Number(group.ref.key)===key)?.row;
+    const team=get('battle_team_routes',route.teamType),actor=get('normal_battle_yys_replace',route.actor.configId);
+    const rules=get('stake_boss',22);
+    if(team?.battleMode!==route.battleMode||team.route_sha256!==route.routeSHA256||
+       actor?.yys_id!==route.actor.id||actor.yys_level!==route.actor.level||actor.yys_star!==route.actor.star||
+       rules?.battle_id!==route.stageId||rules.last_limit!==route.deadlineSeconds)return;
+    destination.append(node('p','从第一层开始连续对战 · 石长姬替换阴阳师 · 180 秒内按个人伤害结算','caption'),
+      node('p','到达末层后，首领继续存活，小怪清空后会重新出现。离线使用石长姬的原表基础养成。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:route.stageId,groupId:route.stageId,memberCount:5,
+      waveCount:route.formationSizes.length,battleMode:route.battleMode,version:source.resourceVersion,label:'炼石成金',
+      codeStageIds:[route.codeStageId],replacementActor:route.actor,scoreWindowSeconds:route.deadlineSeconds});
   }
 
   function mountCreviceWindow(block,stageId,row,formation){
@@ -1680,6 +1700,7 @@
     const dojoAreaMounted=showDojoArea(destination,entry,groups);
     const forestMounted=showGuildForest(destination,entry,groups);
     const tenMounted=showTenAnniversary(destination,entry,groups);
+    showTenAnniversaryBoss(destination,entry,groups);
     showQinfeiBoss(destination,entry,groups);
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));

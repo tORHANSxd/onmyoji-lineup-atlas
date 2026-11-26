@@ -89,16 +89,6 @@ def secret_replacement(engine):
             "autoActor": bool(row["isAI"]), "skills": skills, **({"skinId": row["skinId"]} if "skinId" in row else {})}
 
 
-def secret_selection_placeholder():
-    from DynamicConfigData import DATA_HERO
-
-    # The original selector fills position one before replacing it with the stage actor.
-    hero = DATA_HERO.data[10]
-    skills = [[skill, level] for skill, level in zip(hero["skill"], hero["skillLv"]) if skill and level]
-    return {"heroId": 10, "level": 1, "star": 2, "awake": 0, "equips": [], "skinfo": skills,
-            "selectSkills": [skill for skill, _ in skills]}
-
-
 def check_secret_actor(engine, controller, config):
     jinyuji = engine.is_challenge_type(JINYUJI_TYPE)
     uid = engine.jinyuji_uid if jinyuji else engine.yysReplacementUid

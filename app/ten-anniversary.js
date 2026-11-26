@@ -20,7 +20,20 @@
   810244:'友方回合结束后获得 20% 增伤，最多五层',
   810245:'友方造成伤害时无视 100 点防御',
  };
+ const bossRoute={
+  battleMode:9592,teamType:2322,codeStageId:100999,stageId:12135001,activityId:12135,deadlineSeconds:180,
+  actor:{name:'石长姬',id:30608,configId:217,level:40,star:6,position:1},
+  formationSizes:[6,6,4,4,6],firstSceneId:1115303,
+  routeSHA256:'277cc0ed77214464447db15b15d676c4469b31d4278242d7ebc33785717a0604',
+  engine:{name:'TenAnniversaryBossBattleEngine',route:'ten-anniversary-boss-score',
+   sha256:'1862c6eff43a9aa5b9d57f3d44502ca99270076e4ee627616742b7f20fbf2f9b'},
+  tableSHA256:{
+   stake_boss:'60ab59f169fd58ec7d2af41cafa702234c7548b7acdcd08a94b7ee158348cd4d',
+   normal_battle_yys_replace:'0ed028082bc8f51caa6343fe206f1320283782593afdb8b1898c0d2324d19c5d',
+  },
+ };
  const data={resourceVersion:'0.0.816',modes,modeFor,boss,exploration,bonuses,defaultBonus:810241,
+  bossRoute,
   isStage:id=>modeFor(id)!==null||boss(id)||exploration(id),
   hard:id=>id===12130002,
   deadlineFor:id=>range(id,12130069,12130073)?300:modeFor(id)===null?null:180,

@@ -19,6 +19,16 @@ def integer(value, minimum, maximum):
     return type(value) is int and minimum <= value <= maximum
 
 
+def stage_actor_placeholder():
+    from DynamicConfigData import DATA_HERO
+
+    # The native selector fills position one before the encounter replaces it.
+    hero = DATA_HERO.data[10]
+    skills = [[skill, level] for skill, level in zip(hero["skill"], hero["skillLv"]) if skill and level]
+    return {"heroId": 10, "level": 1, "star": 2, "awake": 0, "equips": [], "skinfo": skills,
+            "selectSkills": [skill for skill, _ in skills]}
+
+
 def hero_data(row, *, onmyoji):
     hero_id = row.get("heroId")
     if isinstance(hero_id, str) and hero_id.isascii() and hero_id.isdecimal() and len(hero_id) <= 6:

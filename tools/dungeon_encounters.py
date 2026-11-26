@@ -16,6 +16,7 @@ from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
 from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EXPLORATION_STAGES,
                                    TEN_TOWER_STAGES, is_ten_anniversary_stage)
+from ten_anniversary_boss import TEN_BOSS_ACT, TEN_BOSS_MODE, TEN_BOSS_STAGE, TEN_BOSS_TEAM
 
 
 ROOTS = {
@@ -164,7 +165,8 @@ TEN_ACTIVITY_LINKS = {
     12132: (("ten_anni_2026_ui", 16, "虚无精锐战斗入口"),
             ("pve_stage_data", 12130001, "虚无精锐简单档"), ("pve_stage_data", 12130002, "虚无精锐困难档")),
     12134: (("ten_anni_2026_ui", 3, "地图探索入口"),),
-    12135: (("ten_anni_2026_ui", 5, "炼石成金挑战入口"), ("battle_team_routes", 2322, "原版首领战入口"),
+    TEN_BOSS_ACT: (("ten_anni_2026_ui", 5, "炼石成金挑战入口"),
+            ("stake_boss", 22, "首领挑战次数与消耗"), ("battle_team_routes", TEN_BOSS_TEAM, "原版首领战入口"),
             ("ten_anni_2026_const", 100, "五层首领顺序"),
             *(("pve_stage_data", stage, f"首领第 {index} 层") for index, stage in enumerate(TEN_BOSS_STAGES, 1))),
 }
@@ -557,8 +559,10 @@ def encounter_index(source, load_rows):
             if ref := relation("ten_anni_2026_event_type", row.get("type"), "事件类型", True):
                 links.append(ref)
             if row.get("type") == 11:
-                if ref := relation("activity", 12135, "炼石成金", False):
-                    links.append(ref)
+                links.extend(ref for dest, target, label in (
+                    ("activity", TEN_BOSS_ACT, "炼石成金"),
+                    ("pve_stage_data", TEN_BOSS_STAGE, "首领实际开战关卡"),
+                ) if (ref := relation(dest, target, label, False)))
             if "ssr10th_shichangji_ditu_tip" in rules:
                 links.append(rule_reference("ssr10th_shichangji_ditu_tip", "地图探索原文"))
         if name == "ten_anni_2026_dungeon_battle":
@@ -646,7 +650,14 @@ def encounter_index(source, load_rows):
                         if ref := relation("ten_anni_2026_const", key, label, False):
                             links.append(ref)
                 elif stage_number in TEN_BOSS_STAGES:
-                    team, mode, code, activity = 2322, 9592, 100999, 12135
+                    team, mode, code, activity = TEN_BOSS_TEAM, TEN_BOSS_MODE, 100999, TEN_BOSS_ACT
+                    for dest, target, label in (
+                        ("normal_battle_yys_replace", 217, "原版阴阳师替换配置"),
+                        ("stake_boss", 22, "首领挑战次数与消耗"),
+                        ("pve_stage_data", TEN_BOSS_STAGE, "从第一层开始挑战"),
+                    ):
+                        if ref := relation(dest, target, label, False):
+                            links.append(ref)
                 elif stage_number in TEN_ENCOUNTER_STAGES:
                     team, mode, code, activity = 2321, 9593, 101000, 12134
                 else:

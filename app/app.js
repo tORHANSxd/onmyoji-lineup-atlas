@@ -214,6 +214,7 @@ function sampleBattleMarkup(samples){
   const dojoArea=sample.dojoArea;
   const forest=sample.guildForest;
   const ten=sample.tenAnniversary;
+  const tenBoss=sample.tenAnniversaryBoss;
   const damageWindow=sample.guildCrevice??ghost??historicalGhost;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
@@ -278,6 +279,10 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${forest.damage.toLocaleString('zh-CN')} · 战斗与结算 ${forest.combatSeconds.toFixed(2)} 秒`:
    ten?`${ten.timedOut?'原版判定超时':describeBattle(sample,false)} · 助战石长姬 · 生效增益 ${ten.bonuses.length} 项 · `+
     `战斗与结算 ${ten.combatSeconds.toFixed(2)} 秒 · 原版时限 ${ten.deadlineSeconds} 秒`:
+   tenBoss?`${!sample.completed?'结算待核对':tenBoss.timedOut?'达到原版时限':'本队落败'} · `+
+    `个人伤害 ${tenBoss.damage.toLocaleString('zh-CN')} · 到达第 ${tenBoss.phases.length} / 5 层 · `+
+    `战斗与结算 ${tenBoss.combatSeconds.toFixed(2)} 秒`+
+    (tenBoss.phases.length===5?` · 末层小怪已重生 ${tenBoss.minionRespawns} 次`:''):
    damageWindow?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':
     historicalGhost&&historicalGhost.windowSeconds<historicalGhost.deadlineSeconds?'达到计分窗口':'原版时限结束',
     'window-expired':'达到计分窗口'}[damageWindow.reason]||'结算待核对'} · `+
@@ -319,7 +324,13 @@ function sampleBattleMarkup(samples){
    `${unit.position} 号位 ${Math.round(unit.remainingHp).toLocaleString('zh-CN')} / ${Math.round(unit.startingHp).toLocaleString('zh-CN')}`).join(' · '))}</div>`:'';
   const special=ghost?.specialAttack.length?`<div class="caption">特攻加成 · ${esc(ghost.specialAttack.map(unit=>
    `${DATA.gameConfig.heroes[unit.heroId]?.name??unit.heroId} 攻击 +${Math.round(unit.attackAdded).toLocaleString('zh-CN')}`).join(' · '))}</div>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}</li>`;
+  const bossStages=tenBoss?`<details><summary>查看各层进场与助战</summary><ol>${tenBoss.phases.map(phase=>{
+   const assists=tenBoss.assists.filter(assist=>assist.phase===phase.phase);
+   const names=assists.map(assist=>DATA.gameConfig.heroes[assist.heroId]?.name??assist.heroId);
+   return `<li>第 ${phase.phase} 层 · ${phase.seconds.toFixed(2)} 秒进场 · 敌方 ${phase.enemies.length} 位`+
+    (names.length?` · 助战 ${esc(names.join('、'))}`:'')+'</li>';
+  }).join('')}</ol></details>`:'';
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}</li>`;
  }).join('');
 }
 

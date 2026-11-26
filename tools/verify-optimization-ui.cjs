@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238,9591,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -357,7 +357,9 @@ async function main(){
   stageActorWithSlot.members[0].skills=[];
   const jinyujiStageActor=known('secret-jinyuji',10717011,5);
   jinyujiStageActor.members.shift();
-  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor);
+  const tenBossStageActor=known('ten-boss',100999,5);
+  tenBossStageActor.members.shift();
+  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor,tenBossStageActor);
   const boot=await ui('JSON.stringify(STATE)');
   const cases=encounterCases;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -822,6 +824,19 @@ async function main(){
     await ui('qaEncounterInput("event","黄金之河 石长姬-探索1 12130016")');
     await until(panel+'.textContent.includes("活动队伍复跑待接入")');
     assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='activity'&&entry.key===12135&&entry.refs.some(ref=>ref.table==='stake_boss'))){
+    await encounter('event','炼石成金 12135');
+    assert.match(await ui(panel+'.textContent'),/从第一层开始连续对战 · 石长姬替换阴阳师 · 180 秒内按个人伤害结算/);
+    const tenAnniversaryBoss={timedOut:true,damage:1234567,
+      phases:[0,22.22,82.44,162.7].map((seconds,i)=>({phase:i+1,seconds,enemies:Array(i<2?6:4)})),
+      assists:[],combatSeconds:181.46,minionRespawns:0};
+    assert.match(await run('ten-boss',{stageId:12135001,groupId:12135001,battleMode:9592},
+      {waveCount:5,wavesCleared:3,tenAnniversaryBoss},undefined,null),/达到原版时限 · 个人伤害 1,234,567 · 到达第 4 \/ 5 层/);
+    assert.match(await ui(reports+'.textContent'),/第 4 层 · 162\.70 秒进场 · 敌方 4 位/);
+    assert.match(await ui(reports+'.textContent'),/限时计分/);
+    await encounter('event','炼石成金 第 5 层 12135005');
+    assert.match(await ui(panel+'.textContent'),/末层后，首领继续存活，小怪清空后会重新出现/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='11112'&&entry.refs.some(ref=>!ref.found))){
     await ui('qaEncounterInput("battle","结界入侵 11112")');

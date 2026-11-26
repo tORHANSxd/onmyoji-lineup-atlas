@@ -563,11 +563,13 @@
   const names=plan.members.map(({hero})=>game.heroes[hero.heroId]?.name||`式神 ${hero.heroId}`);
   const {tactics}=plan;
   const opening=AtlasRuneCandidate.scoreInstructions(tactics,plan,game).replace(/第([1-6])位式神/g,(_,slot)=>`${names[slot-1]}（式神第 ${slot} 位）`);
-  const skillModes=[{hero:plan.onmyoji,aiSkill:plan.onmyoji.aiSkill},...plan.members].flatMap(({hero,aiSkill},index)=>{
+  const roster=plan.members.map(({hero,aiSkill},index)=>({hero,aiSkill,name:names[index]}));
+  if(plan.onmyoji)roster.unshift({hero:plan.onmyoji,aiSkill:plan.onmyoji.aiSkill,
+   name:game.heroes[plan.onmyoji.heroId]?.name||'阴阳师'});
+  const skillModes=roster.flatMap(({hero,aiSkill,name})=>{
    if(!aiSkill)return [];
    const choice=scoreChoices(game,hero).find(option=>option.value===aiSkill);
    if(!choice)return [];
-   const name=index?names[index-1]:game.heroes[hero.heroId]?.name||'阴阳师';
    return [choice.slot?`${name}锁定第 ${choice.slot} 技能（${choice.name}）`:`${name}使用${choice.name}`];
   });
   row.details.insertAdjacentHTML('beforebegin',`<p class="caption" data-score-tactics>${esc(opening||'开场直接自动。')}${esc(skillModes.length?skillModes.join('，')+'。':'')}</p>`);
@@ -629,7 +631,8 @@
     const score=huntScores.get(row);
     if(score){
      const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
-     row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${cleared?'均清场':'含未清场样本'} · 平均伤害 ${damageText(score.average)} · `+
+     const result=row.samples[0].tenAnniversaryBoss?'限时计分':cleared?'均清场':'含未清场样本';
+     row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${result} · 平均伤害 ${damageText(score.average)} · `+
       `单场最高 ${damageText(score.max)} · 最低 ${damageText(score.min)}`;
      continue;
     }
