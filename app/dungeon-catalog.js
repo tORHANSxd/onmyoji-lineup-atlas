@@ -31,6 +31,8 @@
     active_time: '玩法开放时间表',
     guild_dinner_monster: '阴阳寮宴会首领',
     act_team_battle: '活动组队战斗',
+    activity_lbs_intro: '现世妖约活动详情',
+    activity_offline_lbs_mass: '现世妖约活动地点',
     journey_hardbattle: '京畿净化首领挑战',
     journey_normalbattle_jinbi: '京畿净化战斗参数 · 金币',
     journey_normalbattle_jingyan: '京畿净化战斗参数 · 经验',
@@ -1212,7 +1214,8 @@
       const enemies=route.waves.length>1?`敌方 ${route.waves.length} 波`:`敌方 ${route.waves[0][0][2]} 级`;
       const limit=route.kind==='meituan'?' · 攻击食物小怪，食灵满意度达到 100% 时获胜':
         route.raidWindowSeconds?` · 从首领满血、剩余 ${route.raidWindowSeconds} 秒开始`:
-        route.deadlineSeconds?` · 原版时限 ${route.deadlineSeconds} 秒 · 阴阳师被动 LBS周年烟花`:'';
+        route.deadlineSeconds?` · 原版时限 ${route.deadlineSeconds} 秒 · 阴阳师被动 LBS周年烟花`:
+        route.kind==='lbsHistory'?' · 原表无固定战斗时限':'';
       slots.textContent=`${enemies} · ${assignments.join(' · ')}${limit}`;
       const codeScene=DATA.gameConfig.stages[route.codeStageId];
       workbench.replaceChildren();

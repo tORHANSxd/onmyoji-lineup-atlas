@@ -22,6 +22,8 @@ LBS_ACTIVITY_ENTRIES = {
     19042: (52, 408, "广州塔"),
     19043: (53, 409, "上海五角场"),
 }
+LBS_HISTORY_ENTRIES = (19021, 19022, 19023, 19024, 19025, 19027, 19029, 19031, 19032, 19038, 19040, 19041)
+CHANG_LONG_ENTRY = 19041
 NIAN_ENTRIES = dict(zip((19015, 19016, 19017, 19018, 19019, 19020, 19026), range(238, 245)))
 NIAN_STAGES = dict(zip(range(3340141, 3340150), range(10, 51, 5)))
 SPECIAL_NIAN_STAGES = dict(zip(range(3340150, 3340156), range(1, 7)))
@@ -92,6 +94,10 @@ def entry_for_stage(entries, stage_id, mode=None):
             for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
                 if stage == stage_id:
                     return "lbsActivity", None, 233, None, level
+        for entry_id in LBS_HISTORY_ENTRIES:
+            for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
+                if stage == stage_id:
+                    return "lbsHistory", None, 39, None, level
     if mode in (None, SEAL_MODE, LBS_MODE):
         for entry_id, row in entries.items():
             kind = "seal" if mode != LBS_MODE and is_fragment_entry(entry_id, row) else (
@@ -129,10 +135,14 @@ class MapBossReplay:
             raise RuntimeError("Original map boss stage and formation disagree")
         waves = formation["MonstersInfos"]
         self.wave_count = len(waves)
-        self.lbs_activity = mode == LBS_ACTIVITY_MODE
+        self.lbs_activity = self.kind == "lbsActivity"
         if self.lbs_activity:
             if stage.get("battleTime") != LBS_ACTIVITY_SECONDS or [len(wave) for wave in waves] != [3]:
                 raise RuntimeError("Original LBS activity timing or formation differs from the verified route")
+        elif self.kind == "lbsHistory":
+            chang_long = any(key == stage_id for key, _ in map_boss.data[CHANG_LONG_ENTRY]["gk_list"])
+            if stage.get("battleTime") is not None or [len(wave) for wave in waves] != ([6] if chang_long else [4, 4, 5]):
+                raise RuntimeError("Original historical LBS formation differs from the verified route")
         elif flag is None:
             if [len(wave) for wave in waves] != [4, 4, 6]:
                 raise RuntimeError("Original map boss has an unexpected set of waves")
@@ -143,16 +153,17 @@ class MapBossReplay:
         params = {"pve_data_flag": str(stage_id)}
         if flag:
             params[flag] = True
-        if self.lbs_activity:
+        if mode == LBS_ACTIVITY_MODE:
             from battleengine.engine.LBSActivityBossEngine import LBSActivityBossEngine, YYS_EXTRA_PASSIVE_SKILL_ID
 
             if YYS_EXTRA_PASSIVE_SKILL_ID != LBS_ACTIVITY_SKILLS[-1]:
                 raise RuntimeError("Original LBS activity uses a different passive")
             self.engine = LBSActivityBossEngine(params)
             self.engine.battleMode = const.BattleMode.MODE_LBS_ACTIVITY_BOSS_NEW
-            self.started = None
-            self.passive_verified = False
-            self.observe_deadline()
+            if self.lbs_activity:
+                self.started = None
+                self.passive_verified = False
+                self.observe_deadline()
         elif mode == LBS_MODE:
             from battleengine.engine.LBSBossEngine import LBSBossEngine
 
@@ -185,6 +196,8 @@ class MapBossReplay:
             self.passive_verified = skill is not None and skill.skillLevel == 1
             if not self.passive_verified:
                 raise RuntimeError("The original LBS activity did not install the Onmyoji passive")
+        elif self.kind == "lbsHistory" and onmyoji.SkillMgrComp.getSkillById(LBS_ACTIVITY_SKILLS[-1]) is not None:
+            raise RuntimeError("The historical LBS activity unexpectedly installed the rat passive")
 
     def observe_deadline(self):
         set_deadline = self.engine.set_haltBattleTime
@@ -247,7 +260,9 @@ class MapBossReplay:
                     "positions": self.positions, "waves": self.waves, "passiveSkill": LBS_ACTIVITY_SKILLS[-1],
                     "deadlineSeconds": LBS_ACTIVITY_SECONDS, "timedOut": outcome == "loss" and bool(self.engine.isHaltBattle),
                     "combatSeconds": round(self.engine.now_time() - self.started, 6)}
-        if self.wave_count > 1:
+        if self.kind == "lbsHistory" and self.engine.getHaltBattleTime() is not None:
+            raise RuntimeError("The historical LBS activity unexpectedly set a fixed deadline")
+        if self.wave_count > 1 or self.kind == "lbsHistory":
             return {"kind": self.kind, "level": self.level, "players": len(self.positions),
                     "positions": self.positions, "waves": self.waves}
         rewards = None

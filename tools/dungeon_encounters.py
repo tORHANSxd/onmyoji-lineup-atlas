@@ -4,7 +4,7 @@ from collections import Counter
 from functools import cache
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
-from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS,
+from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS, LBS_HISTORY_ENTRIES,
                             LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MEITUAN_SKILLS, MEITUAN_STAGES,
                             NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, SEAL_MODE,
                             SPECIAL_NIAN_MODE, SPECIAL_NIAN_STAGES, is_fragment_entry)
@@ -52,6 +52,8 @@ ROOTS = {
     "guild_monster": ("guild", "阴阳寮麒麟"),
     "guild_fake_god_event": ("guild", "阴阳寮活动"),
     "act_team_battle": ("event", "活动组队战斗"),
+    "activity_lbs_intro": ("event", "现世妖约活动详情"),
+    "activity_offline_lbs_mass": ("event", "现世妖约活动地点"),
     "xinghen_battle": ("daily", "彼世逢魔"),
     "SuperGhost_mission": ("event", "超鬼王"),
     "SuperGhost_bossmission": ("event", "超鬼王首领挑战"),
@@ -287,10 +289,38 @@ def encounter_index(source, load_rows):
         map_boss_stages[key] = stages
         for stage_id in stages:
             map_boss_by_stage.setdefault(numeric_key(stage_id), []).append(key)
-    meituan_sites = {}
-    for key, site in table("activity_offline_lbs_mass").values():
-        if site.get("act_id") == 7236 and site.get("mapbossid") in MEITUAN_ENTRIES:
-            meituan_sites.setdefault(site["mapbossid"], []).append(key)
+    lbs_intros_by_type, lbs_intros_by_activity = {}, {}
+    for key, intro in sorted(table("activity_lbs_intro").values()):
+        lbs_intros_by_type.setdefault(intro.get("act_type"), []).append(key)
+        lbs_intros_by_activity.setdefault(intro.get("activity_id"), []).append(key)
+    lbs_bosses_by_type, lbs_sites = {}, {}
+    for key, boss in table("map_boss").values():
+        lbs_bosses_by_type.setdefault(boss.get("type"), []).append(key)
+    for key, site in sorted(table("activity_offline_lbs_mass").values()):
+        if site.get("mapbossid") and site.get("act_id"):
+            lbs_sites.setdefault(site["mapbossid"], {}).setdefault(site["act_id"], []).append(key)
+
+    def lbs_intro_rules(intro):
+        return [rule_reference(rule, "活动规则原文") for rule in intro.get("ui", ())
+                if isinstance(rule, str) and (rule in rules or rule in tips)]
+
+    def lbs_map_history(row):
+        sites = lbs_sites.get(row.get("id"), {})
+        intro_ids = set(lbs_intros_by_type.get(row.get("type"), ()))
+        for activity in sites:
+            intro_ids.update(lbs_intros_by_activity.get(activity, ()))
+        links = []
+        for intro_id in sorted(intro_ids):
+            _, intro = table("activity_lbs_intro")[str(intro_id)]
+            links.append(relation("activity_lbs_intro", intro_id, "活动入口配置", False))
+            if opening := relation("activity", intro.get("activity_id"), "活动开放配置", False):
+                links.append(opening)
+            links.extend(lbs_intro_rules(intro))
+        for activity, keys in sorted(sites.items()):
+            if opening := relation("activity", activity, "地点所属活动配置", False):
+                links.append(opening)
+            links.append(relation("activity_offline_lbs_mass", keys[0], f"活动地点（同活动共 {len(keys)} 处）", False))
+        return links
     hunling_routes = {str(stage_id): row for stage_id, row in (*exploration_stages(), *challenge_stages())}
     hunling_codes = {row["search_id"]: key for key, row in table("team_assist_stage").values()
                      if isinstance(row.get("name"), str) and row["name"].startswith("契灵")}
@@ -457,6 +487,19 @@ def encounter_index(source, load_rows):
             config = relation("normal_battle_config", row.get("battleMode"), "战斗模式默认规则", False)
             if config:
                 links.append(config)
+        if name == "activity_lbs_intro":
+            if opening := relation("activity", row.get("activity_id"), "活动开放配置", False):
+                links.append(opening)
+            links.extend(lbs_intro_rules(row))
+            links.extend(relation("map_boss", boss_id, "同类型地图首领", False)
+                         for boss_id in sorted(lbs_bosses_by_type.get(row.get("act_type"), ())))
+        if name == "activity_offline_lbs_mass":
+            if opening := relation("activity", row.get("act_id"), "地点所属活动配置", False):
+                links.append(opening)
+            if boss := relation("map_boss", row.get("mapbossid"), "对应地图首领", False):
+                links.append(boss)
+            links.extend(relation("activity_lbs_intro", intro_id, "活动入口配置", False)
+                         for intro_id in lbs_intros_by_activity.get(row.get("act_id"), ()))
         if name == "map_boss" and numeric_key(row.get("id")) == str(TRUE_OROCHI_MAP_ID):
             links.append(rule_reference("ZHENBAQIDASHE_TIPS", "真·八岐大蛇玩法原文"))
             links.extend((relation("battle_mode_routes", TRUE_OROCHI_MODE, "原版战斗入口", True),
@@ -486,7 +529,7 @@ def encounter_index(source, load_rows):
             elif row.get("id") in MEITUAN_ENTRIES:
                 links.extend(meituan_references())
                 links.extend(relation("activity_offline_lbs_mass", key, "联动门店", False)
-                             for key in sorted(meituan_sites.get(row["id"], ())))
+                             for key in lbs_sites.get(row["id"], {}).get(7236, ()))
             elif activity_route := LBS_ACTIVITY_ENTRIES.get(row.get("id")):
                 intro_id, site_id, _ = activity_route
                 _, intro = table("activity_lbs_intro").get(str(intro_id), (None, {}))
@@ -507,6 +550,11 @@ def encounter_index(source, load_rows):
                     label = "阴阳师被动" if skill == LBS_ACTIVITY_SKILLS[-1] else "策划鼠机制"
                     if ref := relation("skill", level_one_skill(skill), label, False):
                         links.append(ref)
+            else:
+                links.extend(lbs_map_history(row))
+                if row.get("id") in LBS_HISTORY_ENTRIES:
+                    if route := relation("battle_mode_routes", LBS_ACTIVITY_MODE, "现世妖约战斗引擎", False):
+                        links.append(route)
             links.extend(relation("pve_stage_data", stage_id, label, True)
                          for stage_id, label in map_boss_stages.get(row.get("id"), {}).items())
         if name == "BattleMonstersInfo":
@@ -800,6 +848,17 @@ def encounter_index(source, load_rows):
             elif table_name == "map_boss" and key in LBS_ACTIVITY_ENTRIES:
                 entry_family, entry_kind = "event", "现世妖约·策划鼠"
                 title = f"现世妖约 · {LBS_ACTIVITY_ENTRIES[key][2]}策划鼠"
+            elif table_name == "map_boss" and (key in LBS_HISTORY_ENTRIES or key in lbs_sites
+                                               or row.get("type") in lbs_intros_by_type):
+                entry_family, entry_kind = "event", "历史现世妖约"
+                title = f"{entry_kind} · {title}"
+            if table_name == "activity_lbs_intro":
+                title = row.get("act_title") or title
+            if table_name == "activity_offline_lbs_mass":
+                _, boss = table("map_boss").get(reference_key(row.get("mapbossid")), (None, {}))
+                _, activity = table("activity").get(reference_key(row.get("act_id")), (None, {}))
+                site = row.get("shop_name") or f"地点 {key}"
+                title = " · ".join(dict.fromkeys(filter(None, (site, name(activity), name(boss)))))
             if table_name == "MZB_fengmo":
                 trait_id = row.get("skill_id")
                 _, trait = table("skill").get(reference_key(level_one_skill(trait_id)), (None, {}))

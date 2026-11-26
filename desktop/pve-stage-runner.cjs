@@ -527,7 +527,7 @@ function validMapBossReport(report,route,players){
  if(route.deadlineSeconds&&(data.deadlineSeconds!==route.deadlineSeconds||data.passiveSkill!==route.passiveSkill||
     !Number.isFinite(data.combatSeconds)||data.combatSeconds<0||typeof data.timedOut!=='boolean'||
     (data.timedOut&&(report.outcome!=='loss'||data.combatSeconds<route.deadlineSeconds))))return false;
- if(route.waves.length>1||route.deadlineSeconds){
+ if(route.waves.length>1||route.deadlineSeconds||route.kind==='lbsHistory'){
   const count=data.waves?.length;
   return Array.isArray(data.waves)&&count>=1&&count<=route.waves.length&&report.formationsVerified===count&&
    report.wavesCleared<=count&&(report.outcome!=='win'||report.wavesCleared===route.waves.length)&&

@@ -279,6 +279,34 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertIsNone(entry_for_stage(bosses, special, NIAN_MODE))
         self.assertIsNone(party_positions(SPECIAL_NIAN_MODE, 2))
 
+    def test_lbs_history_uses_explicit_activity_and_location_relations(self):
+        boss = {"id": 19040, "type": 56, "name": "现世之约LBS鬼王", "gk_list": [[200160, 10]]}
+        tables = {
+            "map_boss": [[19040, boss]],
+            "activity_lbs_intro": [[50, {"act_type": 56, "activity_id": 9463, "act_title": "九周年现世之约",
+                                        "ui": ["MapCommonLBSBossWindow", "活动规则"]}],
+                                   [80, {"act_type": 50, "activity_id": 8008, "act_title": "另一场"}]],
+            "activity_offline_lbs_mass": [[406, {"act_id": 9463, "mapbossid": 19040, "shop_name": "活动地点样本"}],
+                                          [407, {"act_id": 9463, "mapbossid": 19040, "shop_name": "活动地点样本二"}]],
+            "activity": [[9463, {"name": "九周年现世之约"}], [8008, {"name": "另一场"}]],
+            "system_rule_dsc": [["活动规则", {"rule_dsc": "原版活动文字"}]],
+            "battle_mode_routes": [[LBS_ACTIVITY_MODE, {}]],
+            "pve_stage_data": [[200160, {"id": "200160", "groupid": 200160}]],
+            "BattleMonstersInfo": [[200160, {"resindex": 39}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle", "fields": []} for name in tables]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], entry["key"]): entry for entry in index["entries"]}
+        root = entries["map_boss", 19040]
+        self.assertEqual(root["kind"], "历史现世妖约")
+        self.assertEqual([r["key"] for r in root["refs"] if r["table"] == "activity"], [9463])
+        self.assertEqual([r["key"] for r in root["refs"] if r["table"] == "activity_offline_lbs_mass"], [406])
+        site = entries["activity_offline_lbs_mass", 407]
+        self.assertIn("九周年现世之约", site["title"])
+        self.assertIn(19040, [r["key"] for r in site["refs"]])
+        self.assertEqual(entry_for_stage({19040: boss}, 200160, LBS_ACTIVITY_MODE), ("lbsHistory", None, 39, None, 10))
+        self.assertIsNone(entry_for_stage({19040: boss}, 200160, LBS_MODE))
+
     def test_meituan_links_shop_locations_to_the_banquet_and_its_special_rules(self):
         stage = 20140
         maps = {key: {"id": key, "name": "联动鬼王", "type": 53, "gk_list": [[stage, 10]]}

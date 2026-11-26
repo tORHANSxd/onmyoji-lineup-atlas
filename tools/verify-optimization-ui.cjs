@@ -657,6 +657,17 @@ async function main(){
     await until(status+'.textContent.includes("未通过本次采样")');
     assert.match(await ui(reports+'.textContent'),/达到原版时限 · 战斗与结算 302\.86 秒/);
    }
+   if(cases.some(entry=>entry.table==='map_boss'&&entry.key===19041&&entry.kind==='历史现世妖约')){
+    await encounter('event','历史现世妖约 广州长隆');
+    assert.equal(await ui('document.querySelector("[data-map-boss-stage]").options.length'),9);
+    const rank='document.querySelector("[data-map-boss-stage]")',players='document.querySelector("[data-map-boss-players]")';
+    await ui(`${rank}.value="200176";${rank}.dispatchEvent(new Event("change"));
+     ${players}.value="3";${players}.dispatchEvent(new Event("change"))`);
+    assert.match(await ui(panel+'.textContent'),/敌方 37 级.*原表无固定战斗时限/s);
+    assert.match(await run('superghost-five',{stageId:200176,groupId:200176,battleMode:3022,mapBossPlayers:3},
+     {waveCount:1,wavesCleared:1,formationsVerified:1,mapBoss:{kind:'lbsHistory',players:3,level:40}}),
+     /3 人组队 · 40 级档/);
+   }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===19015&&entry.kind==='现世年兽')){
     await encounter('event','现世年兽 东北年兽');
     assert.equal(await ui('document.querySelector("[data-map-boss-players]").options.length'),1);

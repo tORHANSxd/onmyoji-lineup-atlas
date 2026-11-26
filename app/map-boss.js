@@ -80,6 +80,31 @@
   {base:200190,entries:[19043],label:'现世妖约 · 上海五角场策划鼠'},
  ].map(route=>({...route,kind:'lbsActivity',sceneId:233,waves:[[[2,14451,40],[3,14452,40],[4,14453,40]]],
   deadlineSeconds:300,passiveSkill:101013,codeStageId:101006}));
+ const historyFirstWaves=[[7116262,7116218,7116218,7116218],[7116220,7116247,7116208,7116257]];
+ const historyRoutes=[
+  [20020,[19021,19032],'京东／名创优品',7116330],
+  [20030,[19022],'大触觉醒',7116311],
+  [20040,[19023],'大江山之章',7116312],
+  [20050,[19024],'屈臣氏',7116266],
+  [20060,[19025,19029],'平安银行／罗森',339362],
+  [20070,[19027],'上海主题店',7116343],
+  [20130,[19031],'周生生',7116410,[[7116347,7116411,7116411,7116411],historyFirstWaves[1]]],
+  [20150,[19038],'携程',7116379],
+  [200160,[19040],'九周年现世之约',8956330,[[8956262,8956218,8956218,8956218],[8956220,8956247,8956208,8956257]],
+   [8956289,8956253,8956304,8956260]],
+ ].map(([base,entries,name,boss,initial=historyFirstWaves,adds=[7116289,7116253,7116304,7116260]])=>
+  ({base,entries,label:'历史现世妖约 · '+name,ids:[...initial,[boss,...adds]]}));
+ const changLong={base:200170,entries:[19041],label:'历史现世妖约 · 广州长隆',
+  enemies:[1081287,1081251,1081252,1081253,1081254,1081256],
+  enemyLevels:[[10,7],[15,12],[20,20],[25,25],[30,30],[35,35],[37,37],[40,40],[40,40]],
+ };
+ const historyStages=[...historyRoutes,changLong].flatMap(({base,ids,enemies,enemyLevels,...route})=>Array.from({length:9},(_,rank)=>{
+  const level=10+5*rank;
+  const waves=ids?ids.map((wave,index)=>wave.map((id,i)=>[
+   (index===2?[1,2,4,5,6]:[1,2,3,4])[i],id,Math.min(40,level-(i?3:0)),
+  ])):[enemies.map((id,i)=>[i+1,id,enemyLevels[rank][i?1:0]])];
+  return [base+rank,{...route,battleMode:lbsActivityMode,kind:'lbsHistory',sceneId:39,level,waves}];
+ }));
  const sharedHpLineupSlots=[3,4,5,6,2];
  const nianRoutes=[
   ...Array.from({length:9},(_,i)=>[3340141+i,{
@@ -98,7 +123,7 @@
   ids:[[4262369,4262208,4262312,4262281,4262301,4262342]],
  }];
  const stages=Object.fromEntries([...buildStages(bossRoutes,bossMode),...buildStages(sealRoutes,sealMode),
-  ...buildStages(lbsRoutes,lbsMode),...buildStages(activityRoutes,lbsActivityMode),...nianRoutes,
+  ...buildStages(lbsRoutes,lbsMode),...buildStages(activityRoutes,lbsActivityMode),...historyStages,...nianRoutes,
   ...buildStages(meituanRoutes,meituanMode)]);
  const positions={2:[[5,6],[2,3,4]],3:[[3],[2,5],[4,6]]};
  const fiveSlots=[[2,3,4,5,6]],singleTeamModes=[nianMode,specialNianMode,meituanMode];
