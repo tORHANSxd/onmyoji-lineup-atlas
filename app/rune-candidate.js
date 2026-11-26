@@ -105,6 +105,26 @@ function compareDamage(a,b){
  return b.average-a.average||b.min-a.min||b.max-a.max;
 }
 
+function waveResult(samples){
+ if(!samples.length||samples.some(report=>!report.completed||report.waveCount!==70||
+    !Number.isInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>70))return null;
+ const waves=samples.map(report=>report.wavesCleared);
+ return {min:Math.min(...waves),max:Math.max(...waves),average:waves.reduce((total,value)=>total+value,0)/waves.length};
+}
+
+async function underworldTemplates(row,data,{stageId,groupId,codeStageId,codeLabel}){
+ const seeds=S.baseSampleSeeds;
+ if(row.samples.length!==seeds.length||!waveResult(row.samples)||!row.samples.every((report,i)=>
+    report.battleMode===2001&&report.stageId===stageId&&report.groupId===groupId&&report.seed===seeds[i]))
+  throw Error('完成阴界之门共同种子复跑后才可制作接力阵容码');
+ return Promise.all(row.rounds.flatMap((round,index)=>{
+  const samples=row.samples.filter(report=>report.wavesCleared>0&&report.underworld?.teams?.some(team=>team.team===index+1));
+  if(!samples.length||!round.panels?.every(Boolean)||round.plan.members.some(member=>member.souls.length!==6))return [];
+  const team=index+1;
+  return [draft(round,data,codeStageId,`${codeLabel} · 第 ${team} 队`,samples.length,'取得接力波次成绩').then(request=>({team,request}))];
+ }));
+}
+
 function scoreInstructions(tactics){
  if(!tactics)return '';
  const {manualOpening,redBoss,greenSlot,autoMode}=tactics;
@@ -206,5 +226,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageResult,compareDamage,scoreInstructions,readScoreInstructions,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
+return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageResult,compareDamage,waveResult,underworldTemplates,scoreInstructions,readScoreInstructions,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
 });

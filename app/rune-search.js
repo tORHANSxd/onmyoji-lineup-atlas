@@ -340,7 +340,44 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
  return candidates;
 }
 
-const hun13Key=plan=>JSON.stringify(plan.rounds.map(teamKey));
+const relayKey=plan=>JSON.stringify(plan.rounds.map(teamKey));
+const hun13Key=relayKey;
+
+function remainingStock(account,plan){
+ const heroes=new Set(plan.members.map(member=>member.instanceId));
+ const souls=new Set(plan.members.flatMap(member=>member.souls.map(soul=>soul.id)));
+ const remove=(from,used)=>Object.fromEntries(Object.entries(from).filter(([id])=>!used.has(id)));
+ return {...account,heroes:remove(account.heroes,heroes),souls:remove(account.souls,souls)};
+}
+
+function underworldCandidates(account,data,alternatives=[]){
+ const {gameConfig:game}=data;
+ const compositions=[hun13Pace,hun13Hold,groupBuff,turnAdvance,openingDamage,sustain];
+ const profile={strategies:compositions,openingSpeed:140,bossSpeed:140,earlySpeed:145};
+ const actors=[[11,1101,1102,1107],[12,1201,1203,1204],[13,1301,1302,1305]].map(([heroId,...skills])=>{
+  const skinfo=skills.map(id=>[id,G.levels(game,id,0).at(-1)?.level]);
+  if(skinfo.some(([,level])=>!level))throw Error('本版本缺少阴界之门备选阴阳师技能');
+  return {heroId,level:60,star:2,awake:0,skinfo,aiSkill:0};
+ });
+ const leads=buildCandidates(account,data,profile,[],null,3),rows=[],seen=new Set(alternatives);
+ for(const lead of leads){
+  const rounds=[lead];
+  let remaining=remainingStock(account,lead.plan);
+  for(const onmyoji of actors){
+   const [item]=buildCandidates(remaining,data,profile,[],null,1);
+   if(!item)break;
+   const {members}=item.plan;
+   const plan={members,onmyoji,damageFloor:true};
+   remaining=remainingStock(remaining,plan);
+   rounds.push({...item,plan});
+  }
+  const plan={rounds:rounds.map(row=>row.plan),damageFloor:true},key=relayKey(plan);
+  if(seen.has(key))continue;
+  seen.add(key);
+  rows.push({title:`${lead.title}开场 · ${rounds.length} 队接力`,heroIds:lead.heroIds,rounds,plan});
+ }
+ return rows;
+}
 
 function hun13Candidates(account,data,alternatives=[]){
  const stage=G.runeOpeningStage('0.0.816',103);
@@ -349,7 +386,6 @@ function hun13Candidates(account,data,alternatives=[]){
   const maximum=Math.max(...wave.map(enemy=>enemy.speed));
   return {strategies:hun13Strategies[index],openingSpeed:maximum+1,bossSpeed:maximum+1,earlySpeed:maximum+8};
  });
- const remove=(from,used)=>Object.fromEntries(Object.entries(from).filter(([id])=>!used.has(id)));
  const unseen=new Set(alternatives),rows=[];
  // Allocate the strongest gear to each wave in turn. The other wave may
  // still use another instance of the same character if the account has it.
@@ -357,9 +393,7 @@ function hun13Candidates(account,data,alternatives=[]){
  for(let i=0;i<limit&&rows.length<limit;i++)for(const wave of [0,1]){
   const lead=leads[wave][i];
   if(!lead||rows.length===limit)continue;
-  const remaining={...account,
-   heroes:remove(account.heroes,new Set(lead.plan.members.map(member=>member.instanceId))),
-   souls:remove(account.souls,new Set(lead.plan.members.flatMap(member=>member.souls.map(soul=>soul.id))))};
+  const remaining=remainingStock(account,lead.plan);
   for(const partner of buildCandidates(remaining,data,profiles[1-wave],[],103,2)){
    const rounds=wave===0?[lead,partner]:[partner,lead];
    const plan={rounds:rounds.map(row=>row.plan),damageFloor:true},key=hun13Key(plan);
@@ -370,5 +404,5 @@ function hun13Candidates(account,data,alternatives=[]){
  return rows;
 }
 
-return {candidates,teamKey,pveCandidates,scoreVariants,hun13Candidates,hun13Key,hun13SampleSeeds,baseSampleSeeds,sampleSeeds,extraSeeds,samplesForDungeon};
+return {candidates,teamKey,pveCandidates,scoreVariants,hun13Candidates,hun13Key,underworldCandidates,relayKey,hun13SampleSeeds,baseSampleSeeds,sampleSeeds,extraSeeds,samplesForDungeon};
 });

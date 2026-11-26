@@ -184,8 +184,11 @@ function sampleBattleMarkup(samples){
   });
   const experience=sample.experience;
   const hunt=sample.guildHunt;
+  const relay=sample.underworld;
   const outcome=hunt?`${sample.outcome==='win'?'个人结算成功':sample.completed?'个人结算失败':'结算待确认'} · `+
    `${sample.wavesCleared===sample.waveCount?'已清场':'未清场'} · 伤害 ${hunt.damage.toLocaleString('zh-CN')}`:
+   relay?`${sample.completed?'结算':'结算待确认'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 波 · `+
+    relay.teams.map(team=>`第 ${team.team} 队在第 ${team.startWave} 波上场`).join('，')+(relay.leftAfterLastTeam?' · 已用完所选队伍':''):
    experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:describeBattle(sample);
   return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}</li>`;
  }).join('');

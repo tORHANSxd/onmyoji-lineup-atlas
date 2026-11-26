@@ -20,6 +20,7 @@ const engines={
  266:{name:'ChallengeFbEngine',route:'secret-ordinary-solo',sha256:secretOpenings.engineSHA256},
  267:{name:'GorenFbEngine',route:'yuling-solo',sha256:yulingOpenings.engineSHA256},
  2000:{name:'GuildHuntingBattleEngine',route:'guild-hunting-local-owned',sha256:guildHuntOpenings.engineSHA256},
+ 2001:{name:'GuildLieFengEngine',route:'underworld-gate-local-solo',sha256:'5ee939050f18dc8de1960d88ce5181f5735fb89477c3736e1f32ac696426d625'},
  [firstExperience.battleMode]:{name:'NewExpEngine',route:'resource-first-new-server-exp',sha256:resourceEncounters.engineSHA256},
 };
 const positive=value=>Number.isSafeInteger(value)&&value>0;
@@ -46,6 +47,20 @@ function sameTactics(actual,expected){
   Object.entries(expected).every(([key,value])=>Object.hasOwn(actual,key)&&sameTactics(actual[key],value));
 }
 
+function validUnderworld(report,rounds){
+ const data=report.underworld;
+ if(report.sceneId!==211||report.waveCount!==70||!data||!Array.isArray(data.teams)||!data.teams.length||
+    data.teams.length>rounds.length||data.usedShikigamiBanned!==5*data.teams.length||
+    typeof data.leftAfterLastTeam!=='boolean'||(data.leftAfterLastTeam&&data.teams.length!==rounds.length)||
+    !Array.isArray(data.formations)||data.formations.length<report.wavesCleared||data.formations.length>report.wavesCleared+1||
+    (report.completed&&report.outcome!==(report.wavesCleared>0?'win':'loss')))return false;
+ return data.teams.every((row,i)=>row.team===i+1&&row.onmyojiId===Number(rounds[i].onmyoji.heroId)&&
+    positive(row.startWave)&&row.startWave<=(report.wavesCleared+1)&&row.startWave>=(data.teams[i-1]?.startWave??1))&&
+  data.teams[0].startWave===1&&data.formations.every((row,i)=>row.wave===i+1&&positive(row.group)&&Array.isArray(row.units)&&
+    row.units.length>0&&row.units.length<=6&&row.units.every(([position,id,level],j)=>positive(position)&&position<=6&&
+      position>(row.units[j-1]?.[0]??0)&&positive(id)&&positive(level)&&level<=40));
+}
+
 function launch(python,args,cwd,signal){
  return new Promise((resolve,reject)=>{
   const env={...process.env,PYTHONHOME:'',PYTHONPATH:'',PYTHONNOUSERSITE:'1',PYTHONHASHSEED:'0',TMP:cwd,TEMP:cwd};
@@ -56,7 +71,7 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics,rounds}){
  const engine=engines[battleMode],awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;
@@ -83,6 +98,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
     (yuling&&(report.sceneId!==yuling.sceneId||report.waveCount!==1||report.formationsVerified!==1||invalidYuling))||
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
+    (battleMode===2001&&!validUnderworld(report,rounds))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
       report.formationsVerified>report.waveCount))||
@@ -106,18 +122,22 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
-     has('resource_stage.py'),has('guild_hunt_stage.py')]);
+    const [awake,secret,yuling,resource,hunt,underworld]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+     has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
-     ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[])]};
+     ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
   async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false}={}){
    if(current)throw Error('已有库存复跑正在运行');
+   const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
+   const minMembers=battleMode===2001?5:1;
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
-      typeof damageFloor!=='boolean'||!plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length<1||plan.members.length>5||!validTactics(plan,battleMode))
+      typeof damageFloor!=='boolean'||!Array.isArray(rounds)||rounds.length<1||rounds.length>4||rounds.some(row=>
+       !row?.onmyoji||!Array.isArray(row.members)||row.members.length<minMembers||row.members.length>5||!validTactics(row,battleMode))||
+      !validTactics(plan,battleMode))
     throw Error('无效的关卡、种子或配装');
    if(battleMode===29&&(awakeOpenings.resourceVersion!==resourceVersion||
       awakeOpenings.floors[stageId]?.groupId!==groupId||plan.members.length!==5))
@@ -131,12 +151,14 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===2000&&(guildHuntOpenings.resourceVersion!==resourceVersion||stageId!==groupId||
       !guildHuntOpenings.floors[stageId]||plan.members.length!==5))
     throw Error('麒麟狩猎复跑需要已核验的战斗和五位自有式神');
+   if(battleMode===2001&&(stageId!==groupId||![101,102,103].includes(stageId)))
+    throw Error('阴界之门复跑需要已核验的单人入口');
    if(battleMode===firstExperience.battleMode&&(resourceEncounters.resourceVersion!==resourceVersion||
       stageId!==firstExperience.stageId||groupId!==firstExperience.groupId||plan.members.length!==firstExperience.memberCount))
     throw Error('此入口只适用于新服首次经验妖怪的五式神配装');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const cancel=new AbortController(),deadline=AbortSignal.timeout(100000);
+   const cancel=new AbortController(),deadline=AbortSignal.timeout(battleMode===2001?155000:100000);
    let release,dir;
    current={cancel,done:new Promise(resolve=>{release=resolve;})};
    try{
@@ -153,7 +175,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics:plan.tactics});
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics:plan.tactics,rounds});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');
     if(deadline.aborted)throw Error('副本原版复跑超时');

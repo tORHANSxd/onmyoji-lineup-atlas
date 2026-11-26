@@ -79,16 +79,25 @@ function selectedTeam(lineup,result,account,game,memberCount=5){
 
 function hun13Pair(lineups){
  if(lineups.length!==2)throw Error('请选择虚无两波使用的阵容码');
+ return orderedLineups(lineups,{scene:hun13SceneId,label:'虚无',unit:'波',id:'hun13-pair',title:'虚无双队库存精算'});
+}
+
+function underworldLineups(lineups){
+ if(lineups.length<1||lineups.length>4)throw Error('请选择要依次上场的 1 至 4 套阴界之门阵容码');
+ return orderedLineups(lineups,{scene:19005,label:'阴界之门',unit:'队',id:'underworld-relay',title:'阴界之门接力库存精算'});
+}
+
+function orderedLineups(lineups,{scene,label,unit,id,title}){
  const rounds=lineups.map((lineup,wave)=>{
-  if(Number(lineup?.gameSceneId)!==hun13SceneId||!C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup))
-   throw Error(`第 ${wave+1} 波需要已完整解析的虚无阵容码`);
+  if(Number(lineup?.gameSceneId)!==scene||!C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup))
+   throw Error(`第 ${wave+1} ${unit}需要已完整解析的${label}阵容码`);
   const members=lineup.members.filter(member=>member.occupied!==false);
   const actor=members.find(member=>member.kind==='onmyoji');
   const fighters=members.filter(member=>member.kind==='shikigami').sort((a,b)=>a.index-b.index);
-  if(!actor||members.length!==6||fighters.length!==5)throw Error(`第 ${wave+1} 波原码需要一位阴阳师和五位式神`);
+  if(!actor||members.length!==6||fighters.length!==5)throw Error(`第 ${wave+1} ${unit}原码需要一位阴阳师和五位式神`);
   return {...lineup,members:[actor,...fighters.map((member,index)=>({...member,index:wave*5+index}))]};
  });
- return {rounds,combined:{id:'hun13-pair',title:'虚无双队库存精算',decodeState:'decoded-local',requirementsComplete:true,
+ return {rounds,combined:{id,title,decodeState:'decoded-local',requirementsComplete:true,
   members:rounds.flatMap(round=>round.members.filter(member=>member.kind==='shikigami'))}};
 }
 
@@ -98,9 +107,32 @@ function hun13Plan({rounds},result,account,game){
   throw Error('虚无双队缺少十个不同的式神实例');
  const souls=assignments.flatMap(build=>build.soulIds);
  if(new Set(souls).size!==souls.length)throw Error('虚无两波的配装使用了同一件御魂');
+ return orderedPlan(rounds,result,account,game);
+}
+
+function underworldPlan({rounds},result,account,game){
+ const assignments=result?.assignment??[],souls=assignments.flatMap(build=>build.soulIds);
+ if(assignments.length!==rounds.length*5||new Set(assignments.map(build=>build.heroId)).size!==assignments.length||
+    new Set(souls).size!==souls.length)throw Error('接力队伍需要不同的式神实例和同时可用的御魂');
+ const plan=orderedPlan(rounds,result,account,game);
+ const remaining=new Set(plan.rounds.map(row=>row.onmyoji.heroId));
+ const loadouts=new Map();
+ for(const {onmyoji,spirit} of plan.rounds){
+  const id=onmyoji.heroId;
+  if(!remaining.has(id))throw Error('按当前出场顺序，该阴阳师已被原版换队规则禁用');
+  if(remaining.size>1)remaining.delete(id);
+  const loadout=JSON.stringify([{...onmyoji,aiSkill:0},spirit]);
+  if(loadouts.has(id)&&loadouts.get(id)!==loadout)throw Error('重复上阵的阴阳师需要沿用同一培养、技能和契灵');
+  loadouts.set(id,loadout);
+ }
+ return plan;
+}
+
+function orderedPlan(rounds,result,account,game){
+ const assignments=result.assignment;
  return {rounds:rounds.map((round,wave)=>selectedTeam(round,{...result,
   assignment:assignments.filter(build=>build.index>=wave*5&&build.index<(wave+1)*5)},account,game))};
 }
 
-return {sceneId,resourceVersion,dungeonId,hun13SceneId,sceneForDungeon,team,selectedTeam,hun13Pair,hun13Plan};
+return {sceneId,resourceVersion,dungeonId,hun13SceneId,sceneForDungeon,team,selectedTeam,hun13Pair,hun13Plan,underworldLineups,underworldPlan};
 });

@@ -502,6 +502,10 @@
         button.onclick=()=>openRecord(table,key);
         block.append(button);
       }
+      const stageId=Number(entry.key),scene=DATA.gameConfig.stages[19005];
+      window.AtlasPveWorkbench?.mount(block,{stageId,groupId:stageId,memberCount:5,battleMode:2001,waveCount:70,
+        label:'阴界之门单人接力（最多四队）',version:state.index.resourceVersion,
+        codeStageId:scene?.actors===1&&scene.shikigami===5?19005:null,codeLabel:scene?.name});
     }
     const waves=document.createElement('details'),body=node('div');
     waves.append(node('summary',`${waveTable.rowCount} 波 · 查看随机编组与属性修正`),body);

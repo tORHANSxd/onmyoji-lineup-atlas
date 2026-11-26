@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,528,2000]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,528,2000,2001]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
@@ -433,6 +433,33 @@ async function main(){
     assert.match(await ui('$("detail-heading").textContent'),/狩猎战·火麒麟/);
     await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
     await capture('client-guild-hunting');
+    const underworldCalls=[];
+    mockPve=(plan,options)=>{
+     assert.deepEqual(options,{stageId:101,groupId:101,battleMode:2001,seed:options.seed,damageFloor:true});
+     assert.ok(plan.rounds.length>=1&&plan.rounds.length<=4);
+     const instances=plan.rounds.flatMap(round=>round.members.map(member=>member.instanceId));
+     assert.equal(new Set(instances).size,instances.length);
+     underworldCalls.push(options.seed);
+     return {...sample,...options,waveCount:70,wavesCleared:options.seed===0?48:54,
+      underworld:{teams:[{team:1,startWave:1,onmyojiId:10}],leftAfterLastTeam:true}};
+    };
+    await ui('qaGuildEncounter(101,"阴界之门")');
+    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+    await ui(stock+'.click()');
+    await until(status+'.textContent.includes("按最低清波数排序")',20000);
+    assert.deepEqual(underworldCalls.slice(0,6),[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.firstElementChild.textContent'),/最低 48 波 · 平均 53.0 波 · 最高 54 波.*第 1 队在第 1 波上场/s);
+    await ui('document.querySelector("[data-pve-code]").click()');
+    assert.equal(require('../desktop/ta-codec.cjs').decodeLineupData(await ui('$("stock-candidate-code").value')).select_stage_id,19005);
+    await ui('$("stock-candidate-save").click()');
+    await until('$("stock-candidate-status").textContent.includes("已保存到阵容库")');
+    const savedRelay=stored.lineups.find(lineup=>Number(lineup.gameSceneId)===19005);
+    await ui(`$('close-dialog').click();selectedLineups.add(${JSON.stringify(savedRelay.id)});AtlasPveWorkbench.refresh();`);
+    await until('!!document.querySelector("[data-pve-start]:not([disabled]):not([hidden])")');
+    await ui('document.querySelector("[data-pve-start]").click()');
+    await until(status+'.textContent.includes("按最低清波数排序")',20000);
+    assert.deepEqual(underworldCalls.slice(-6),[0,1,2,3,7,42]);
+    await ui('selectedLineups.clear();');
     await ui('qaEncounterInput("guild","贪婪的铁鼠")');
     await until('$("client-dungeons-encounter-detail").textContent.includes("查看机关编组 122")');
     await ui('[...$("client-dungeons-encounter-detail").querySelectorAll("button")].find(el=>el.textContent==="查看机关编组 122").click()');

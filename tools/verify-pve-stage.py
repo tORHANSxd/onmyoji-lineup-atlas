@@ -15,6 +15,7 @@ def replay(args, runtime, work):
     from game_resources import sha256
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
+    from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_player, underworld_stage, underworld_teams
     from yuling_stage import YULING_MODE
     from rune_floor_host import prepare_runtime
     from rune_replay import monster_waves, project_playback, read_models
@@ -23,7 +24,13 @@ def replay(args, runtime, work):
 
     team_bytes, suit_bytes = args.team.read_bytes(), args.suit_index.read_bytes()
     plan = json.loads(team_bytes)
-    actor, fighters, inventory, choices = selected_team(plan, json.loads(suit_bytes))
+    suits = json.loads(suit_bytes)
+    relay = args.mode == UNDERWORLD_MODE
+    if relay:
+        heroes, inventory, actors, rounds = underworld_teams(plan, suits)
+    else:
+        actor, fighters, inventory, choices = selected_team(plan, suits)
+        heroes = {**fighters, "selected-onmyoji": actor}
     tactics = hunt_tactics(plan, args.mode)
     modules, host, evidence = prepare_runtime(runtime, work)
     if args.minimum_damage:
@@ -46,7 +53,13 @@ def replay(args, runtime, work):
     from battleengine.BattleController import LocalBattleController
     from battleengine.BattleRecorder import BattleRecorderRune
     from battleengine.battle_tools.RandomRecord import RandomRecord
-    if args.mode == 29:
+    if relay:
+        from battleengine.engine.GuildLieFengEngine import const
+        from DynamicConfigData import DATA_HERO
+
+        engine, stage, wave_count = underworld_stage(args.stage)
+        group_id = args.stage
+    elif args.mode == 29:
         from awake_stage import awake_stage
         from battleengine.engine.AwakeFbEngine import const
         from DynamicConfigData import DATA_HERO
@@ -110,11 +123,11 @@ def replay(args, runtime, work):
             raise ValueError(f"Stage {stage_id} uses a scripted or restricted roster")
         if stage.get("shishentotal") != len(fighters):
             raise ValueError(f"Stage {stage_id} requires exactly {stage.get('shishentotal')} shikigami")
-    if any(hero["heroId"] not in DATA_HERO.data for hero in (actor, *fighters.values())):
+    if any(hero["heroId"] not in DATA_HERO.data for hero in heroes.values()):
         raise ValueError("Unknown inventory character")
 
-    player = {"heroes": {**fighters, "selected-onmyoji": actor}, "yysid": actor["heroId"]}
-    spirit = plan.get("spirit")
+    player = underworld_player(heroes, actors, rounds) if relay else {"heroes": heroes, "yysid": actor["heroId"]}
+    spirit = None if relay else plan.get("spirit")
     if spirit is not None:
         from AttrCalc import HunlingAttrCalc
         from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
@@ -130,9 +143,11 @@ def replay(args, runtime, work):
     avatar = BattleAvatar()
     avatar.init_from_dict(player)
     avatar.inventory.update(inventory)
-    avatar.defaultHeros = list(fighters)
+    avatar.defaultHeros = rounds[0]["members"][:] if relay else list(fighters)
 
-    if args.mode == 29:
+    if relay:
+        route = "underworld-gate-local-solo"
+    elif args.mode == 29:
         engine, stage, enemy_ids = awake_stage(args.stage)
         group_id, wave_count = stage["monsterid"], 1
         route = "awake-ordinary-solo"
@@ -167,6 +182,7 @@ def replay(args, runtime, work):
     engine.addBattlePlayer(avatar)
     engine.controllers.append(controller)
     engine.op_init_flag = True
+    underworld = UnderworldReplay(engine, controller, const, rounds, heroes, player["yys_hunling"]) if relay else None
     init_engine_state = engine.init_engine_state
     battle_ended, create_entity = engine.doBattleEnded, engine.onEntityCreated
     winner, entity_models = None, {}
@@ -220,7 +236,11 @@ def replay(args, runtime, work):
         engine._createNextRoundMons = verify_spawn
     engine._time, engine.delta_time = 1000.0, .020
     engine.init()
-    if args.mode == 29:
+    if relay:
+        formation_matches = (engine.fbId == args.stage and engine.combineSceneInfoId == stage["scene"]
+                             and engine.myRoundCount == 1 and engine.spectatorHeroCount == 0
+                             and engine.campData1.shareGuiHuo == 2 and engine.campData2.initGuihuo == 4)
+    elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
     elif args.mode == 266:
         formation_matches = (engine.getFbConfig() is stage and engine.fbId == args.stage
@@ -240,11 +260,12 @@ def replay(args, runtime, work):
         raise RuntimeError("The original engine initialized a different battle")
     recorder = engine.battleRecorder or BattleRecorderRune(engine, controller)
     engine.battleRecorder = recorder
-    engine.op_init(controller, actor["heroId"], list(fighters), [])
+    if not relay:
+        engine.op_init(controller, actor["heroId"], list(fighters), [])
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
 
-    deadline, start = time.monotonic() + 75, engine.now_time()
+    deadline, start = time.monotonic() + (130 if relay else 75), engine.now_time()
     selection_checked = False
     equipped_spirit = None
     instructions = HuntOpening(engine, controller, const, tactics, stage["monsters"][0][0]) if tactics else None
@@ -254,7 +275,13 @@ def replay(args, runtime, work):
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
         if instructions:
             instructions.update()
-        if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk:
+        if underworld:
+            underworld.leave_if_out_of_teams()
+        if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk or controller.isExited:
+            continue
+        if underworld:
+            underworld.select()
+            selection_checked = bool(underworld.confirmed)
             continue
         pending = dict(choices)
         for entity in engine.heroEntities.values():
@@ -300,6 +327,8 @@ def replay(args, runtime, work):
               "completed": completed, "outcome": outcome if completed else "unknown", "waveCount": engine.monsterWaveCount,
               "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,
               "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
+    if underworld:
+        report["underworld"] = underworld.report()
     if args.mode == 266:
         report["formationsVerified"] = len(verified_waves)
     if args.mode == RESOURCE_MODE:
@@ -349,12 +378,13 @@ def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from guild_hunt_stage import GUILD_HUNT_MODE
     from resource_stage import RESOURCE_MODE
+    from underworld_stage import UNDERWORLD_MODE
     from yuling_stage import YULING_MODE
 
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -363,7 +393,7 @@ def main():
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
-    faulthandler.dump_traceback_later(95, exit=True)
+    faulthandler.dump_traceback_later(150 if args.mode == UNDERWORLD_MODE else 95, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:
         previous = Path.cwd()
         work = Path(directory).resolve()

@@ -3,6 +3,7 @@
  const api=window.dungeonCatalog;
  const seeds=AtlasRuneSearch.baseSampleSeeds;
  const isDamageMode=mode=>mode===2000;
+ const isWaveMode=mode=>mode===2001;
  const screenSize=2,finalistCount=5;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -39,7 +40,7 @@
    !hasAccount?'先导入并选择库存账号。':
    blocked?'已有原版复跑或正在停止，请等待其结束。':
    job?.notice?job.notice:
-   selected.length?`已勾选 ${selected.length} 套阵容，将按勾选顺序核对。`:
+   selected.length?`已勾选 ${selected.length} 套阵容，将按勾选顺序${isWaveMode(pane.battleMode)?'每 4 套组成一次接力':'核对'}。`:
    '可直接从库存寻找备选，也可先在阵容库勾选原码。';
  }
 
@@ -107,8 +108,8 @@
  }
 
  async function replay(run,row,plan,damageFloor=false,sampleCount=seeds.length){
-  const teamKey=AtlasRuneSearch.teamKey(plan);
-  const {stageId,groupId,battleMode}=run.pane,scoring=isDamageMode(battleMode);
+  const {stageId,groupId,battleMode}=run.pane,scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
+  const teamKey=relay?AtlasRuneSearch.relayKey(plan):AtlasRuneSearch.teamKey(plan);
   for(const seed of seeds.slice(row.samples.length,sampleCount)){
    if(!active(run))return;
    run.message=`正在复跑第 ${row.index} 套 · 种子 ${seed}`;
@@ -126,6 +127,11 @@
    if(scoring){
     if(AtlasRuneCandidate.damageResult([report]))continue;
     row.state.textContent=`种子 ${seed} 未取得完整伤害战报，可重试`;
+    return;
+   }
+   if(relay){
+    if(AtlasRuneCandidate.waveResult([report]))continue;
+    row.state.textContent=`种子 ${seed} 未取得完整波次结算，可重试`;
     return;
    }
    const experience=report.experience;
@@ -146,7 +152,8 @@
    row.verdict='screened';
    return;
   }
-  row.verdict=scoring&&AtlasRuneCandidate.damageResult(row.samples)?.credited!==seeds.length?'scored':'pass';
+  row.verdict=(scoring&&AtlasRuneCandidate.damageResult(row.samples)?.credited!==seeds.length||
+   relay&&AtlasRuneCandidate.waveResult(row.samples)?.min!==70)?'scored':'pass';
   run.alternatives.push(teamKey);
  }
 
@@ -184,12 +191,32 @@
   }
  }
 
- function offerCode(run,row,output){
+ async function originalRelay(run,lineups){
+  const row=addRow(run,lineups.map(lineup=>lineup.title).join(' → '));
+  try{
+   const pair=AtlasRuneLineup.underworldLineups(lineups);
+   row.state.textContent='正在精算各队共享库存…';
+   const result=await solveInventoryLineup(pair.combined,run);
+   if(!active(run))return;
+   if(!result.ready){
+    if(result.proof?.state==='infeasible')row.verdict='infeasible';
+    row.state.textContent=row.verdict==='infeasible'?'库存精算已证明接力配装无解':'接力配装仍有条件待核对';
+    return;
+   }
+   const plan=AtlasRuneLineup.underworldPlan(pair,result,run.account,run.data.gameConfig);
+   row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码配置复跑。原版禁用规则按本次提供的阴阳师计算。</p>');
+   await replay(run,row,plan,true);
+  }catch(error){
+   if(active(run))row.state.textContent=runeError(error);
+  }
+ }
+
+ function offerCode(run,row,output,team){
   const action=document.createElement('button');
   action.type='button';
   action.className='secondary';
   action.dataset.pveCode='';
-  action.textContent='查看阵容码';
+  action.textContent=team?`查看第 ${team} 队阵容码`:'查看阵容码';
   const valid=()=>pane===run.pane&&usesDungeonInventory(run)&&
    !!(job?.rows.includes(row)||job?.previous.includes(row));
   async function save({create}){
@@ -209,7 +236,8 @@
    return saved;
   }
   action.onclick=()=>{
-   const evidence=run.pane.battleMode===2000?'个人伤害结算通过采样 · 全随机分支待验证':'离线采样通过 · 全随机分支待验证';
+   const evidence=team?'该队已在离线接力中上阵 · 全随机分支待验证':
+    run.pane.battleMode===2000?'个人伤害结算通过采样 · 全随机分支待验证':'离线采样通过 · 全随机分支待验证';
    if(valid())openCandidateCode(output.lineup.title,evidence,output,{
     valid,save,savedMessage:'阵容码已保存到阵容库。',savedDetail:row.el.querySelector('[data-score-tactics]')?.textContent,
    });
@@ -220,7 +248,10 @@
  function addCandidate(run,item){
   const names=item.heroIds.map(id=>run.data.gameConfig.heroes[id]?.name||`式神 ${id}`);
   const row=addRow(run,`${item.title} · ${names.join('、')}`);
-  row.details.insertAdjacentHTML('beforeend','<p class="caption">备选使用 60 级晴明、满级言灵·星和言灵·守。我方伤害浮动取下限。</p>');
+  if(item.rounds){
+   const names=item.rounds.map(round=>run.data.gameConfig.heroes[round.plan.onmyoji.heroId]?.name).join(' → ');
+   row.details.insertAdjacentHTML('beforeend',`<p class="caption">阴阳师按 60 级及满技能计算，出场顺序为 ${esc(names)}。我方伤害浮动取下限。</p>`);
+  }else row.details.insertAdjacentHTML('beforeend','<p class="caption">备选使用 60 级晴明、满级言灵·星和言灵·守。我方伤害浮动取下限。</p>');
   return {item,row};
  }
 
@@ -230,16 +261,20 @@
  }
 
  async function makeCandidateCode(run,{item,row}){
-  if(!active(run)||row.verdict!=='pass'||!run.pane.codeStageId)return;
+  const relay=isWaveMode(run.pane.battleMode),candidate={...item,samples:row.samples};
+  if(!active(run)||!(row.verdict==='pass'||relay&&row.verdict==='scored')||!run.pane.codeStageId)return;
   try{
-   const request=await AtlasRuneCandidate.pveTemplate({...item,samples:row.samples},run.data,run.pane);
-   if(!active(run))return;
-   const output=await window.atlas.buildLineup(request);
-   if(!active(run))return;
-   if(output.payload?.code!==output.code)throw Error('阵容码与本地解析结果不一致');
-   const lineup=C.adaptTA(output.payload,run.data);
-   if(Number(lineup.gameSceneId)!==run.pane.codeStageId)throw Error('生成的阵容码未对应本层');
-   offerCode(run,row,{...output,lineup});
+   const drafts=relay?await AtlasRuneCandidate.underworldTemplates(candidate,run.data,run.pane):
+    [{request:await AtlasRuneCandidate.pveTemplate(candidate,run.data,run.pane)}];
+   for(const {request,team} of drafts){
+    if(!active(run))return;
+    const output=await window.atlas.buildLineup(request);
+    if(!active(run))return;
+    if(output.payload?.code!==output.code)throw Error('阵容码与本地解析结果不一致');
+    const lineup=C.adaptTA(output.payload,run.data);
+    if(Number(lineup.gameSceneId)!==run.pane.codeStageId)throw Error('生成的阵容码未对应本层');
+    offerCode(run,row,{...output,lineup},team);
+   }
   }catch(error){
    if(active(run))row.details.insertAdjacentHTML('beforeend',`<p class="caption">${esc(runeError(error))}</p>`);
   }
@@ -335,18 +370,31 @@
   renderDungeonSelection();
   try{
    if(useStock)await stockCandidates(next);
-   else for(const lineup of selected){
+   else if(isWaveMode(next.pane.battleMode)){
+    for(let i=0;i<selected.length&&active(next);i+=4)await originalRelay(next,selected.slice(i,i+4));
+   }else for(const lineup of selected){
     if(!active(next))return;
     await original(next,lineup);
    }
    if(!active(next))return;
-   const hunting=isDamageMode(next.pane.battleMode);
-   const passed=[...next.previous,...next.rows].filter(row=>row.verdict==='pass'||hunting&&row.verdict==='scored');
+   const hunting=isDamageMode(next.pane.battleMode),relay=isWaveMode(next.pane.battleMode);
+   const passed=[...next.previous,...next.rows].filter(row=>row.verdict==='pass'||(hunting||relay)&&row.verdict==='scored');
    const timing=hunting?null:AtlasRuneCandidate.commonSampleTiming(passed);
    const huntScores=new Map(hunting?passed.map(row=>[row,AtlasRuneCandidate.damageResult(row.samples)]):[]);
-   passed.sort(hunting?(a,b)=>AtlasRuneCandidate.compareDamage(huntScores.get(a),huntScores.get(b)):
+   const waveScores=new Map(relay?passed.map(row=>[row,AtlasRuneCandidate.waveResult(row.samples)]):[]);
+   passed.sort(relay?(a,b)=>{
+    const first=waveScores.get(a),second=waveScores.get(b);
+    return second.min-first.min||second.average-first.average||second.max-first.max||timing.get(a).seconds-timing.get(b).seconds;
+   }:hunting?(a,b)=>AtlasRuneCandidate.compareDamage(huntScores.get(a),huntScores.get(b)):
     (a,b)=>timing.get(a).seconds-timing.get(b).seconds);
    for(const row of passed){
+    const waves=waveScores.get(row);
+    if(waves){
+     const time=timing.get(row);
+     row.state.textContent=`最低 ${waves.min} 波 · 平均 ${waves.average.toFixed(1)} 波 · 最高 ${waves.max} 波 · ${seeds.length} 场`+
+      (waves.min===70?` · 最慢 ${time.combat?'开战至结算':'引擎全程'} ${time.seconds.toFixed(2)} 秒`:'');
+     continue;
+    }
     const score=huntScores.get(row);
     if(score){
      const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
@@ -360,7 +408,8 @@
    }
    next.pane.results.prepend(...passed.map(row=>row.el));
    if(!useStock)next.originalsComplete=next.rows.every(row=>['loss','infeasible','scored'].includes(row.verdict));
-   next.notice=passed.length?(hunting?`${passed.length} 套完成共同采样，按平均伤害排序。全随机分支待验证。`:
+   next.notice=passed.length?(relay?`${passed.length} 套接力已完成共同采样，按最低清波数排序。全随机分支待验证。`:
+    hunting?`${passed.length} 套完成共同采样，按平均伤害排序。全随机分支待验证。`:
     `${passed.length} 套通过采样，已按最慢样本用时排序。全随机分支待验证。`):
     useStock?(next.rows.length?'这一批库存备选未通过全部采样。':'当前库存不足以生成可复跑的新备选。'):
     next.originalsComplete?'勾选原码均未通过，可从库存寻找备选。':
