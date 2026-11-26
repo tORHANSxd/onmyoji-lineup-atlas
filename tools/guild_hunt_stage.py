@@ -6,6 +6,7 @@ from guild_retreat_stage import RETREAT_MODE
 from fengmo_yanwu_stage import FENGMO_YANWU_MODE
 from general_soul_stage import SOLO_SCORE_MODES
 from qiling_group_stage import QILING_GROUP_MODE
+from qinfei_boss_stage import QINFEI_BOSS_MODE
 
 GUILD_HUNT_MODE = 2000
 PHASE_SKILL = "battleengine.SkillComp_GuildHuntingBoss"
@@ -67,7 +68,7 @@ def hunt_tactics(plan, mode):
     if "tactics" not in plan:
         return {}
     tactics = plan["tactics"]
-    if (mode not in (GUILD_HUNT_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, QILING_GROUP_MODE, *SOLO_SCORE_MODES)
+    if (mode not in (GUILD_HUNT_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, QILING_GROUP_MODE, QINFEI_BOSS_MODE, *SOLO_SCORE_MODES)
             or type(tactics) is not dict or not tactics
             or tactics.keys() - {"redBoss", "greenSlot", "manualOpening", "autoMode"}):
         raise ValueError("Unsupported Guild Hunting tactics")

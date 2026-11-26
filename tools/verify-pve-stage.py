@@ -22,7 +22,7 @@ def replay(args, runtime, work):
     from general_soul_stage import SCORE_STAGES, SOLO_SCORE_MODES, SoloScoreReplay, solo_score_stage
     from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, CREVICE_WALL_SECONDS, CreviceReplay
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
-    from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
+    from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RaidDamageWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
     from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, MEITUAN_MODE, NIAN_MODES,
@@ -30,6 +30,7 @@ def replay(args, runtime, work):
                                 MapBossReplay, MeituanReplay, NianReplay, QinfeiFoodReplay, entry_for_stage,
                                 party_positions)
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
+    from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_STAGE, QINFEI_BOSS_REPLAY_SECONDS, QinfeiBossRaid
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, SHILIAN_MODES
@@ -57,6 +58,8 @@ def replay(args, runtime, work):
     superghost = args.mode == SUPERGHOST_MODE
     historical_ghost = args.mode == HISTORICAL_GHOST_MODE
     retreat = args.mode == RETREAT_MODE
+    qinfei_boss = args.mode == QINFEI_BOSS_MODE
+    raid_battle = retreat or qinfei_boss
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
     activity_score = SOLO_SCORE_MODES.get(args.mode)
@@ -104,7 +107,16 @@ def replay(args, runtime, work):
     from battleengine.BattleController import LocalBattleController
     from battleengine.BattleRecorder import BattleRecorderRune
     from battleengine.battle_tools.RandomRecord import RandomRecord
-    if retreat:
+    if qinfei_boss:
+        from battleengine.engine.QinfeiBossEngine import const
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("The Qinfei boss replay requires five owned shikigami")
+        random.seed(args.seed)
+        raid = QinfeiBossRaid(modules, tuple(args.qinfei_profile))
+        engine, group_id, wave_count = raid.engine, QINFEI_BOSS_STAGE, 1
+    elif retreat:
         from battleengine.engine.GuildBossEngine import const
         from DynamicConfigData import DATA_HERO
 
@@ -347,9 +359,9 @@ def replay(args, runtime, work):
     if local_party:
         avatar.defaultHeros = [uid for uid in local_party[0]["heroes"] if uid in fighters]
 
-    if retreat:
-        route = "guild-retreat-personal-window"
-        raid_window = RetreatWindow(raid, const, args.window_seconds)
+    if raid_battle:
+        route = "qinfei-boss-personal-window" if qinfei_boss else "guild-retreat-personal-window"
+        raid_window = RaidDamageWindow(raid, const, args.window_seconds)
     elif relay:
         route = "underworld-gate-local-solo"
     elif orochi:
@@ -510,7 +522,9 @@ def replay(args, runtime, work):
     engine.init()
     if party_replay:
         party_replay.verify_players(controllers)
-    if retreat:
+    if qinfei_boss:
+        formation_matches = raid.matches()
+    elif retreat:
         formation_matches = (engine.combineSceneInfoId == 40010 and engine.currBossProtoId == raid.boss["protoId"]
                              and engine.finishedWaveCount == args.raid_round - 1 and engine.raid_id == 1
                              and engine.hard_level == args.stage and engine.buff_member_num == args.guild_members)
@@ -562,7 +576,8 @@ def replay(args, runtime, work):
     for current in controllers:
         engine.op_sceneLoaded(current)
 
-    replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else OROCHI_REPLAY_SECONDS if orochi
+    replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else QINFEI_BOSS_REPLAY_SECONDS if qinfei_boss
+                      else OROCHI_REPLAY_SECONDS if orochi
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
                       else CREVICE_WALL_SECONDS if crevice
                       else SUPERGHOST_WALL_SECONDS if superghost or historical_ghost
@@ -578,7 +593,7 @@ def replay(args, runtime, work):
     artifact_replay = (ArtifactReplay(engine, controller, const, args.shilian_state, dao, start)
                        if shilian and args.shilian_state and args.shilian_state.get("artifacts") else None)
     if tactics:
-        boss = raid.boss["protoId"] if retreat else group["MonstersInfos"][0][0][1] if yanwu or qiling or activity_score else stage["monsters"][0][0]
+        boss = raid.boss["protoId"] if raid_battle else group["MonstersInfos"][0][0][1] if yanwu or qiling or activity_score else stage["monsters"][0][0]
         instructions = HuntOpening(engine, controller, const, tactics, boss)
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
@@ -609,7 +624,7 @@ def replay(args, runtime, work):
             spider_replay.update()
         if instructions:
             instructions.update()
-        if retreat:
+        if raid_battle:
             raid_window.update()
             if raid_window.reason:
                 break
@@ -687,7 +702,7 @@ def replay(args, runtime, work):
     record = "".join(recorder.data_list).encode("utf-8")
     outcome = {const.CampFlag.CAMP1: "win", const.CampFlag.CAMP2: "loss"}.get(winner, "unknown")
     completed = engine.battleState == const.BattleState.BS_OVER and outcome != "unknown"
-    if retreat:
+    if raid_battle:
         completed = raid_window.reason is not None
         outcome = "win" if raid_window.reason == "boss-defeated" else "loss" if completed else "unknown"
     if qiling:
@@ -770,6 +785,12 @@ def replay(args, runtime, work):
                                   "raidSHA256": modules.rows["battleengine.raid.raid_controllers.RaidComp_1"]["marshalSHA256"]}
         if instructions:
             report["guildRetreat"].update(instructions.report())
+    if qinfei_boss:
+        report["waveCount"], report["wavesCleared"] = 1, int(outcome == "win")
+        report["formationsVerified"] = int(raid_window.opening is not None)
+        report["qinfeiBoss"] = raid.report(raid_window)
+        if instructions:
+            report["qinfeiBoss"].update(instructions.report())
     if args.mode == 266:
         report["formationsVerified"] = len(verified_waves)
         if secret_actor_config:
@@ -830,6 +851,8 @@ def main():
     from hunling_stage import CAPTURE_ITEMS, HUNLING_BOSS, HUNLING_MODES, HUNLING_REPLAY_SECONDS
     from journey_hard_stage import JOURNEY_HARD_MODE
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
+    from qinfei_boss_stage import (QINFEI_BOSS_MAX_WINDOW, QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES,
+                                   QINFEI_BOSS_REPLAY_SECONDS, QINFEI_BOSS_STAGE)
     from regional_boss_stage import REGION_MODES
     from resource_stage import RESOURCE_MODE
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_MODES
@@ -843,8 +866,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--map-boss-players", type=int, choices=(1, 2, 3))
+    parser.add_argument("--qinfei-profile", type=int, nargs=2, metavar=("RAID", "DIFFICULTY"))
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -881,6 +905,12 @@ def main():
         parser.error("Tianfa team replay is only available in the original Tianfa mode")
     if args.mode == RETREAT_MODE and (args.boss is None or not 0 <= args.guild_members <= 50 or not 1 <= args.window_seconds <= 1800):
         parser.error("The retreat needs a boss, 0 to 50 guild members and a 1 to 1800-second window")
+    if args.mode == QINFEI_BOSS_MODE:
+        if (args.stage != QINFEI_BOSS_STAGE or tuple(args.qinfei_profile or ()) not in QINFEI_BOSS_PROFILES
+                or not 1 <= args.window_seconds <= QINFEI_BOSS_MAX_WINDOW):
+            parser.error("Qinfei boss replay needs a verified raid profile and a 1 to 1200-second window")
+    elif args.qinfei_profile is not None:
+        parser.error("The Qinfei raid profile is available only in Qinfei boss mode")
     if (args.mode in REGION_MODES) != (args.region is not None):
         parser.error("--region is required only for a Regional Boss scenario")
     if (args.capture_item is None) != (args.capture_cards is None) or args.capture_item is not None and (
@@ -924,6 +954,7 @@ def main():
                         QILING_GROUP_REPLAY_SECONDS + 20 if args.mode == QILING_GROUP_MODE else
                         SHILIAN_REPLAY_SECONDS + 20 if args.mode in SHILIAN_MODES else
                         TIANFA_REPLAY_SECONDS + 20 if args.mode == TIANFA_MODE else
+                        QINFEI_BOSS_REPLAY_SECONDS + 20 if args.mode == QINFEI_BOSS_MODE else
                         SPECIAL_NIAN_WALL_SECONDS + 20 if args.mode == SPECIAL_NIAN_MODE else
                         240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
     faulthandler.dump_traceback_later(watchdog_seconds, exit=True)

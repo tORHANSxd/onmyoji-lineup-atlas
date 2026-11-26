@@ -1216,7 +1216,7 @@
     const mode=source.stages[stages[0]].battleMode;
     const players=select('参战人数','mapBossPlayers',playerOptions.filter(([count])=>source.partyPositions(mode,count)));
     destination.append(controls,node('p','阴阳师和式神来自当前账号。式神按阵容顺序填入原版战斗站位。','caption'),slots,workbench);
-    if(entry.table==='activity'&&qinfeiEntry)destination.append(node('p','此处复跑食材战。寝肥本体的联机对局资料见下方。','caption'));
+    if(entry.table==='activity'&&qinfeiEntry)destination.append(node('p','此处复跑食材战。搜索「寝肥本体 2026」可打开首领伤害演练。','caption'));
     const render=()=>{
       const stageId=Number(stage.value),mapBossPlayers=Number(players.value),route=source.stages[stageId];
       const positions=source.partyPositions(route.battleMode,mapBossPlayers);
@@ -1240,6 +1240,40 @@
     stage.addEventListener('change',render);players.addEventListener('change',render);
     render();
     return true;
+  }
+
+  function showQinfeiBoss(destination,entry,groups){
+    const source=window.AtlasMapBoss.qinfeiBoss,key=entry.key?.$tuple;
+    if(entry.table!=='raid_info'||!Array.isArray(key)||!matchesOpeningSource(source))return;
+    const profile=source.profiles[key],raid=groups[0].row;
+    if(!profile||raid?.fbId!==profile.raidId||raid.id!==profile.difficulty||
+       raid.battleId!==source.stageId||raid.boss_num!==1||raid.bossInfo?.[0]!==profile.bossId)return;
+    const boss=groups.find(({ref})=>ref.table==='boss_info'&&ref.key===profile.bossId)?.row;
+    const stage=groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===source.stageId)?.row;
+    const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===source.stageId)?.row;
+    if(boss?.protoId!==profile.enemyId||boss.level!==40||stage?.groupid!==source.stageId||stage.shishentotal!==5||
+       formation?.resindex!==source.sceneId)return;
+    const label=node('label','计分窗口（秒）','pve-lineup-field'),input=document.createElement('input'),workbench=node('div');
+    const limit=source.maxWindowSeconds;
+    Object.assign(input,{type:'number',min:'1',max:String(limit),step:'1',required:true,value:String(limit)});
+    input.dataset.qinfeiBossWindow='';
+    label.append(input);
+    destination.append(node('p','首领从满血开始。本次只计算所选阵容的伤害，投喂和其他队伍的伤害均为零。','caption'),label,workbench);
+    const render=()=>{
+      if(!input.checkValidity()){
+        window.AtlasPveWorkbench?.unmount();
+        workbench.replaceChildren(node('p',`计分窗口请输入 1 至 ${limit} 秒的整数。`,'caption'));
+        return;
+      }
+      const code=profile.raidId===5?DATA.gameConfig.stages[source.codeStageId]:null;
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench,{stageId:source.stageId,groupId:source.stageId,memberCount:5,
+        battleMode:source.battleMode,waveCount:1,label:entry.title,version:source.resourceVersion,
+        qinfeiBoss:{raidId:profile.raidId,difficulty:profile.difficulty,windowSeconds:Number(input.value)},
+        codeStageId:code?.actors===1&&code.shikigami===5?source.codeStageId:null,codeLabel:code?.name});
+    };
+    input.addEventListener('change',render);
+    render();
   }
 
   function mountCreviceWindow(block,stageId,row,formation){
@@ -1459,6 +1493,7 @@
       });
     }
     const mapBossMounted=showMapBoss(destination,entry,groups);
+    showQinfeiBoss(destination,entry,groups);
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
@@ -1507,7 +1542,8 @@
       const block = node('section', '', 'encounter-source');
       const pool = ref.pool && groups[0].row?.special_attacks?.length > 1 ? `候选池 ${ref.pool}` : '';
       const id = ref.table === 'skill' && Array.isArray(ref.key?.$tuple) ? `技能 ${ref.key.$tuple[0]}` : keyText(ref.key);
-      const heading = ref.primary?[ref.label]:[ref.label, pool, rowTitle(row), id].filter(Boolean);
+      const referenceLabel=entry.kind==='寝肥本体'&&ref.table==='BattleMonstersInfo'?'入场模板（首领按所选首领档生成）':ref.label;
+      const heading = ref.primary?[referenceLabel]:[referenceLabel, pool, rowTitle(row), id].filter(Boolean);
       block.append(node('h4', heading.join(' · ')));
       if (!row) {
         block.append(node('p', error ? '资料读取失败。' + error : '本资源中未找到对应记录。', 'caption'));

@@ -9,6 +9,7 @@ from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIV
                             NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, QINFEI_ARCHIVED_FOOD,
                             QINFEI_FOOD_MODE, QINFEI_FOOD_STAGES, QINFEI_FOODS, QINFEI_STATIC_STAGES, SEAL_MODE,
                             SPECIAL_NIAN_MODE, SPECIAL_NIAN_STAGES, is_fragment_entry)
+from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES, QINFEI_BOSS_STAGE
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
 
@@ -491,9 +492,10 @@ def encounter_index(source, load_rows):
                 ) if (ref := relation(dest, target, label, False)))
             elif qinfei_stage in QINFEI_STATIC_STAGES:
                 refs = []
-                if qinfei_stage in (25005, 6902001):
-                    refs.extend([("battle_mode_routes", 320, "首领战原版引擎"),
-                                 ("boss_info", 202, "经典寝肥首领参数")])
+                if qinfei_stage in (QINFEI_BOSS_STAGE, 6902001):
+                    refs.append(("battle_mode_routes", QINFEI_BOSS_MODE, "首领战原版引擎"))
+                    if qinfei_stage == 6902001:
+                        refs.append(("boss_info", 202, "经典寝肥首领参数"))
                 elif qinfei_stage in QINFEI_ARCHIVED_FOOD:
                     refs.append(("battle_mode_routes", QINFEI_FOOD_MODE, "食材战斗原版引擎"))
                 elif qinfei_stage == 26325:
@@ -855,6 +857,11 @@ def encounter_index(source, load_rows):
                 ref = relation("boss_info", boss, "候选首领阶段参数", True)
                 if ref:
                     links.append(ref)
+            if (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES:
+                links.extend(ref for dest, target, label in (
+                    ("pve_stage_data", QINFEI_BOSS_STAGE, "寝肥本体战斗场景"),
+                    ("battle_mode_routes", QINFEI_BOSS_MODE, "寝肥本体原版引擎"),
+                ) if (ref := relation(dest, target, label, False)))
         if name == "boss_info" and row.get("id") in (201, 202, 203, 204):
             for skill in dict.fromkeys((row.get("ctrlSkill"), *row.get("extraSkill", ()), *row.get("hideSkill", ()))):
                 if ref := relation("skill", level_one_skill(skill), "寝肥首领技能", False):
@@ -916,7 +923,9 @@ def encounter_index(source, load_rows):
             scene_route = table_name == "battle_mode_routes" and row.get("scene_engine") \
                 and numeric_key(key) not in table("normal_battle_config")
             qinfei_activity = table_name == "activity" and key in qinfei_activities
-            if not root and not entrance and not scene_route and not linked_battles and not row.get("monsterWaves") and not qinfei_activity:
+            qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
+            if (not root and not entrance and not scene_route and not linked_battles and not row.get("monsterWaves")
+                    and not qinfei_activity and not qinfei_boss):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -925,6 +934,11 @@ def encounter_index(source, load_rows):
             title = name(row)
             if qinfei_activity:
                 entry_family, entry_kind = "guild", "寝肥合战"
+            if qinfei_boss:
+                entry_family, entry_kind = "guild", "寝肥本体"
+                title = {4: "寝肥本体 · 2025 崽战", 5: "寝肥本体 · 2026 崽战"}.get(row["fbId"])
+                if title is None:
+                    title = f"寝肥本体 · 历史组别 {row['fbId']} · 第 {row['id']} 档"
             if table_name == "qinfei_fight_buff" and row.get("date"):
                 title = f"寝肥合战 · {'-'.join(map(str, row['date'][:3]))} · {row.get('buff_desc', '')}"
             if table_name == "dojo_2024_qinfei_battle_match" and row.get("day_time"):

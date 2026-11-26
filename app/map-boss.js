@@ -169,6 +169,22 @@
  });
  const qinfeiStaticStages=[25005,6902001,26325,501200,25006,25007,25008,25009,25010,25011,25012,25013,
   6902011,6902012,6902013,6902014,6902021,6902022,6902023,6902024];
+ const qinfeiBoss={
+  resourceVersion:'0.0.816',battleMode:320,stageId:25005,sceneId:40023,maxWindowSeconds:1200,codeStageId:101002,
+  engine:{name:'QinfeiBossEngine',route:'qinfei-boss-personal-window',
+   sha256:'de0dcf19c9b9a919c93a7a0d7e04b95cdec6057f51045751dd66e19880f09db0'},
+  raidSHA256:'30dc30b76bb5948a2bf5cf4bee2a24a3b809d442bf1b33b5cccab51d0161e973',
+  tableSHA256:{
+   raid_info:'5d41d3fd6a4698df2ed3ff73a822334113074e1ecc6054f2825d251f1bc65837',
+   boss_info:'c7f426bcd56624de40897fd02d856c14ecb9f0d798f6f6000c264905608e8cc5',
+   pve_stage_data:tableSHA256.pve_stage_data,
+   BattleMonstersInfo:tableSHA256.BattleMonstersInfo,
+  },
+  profiles:Object.fromEntries([[2,201,9991050,4],[3,202,9991051,4],[4,203,9991120,1],[5,204,9991120,1]]
+   .flatMap(([raidId,bossId,enemyId,levels])=>Array.from({length:levels},(_,i)=>[
+    [raidId,i+1],{raidId,difficulty:i+1,bossId,enemyId},
+   ]))),
+ };
  const stages=Object.fromEntries([...buildStages(bossRoutes,bossMode),...buildStages(sealRoutes,sealMode),
   ...buildStages(lbsRoutes,lbsMode),...buildStages(activityRoutes,lbsActivityMode),...historyStages,...nianRoutes,
   ...buildStages(meituanRoutes,meituanMode),...qinfeiFoodRoutes]);
@@ -187,7 +203,7 @@
   [lbsActivityMode]:{name:'LBSActivityBossEngine',sha256:'e5fceb3cace7a72b6b323b83db6cfafe6a5bfb4a1dce013a84388992b32b9062'},
  };
  const rules={resourceVersion:'0.0.816',battleModes:[bossMode,sealMode,lbsMode,lbsActivityMode,qinfeiFoodMode,...singleTeamModes],
-  lbsMode,lbsActivityMode,qinfeiFoodMode,qinfeiFoodTableHash,qinfeiStaticStages,tableSHA256,stages,engines,
+  lbsMode,lbsActivityMode,qinfeiBoss,qinfeiFoodMode,qinfeiFoodTableHash,qinfeiStaticStages,tableSHA256,stages,engines,
   archivedNianStages:[3340033,3340034],
   partyPositions:(mode,players)=>{
    if(players===1)return singlePositions[mode];

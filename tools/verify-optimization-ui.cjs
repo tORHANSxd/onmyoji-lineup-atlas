@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,321,341,402,528,534,535,855,880,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,855,880,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -339,7 +339,7 @@ async function main(){
   const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
    known('secret-race',10700011,5),known('crevice',10020211,5),
-   known('superghost',100942,5),known('superghost-five',100943,5),
+   known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
@@ -733,6 +733,17 @@ async function main(){
     const mapBoss={kind:'qinfeiFood',players:3,level:4,totalPiles:1,clearedPiles:1};
     const expected={stageId:26319,groupId:26319,battleMode:321,mapBossPlayers:3};
     assert.match(await run('superghost-five',expected,{mapBoss}),/3 人组队 · 普通第 4 层 · 食材堆 1\/1/);
+   }
+   if(cases.some(entry=>entry.table==='raid_info'&&entry.kind==='寝肥本体')){
+    await encounter('guild','寝肥本体 2026');
+    const windowField='document.querySelector("[data-qinfei-boss-window]")';
+    assert.equal(await ui(windowField+'.max'),'1200');
+    await ui(windowField+'.value="60";'+windowField+'.dispatchEvent(new Event("change"))');
+    const qinfeiBoss={raidId:5,difficulty:1,windowSeconds:60};
+    const expected={stageId:25005,groupId:25005,battleMode:320,qinfeiBoss};
+    const score={...qinfeiBoss,damage:1335888,combatSeconds:60,reason:'window-expired',remainingHp:107498584112};
+    assert.match(await run('qinfei-boss',expected,{outcome:'loss',wavesCleared:0,qinfeiBoss:score},tactical),
+      /达到计分窗口 · 本队伤害 1,335,888 · 作战 60\.00 \/ 60 秒/);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');
