@@ -41,6 +41,21 @@
  const rotationConstant=10631;
  const rotationSkills=[63402,63601,63404,63602,63405,63603,63406];
  const ref=(table,key,label)=>({table,key,label,found:true});
+ const catfish={
+  stageId:25004,battleMode:3014,codeStageId:10020224,sceneId:40020,boss:9991030,assist:9991041,
+  fish:[[2,9991247],[3,9992247],[5,9993247],[6,9994247]],monkey:9991032,gate:9991031,
+  memberCount:5,windowLimit:1200,defaultWindow:600,maxArmorStacks:99,maxOtherPlayers:299,gateSeconds:120,gateRate:.8,
+  blessings:{512:'暴击增益',513:'速度增益',514:'攻击增益',515:'暴伤增益'},
+  phases:{opening:'开战',normal:'海坊主与凝视',elite:'淘气的小猴子',flee:'鸟居',flip:'阻止冲天',boom:'冲天成功',peace:'首领回归'},
+  engine:{name:'DiZhenNianEngine',route:'catfish-local-team',
+   sha256:'f5c9488d8944fe249e72a63e383eddf3ed03fc68c2fc780d458911fcec8f14e0'},
+  validSettings(settings){
+   const {windowSeconds,armorStacks,otherPlayers,otherBreaks}=settings??{};
+   const between=(value,min,max)=>Number.isSafeInteger(value)&&value>=min&&value<=max;
+   return Object.keys(settings??{}).length===4&&between(windowSeconds,1,this.windowLimit)&&
+    between(armorStacks,0,this.maxArmorStacks)&&between(otherPlayers,0,this.maxOtherPlayers)&&between(otherBreaks,0,otherPlayers);
+  },
+ };
  const mirage={
   stageId:25015,battleMode:3013,codeStageId:10020218,sceneId:40021,boss:9991106,general:9991107,paper:9991112,
   memberCount:5,windowLimit:1200,defaultWindow:600,defaultGeneralSeconds:10,maxGeneralSeconds:120,
@@ -96,6 +111,11 @@
     ref(route.ruleTable??'tipsInfoData_cn',route.rule,'客户端玩法说明'),
     ...coinConstants.map(([id,label])=>ref('Constant',id,label)),
    ];
+   if(route.stage===catfish.stageId){
+    refs.push(...[[100,'海坊主祝福编组'],[300,'小猴编组'],[400,'鸟居编组'],[500,'击破鸟居后的纸人']].map(([id,label])=>ref('dizhennian_stage',{$tuple:[id,1]},label)),
+     ...[[4151,'小猴和鸟居的首领血线'],[4152,'海坊主祝福效果'],[4155,'鸟居击破比例门槛'],[4156,'鸟居时限'],[4161,'妖琴师助战']].map(([id,label])=>ref('Constant',id,label)),
+     ...[[520,'首领减伤层数'],[523,'小猴击退增益']].map(([id,label])=>ref('buff',{$tuple:[id,1]},label)));
+   }
    if(route.stage===mirage.stageId){
     refs.push(...[[1100,'大将召唤编组'],[1200,'秘宝小纸人编组'],[1300,'镜像共享生命模板']].map(([id,label])=>ref('dizhennian_stage',{$tuple:[id,1]},label)),
      ...[[4011,'镜像属性倍率'],[4012,'镜像属性修正'],[4013,'蜃气勘破时长'],[4021,'缺少镜像模板时的大将']].map(([id,label])=>ref('Constant',id,label)),
@@ -132,5 +152,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish};
 });

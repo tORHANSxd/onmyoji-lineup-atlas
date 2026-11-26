@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3013,3015,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3013,3014,3015,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -141,7 +141,7 @@ async function main(){
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
   const panel='$("client-dungeons-encounter-detail")';
-  const {encounters,duskWraith,songstress,mirage}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  const {encounters,duskWraith,songstress,mirage,catfish}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
   assert.equal(entries.length,12);
   for(const entry of entries){
    const query=entry.title.replace(' · ',' ');
@@ -167,6 +167,9 @@ async function main(){
     assert.match(info,/原版引擎召唤大将和纸人.*大将召唤编组.*蜃气勘破时长/s);
     assert.equal(await ui(panel+'.querySelector("[data-pve-mirage-general]")?.valueAsNumber'),mirage.defaultGeneralSeconds);
     assert.deepEqual(await ui('[...'+panel+'.querySelectorAll("[data-pve-mirage-position]")].map(el=>Number(el.value))'),mirage.defaultTruePositions);
+   }else if(entry.fengmoLive.stage===catfish.stageId){
+    assert.match(info,/海坊主祝福、小猴伤害上限和鸟居结果.*小猴编组.*鸟居时限/s);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-catfish-window]")?.valueAsNumber'),catfish.defaultWindow);
    }else assert.equal(await ui(panel+'.querySelector("[data-pve-stock]")'),null);
   }
   await ui('qaEncounterInput("daily","逢魔实战 稀有·土蜘蛛")');
@@ -359,6 +362,7 @@ async function main(){
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('dusk-wraith',10020227,5),known('songstress',10020217,6,10,notes),known('mirage',10020218,5,10,notes),
+   known('catfish',10020224,5,10,notes),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
    known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
@@ -986,6 +990,25 @@ async function main(){
       {phase:'burst',seconds:89.88,bossHp:7077053}]};
     const mirageReport=await run('mirage',{stageId:25015,groupId:25015,battleMode:3013,mirageSettings},{mirage},tactical);
     assert.match(mirageReport,/击败蜃气楼 · 本队伤害 12,938,001.*海市蜃楼 · 58\.24 秒进场.*5 号位 .*（真镜像）.*6 号位 .*（真镜像）.*原表虚弱时长 80 秒/s);
+    await encounter('daily','逢魔实战 稀有·地震鲶');
+    await choose('catfish');
+    const breaks='document.querySelector("[data-pve-catfish-breaks]")';
+    await ui(breaks+'.value="1";'+breaks+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(breaks+'.getAttribute("aria-invalid")'),'true');
+    await ui(`(()=>{
+     const values={breaks:0,players:1,armor:4};
+     for(const [name,value] of Object.entries(values)){
+      const field=document.querySelector('[data-pve-catfish-'+name+']');field.value=value;field.dispatchEvent(new Event('input'));
+     }
+    })()`);
+    const catfishSettings={windowSeconds:600,armorStacks:4,otherPlayers:1,otherBreaks:0};
+    const catfish={settings:catfishSettings,reason:'boss-defeated',damage:7938661,combatSeconds:352.38,maximumHp:7122285,
+     bossHp:0,blessing:512,activeBlessing:512,monkeyBonus:.25,papersDefeated:5,gate:{limitSeconds:120,startedAt:295.12,brokenAt:320.3,breakRate:.5,skill:506},
+     phases:[{phase:'opening',seconds:0,bossHp:7122285},{phase:'boom',seconds:332.06,bossHp:909951}]};
+    const catfishReport=await run('catfish',{stageId:25004,groupId:25004,battleMode:3014,catfishSettings},{catfish},tactical);
+    assert.match(catfishReport,/击败地震鲶 · 本队伤害 7,938,661.*冲天成功 · 332\.06 秒进场/s);
+    assert.match(catfishReport,/开场减伤 4 层 · 祝福 暴击增益 · 小猴伤害增益 25%.*总击破率 50%/s);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');

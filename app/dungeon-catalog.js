@@ -950,8 +950,17 @@
       block.append(details);
     }
     destination.append(block);
-    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage}=source;
+    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish}=source;
     const stage=row('pve_stage_data',String(scenario.stage));
+    if(scenario.stage===catfish.stageId&&scenario.mode===catfish.battleMode&&route?.scene_engine===catfish.engine.name&&
+        stage?.groupid===catfish.stageId&&stage.shishentotal===catfish.memberCount&&formation.resindex===catfish.sceneId){
+      const code=DATA.gameConfig.stages[catfish.codeStageId];
+      destination.append(node('p','用已知阵容从满血开打，跟进海坊主祝福、小猴伤害上限和鸟居结果。可填写开场减伤层数及其他参战者的鸟居成绩。','caption'));
+      window.AtlasPveWorkbench?.mount(destination,{stageId:catfish.stageId,groupId:catfish.stageId,version:source.resourceVersion,
+        battleMode:catfish.battleMode,memberCount:catfish.memberCount,waveCount:1,label:'稀有·地震鲶',catfish:true,
+        codeStageId:code?.actors===1&&code.shikigami===catfish.memberCount?catfish.codeStageId:null,codeLabel:code?.name});
+      return;
+    }
     if(scenario.stage===mirage.stageId&&scenario.mode===mirage.battleMode&&route?.scene_engine===mirage.engine.name&&
         stage?.groupid===mirage.stageId&&stage.shishentotal===mirage.memberCount&&formation.resindex===mirage.sceneId){
       const code=DATA.gameConfig.stages[mirage.codeStageId];

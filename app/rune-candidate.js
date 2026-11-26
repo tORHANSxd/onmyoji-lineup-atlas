@@ -115,11 +115,11 @@ function pveGoalMet(report,battleMode){
 
 const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.fengmoBand??report.fengmoBandTogether??report.qilingCollective??report.guildCrevice??
  report.superGhost??report.historicalSuperGhost??report.qinfeiBoss??report.dojoArea??report.guildForest??
- report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore??report.yinyangBoss??report.laolaoFusion??report.duskWraith??report.songstress??report.mirage;
+ report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore??report.yinyangBoss??report.laolaoFusion??report.duskWraith??report.songstress??report.mirage??report.catfish;
 const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===band.battleMode||mode===band.together.battleMode||mode===qiling.battleMode||
  mode===crevice.battleMode||mode===ghost.battleMode||mode===ghost.historicalBattleMode||mode===qinfei.battleMode||mode===dojo.battleMode||
  mode===forest.battleMode||mode===tenBoss.battleMode||mode===yinYang.battleMode||mode===fusion.battleMode||
- mode===fengmoLive.duskWraith.battleMode||mode===fengmoLive.songstress.battleMode||mode===fengmoLive.mirage.battleMode||
+ mode===fengmoLive.duskWraith.battleMode||mode===fengmoLive.songstress.battleMode||mode===fengmoLive.mirage.battleMode||mode===fengmoLive.catfish.battleMode||
  Object.hasOwn(generalSoul.modes,mode);
 const creditedDamage=report=>!report.guildHunt||report.outcome==='win';
 

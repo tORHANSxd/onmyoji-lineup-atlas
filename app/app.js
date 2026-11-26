@@ -207,6 +207,7 @@ function sampleBattleMarkup(samples){
   const dusk=sample.duskWraith;
   const song=sample.songstress;
   const mirage=sample.mirage;
+  const catfish=sample.catfish;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -282,6 +283,8 @@ function sampleBattleMarkup(samples){
     `作战 ${song.combatSeconds.toFixed(2)} / ${song.windowSeconds} 秒`:
    mirage?`${{'boss-defeated':'击败蜃气楼','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[mirage.reason]} · `+
     `本队伤害 ${mirage.damage.toLocaleString('zh-CN')} · 作战 ${mirage.combatSeconds.toFixed(2)} / ${mirage.settings.windowSeconds} 秒`:
+   catfish?`${{'boss-defeated':'击败地震鲶','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[catfish.reason]} · `+
+    `本队伤害 ${catfish.damage.toLocaleString('zh-CN')} · 作战 ${catfish.combatSeconds.toFixed(2)} / ${catfish.settings.windowSeconds} 秒`:
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+
@@ -391,6 +394,17 @@ function sampleBattleMarkup(samples){
     `首领余血 ${(phase.bossHp/mirage.maximumHp).toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}`+
     (mirrors?`<div class="caption">${esc(mirrors)}</div>`:'')+'</li>';
   }).join('')}</ol><p class="caption">原表虚弱时长 ${mirage.burstSeconds} 秒 · 首领剩余生命 ${Math.round(mirage.bossHp).toLocaleString('zh-CN')}</p></details>`:'';
+  const catfishStages=catfish?(()=>{
+   const source=AtlasFengmoLive.catfish;
+   const percent=value=>value.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2});
+   const blessing=source.blessings[catfish.blessing]??(catfish.activeBlessing?`默认${source.blessings[catfish.activeBlessing]}`:'尚未取得');
+   const gate=catfish.gate;
+   return `<details><summary>查看地震鲶各阶段</summary><ol>${catfish.phases.map(phase=>
+    `<li>${source.phases[phase.phase]} · ${phase.seconds.toFixed(2)} 秒进场 · 首领余血 ${percent(phase.bossHp/catfish.maximumHp)}</li>`).join('')}</ol>
+    <p class="caption">开场减伤 ${catfish.settings.armorStacks} 层 · 祝福 ${blessing} · 小猴伤害增益 ${catfish.monkeyBonus===null?'尚未取得':percent(catfish.monkeyBonus)}</p>
+    <p class="caption">鸟居限时 ${gate.limitSeconds} 秒 · ${gate.startedAt===null?'尚未进入鸟居阶段':gate.brokenAt===null?'本队未击破':`本队 ${(gate.brokenAt-gate.startedAt).toFixed(2)} 秒击破`}
+     ${gate.breakRate===null?'':` · 总击破率 ${percent(gate.breakRate)}`} · 击败纸人 ${catfish.papersDefeated} 位</p></details>`;
+  })():'';
   const towerLife=ghostKingTower?.kind==='boss'?`<div class="caption">敌方余血 · ${esc(ghostKingTower.enemies.map(unit=>
    `${unit.position} 号位 ${unit.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})}`).join(' · '))}
    ${sample.completed&&ghostKingTower.enemies.some(unit=>unit.remainingHp>0)?
@@ -410,7 +424,7 @@ function sampleBattleMarkup(samples){
    return `<li>${esc(name)} · 原版实体 ${unit.level} 级 · 速度 ${unit.speed.toFixed(2)} · `+
     `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}</li>`;
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}</li>`;
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}</li>`;
  }).join('');
 }
 
