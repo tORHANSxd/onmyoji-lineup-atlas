@@ -2,9 +2,10 @@
  const common=typeof module==='object'&&module.exports;
  const api=factory(common?require('./game-config.js'):root.AtlasGame,
   common?require('./rune-lineup.js'):root.AtlasRuneLineup,
-  common?require('./rune-search.js'):root.AtlasRuneSearch);
+  common?require('./rune-search.js'):root.AtlasRuneSearch,
+  common?require('./fengmo-yanwu.js'):root.AtlasFengmoYanwu);
  if(common)module.exports=api;else root.AtlasRuneCandidate=api;
-})(globalThis,function(G,R,S){
+})(globalThis,function(G,R,S,yanwu){
 'use strict';
 
 const mainAttrs={attack_rate:'atk_per',crit_rate:'critical_rate',crit_damage:'critical_pow',speed:'spd',
@@ -89,21 +90,23 @@ async function hun13Templates(row,data){
 }
 
 function pveGoalMet(report,battleMode){
- if(battleMode===2000)return Number.isSafeInteger(report.guildHunt?.damage)&&report.guildHunt.damage>0;
- if(battleMode===306)return Number.isSafeInteger(report.guildRetreat?.damage)&&report.guildRetreat.damage>0;
+ if(damageMode(battleMode)){
+  const damage=personalScore(report)?.damage;
+  return Number.isSafeInteger(damage)&&damage>0;
+ }
  if(battleMode===528)return report.experience?.timedOut===false&&report.experience.requiredKills===30&&report.experience.kills===30;
  return report.wavesCleared===report.waveCount;
 }
 
-const personalScore=report=>report.guildHunt??report.guildRetreat;
-const damageMode=mode=>mode===2000||mode===306;
+const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu;
+const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode;
+const creditedDamage=report=>!report.guildHunt||report.outcome==='win';
 
 function damageResult(samples){
  const damage=samples.map(report=>personalScore(report)?.damage);
  if(!damage.length||samples.some((report,i)=>!report.completed||!Number.isSafeInteger(damage[i])||damage[i]<0))return null;
  return {average:damage.reduce((total,value)=>total+value,0)/damage.length,
-  min:Math.min(...damage),max:Math.max(...damage),credited:samples.filter((report,i)=>
-   (report.guildRetreat||report.outcome==='win')&&damage[i]>0).length};
+  min:Math.min(...damage),max:Math.max(...damage),credited:samples.filter((report,i)=>creditedDamage(report)&&damage[i]>0).length};
 }
 
 function compareDamage(a,b){
@@ -280,7 +283,7 @@ function scoreInstructions(tactics,plan,game){
 
 function readScoreInstructions(notes){
  if(typeof notes!=='string')return null;
- const match=/^资源 0\.[\d.]+，\d+ 场离线结算。(?:我方伤害取下限。)?阴阳师普攻 \d+ 级。开场操作。(?:入场前把第([1-5])位式神设为自动(普攻|妖术)。|第([1-5])位自动(普攻|妖术)。)?(?:(手动开场，首动普攻首领后切自动。)|第([1-5])位手动技能([1-9]\d*)(直接释放|点首领|点自身|点第([1-5])位)后切自动。)?(红标首领。)?(?:绿标第([1-5])位式神。)?全分支待验证。$/.exec(notes);
+ const match=/^资源 0\.[\d.]+，\d+ 场离线结算。(?:我方伤害取下限。)?阴阳师普攻 \d+ 级。开场操作。(?:入场前把第([1-6])位式神设为自动(普攻|妖术)。|第([1-6])位自动(普攻|妖术)。)?(?:(手动开场，首动普攻首领后切自动。)|第([1-6])位手动技能([1-9]\d*)(直接释放|点首领|点自身|点第([1-6])位)后切自动。)?(红标首领。)?(?:绿标第([1-6])位式神。)?全分支待验证。$/.exec(notes);
  if(!match)return null;
  const [,legacySlot,legacyMode,compactSlot,compactMode,basic,actor,skillId,targetLabel,targetSlot,red,green]=match;
  const slot=legacySlot??compactSlot,mode=legacyMode??compactMode;
@@ -307,7 +310,8 @@ async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeSt
  };
  if(!Number.isSafeInteger(waveCount)||waveCount<1||row.samples.length!==seeds.length||!row.samples.every((report,index)=>
   report.battleMode===battleMode&&report.stageId===stageId&&report.groupId===groupId&&report.seed===seeds[index]&&
-  report.completed&&(battleMode===306||report.outcome==='win')&&report.waveCount===waveCount&&pveGoalMet(report,battleMode)&&matchesRegion(report)&&
+  report.completed&&(damageMode(battleMode)?creditedDamage(report):report.outcome==='win')&&
+  report.waveCount===waveCount&&pveGoalMet(report,battleMode)&&matchesRegion(report)&&
   (!instructions||damageMode(battleMode)&&scoreInstructions(personalScore(report)?.tactics)===instructions)))
   throw Error('完成本关的全部采样复跑后才可生成此阵容码');
  if(!row.panels?.every(Boolean)||row.plan.members.some(member=>member.souls.length!==6))

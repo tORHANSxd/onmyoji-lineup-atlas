@@ -3,6 +3,7 @@
 from importlib import import_module
 from random import Random
 from guild_retreat_stage import RETREAT_MODE
+from fengmo_yanwu_stage import FENGMO_YANWU_MODE
 
 GUILD_HUNT_MODE = 2000
 PHASE_SKILL = "battleengine.SkillComp_GuildHuntingBoss"
@@ -64,7 +65,7 @@ def hunt_tactics(plan, mode):
     if "tactics" not in plan:
         return {}
     tactics = plan["tactics"]
-    if (mode not in (GUILD_HUNT_MODE, RETREAT_MODE) or type(tactics) is not dict or not tactics
+    if (mode not in (GUILD_HUNT_MODE, RETREAT_MODE, FENGMO_YANWU_MODE) or type(tactics) is not dict or not tactics
             or tactics.keys() - {"redBoss", "greenSlot", "manualOpening", "autoMode"}):
         raise ValueError("Unsupported Guild Hunting tactics")
     if "redBoss" in tactics and tactics["redBoss"] is not True:
@@ -80,12 +81,12 @@ def hunt_tactics(plan, mode):
         hero = plan["members"][opening["actorSlot"] - 1]["hero"]
         if not any(skill_id == opening["skillId"] for skill_id, _ in hero["skinfo"]):
             raise ValueError("The manual opening skill is not in the selected Shikigami's loadout")
-    if "greenSlot" in tactics and (type(tactics["greenSlot"]) is not int or not 1 <= tactics["greenSlot"] <= 5):
+    if "greenSlot" in tactics and (type(tactics["greenSlot"]) is not int or not 1 <= tactics["greenSlot"] <= len(plan["members"])):
         raise ValueError("Invalid Guild Hunting ally mark slot")
     if "autoMode" in tactics:
         setting = tactics["autoMode"]
         if (type(setting) is not dict or setting.keys() != {"slot", "mode"}
-                or type(setting["slot"]) is not int or not 1 <= setting["slot"] <= 5
+                or type(setting["slot"]) is not int or not 1 <= setting["slot"] <= len(plan["members"])
                 or setting["mode"] not in ("basic", "spell")
                 or plan["members"][setting["slot"] - 1].get("aiSkill") != 0):
             raise ValueError("The automatic mode needs a valid slot without a conflicting skill lock")
@@ -139,7 +140,7 @@ class HuntOpening:
             self.applied["greenSlot"] = slot
 
     def member_slot(self, entity):
-        return next((slot for slot in range(1, 6) if self.entities.get(f"member-{slot}") is entity), None)
+        return next((slot for slot in range(1, 7) if self.entities.get(f"member-{slot}") is entity), None)
 
     def opening_targets(self, skill):
         range_ = skill.selectRange

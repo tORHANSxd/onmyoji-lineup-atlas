@@ -62,7 +62,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001,3004,3023]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001,3004,3023,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
@@ -620,6 +620,31 @@ async function main(){
      assert.equal(await ui('document.querySelector("[data-pve-auto-share]").checked'),false);
      assert.equal(stored.lineups.some(lineup=>requests.some(row=>row.code===lineup.code)),false);
     }finally{mockBatchShare=null;setTestLogin(offline);}
+   }
+   if(catalog.index.tables.some(table=>table.name==='act_team_battle')){
+    const seenYanwu=new Set();
+    mockPve=(plan,options)=>{
+     assert.deepEqual(options,{battleMode:8238,stageId:325006,groupId:325006,seed:options.seed,damageFloor:true});
+     assert.equal(plan.members.length,6);
+     assert.equal(new Set(plan.members.map(member=>member.instanceId)).size,6);
+     seenYanwu.add(options.seed);
+     return {...sample,...options,outcome:'loss',wavesCleared:0,fengmoYanwu:{
+      damage:plan.tactics?.greenSlot?750000:730000,timedOut:true,combatSeconds:301.2,tactics:plan.tactics,
+     }};
+    };
+    await ui('qaEncounterInput("event","逢魔演武 鬼灵歌伎")');
+    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/逢魔演武·鬼灵歌伎.*计分时限 300 秒.*自有式神 6 位/s);
+    await ui(stock+'.click()');
+    await until(status+'.textContent.includes("按平均伤害排序")',25000);
+    assert.deepEqual([...seenYanwu],[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.firstElementChild.textContent'),/6 \/ 6 场有效结算.*含未清场样本.*达到计分时限.*个人伤害 750,000/s);
+    await ui('document.querySelector("[data-pve-code]").click()');
+    const code=require('../desktop/ta-codec.cjs').decodeLineupData(await ui('$("stock-candidate-code").value'));
+    assert.equal(code.select_stage_id,100978);
+    assert.equal(code.hconf.length,7);
+    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
+    await capture('client-fengmo-yanwu-damage');
    }
   }finally{
    mockPve=null;stopPve=null;

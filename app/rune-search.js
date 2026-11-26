@@ -1,8 +1,9 @@
 (function(root,factory){
  const common=typeof module==='object'&&module.exports;
- const api=factory(common?require('./core.js'):root.AtlasCore,common?require('./game-config.js'):root.AtlasGame);
+ const api=factory(common?require('./core.js'):root.AtlasCore,common?require('./game-config.js'):root.AtlasGame,
+  common?require('./fengmo-yanwu.js'):root.AtlasFengmoYanwu);
  if(common)module.exports=api;else root.AtlasRuneSearch=api;
-})(globalThis,function(C,G){
+})(globalThis,function(C,G,yanwu){
 'use strict';
 
 // 神罚的开场属性来自同版本的 RuneFbEngine。定位按客户端技能说明选取，
@@ -310,7 +311,7 @@ function scoreVariants(item,game){
 
 function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpeed=0,battleMode=3,actorId=null){
  const {gameConfig:game,roster}=data;
- const scoring=battleMode===2000||battleMode===306;
+ const scoring=battleMode===2000||battleMode===306||battleMode===yanwu.battleMode;
  const strategies=[
   [{name:'单式神输出',roles:['opener']},{name:'单式神持续输出',roles:['finisher']}],
   [{name:'输出与供火',roles:['opener','orbs']},{name:'输出与治疗',roles:['finisher','healer']}],
@@ -318,9 +319,14 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
    {name:'拉条增伤与输出',roles:['accelerate','markAmp','lightDamage']}],
   [{name:'供火增伤与双输出',roles:['orbs','markAmp','opener','finisher']},
    {name:'拉条供火与治疗',roles:['accelerate','orbs','lightDamage','healer']}],
-  battleMode===306?[...guildRetreatStrategies,hun13Pace,sustain]:
+  battleMode===306||battleMode===yanwu.battleMode?[...guildRetreatStrategies,hun13Pace,sustain]:
    scoring?[...guildHuntStrategies,hun13Pace,sustain]:
    battleMode===267?[...yulingStrategies,hun13Pace,turnAdvance]:[hun13Pace,hun13Hold,groupBuff,turnAdvance,openingDamage,sustain],
+  battleMode===yanwu.battleMode?[
+   {name:'双输出与双增伤',roles:['accelerate','orbs','bossMark','amplify','lightDamage','bossDamage']},
+   {name:'范围清怪与首领输出',roles:['orbs','bossMark','lightDamage','fastFinisher','bossDamage','support']},
+   {name:'续航与首领输出',roles:['orbs','bossMark','lightDamage','bossDamage','criticalHeal','support']},
+  ]:null,
  ][memberCount-1];
  if(!strategies)throw Error('当前关卡的上阵人数未接入库存备选');
  const speed=Number.isFinite(openingEnemySpeed)&&openingEnemySpeed>0?Math.floor(openingEnemySpeed)+1:0;

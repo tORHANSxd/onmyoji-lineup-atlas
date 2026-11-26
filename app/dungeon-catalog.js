@@ -197,9 +197,14 @@
         throw Error('关卡索引与客户端资料版本不一致');
       }
       const order = ['daily', 'guild', 'event', 'battle', 'other'];
-      stage.rows = payload.entries.map(entry => ({...entry, search: normalized(
-        [entry.title, entry.kind, titles[entry.table], entry.table, keyText(entry.key), ...entry.refs.map(ref => keyText(ref.key))].join(' ')
-      )})).sort((a,b) => order.indexOf(a.family) - order.indexOf(b.family));
+      const yanwu = matchesOpeningSource(window.AtlasFengmoYanwu)?window.AtlasFengmoYanwu.routes:{};
+      stage.rows = payload.entries.map(entry => {
+        const battle = entry.table==='act_team_battle'&&yanwu[entry.refs.find(ref=>ref.table==='pve_stage_data')?.key];
+        const title = battle?`逢魔演武·${battle.name}`:entry.title;
+        return {...entry,title,search:normalized(
+          [title, entry.kind, titles[entry.table], entry.table, keyText(entry.key), ...entry.refs.map(ref => keyText(ref.key))].join(' ')
+        )};
+      }).sort((a,b) => order.indexOf(a.family) - order.indexOf(b.family));
       stage.byKey = new Map(stage.rows.map(entry => [entryKey(entry), entry]));
       filterEncounters();
     } catch (error) {
@@ -498,6 +503,26 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,battleMode:2000,waveCount:1,
       label:'麒麟狩猎个人成绩',version:source.resourceVersion,openingSpeed:opening.enemy.speed,
       codeStageId:scene?.actors===1&&scene.shikigami===5?opening.codeStageId:null,codeLabel:scene?.name});
+  }
+
+  function showFengmoYanwu(destination,groups){
+    const source=window.AtlasFengmoYanwu;
+    if(!matchesOpeningSource(source))return false;
+    const config=groups.find(group=>group.ref.table==='pve_stage_data')?.row;
+    const stageId=Number(config?.id),entry=source.routes[stageId];
+    if(!entry)return false;
+    const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===config.groupid);
+    if(config.groupid!==stageId||formation?.row?.resindex!==entry.sceneId||
+       formation.waves.length!==1||formation.waves[0][0]?.id!==entry.bossId)return false;
+    const activity=groups.find(group=>group.ref.table==='act_team_battle')?.row;
+    if(activity&&(activity.act_id!==entry.actId||activity.team_battle_type!==source.teamType))return false;
+    destination.append(node('p',`单人演练 · 计分时限 300 秒 · 自有式神 ${entry.memberCount} 位 · 伊吹固定支援`,'caption'),
+      node('p','使用本地队伍的原版个人伤害。超时未清场仍可计分。活动开放时间以关联的原表为准。','caption'));
+    const scene=DATA.gameConfig.stages[entry.codeStageId];
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:entry.memberCount,
+      battleMode:source.battleMode,waveCount:1,label:`逢魔演武·${entry.name}个人伤害`,version:source.resourceVersion,
+      codeStageId:scene?.actors===1&&scene.shikigami===entry.memberCount?entry.codeStageId:null,codeLabel:scene?.name});
+    return true;
   }
 
   const regionalRuleFields = {
@@ -912,9 +937,10 @@
     }
     showYulingEncounter(destination,entry,groups[0]);
     showGuildHunt(destination,entry,groups[0]);
+    const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
-    if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
+    if (!yanwu&&entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
       const regional=entry.refs.some(ref=>ref.table==='lbs_world_boss_area');

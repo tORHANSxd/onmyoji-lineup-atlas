@@ -14,6 +14,7 @@ import time
 
 def replay(args, runtime, work):
     from game_resources import sha256
+    from fengmo_yanwu_stage import FENGMO_YANWU_MODE, FengmoYanwuReplay, fengmo_yanwu_stage
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
@@ -31,10 +32,11 @@ def replay(args, runtime, work):
     relay = args.mode == UNDERWORLD_MODE
     retreat = args.mode == RETREAT_MODE
     regional = args.mode in REGION_MODES
+    yanwu = args.mode == FENGMO_YANWU_MODE
     if relay:
         heroes, inventory, actors, rounds = underworld_teams(plan, suits)
     else:
-        actor, fighters, inventory, choices = selected_team(plan, suits)
+        actor, fighters, inventory, choices = selected_team(plan, suits, member_limit=6 if yanwu else 5)
         heroes = {**fighters, "selected-onmyoji": actor}
     tactics = hunt_tactics(plan, args.mode)
     modules, host, evidence = prepare_runtime(runtime, work)
@@ -81,6 +83,14 @@ def replay(args, runtime, work):
             raise ValueError("Regional Boss requires five shikigami")
         engine, formation, group_id, effective_level = regional_boss_stage(args.stage, args.region, actor["heroId"], args.mode)
         wave_count = len(formation["MonstersInfos"])
+    elif yanwu:
+        from battleengine.engine.FengMoEquipBattleEngine import const
+        from DynamicConfigData import DATA_HERO
+
+        engine, group, member_count = fengmo_yanwu_stage(args.stage)
+        if len(fighters) != member_count:
+            raise ValueError("The selected roster does not match the original solo Fengmo Yanwu route")
+        group_id, wave_count = group["ID"], len(group["MonstersInfos"])
     elif args.mode == 29:
         from awake_stage import awake_stage
         from battleengine.engine.AwakeFbEngine import const
@@ -174,6 +184,8 @@ def replay(args, runtime, work):
         route = "underworld-gate-local-solo"
     elif regional:
         route = "regional-boss-ordinary-scenario" if args.mode == REGION_MODE else "regional-boss-hard-scenario"
+    elif yanwu:
+        route = "fengmo-yanwu-solo"
     elif args.mode == 29:
         engine, stage, enemy_ids = awake_stage(args.stage)
         group_id, wave_count = stage["monsterid"], 1
@@ -236,6 +248,7 @@ def replay(args, runtime, work):
     engine.doBattleEnded = observe_end
     engine.onEntityCreated = observe_created
     regional_replay = RegionalBossReplay(engine, formation, args.region, effective_level, const) if regional else None
+    yanwu_replay = FengmoYanwuReplay(engine, group, const) if yanwu else None
     verified_waves = set()
     if args.mode == 266:
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
@@ -277,6 +290,8 @@ def replay(args, runtime, work):
         if args.mode == REGION_HARD_MODE:
             formation_matches = (formation_matches and engine.startLevel == args.region["star"]
                                  and engine.condition == args.region["modifierIds"])
+    elif yanwu:
+        formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
     elif args.mode == 266:
@@ -307,7 +322,7 @@ def replay(args, runtime, work):
     equipped_spirit = None
     instructions = None
     if tactics:
-        boss = raid.boss["protoId"] if retreat else stage["monsters"][0][0]
+        boss = raid.boss["protoId"] if retreat else group["MonstersInfos"][0][0][1] if yanwu else stage["monsters"][0][0]
         instructions = HuntOpening(engine, controller, const, tactics, boss)
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
@@ -315,6 +330,8 @@ def replay(args, runtime, work):
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
         if regional_replay and regional_replay.eligible is False:
             break
+        if yanwu_replay:
+            yanwu_replay.update()
         if instructions:
             instructions.update()
         if retreat:
@@ -380,6 +397,10 @@ def replay(args, runtime, work):
         report["underworld"] = underworld.report()
     if regional_replay:
         report["regionalBoss"] = regional_replay.report(completed, winner)
+    if yanwu_replay:
+        report["fengmoYanwu"] = yanwu_replay.report(completed)
+        if instructions:
+            report["fengmoYanwu"].update(instructions.report())
     if retreat:
         report["waveCount"], report["wavesCleared"] = 1, int(outcome == "win")
         report["guildRetreat"] = {**raid_window.report(), "guildMembers": args.guild_members,
@@ -431,6 +452,7 @@ def replay(args, runtime, work):
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from fengmo_yanwu_stage import FENGMO_YANWU_MODE
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from regional_boss_stage import REGION_MODES
@@ -441,7 +463,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, RETREAT_MODE, *REGION_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, *REGION_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")

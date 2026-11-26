@@ -12,6 +12,7 @@ const secretOpenings=require('../app/secret-openings.js');
 const yulingOpenings=require('../app/yuling-openings.js');
 const guildHuntOpenings=require('../app/guild-hunt-openings.js');
 const guildRetreatOpenings=require('../app/guild-retreat-openings.js');
+const fengmoYanwu=require('../app/fengmo-yanwu.js');
 const resourceEncounters=require('../app/resource-encounters.js');
 const {firstExperience}=resourceEncounters;
 
@@ -25,6 +26,7 @@ const engines={
  2001:{name:'GuildLieFengEngine',route:'underworld-gate-local-solo',sha256:'5ee939050f18dc8de1960d88ce5181f5735fb89477c3736e1f32ac696426d625'},
  3004:{name:'LBSWorldBossEngine',route:'regional-boss-ordinary-scenario',sha256:'d7430531c4dd85fa2c3fc14b2c55677ee7d030e4703e8806887a3d55a0821174'},
  3023:{name:'LBSWorldBossXEngine',route:'regional-boss-hard-scenario',sha256:'a4268deb478a53610e6ef6e23e833f3bf18d2be826f7cd703aaca7e1a54df38f'},
+ [fengmoYanwu.battleMode]:{name:'FengMoEquipBattleEngine',route:'fengmo-yanwu-solo',sha256:fengmoYanwu.engineSHA256},
  [firstExperience.battleMode]:{name:'NewExpEngine',route:'resource-first-new-server-exp',sha256:resourceEncounters.engineSHA256},
 };
 const positive=value=>Number.isSafeInteger(value)&&value>0;
@@ -35,7 +37,7 @@ const regionModes=[3004,3023];
 function validTactics(plan,battleMode){
  if(!Object.hasOwn(plan,'tactics'))return true;
  const {tactics}=plan;
- if(![2000,306].includes(battleMode)||!tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
+ if(![2000,306,fengmoYanwu.battleMode].includes(battleMode)||!tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
  return Object.entries(tactics).every(([key,value])=>{
   const slot=number=>positive(number)&&number<=plan.members.length;
   if(key==='redBoss')return value===true;
@@ -137,6 +139,18 @@ function validRetreat(report,panel,{raidRound,guildMembers,windowSeconds},plan){
   validScoringTactics(data,plan,panel.id)&&Object.entries(panel).every(([key,value])=>data.opening?.[key]===value);
 }
 
+function validFengmoYanwu(report,entry,plan){
+ const data=report.fengmoYanwu;
+ return data&&report.sceneId===entry.sceneId&&report.waveCount===1&&data.actId===entry.actId&&data.deadlineSeconds===300&&
+  typeof data.timedOut==='boolean'&&Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&
+  (!data.timedOut||data.combatSeconds>=299)&&
+  Number.isSafeInteger(data.damage)&&data.damage>=0&&data.assists?.length===1&&
+  sameTactics(data.assists[0],{configId:70,heroId:5643,position:101})&&Array.isArray(data.opening)&&
+  data.opening[0]?.id===entry.bossId&&data.opening[0].position===1&&data.opening.every((unit,i)=>
+   positive(unit.id)&&positive(unit.position)&&positive(unit.level)&&unit.position>(data.opening[i-1]?.position??0)&&
+   ['hp','speed','attack','defense','critRate'].every(key=>Number.isFinite(unit[key])&&unit[key]>=0))&&validScoringTactics(data,plan,entry.bossId);
+}
+
 function launch(python,args,cwd,signal){
  return new Promise((resolve,reject)=>{
   const env={...process.env,PYTHONHOME:'',PYTHONPATH:'',PYTHONNOUSERSITE:'1',PYTHONHASHSEED:'0',TMP:cwd,TEMP:cwd};
@@ -157,6 +171,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
   huntReport.damage<0||!validScoringTactics(huntReport,rounds[0],hunt.enemy.id)||
   !Object.entries(hunt.enemy).every(([key,value])=>huntReport.opening?.[key]===value));
  const retreatOpening=retreat&&guildRetreatOpenings.difficulties[stageId][retreat.raidRound-1][groupId];
+ const yanwu=battleMode===fengmoYanwu.battleMode?fengmoYanwu.routes[stageId]:null;
  const invalidYuling=yuling&&(!Array.isArray(report?.opening)||report.opening.length!==yuling.enemies.length||
   !yuling.enemies.every((unit,index)=>Object.entries(unit).every(([key,value])=>report.opening[index]?.[key]===value)));
  const experience=battleMode===firstExperience.battleMode?report?.experience:null;
@@ -174,6 +189,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (yuling&&(report.sceneId!==yuling.sceneId||report.waveCount!==1||report.formationsVerified!==1||invalidYuling))||
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
     (retreatOpening&&!validRetreat(report,retreatOpening,retreat,rounds[0]))||
+    (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
@@ -199,10 +215,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
-     has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py')]);
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+     has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),has('fengmo_yanwu_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
-     ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[])]};
+     ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
+     ...(yanwu?[fengmoYanwu.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -211,9 +228,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
+   const maxMembers=battleMode===fengmoYanwu.battleMode?6:5;
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
       typeof damageFloor!=='boolean'||!Array.isArray(rounds)||rounds.length<1||rounds.length>4||rounds.some(row=>
-       !row?.onmyoji||!Array.isArray(row.members)||row.members.length<minMembers||row.members.length>5||!validTactics(row,battleMode))||
+       !row?.onmyoji||!Array.isArray(row.members)||row.members.length<minMembers||row.members.length>maxMembers||!validTactics(row,battleMode))||
       !validTactics(plan,battleMode))
     throw Error('无效的关卡、种子或配装');
    if(battleMode===29&&(awakeOpenings.resourceVersion!==resourceVersion||
@@ -237,6 +255,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('麒麟狩猎复跑需要已核验的战斗和五位自有式神');
    if(battleMode===2001&&(stageId!==groupId||![101,102,103].includes(stageId)))
     throw Error('阴界之门复跑需要已核验的单人入口');
+   if(battleMode===fengmoYanwu.battleMode&&(fengmoYanwu.resourceVersion!==resourceVersion||stageId!==groupId||
+      plan.members.length!==fengmoYanwu.routes[stageId]?.memberCount))throw Error('当前配装与逢魔演武单人上阵人数不一致');
+   if(battleMode===3&&Object.hasOwn(fengmoYanwu.routes,stageId))throw Error('逢魔演武需要使用原版活动计分入口');
    if(regionModes.includes(battleMode)&&(!validRegion(region,battleMode)||plan.members.length!==5))
     throw Error('地域鬼王复跑需要地点、难度、合法的特殊条件和五位自有式神');
    if(battleMode===firstExperience.battleMode&&(resourceEncounters.resourceVersion!==resourceVersion||
