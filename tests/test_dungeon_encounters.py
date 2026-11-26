@@ -102,7 +102,8 @@ class EncounterIndexTests(unittest.TestCase):
         index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
         entries = {(entry["table"], entry["key"]): entry for entry in index["entries"]}
         root = entries["map_boss", 71]
-        self.assertNotIn(("map_boss", 72), entries)
+        self.assertEqual(entries["map_boss", 72]["kind"], "地图首领入口")
+        self.assertEqual(entries["map_boss", 72]["refs"], [])
         self.assertEqual([(ref["table"], ref["key"]) for ref in root["refs"]], [
             ("tipsInfoData_cn", "ZHENBAQIDASHE_TIPS"), ("battle_mode_routes", 3005),
             ("team_assist_stage", 10020228), ("pve_stage_data", "25100"), ("pve_stage_data", "25101"),
@@ -115,6 +116,33 @@ class EncounterIndexTests(unittest.TestCase):
             ("BattleMonstersInfo", 25101), ("map_boss", 71), ("Combinesceneinfo", 40007), ("BattleScenesInfo", 507),
         ])
         self.assertEqual(index["unresolvedReferences"], 0)
+
+    def test_map_boss_links_ranked_and_base_stages_with_help_and_reverse_links(self):
+        tables = {
+            "map_boss": [[73, {"id": 73, "name": "愤怒的石距", "gk_base_id": 25300,
+                               "gk_list": [[25301, 15]]}]],
+            "pve_stage_data": [[str(stage), {"id": stage, "groupid": 10}] for stage in (25300, 25301)],
+            "BattleMonstersInfo": [[10, {"resindex": 11032}]],
+            "Combinesceneinfo": [[11032, {"battlesceneinfo": 2}]],
+            "BattleScenesInfo": [[2, {}]],
+            "battle_mode_routes": [[3000, {"mode_symbol": "MODE_WORLD_BOSS", "scene_engine": "WorldBossEngine"}]],
+            "tipsInfoData_cn": [["FENNUDESHIJU_TIPS", "原版帮助"]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "daily", "fields": []} for name in tables]
+        catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], entry["key"]): entry for entry in catalog["entries"]}
+        refs = entries["map_boss", 73]["refs"]
+        self.assertEqual([(ref["table"], ref["key"], ref["label"]) for ref in refs[:4]], [
+            ("tipsInfoData_cn", "FENNUDESHIJU_TIPS", "愤怒的石距玩法原文"),
+            ("battle_mode_routes", 3000, "首领战斗引擎"),
+            ("pve_stage_data", "25301", "配置等级 15"),
+            ("pve_stage_data", "25300", "基础关卡配置"),
+        ])
+        self.assertIn(("BattleScenesInfo", 2), [(ref["table"], ref["key"]) for ref in refs])
+        for stage in ("25300", "25301"):
+            self.assertIn(("map_boss", 73), [(ref["table"], ref["key"])
+                                             for ref in entries["pve_stage_data", stage]["refs"]])
+        self.assertEqual(catalog["unresolvedReferences"], 0)
 
     def test_regional_boss_preserves_weighted_rules_and_level_one_modifier_variants(self):
         base_skill = {"$tuple": [61701, 1, -1]}

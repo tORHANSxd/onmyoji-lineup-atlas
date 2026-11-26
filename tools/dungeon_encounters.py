@@ -11,7 +11,7 @@ ROOTS = {
     "pve_stage_data": ("battle", "通用 PvE 关卡"),
     "normal_battle_config": ("battle", "战斗模式默认规则"),
     "dungeon_rune": ("daily", "御魂"),
-    "map_boss": ("daily", "真·八岐大蛇"),
+    "map_boss": ("daily", "地图首领入口"),
     "dungeon_awake": ("daily", "觉醒"),
     "dungeon_challenge": ("daily", "秘闻"),
     "dungeon_challenge2": ("daily", "秘闻"),
@@ -78,6 +78,13 @@ REGION_DIFFICULTY_SKILLS = {10409: "极难默认词条", 10418: "极难奖励词
 TRUE_OROCHI_MAP_ID = 71
 TRUE_OROCHI_MODE = 3005
 TRUE_OROCHI_CODE = 10020228
+MAP_BOSS_HELP = {
+    69: ("SHIJU_TIPS", "石距玩法原文"),
+    73: ("FENNUDESHIJU_TIPS", "愤怒的石距玩法原文"),
+    70: ("NIANSHOU_TIPS", "年兽玩法原文"),
+    74: ("NIANSHOU_TIPS", "年兽玩法原文"),
+    75: ("NIANSHOU_TIPS", "年兽玩法原文"),
+}
 
 # The raw fields remain available. Each relation below names the ID namespace
 # used by the corresponding client table.
@@ -240,6 +247,17 @@ def encounter_index(source, load_rows):
     # ZhenDaSheEngine reads gk_list in order, then reads each PvE row's groupid.
     orochi_floors = {numeric_key(config[0]): floor for floor, config in enumerate(orochi.get("gk_list", ()), 1)
                      if isinstance(config, list) and config and numeric_key(config[0])}
+    map_boss_stages, map_boss_by_stage = {}, {}
+    for key, boss in sorted(table("map_boss").values(), key=lambda item: int(item[0])):
+        if key == TRUE_OROCHI_MAP_ID:
+            continue
+        stages = {stage[0]: f"配置等级 {stage[1]}" for stage in boss.get("gk_list", ())
+                  if isinstance(stage, list) and len(stage) >= 2 and numeric_key(stage[0])}
+        if base_id := numeric_key(boss.get("gk_base_id")):
+            stages.setdefault(int(base_id), "基础关卡配置")
+        map_boss_stages[key] = stages
+        for stage_id in stages:
+            map_boss_by_stage.setdefault(numeric_key(stage_id), []).append(key)
     hunling_routes = {str(stage_id): row for stage_id, row in (*exploration_stages(), *challenge_stages())}
     hunling_codes = {row["search_id"]: key for key, row in table("team_assist_stage").values()
                      if isinstance(row.get("name"), str) and row["name"].startswith("契灵")}
@@ -367,6 +385,8 @@ def encounter_index(source, load_rows):
                 links.extend(hunling_references(route))
             if stage_id in orochi_floors:
                 links.append(relation("map_boss", orochi_key, "真·八岐大蛇挑战入口", True))
+            links.extend(relation("map_boss", key, "地图首领入口", True)
+                         for key in map_boss_by_stage.get(stage_id, ()))
             for key in regions_by_stage.get(stage_id, ()):
                 links.append({"table": "lbs_world_boss_area", "key": key, "label": "地域鬼王玩法入口", "found": True})
             tip = relation("normal_battle_tips", row.get("id"), "通用战斗规则", False)
@@ -398,6 +418,13 @@ def encounter_index(source, load_rows):
                           relation("team_assist_stage", TRUE_OROCHI_CODE, "真·八岐大蛇阵容码目录", True)))
             links.extend(relation("pve_stage_data", stage_id, f"第 {floor} 层关卡", True)
                          for stage_id, floor in orochi_floors.items())
+        elif name == "map_boss":
+            if help_link := MAP_BOSS_HELP.get(row.get("id")):
+                links.append(rule_reference(*help_link))
+                if route := relation("battle_mode_routes", 3000, "首领战斗引擎", False):
+                    links.append(route)
+            links.extend(relation("pve_stage_data", stage_id, label, True)
+                         for stage_id, label in map_boss_stages.get(row.get("id"), {}).items())
         if name == "BattleMonstersInfo":
             scene = relation("Combinesceneinfo", row.get("resindex", 11032), "通用 PvE 默认场景", True)
             if scene:
@@ -655,8 +682,6 @@ def encounter_index(source, load_rows):
         for key, row in load_rows(table_name):
             if not isinstance(row, dict):
                 continue
-            if table_name == "map_boss" and numeric_key(key) != str(TRUE_OROCHI_MAP_ID):
-                continue
             entrance = table_name == "mapnpc" and numeric_key(key) in table("storyChapter") \
                 and numeric_key(row.get("battle_id")) in rooms_by_map
             linked_battles = [
@@ -672,6 +697,8 @@ def encounter_index(source, load_rows):
             if scene_route:
                 entry_kind = "初始场景引擎"
             title = name(row)
+            if table_name == "map_boss" and key == TRUE_OROCHI_MAP_ID:
+                entry_kind = "真·八岐大蛇"
             if table_name == "MZB_fengmo":
                 trait_id = row.get("skill_id")
                 _, trait = table("skill").get(reference_key(level_one_skill(trait_id)), (None, {}))

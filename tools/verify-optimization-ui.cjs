@@ -45,6 +45,7 @@ async function main(){
  for(const channel of ['official-status','official-auto','official-refresh','official-cancel'])local(channel,()=>({autoUpdate:false}));
  local('ta-query',()=>{throw Error('synthetic offline');});local('decode',()=>{throw Error('synthetic offline');});
  const catalog=await readIndex(path.join(root,'data/dungeon-catalog')).catch(error=>{if(error.code!=='ENOENT')throw error;return null;});
+ const encounterCases=catalog?.index.encounters?JSON.parse(await readEncounters(catalog)).entries:[];
  local('dungeon-catalog-index',()=>catalog?.index||null);
  local('dungeon-catalog-table',name=>readTable(catalog,name));
  local('dungeon-catalog-encounters',()=>readEncounters(catalog));
@@ -251,6 +252,22 @@ async function main(){
   assert.equal(await ui(detail+'.querySelectorAll(".dungeon-encounter-waves ul").length'),1);
   await ui('$("client-dungeons").open=false');
  });
+ if(encounterCases.some(entry=>entry.table==='map_boss'&&entry.key===73))await check('地图首领展示各档敌方编组、规则与关联入口',async()=>{
+  await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
+  const detail='$("client-dungeons-encounter-detail")';
+  await ui('qaEncounterInput("daily","愤怒的石距 地图首领入口 25308")');
+  await until(detail+'.textContent.includes("愤怒的石距玩法原文")');
+  assert.match(await ui(detail+'.textContent'),/愤怒暴走.*招福达摩.*WorldBossEngine.*配置等级 10.*25300.*配置等级 50.*25308/s);
+  assert.equal(await ui(detail+'.querySelectorAll(".dungeon-encounter-waves ul").length'),9);
+  await ui(`[...${detail}.querySelectorAll('section')].find(el=>el.firstChild.textContent.includes('配置等级 50')).querySelector('button:last-child').click()`);
+  await until(detail+'.textContent.includes("对应玩法的入场与结算条件")');
+  assert.match(await ui(detail+'.textContent'),/25308.*地图首领入口.*73/s);
+  assert.doesNotMatch(await ui(detail+'.textContent'),/模拟已知阵容/);
+  await ui('qaEncounterInput("daily","年兽 地图首领入口 14608")');
+  await until(detail+'.textContent.includes("年兽玩法原文")');
+  assert.match(await ui(detail+'.textContent'),/虚弱.*配置等级 50.*14608/s);
+  await ui('$("client-dungeons").open=false');
+ });
  if(catalog?.index.encounters&&catalog.entries.has('lbs_world_boss_area'))await check('地域鬼王显示原版普通条件、极难词条及玩法专用入口',async()=>{
   await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
   await ui('qaEncounterInput("daily","地域鬼王 国王湖")');
@@ -340,7 +357,7 @@ async function main(){
   jinyujiStageActor.members.shift();
   squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor);
   const boot=await ui('JSON.stringify(STATE)');
-  const cases=JSON.parse(await readEncounters(catalog)).entries;
+  const cases=encounterCases;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
    animationPlayback:{combatElapsedMs:6910,combatOverlapMs:1100,interruptedClips:0,unresolved:0}};
   const panel='$("client-dungeons-encounter-detail")';

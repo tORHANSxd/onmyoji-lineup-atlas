@@ -148,7 +148,7 @@
     hunling_tansuo_lv: {hunling_begin_star:'低星与权重',hunling_end_star:'高星与权重',need_exp:'探查经验门槛'},
     hunling_prop: {base_rate:'按探查等级的基础概率',times:'最多使用次数'},
     hunling_weak_soul: {weak_hero_ids:'缘分式神 ID',add_rate:'每个缘分式神的概率加成系数'},
-    map_boss: {countlmt: '配置奖励次数', gk_base_id: '起始关卡 ID', gk_list: '原版楼层列表'},
+    map_boss: {countlmt: '配置奖励次数', gk_base_id: '基础关卡 ID', gk_list: '原版关卡配置'},
     lbs_world_boss_area: {dist_id: '分区 ID', progress: '配置进度', reward: '世界排名奖励类型', group_reward: '分组奖励类型'},
     lbs_world_boss_init: {dist_name: '分区'},
     lbs_world_boss_type: {desc: '原版条件模板', detail: '战斗内条件提示模板', p1: '参数池 1', p2: '参数池 2', type: '条件类型'},
@@ -1372,6 +1372,9 @@
         label:'真·八岐大蛇原版单人十层',version:state.index.resourceVersion,codeStageId:orochi.codeStageId,codeLabel:codeScene.name,
       });
     }
+    if(entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
+      destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
+    }
     if (!yanwu&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
@@ -1399,6 +1402,7 @@
         destination.append(node('p','此编组由契灵教程、集结或集结后的收服入口使用，入场条件取自对应原版流程。','caption'));
       else if (regional) destination.append(node('p','此编组供地域鬼王入口使用。离线演练还需要该玩法下发的实际参数。','caption'));
       else if (shilian) destination.append(node('p','此编组由六道之门专用引擎使用。请从关联入口核对试炼式神及途中规则。','caption'));
+      else if (entry.refs.some(ref=>ref.table==='map_boss')) destination.append(node('p','对应玩法的入场与结算条件见关联的地图首领入口。','caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&
           formation?.row?.MonstersInfos?.length&&!['no_yys','replace_yysid','isplot','sl_file'].some(field=>row[field])) {
