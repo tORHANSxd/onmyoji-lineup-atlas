@@ -152,11 +152,11 @@
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
-   const ranOut=experience?.timedOut===true;
+   const ranOut=(experience??report.coins)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     run.alternatives.push(teamKey);
-    row.state.textContent=ranOut?`种子 ${seed} 超时，击杀 ${experience.kills} / ${experience.requiredKills}`:`种子 ${seed} 未通关`;
+    row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
     return;
    }
    const objectiveMet=AtlasRuneCandidate.pveGoalMet(report,battleMode);

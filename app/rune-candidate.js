@@ -94,7 +94,8 @@ function pveGoalMet(report,battleMode){
   const damage=personalScore(report)?.damage;
   return Number.isSafeInteger(damage)&&damage>0;
  }
- if(battleMode===528)return report.experience?.timedOut===false&&report.experience.requiredKills===30&&report.experience.kills===30;
+ if(battleMode===528)return report.coins?report.coins.timedOut===false&&report.coins.bossHpFraction===0:
+  report.experience?.timedOut===false&&report.experience.requiredKills===30&&report.experience.kills===30;
  if([5550,5551].includes(battleMode))return report.tuzhizhuPractice?.partsRemaining?.length===0;
  return report.wavesCleared===report.waveCount;
 }

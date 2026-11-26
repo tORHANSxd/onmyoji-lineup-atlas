@@ -18,7 +18,7 @@ def replay(args, runtime, work):
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
-    from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
+    from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_player, underworld_stage, underworld_teams
     from yuling_stage import YULING_MODE
@@ -119,13 +119,14 @@ def replay(args, runtime, work):
     elif args.mode == RESOURCE_MODE:
         from battleengine.engine.NewExpEngine import const
         from DynamicConfigData import DATA_HERO
-        from resource_stage import first_experience_stage, observe_experience_opening
+        from resource_stage import ResourceReplay
 
-        if args.stage != FIRST_EXP_STAGE:
-            raise ValueError("Only the new-server first experience route is verified locally")
-        engine, stage, formation = first_experience_stage(modules)
+        if args.stage not in ROUTES:
+            raise ValueError("Unknown experience or coin route")
+        resource = ResourceReplay(modules, args.stage)
+        engine, stage, formation = resource.engine, resource.stage, resource.formation
         if len(fighters) != stage["shishentotal"]:
-            raise ValueError("The first experience encounter requires the five combat slots")
+            raise ValueError("The resource encounter requires the five combat slots")
         group_id, wave_count = stage["groupid"], len(formation["MonstersInfos"])
     elif args.mode == YULING_MODE:
         from battleengine.engine.GorenFbEngine import const
@@ -204,8 +205,7 @@ def replay(args, runtime, work):
     elif args.mode == 266:
         route = "secret-ordinary-solo"
     elif args.mode == RESOURCE_MODE:
-        route = "resource-first-new-server-exp"
-        experience_opening = observe_experience_opening(engine, const, formation)
+        route = resource.route
     elif args.mode == YULING_MODE:
         route = "yuling-solo"
         yuling_opening = observe_yuling_opening(engine, stage)
@@ -250,6 +250,8 @@ def replay(args, runtime, work):
         create_entity(entity)
         if spider_replay:
             spider_replay.created(entity)
+        if args.mode == RESOURCE_MODE:
+            resource.created(entity)
         model = getattr(entity, "modelName", None)
         if isinstance(model, str):
             filename = model.replace("\\", "/").replace("/", "_").replace(".gim", ".json")
@@ -312,8 +314,7 @@ def replay(args, runtime, work):
         formation_matches = (engine.getFbConfig() is stage and engine.fbId == args.stage
                              and engine.combineSceneInfoId == stage["scene"])
     elif args.mode == RESOURCE_MODE:
-        formation_matches = (engine.pve_data_flag == str(FIRST_EXP_STAGE) and engine.is_local_newbie_battle
-                             and engine.spectatorHeroCount == 4 and engine.get_timeout_seconds() == 150)
+        formation_matches = resource.matches()
     elif args.mode == YULING_MODE:
         formation_matches = engine.fbId == args.stage and engine.combineSceneInfoId == stage["scene"]
     elif args.mode == GUILD_HUNT_MODE:
@@ -431,11 +432,8 @@ def replay(args, runtime, work):
     if args.mode == 266:
         report["formationsVerified"] = len(verified_waves)
     if args.mode == RESOURCE_MODE:
-        if not experience_opening:
-            raise RuntimeError("The original experience encounter never created its opening formation")
-        report["experience"] = {"kills": engine.get_kill_monster_count(), "requiredKills": 30,
-                                "timedOut": engine.is_timeout, "deadlineSeconds": engine.get_timeout_seconds(),
-                                "opening": experience_opening}
+        key, result = resource.report(report["outcome"])
+        report[key] = result
     if args.mode == YULING_MODE:
         if not yuling_opening:
             raise RuntimeError("The original Undying Guardian never created its opening formation")

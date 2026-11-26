@@ -468,21 +468,20 @@
   function showResourceEncounter(destination,stageId,row,formation){
     const source=window.AtlasResourceEncounters;
     if(!matchesOpeningSource(source))return;
-    const first=source.firstExperience;
+    const resource=source.routes[stageId];
+    if(!resource)return;
+    const {ids=[resource.enemy.id],enemy}=resource;
     const initial=formation?.waves[0];
-    if(stageId===first.stageId&&row.groupid===first.groupId&&formation?.row?.resindex===first.sceneId&&
-       formation.waves.length===1&&initial.length===6&&row.shishentotal===first.memberCount&&
-       initial.every((unit,i)=>unit.id===first.enemy.id&&unit.position===i+1&&unit.level===first.enemy.level)){
-      formation.waves=[initial.map(unit=>({...unit,opening:first.enemy}))];
-      destination.append(node('p',`新服首次经验妖怪 · 击杀 ${first.requiredKills} 只 · 首批 6 只 · 击杀后补位 · 强制自动战斗 · `+
-        `引擎时限 ${first.deadlineSeconds} 秒 · 4 个观战位`,'caption'));
-      window.AtlasPveWorkbench?.mount(destination,{...first,label:'新服首次经验妖怪',version:source.resourceVersion,
-        openingSpeed:first.enemy.speed});
-    }else if(stageId===2109){
-      destination.append(node('p','普通经验妖怪走组队入口，可单人开始。原版会从配置池补怪，累计击杀 30 只。组队共享结算仍待核验。','caption'));
-    }else if(stageId===2009){
-      destination.append(node('p','金币妖怪走组队入口，可单人开始。金币结算随首领剩余生命变化。组队共享结算仍待核验。','caption'));
-    }
+    if(row.groupid!==resource.groupId||formation?.row?.resindex!==resource.sceneId||formation.waves.length!==1||
+       initial?.length!==ids.length||row.shishentotal!==resource.memberCount||
+       !initial.every((unit,i)=>unit.id===ids[i]&&unit.position===i+1&&unit.level===enemy.level))return;
+    formation.waves=[initial.map(unit=>({...unit,opening:enemy}))];
+    const label=resource===source.firstExperience?'新服首次经验妖怪':resource.requiredKills?'普通经验妖怪':'金币妖怪';
+    const goal=resource.requiredKills?`击杀 ${resource.requiredKills} 只 · 首批 ${ids.length} 只 · 击杀后补位`:'击破首领';
+    destination.append(node('p',`${label} · ${goal} · 强制自动战斗 · 引擎时限 ${resource.deadlineSeconds} 秒 · 4 个观战位`,'caption'));
+    if(resource.reinforcementIds)destination.append(node('p','原版补怪池包含 23 种模板。单队复跑会按种子抽取补怪。','caption'));
+    if(resource.baseRange)destination.append(node('p','金币预览随首领剩余生命变化，基础金币为 5,000–7,500。战报同时给出基础金币取下限的预览。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{...resource,label,version:source.resourceVersion,openingSpeed:enemy.speed});
   }
 
   function showYulingEncounter(destination,entry,group){

@@ -491,9 +491,25 @@ async function main(){
     assert.equal(await ui('document.querySelector("[data-pve-code]")===null'),true);
     await ui('$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
     await capture('client-resource-first-experience');
+    await ui('qaEncounterInput("daily","经验妖怪 编组 2109")');
+    await until('$("client-dungeons-encounter-detail").textContent.includes("原版补怪池包含 23 种模板")');
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/击杀 30 只.*开场速度 98/s);
+    const coinCalls=[];
+    mockPve=(plan,options)=>{
+     assert.deepEqual(options,{stageId:2009,groupId:2009,battleMode:528,seed:options.seed,damageFloor:true});
+     assert.equal(plan.members.length,5);
+     coinCalls.push(options.seed);
+     return {...sample,...options,waveCount:1,wavesCleared:0,
+      coins:{bossHpFraction:0,timedOut:false,deadlineSeconds:150,previewCoins:31220,minimumPreviewCoins:29643}};
+    };
     await ui('qaEncounterInput("daily","金币妖怪 编组 2009")');
-    await until('$("client-dungeons-encounter-detail").textContent.includes("金币结算随首领剩余生命变化")');
-    assert.equal(await ui('document.querySelector("[data-pve-stock]")===null'),true);
+    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/金币预览随首领剩余生命变化.*开场速度 98/s);
+    await ui(stock+'.click()');
+    await until(status+'.textContent.includes("全随机分支待验证")',20000);
+    assert.deepEqual(coinCalls.slice(0,6),[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.textContent'),/击破首领.*金币预览 31,220.*基础金币取下限 29,643/);
+    await capture('client-resource-coin');
    }
    const yulingCalls=[];
    mockPve=(plan,options)=>{
