@@ -199,6 +199,7 @@ function sampleBattleMarkup(samples){
   const retreat=sample.guildRetreat;
   const yanwu=sample.fengmoYanwu;
   const band=sample.fengmoBand;
+  const bandTogether=sample.fengmoBandTogether;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -247,6 +248,11 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${yanwu.damage.toLocaleString('zh-CN')} · 作战 ${yanwu.combatSeconds.toFixed(2)} 秒`:
    band?`${!sample.completed?'结算待确认':band.timedOut?'达到计分时限':band.enemiesRemaining>0?`剩余 ${band.enemiesRemaining} 位敌人`:'已清场'} · `+
     `个人伤害 ${band.damage.toLocaleString('zh-CN')} · 作战 ${band.combatSeconds.toFixed(2)} / ${band.deadlineSeconds} 秒`:
+   bandTogether?`${!sample.completed?'结算待确认':bandTogether.timedOut?'达到最终阶段时限':sample.outcome==='win'?'击败最终首领':'未击败首领'} · `+
+    `个人伤害 ${bandTogether.damage.toLocaleString('zh-CN')} · `+
+    bandTogether.phases.map((phase,i)=>`第 ${i+1} 段伤害 ${(phase.damage-phase.priorDamage).toLocaleString('zh-CN')}`+
+     (phase.rhythmScore===null?'':` · 音游 ${phase.rhythmScore} 分、累计增益 ${phase.buffLevel} 级`)+
+     ` · 作战 ${(phase.beforeRhythmSeconds+phase.afterRhythmSeconds).toFixed(2)} 秒`).join('；'):
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+

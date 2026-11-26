@@ -45,6 +45,7 @@
     journey_normalbattle_juexing: '京畿净化战斗参数 · 觉醒',
     MZB_fengmo: '逢魔木桩练习',
     fengmo_band_personal_boss: '逢魔乐队单人首领',
+    fengmo_band_together_battle: '逢魔乐队共斗首领',
     fengmo_band_bandskill: '逢魔乐队技能',
     event4: '逢魔实战首领',
     event4_honor_limit: '极逢魔实战门槛',
@@ -623,6 +624,52 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,waveCount:1,
       battleMode:source.battleMode,version:source.resourceVersion,label:`逢魔乐队 · ${boss.name}`,
       scoreWindowSeconds:source.deadlineSeconds});
+    return true;
+  }
+
+  function showFengmoBandTogether(destination,entry,groups){
+    const source=window.AtlasFengmoBand,route=source.together;
+    if(entry.table==='pve_stage_data'&&[...route.stages,...route.onlineStages].includes(Number(entry.key))){
+      destination.append(node('p','请从关联的「逢魔乐队·胧车共斗首领」开始完整练习。','caption'));
+      return true;
+    }
+    if(entry.table!=='fengmo_band_together_battle')return false;
+    const registration=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===route.teamType)?.row;
+    if(!matchesOpeningSource(source.togetherSource)||registration?.battleMode!==route.battleMode||
+       registration.route_sha256!==route.routeSHA256||
+       !route.stages.every((id,i)=>groups.some(({ref,row,waves})=>ref.table==='BattleMonstersInfo'&&ref.key===id&&
+        row?.resindex===route.scenes[i]&&waves?.length===1&&waves[0].length===1&&waves[0][0]?.id===route.monsters[i]))){
+      destination.append(node('p','共斗练习需要同版本的两段敌方编组。','caption'));
+      return true;
+    }
+    destination.append(node('p','客户端共斗练习 · 一套已知阵容连续复跑两张练习编组。留空按 0 分计算。','caption'));
+    const fields=node('div','','pve-reserve'),workbench=node('div');
+    const inputs=route.rhythmSeconds.map((seconds,index)=>{
+      const label=node('label',`第 ${index+1} 段音游分数（${seconds} 秒）`,'pve-lineup-field');
+      const input=document.createElement('input');
+      input.type='number';
+      input.min='0';
+      input.max=String(Number.MAX_SAFE_INTEGER);
+      input.step='1';
+      input.placeholder='0';
+      input.dataset.bandScore=String(index);
+      label.append(input);
+      fields.append(label);
+      return input;
+    });
+    destination.append(fields,workbench);
+    const render=()=>{
+      const scores=inputs.map(input=>Number(input.value));
+      workbench.replaceChildren();
+      if(inputs.some(input=>!input.reportValidity())||!route.validScores(scores)){
+        window.AtlasPveWorkbench?.unmount();
+        return;
+      }
+      window.AtlasPveWorkbench?.mount(workbench,{stageId:route.stages[0],groupId:route.stages[0],memberCount:5,waveCount:2,
+        battleMode:route.battleMode,version:source.resourceVersion,label:'逢魔乐队 · 胧车共斗练习',bandScores:scores});
+    };
+    fields.addEventListener('change',render);
+    render();
     return true;
   }
 
@@ -1690,6 +1737,7 @@
     showTuzhizhuPractice(destination,entry,groups);
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
     const bandMounted=showFengmoBand(destination,entry,groups);
+    const bandTogetherMounted=showFengmoBandTogether(destination,entry,groups);
     showActivityScore(destination,entry,groups);
     showJourneyHard(destination,entry,groups);
     showTianfa(destination,entry,groups);
@@ -1762,7 +1810,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;

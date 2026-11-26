@@ -4,6 +4,7 @@ from collections import Counter
 from functools import cache
 from dojo_area_stage import DOJO_AREA_TEAM
 from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
+from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from guild_forest_stage import FOREST_MODE, FOREST_STAGES, FOREST_TEAM
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
@@ -36,6 +37,7 @@ ROOTS = {
     "dungeon_yuling": ("daily", "御灵"),
     "MZB_fengmo": ("daily", "逢魔木桩练习"),
     "fengmo_band_personal_boss": ("event", "逢魔乐队单人首领"),
+    "fengmo_band_together_battle": ("event", "逢魔乐队共斗首领"),
     "lbs_world_boss_area": ("daily", "地域鬼王"),
     "lbs_world_boss_type": ("daily", "地域鬼王规则"),
     "shilian_event_battles": ("daily", "六道之门"),
@@ -649,6 +651,22 @@ def encounter_index(source, load_rows):
             ]
             links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
             links.extend(fengmo_band_buffs(row))
+        if name == "fengmo_band_together_battle":
+            refs = [("battle_team_routes", BAND_TOGETHER_TEAM, "原版共斗入口"),
+                    ("activity", FENGMO_BAND_ACTIVITY, "活动开放期")]
+            for index, stage_id in enumerate(BAND_TOGETHER_STAGES, 1):
+                refs.extend([
+                    ("pve_stage_data", row.get(f"battle_id_{index}"), f"联机编组第 {index} 段"),
+                    ("pve_stage_data", stage_id, f"客户端练习第 {index} 段"),
+                    ("BattleMonstersInfo", row.get(f"battle_id_{index}"), f"联机敌方第 {index} 段"),
+                    ("BattleMonstersInfo", stage_id, f"练习敌方第 {index} 段"),
+                ])
+            refs.extend(("fengmo_band_constant", id_, label) for id_, label in (
+                (25, "首段时限"), (26, "第二首领音游前时限"), (27, "最终阶段时限"), (36, "提前进入第二次音游的生命比例"),
+                (37, "第一段音游窗口"), (38, "第二段音游窗口"), (47, "首段音游评分阈值"), (48, "第二段音游评分阈值"),
+            ))
+            refs.extend(("fengmo_band_bandskill", role, "乐队技能") for role in range(1, 4))
+            links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
             links.extend(ref for dest, key in dojo_area_by_stage.get(stage_id, ())
@@ -659,6 +677,9 @@ def encounter_index(source, load_rows):
                 if ref := relation("battle_team_routes", FOREST_TEAM, "单队战斗入口", False):
                     links.append(ref)
             stage_number = int(stage_id or 0)
+            if stage_number in (*BAND_TOGETHER_STAGES, *BAND_ONLINE_STAGES):
+                if ref := relation("fengmo_band_together_battle", 1, "逢魔乐队共斗入口", False):
+                    links.append(ref)
             if stage_number in FENGMO_BAND_STAGES:
                 boss_id = stage_number - FENGMO_BAND_STAGE_BASE
                 if ref := relation("fengmo_band_personal_boss", boss_id, "逢魔乐队单人首领", False):
@@ -1178,6 +1199,8 @@ def encounter_index(source, load_rows):
                 title = f"巡于黄金之河 · {title} · {key}"
             if table_name == "fengmo_band_personal_boss":
                 title = f"逢魔乐队 · {title} · {row['battleid']}"
+            if table_name == "fengmo_band_together_battle":
+                title = "逢魔乐队 · 胧车共斗首领"
             if table_name == "guild_fake_god_event":
                 label = FOREST_EVENT_TYPES.get(row.get("type"), "事件")
                 title = f"青森之秘 · {label} · {title.strip()} · {key}"

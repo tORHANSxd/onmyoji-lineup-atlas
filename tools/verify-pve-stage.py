@@ -20,6 +20,8 @@ def replay(args, runtime, work):
     from dojo_area_stage import DOJO_AREA_MODE, DojoAreaReplay, dojo_area_stage, is_dojo_area_stage
     from game_resources import sha256
     from fengmo_band_stage import FENGMO_BAND_MODE, FENGMO_BAND_STAGES, FengmoBandReplay
+    from fengmo_band_together import (BAND_ONLINE_STAGES, BAND_TOGETHER_MODE, BAND_TOGETHER_STAGES,
+                                      BAND_TOGETHER_WALL_SECONDS, BandTogetherReplay)
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE, FengmoYanwuReplay, fengmo_yanwu_stage
     from general_soul_stage import SCORE_STAGES, SOLO_SCORE_MODES, SoloScoreReplay, solo_score_stage
     from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, CREVICE_WALL_SECONDS, CreviceReplay
@@ -73,6 +75,7 @@ def replay(args, runtime, work):
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
     fengmo_band = args.mode == FENGMO_BAND_MODE
+    band_together = args.mode == BAND_TOGETHER_MODE
     activity_score = SOLO_SCORE_MODES.get(args.mode)
     dojo_area = args.mode == DOJO_AREA_MODE
     forest = args.mode == FOREST_MODE
@@ -216,6 +219,14 @@ def replay(args, runtime, work):
             raise ValueError("Fengmo Band personal bosses require five owned shikigami")
         band = FengmoBandReplay(modules, args.stage)
         engine, group, const = band.engine, band.group, band.const
+        group_id, wave_count = group["ID"], 1
+    elif band_together:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Fengmo Band co-op practice requires five owned shikigami")
+        together = BandTogetherReplay(modules, args.stage, args.band_score, *args.band_carry)
+        engine, group, const = together.engine, together.group, together.const
         group_id, wave_count = group["ID"], 1
     elif ten_explore:
         from DynamicConfigData import DATA_HERO
@@ -371,8 +382,8 @@ def replay(args, runtime, work):
             raise ValueError("Forest of Secrets requires its original scoring engine and event")
         if is_ten_anniversary_stage(args.stage):
             raise ValueError("Shichangji activity stages require their original activity route")
-        if args.stage in FENGMO_BAND_STAGES:
-            raise ValueError("Fengmo Band personal bosses require their original activity route")
+        if args.stage in FENGMO_BAND_STAGES or args.stage in (*BAND_TOGETHER_STAGES, *BAND_ONLINE_STAGES):
+            raise ValueError("Fengmo Band stages require their original activity route")
         if args.stage in SCORE_STAGES:
             raise ValueError("This activity requires its dedicated original score battle engine")
         if args.stage in (*TIANFA_STAGES, TIANFA_LOBBY_STAGE):
@@ -458,6 +469,8 @@ def replay(args, runtime, work):
         route = "fengmo-yanwu-solo"
     elif fengmo_band:
         route = "fengmo-band-personal-boss"
+    elif band_together:
+        route = "fengmo-band-together-practice"
     elif dojo_area:
         route = "dojo-area-solo-score"
     elif forest:
@@ -545,6 +558,8 @@ def replay(args, runtime, work):
     def init_record_clock():
         init_engine_state()
         engine.engine_state = const.EngineState.RECORD_MODE
+        if band_together:
+            together.bind_clock()
 
     def observe_end(camp):
         nonlocal winner
@@ -645,7 +660,7 @@ def replay(args, runtime, work):
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == ten_groups[0]["resindex"]
                              and engine.defeat_monster_wave == 0 and engine.monster_wave_count == len(ten_groups)
                              and tuple(engine.wave_pve_flag_list) == tuple(group["ID"] for group in ten_groups))
-    elif yanwu or fengmo_band or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
+    elif yanwu or fengmo_band or band_together or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -682,6 +697,7 @@ def replay(args, runtime, work):
         engine.op_sceneLoaded(current)
 
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else QINFEI_BOSS_REPLAY_SECONDS if qinfei_boss
+                      else BAND_TOGETHER_WALL_SECONDS if band_together
                       else TEN_REPLAY_SECONDS if ten_anniversary or ten_boss or ten_explore
                       else OROCHI_REPLAY_SECONDS if orochi
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
@@ -703,6 +719,40 @@ def replay(args, runtime, work):
     if tactics:
         boss = raid.boss["protoId"] if raid_battle else group["MonstersInfos"][0][0][1] if yanwu or qiling or activity_score else stage["monsters"][0][0]
         instructions = HuntOpening(engine, controller, const, tactics, boss)
+
+    def verify_selected_equipment():
+        nonlocal equipped_spirit
+        pending = dict(choices)
+        for entity in engine.heroEntities.values():
+            owner = entity.ownerController
+            if owner not in controllers:
+                continue
+            hero = entity.HeroComp.heroData
+            alias = hero.heroUid
+            if alias not in pending:
+                continue
+            setting = pending.pop(alias)
+            if spider_replay:
+                spider_replay.check_selected(entity)
+            if setting:
+                engine.op_setAutoSkill(owner, entity.uid, setting)
+                if owner.autoSkill.get(entity.uid) != setting:
+                    raise RuntimeError("The original engine did not apply the selected automatic skill")
+            if instructions:
+                instructions.select(alias, entity)
+            if sorted(uid for uid in hero.equips if uid) != sorted(fighters.get(alias, actor)["equips"]):
+                raise RuntimeError("The original engine changed the selected equipment")
+            if alias == "selected-onmyoji" and spirit:
+                attached = entity.get_hunlingData()
+                if not attached or attached.uuid != spirit["uid"]:
+                    raise RuntimeError("The original engine did not select the requested spirit")
+                equipped_spirit = {"id": attached.id, "star": attached.star, "level": attached.lv}
+        if pending:
+            raise RuntimeError("The original engine did not create every selected character")
+        if party_replay:
+            party_replay.verify_selection(controllers)
+
+    band_handoff = False
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
         if qinfei_food:
@@ -728,6 +778,14 @@ def replay(args, runtime, work):
             yanwu_replay.update()
         if fengmo_band:
             band.update()
+        if band_together:
+            band_handoff = together.update(controller)
+            if not together.first and together.started is not None and not selection_checked:
+                verify_selected_equipment()
+                engine.op_setAuto(controller, True)
+                selection_checked = True
+            if band_handoff:
+                break
         if score_replay:
             score_replay.update()
         if dojo_area_replay:
@@ -787,35 +845,7 @@ def replay(args, runtime, work):
             ten_boss_replay.verify_actor(controller)
         if ten_explore_replay:
             ten_explore_replay.verify_selection()
-        pending = dict(choices)
-        for entity in engine.heroEntities.values():
-            owner = entity.ownerController
-            if owner not in controllers:
-                continue
-            hero = entity.HeroComp.heroData
-            alias = hero.heroUid
-            if alias not in pending:
-                continue
-            setting = pending.pop(alias)
-            if spider_replay:
-                spider_replay.check_selected(entity)
-            if setting:
-                engine.op_setAutoSkill(owner, entity.uid, setting)
-                if owner.autoSkill.get(entity.uid) != setting:
-                    raise RuntimeError("The original engine did not apply the selected automatic skill")
-            if instructions:
-                instructions.select(alias, entity)
-            if sorted(uid for uid in hero.equips if uid) != sorted(fighters.get(alias, actor)["equips"]):
-                raise RuntimeError("The original engine changed the selected equipment")
-            if alias == "selected-onmyoji" and spirit:
-                attached = entity.get_hunlingData()
-                if not attached or attached.uuid != spirit["uid"]:
-                    raise RuntimeError("The original engine did not select the requested spirit")
-                equipped_spirit = {"id": attached.id, "star": attached.star, "level": attached.lv}
-        if pending:
-            raise RuntimeError("The original engine did not create every selected character")
-        if party_replay:
-            party_replay.verify_selection(controllers)
+        verify_selected_equipment()
         for current in controllers:
             engine.op_setAuto(current, not tactics.get("manualOpening"))
             engine.op_selectHeroOk(current)
@@ -895,6 +925,13 @@ def replay(args, runtime, work):
         report["fengmoBand"] = band.report()
         report["formationsVerified"] = 1
         report["wavesCleared"] = int(report["fengmoBand"]["enemiesRemaining"] == 0)
+    if band_together:
+        phase = together.report(completed)
+        report["fengmoBandPhase"] = phase
+        report["completed"] = band_handoff or completed
+        report["wavesCleared"] = int(phase["remainingHp"] == 0)
+        report["formationsVerified"] = 1
+        report["outcome"] = ("win" if report["wavesCleared"] else "loss") if report["completed"] else "unknown"
     if score_replay:
         report[activity_score.report_key] = score_replay.report(completed, [row["heroId"] for row in fighters.values()],
                                                                actor_id, score_activity_id)
@@ -997,6 +1034,7 @@ def replay(args, runtime, work):
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from fengmo_band_stage import FENGMO_BAND_MODE
+    from fengmo_band_together import BAND_TOGETHER_MODE, BAND_TOGETHER_STAGES, BAND_TOGETHER_WALL_SECONDS
     from dojo_area_stage import DOJO_AREA_ACTIVITY, DOJO_AREA_MODE
     from map_boss_stage import (MODES as MAP_BOSS_MODES, QINFEI_FOOD_CHAIN_SECONDS, QINFEI_FOOD_MODE,
                                 SPECIAL_NIAN_MODE, party_positions, qinfei_food_sequence)
@@ -1031,7 +1069,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--band-score", type=int)
+    parser.add_argument("--band-carry", type=int, nargs=2, metavar=("DAMAGE", "BUFF_LEVEL"))
     parser.add_argument("--dojo-area", type=int, nargs=3, metavar=("YEAR", "PLAY", "REGION_STATE"))
     parser.add_argument("--forest-event", type=int)
     parser.add_argument("--ten-bonuses", type=int, nargs="+", choices=TEN_OPTIONAL_BONUSES, default=[])
@@ -1065,6 +1105,14 @@ def main():
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
+    if args.mode == BAND_TOGETHER_MODE:
+        if (args.stage not in BAND_TOGETHER_STAGES or args.band_score is None or not 0 <= args.band_score < 2 ** 53
+                or (args.stage == BAND_TOGETHER_STAGES[1]) != (args.band_carry is not None)
+                or args.band_carry and not (0 <= args.band_carry[0] < 2 ** 53 and 0 <= args.band_carry[1] <= 3)):
+            parser.error("Fengmo Band practice needs the stage, rhythm score and original second-phase carryover")
+        args.band_carry = args.band_carry or (0, 0)
+    elif args.band_score is not None or args.band_carry is not None:
+        parser.error("Rhythm scores and phase carryover apply only to Fengmo Band practice")
     if args.mode == FOREST_MODE:
         if args.stage not in FOREST_STAGES or args.forest_event is None or args.forest_event <= 0:
             parser.error("Forest of Secrets requires a stage and event")
@@ -1141,6 +1189,7 @@ def main():
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
+                        BAND_TOGETHER_WALL_SECONDS + 20 if args.mode == BAND_TOGETHER_MODE else
                         TEN_REPLAY_SECONDS + 20 if args.mode in (*TEN_OWNED_MODES, TEN_BOSS_MODE, TEN_EXPLORE_MODE) else
                         OROCHI_REPLAY_SECONDS + 20 if args.mode == OROCHI_MODE else
                         HUNLING_REPLAY_SECONDS + 20 if args.mode in HUNLING_MODES else

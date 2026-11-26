@@ -110,10 +110,10 @@ function pveGoalMet(report,battleMode){
  return report.wavesCleared===report.waveCount;
 }
 
-const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.fengmoBand??report.qilingCollective??report.guildCrevice??
+const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.fengmoBand??report.fengmoBandTogether??report.qilingCollective??report.guildCrevice??
  report.superGhost??report.historicalSuperGhost??report.qinfeiBoss??report.dojoArea??report.guildForest??
  report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore;
-const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===band.battleMode||mode===qiling.battleMode||
+const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===band.battleMode||mode===band.together.battleMode||mode===qiling.battleMode||
  mode===crevice.battleMode||mode===ghost.battleMode||mode===ghost.historicalBattleMode||mode===qinfei.battleMode||mode===dojo.battleMode||
  mode===forest.battleMode||mode===tenBoss.battleMode||
  Object.hasOwn(generalSoul.modes,mode);

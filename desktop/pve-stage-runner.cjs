@@ -16,6 +16,7 @@ const guildCrevice=require('../app/guild-crevice.js');
 const superGhost=require('../app/superghost.js');
 const fengmoYanwu=require('../app/fengmo-yanwu.js');
 const fengmoBand=require('../app/fengmo-band.js');
+const bandTogether=fengmoBand.together;
 const activityScore=require('../app/general-soul-trial.js');
 const dojoAreaRules=require('../app/dojo-area.js');
 const forestRules=require('../app/guild-forest.js');
@@ -60,6 +61,7 @@ const engines={
  3023:{name:'LBSWorldBossXEngine',route:'regional-boss-hard-scenario',sha256:'a4268deb478a53610e6ef6e23e833f3bf18d2be826f7cd703aaca7e1a54df38f'},
  [fengmoYanwu.battleMode]:{name:'FengMoEquipBattleEngine',route:'fengmo-yanwu-solo',sha256:fengmoYanwu.engineSHA256},
  [fengmoBand.battleMode]:fengmoBand.engine,
+ [bandTogether.battleMode]:bandTogether.engine,
  ...Object.fromEntries(Object.values(activityScore.modes).map(({battleMode,engine,route,engineSHA256})=>
   [battleMode,{name:engine,route,sha256:engineSHA256}])),
  [tianfa.battleMode]:{name:tianfa.engine,route:tianfa.route,sha256:tianfa.engineSHA256},
@@ -416,6 +418,38 @@ function validFengmoBand(report,stageId){
    ...band.allyBuffs.map(id=>[id,id===fengmoBand.actorOnlyBuff?[1]:[1,2,3,4,5,6]]),
    ...band.enemyBuffs.map(id=>[id,[1]]),
   ]));
+}
+
+function validBandTogetherPhase(report,index,rhythmScore,priorDamage,priorBuffLevel){
+ const phase=report.fengmoBandPhase,hasRhythm=phase?.rhythmScore!==null;
+ const earned=hasRhythm?bandTogether.thresholds[index].filter(threshold=>rhythmScore>=threshold).length:0;
+ return report.sceneId===bandTogether.scenes[index]&&report.waveCount===1&&report.formationsVerified===1&&
+  phase?.monsterId===bandTogether.monsters[index]&&
+  Number.isFinite(phase.openingHp)&&phase.openingHp>0&&Number.isFinite(phase.remainingHp)&&
+  phase.remainingHp>=0&&phase.remainingHp<=phase.openingHp&&Number(phase.remainingHp===0)===report.wavesCleared&&
+  phase.priorDamage===priorDamage&&Number.isSafeInteger(phase.damage)&&phase.damage>=priorDamage&&
+  phase.priorBuffLevel===priorBuffLevel&&phase.buffLevel===priorBuffLevel+earned&&
+  (!hasRhythm?phase.rhythmSeconds===0:phase.rhythmScore===rhythmScore&&
+   (report.completed?Math.abs(phase.rhythmSeconds-bandTogether.rhythmSeconds[index])<=0.05:
+    Number.isFinite(phase.rhythmSeconds)&&phase.rhythmSeconds>=0&&phase.rhythmSeconds<=bandTogether.rhythmSeconds[index]+0.05))&&
+  [phase.beforeRhythmSeconds,phase.afterRhythmSeconds].every(seconds=>Number.isFinite(seconds)&&seconds>=0)&&
+  typeof phase.timedOut==='boolean'&&(index===1||phase.afterRhythmSeconds===0&&!phase.timedOut);
+}
+
+function combineBandTogether(first,second){
+ const reports=second?[first,second]:[first];
+ const phases=reports.map(report=>({...report.fengmoBandPhase,stageId:report.stageId,recordSHA256:report.recordSHA256}));
+ const final=phases.at(-1);
+ const {animationPlayback,monsterHealth,fengmoBandPhase,...base}=first;
+ return {...base,completed:reports.every(report=>report.completed),
+  outcome:reports.at(-1).outcome,
+  waveCount:2,wavesCleared:reports.reduce((sum,report)=>sum+report.wavesCleared,0),
+  formationsVerified:phases.length,
+  engineSeconds:reports.reduce((sum,report)=>sum+report.engineSeconds,0),
+  recordSHA256:sha256(phases.map(phase=>phase.recordSHA256).join('')),
+  recordLines:reports.reduce((sum,report)=>sum+report.recordLines,0),
+  ...(base.minimumDamage?{minimumDamage:{side:'player',rolls:reports.reduce((sum,report)=>sum+report.minimumDamage.rolls,0)}}:{}),
+  fengmoBandTogether:{damage:final.damage,phases,timedOut:final.timedOut}};
 }
 
 function validFengmoYanwu(report,entry,plan){
@@ -796,13 +830,13 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,band,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice,ghost,mapBossAvailable,qinfeiAvailable,dojoAreaAvailable,forestAvailable,tenAvailable,tenBossAvailable,tenExploreAvailable]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,band,bandPractice,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice,ghost,mapBossAvailable,qinfeiAvailable,dojoAreaAvailable,forestAvailable,tenAvailable,tenBossAvailable,tenExploreAvailable]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
      has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),
-     has('fengmo_yanwu_stage.py'),has('fengmo_band_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py'),
+     has('fengmo_yanwu_stage.py'),has('fengmo_band_stage.py'),has('fengmo_band_together.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py'),
      Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py'),has('tianfa_stage.py'),has('guild_crevice_stage.py'),has('superghost_stage.py'),has('map_boss_stage.py'),has('qinfei_boss_stage.py'),has('dojo_area_stage.py'),has('guild_forest_stage.py'),has('ten_anniversary_stage.py'),has('ten_anniversary_boss.py'),has('ten_anniversary_explore.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
-     ...(yanwu?[fengmoYanwu.battleMode]:[]),...(band?[fengmoBand.battleMode]:[]),
+     ...(yanwu?[fengmoYanwu.battleMode]:[]),...(band?[fengmoBand.battleMode]:[]),...(bandPractice?[bandTogether.battleMode]:[]),
      ...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
      ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
      ...(generalSoul?Object.keys(activityScore.modes).map(Number):[]),...(journey?[journeyHard.battleMode]:[]),...(tianfaAvailable?[tianfa.battleMode]:[]),
@@ -815,7 +849,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,tianfaTeam=false,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,dojoArea,forest,tenBonuses}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,tianfaTeam=false,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,dojoArea,forest,tenBonuses,bandScores}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -899,9 +933,13 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
        plan.members.length!==5)throw Error('青森之秘需要原版事件、地形和五位自有式神');
    }else if(forest!==undefined)throw Error('青森之秘事件配置仅适用于其活动入口');
    if(battleMode===3&&ten.isStage(stageId))throw Error('拾光永恒需要原版活动战斗入口');
-   if(battleMode===3&&fengmoBand.isStage(stageId))throw Error('逢魔乐队需要原版单人战斗入口');
+   if(battleMode===3&&(fengmoBand.isStage(stageId)||bandTogether.stages.includes(stageId)||bandTogether.onlineStages.includes(stageId)))
+    throw Error('逢魔乐队需要原版战斗入口');
    if(battleMode===fengmoBand.battleMode&&(!fengmoBand.isStage(stageId)||groupId!==stageId||plan.members.length!==5))
     throw Error('逢魔乐队单人首领需要对应编组和五位自有式神');
+   const bandPractice=battleMode===bandTogether.battleMode;
+   if(bandPractice?(stageId!==bandTogether.stages[0]||groupId!==stageId||plan.members.length!==5||!bandTogether.validScores(bandScores)):
+      bandScores!==undefined)throw Error('逢魔乐队共斗练习需要从第一段开始，并提供两段音游分数和五位自有式神');
    if(ten.modes[battleMode]){
     if(!ten.validBonuses(tenBonuses??[]))throw Error(`拾光永恒最多可选 ${ten.bonusSlots} 项不同的额外增益`);
     if(ten.resourceVersion!==resourceVersion||ten.modeFor(stageId)!==battleMode||stageId!==groupId||
@@ -978,7 +1016,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       historicalGhostWindow!==undefined&&!historicalGhostRoute)throw Error('超鬼王历史挑战需要正确的关卡、阵容和计分时长');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const deadlineMs=spider?645000:battleMode===306||qilingEntry||ghostRoute||historicalGhostRoute||qinfeiBoss?245000:sixRealmsRoute||tianfaStage||creviceRoute||mapBossRoute?.raidWindowSeconds||qinfeiFoodPiles?175000:
+   const deadlineMs=spider?645000:bandPractice?420000:battleMode===306||qilingEntry||ghostRoute||historicalGhostRoute||qinfeiBoss?245000:sixRealmsRoute||tianfaStage||creviceRoute||mapBossRoute?.raidWindowSeconds||qinfeiFoodPiles?175000:
     hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000+(pveDeadlineSeconds??0)*100;
    const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
    let release,dir;
@@ -987,10 +1025,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     const config=await readConfig(configPath);
     cancel.signal.throwIfAborted();
     dir=await fs.mkdtemp(path.join(os.tmpdir(),'yuqi-pve-stage-'));
-    const team=path.join(dir,'team.json'),suitIndex=path.join(dir,'suits.json'),output=path.join(dir,'battle.json');
+    const team=path.join(dir,'team.json'),suitIndex=path.join(dir,'suits.json');
     await Promise.all([fs.writeFile(team,input,'utf8'),fs.writeFile(suitIndex,suitInput,'utf8')]);
-    const args=['-X','utf8',entry,'--runtime',path.resolve(configPath),'--mode',String(battleMode),'--stage',String(stageId),'--seed',String(seed),
-     '--team',team,'--suit-index',suitIndex,'--output',output];
+    const args=['-X','utf8',entry,'--runtime',path.resolve(configPath),'--mode',String(battleMode),'--seed',String(seed),
+     '--team',team,'--suit-index',suitIndex];
     if(damageFloor)args.push('--minimum-damage');
     if(pveDeadlineSeconds!==undefined)args.push('--pve-deadline',String(pveDeadlineSeconds));
     if(dojoArea)args.push('--dojo-area',String(dojoArea.year),String(dojoArea.playId),String(dojoArea.regionState));
@@ -1016,13 +1054,29 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(qinfeiFoodPiles)args.push('--qinfei-food-next',...qinfeiFoodPiles.map(String));
     if(qinfeiBoss)args.push('--qinfei-profile',String(qinfeiBoss.raidId),String(qinfeiBoss.difficulty),'--window-seconds',String(qinfeiBoss.windowSeconds));
     if(tianfaTeam)args.push('--tianfa-team');
-    const code=await launch(config.python,args,dir,AbortSignal.any([cancel.signal,deadline]));
-    cancel.signal.throwIfAborted();
-    if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
-    const report=JSON.parse(await fs.readFile(output,'utf8'));
-    cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,dojoArea,forest,tenBonuses,
-     retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
+    const expected={battleMode,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,dojoArea,forest,tenBonuses,
+     retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null};
+    async function runStage(stageId,groupId,extra=[]){
+     const output=path.join(dir,`battle-${stageId}.json`);
+     const code=await launch(config.python,[...args,'--stage',String(stageId),'--output',output,...extra],dir,
+      AbortSignal.any([cancel.signal,deadline]));
+     cancel.signal.throwIfAborted();
+     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
+     const report=JSON.parse(await fs.readFile(output,'utf8'));
+     cancel.signal.throwIfAborted();
+     return readReport(report,{...expected,stageId,groupId});
+    }
+    const first=await runStage(stageId,groupId,bandPractice?['--band-score',String(bandScores[0])]:[]);
+    if(!bandPractice)return first;
+    if(!validBandTogetherPhase(first,0,bandScores[0],0,0))throw Error('共斗练习第一段战报与入场设置不符');
+    const {damage,buffLevel,rhythmScore}=first.fengmoBandPhase;
+    if(!first.completed||rhythmScore===null)return combineBandTogether(first);
+    const secondStage=bandTogether.stages[1];
+    const second=await runStage(secondStage,secondStage,
+     ['--band-score',String(bandScores[1]),'--band-carry',String(damage),String(buffLevel)]);
+    if(!validBandTogetherPhase(second,1,bandScores[1],damage,buffLevel)||second.nativeSHA256!==first.nativeSHA256||
+       second.scriptIndexSHA256!==first.scriptIndexSHA256)throw Error('共斗练习第二段战报与结转条件不符');
+    return combineBandTogether(first,second);
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');
     if(deadline.aborted)throw Error('副本原版复跑超时');

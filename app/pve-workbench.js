@@ -402,7 +402,7 @@
 
  async function replay(run,row,plan,trialSlot){
   const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings,historicalGhostWindow,
-   mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,dojoArea,forest,tenBonuses}=run.pane;
+   mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,dojoArea,forest,tenBonuses,bandScores}=run.pane;
   const scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
   const orochi=battleMode===AtlasTrueOrochi.battleMode;
   for(const seed of seeds){
@@ -422,6 +422,7 @@
     ...(dojoArea?{dojoArea}:{}),
     ...(forest?{forest}:{}),
     ...(tenBonuses?.length?{tenBonuses}:{}),
+    ...(bandScores?{bandScores}:{}),
     ...(trialSlot?{trialSlot}:{}),...(run.sixRealmsEvent?{sixRealmsEvent:run.sixRealmsEvent}:{}),
     ...(run.sixRealmsState?{sixRealmsState:run.sixRealmsState}:{})});}
    finally{run.native=false;}
@@ -631,7 +632,7 @@
     const score=huntScores.get(row);
     if(score){
      const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
-     const result=row.samples[0].tenAnniversaryBoss?'限时计分':cleared?'均清场':'含未清场样本';
+     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether?'限时计分':cleared?'均清场':'含未清场样本';
      row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${result} · 平均伤害 ${damageText(score.average)} · `+
       `单场最高 ${damageText(score.max)} · 最低 ${damageText(score.min)}`;
      continue;

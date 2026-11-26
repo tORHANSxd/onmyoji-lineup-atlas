@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -812,6 +812,19 @@ async function main(){
      [...ref.querySelectorAll('button')].find(button=>button.textContent==='查看关联关卡').click();})()`);
     await until(start+'!==null');
     assert.match(await ui(panel+'.textContent'),/青森之秘 · 事件 2548/);
+   }
+   if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
+    await encounter('event','逢魔乐队 胧车共斗首领');
+    assert.match(await ui(panel+'.textContent'),/第一段音游窗口/);
+    const scores='[...document.querySelectorAll("[data-band-score]")]';
+    await ui(`(()=>{const [input]=${scores};input.value="-1";input.dispatchEvent(new Event("change",{bubbles:true}));})()`);
+    assert.equal(await ui(start+'===null'),true);
+    await ui(`(()=>{const [first,second]=${scores};first.value="1000";second.value="3000";second.dispatchEvent(new Event("change",{bubbles:true}));})()`);
+    assert.match(await run('superghost-five',{stageId:510003,groupId:510003,battleMode:5001,bandScores:[1000,3000]},
+      {waveCount:2,wavesCleared:0,outcome:'loss',fengmoBandTogether:{timedOut:true,damage:26706397,phases:[
+       {damage:13845698,priorDamage:0,beforeRhythmSeconds:469.92,afterRhythmSeconds:0,rhythmScore:1000,buffLevel:2},
+       {damage:26706397,priorDamage:13845698,beforeRhythmSeconds:228.94,afterRhythmSeconds:242.08,rhythmScore:3000,buffLevel:4}]}}),
+      /个人伤害 26,706,397.*累计增益 4 级/);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_personal_boss'&&entry.key===1)){
     await encounter('event','逢魔乐队 天邪鬼黄 501030');
