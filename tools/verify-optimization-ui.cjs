@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,528,921,1031,1032,1041,2000,2001,2507,3004,3005,3023,5550,5551,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,402,528,921,1031,1032,1041,2000,2001,2507,3004,3005,3023,5550,5551,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -628,6 +628,28 @@ async function main(){
      await encounter(stage.family,'SSR3困难 3504732');
      assert.match(await ui(panel+'.textContent'),/将魂试炼 · 单人个人伤害/);
     }
+   }
+   if(catalog.entries.has('journey_hardbattle')){
+    await encounter('event','京畿净化首领挑战 七人岬·扇');
+    const length='document.querySelector("[data-pve-journey-deadline]")';
+    const blessings='document.querySelector("[data-pve-journey-blessings]")';
+    await ui(options+'.value="qa-known-exp";'+options+'.dispatchEvent(new Event("change"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(length+'.value="180";'+length+'.dispatchEvent(new Event("input"));'+
+     blessings+'.value="70";'+blessings+'.dispatchEvent(new Event("input"))');
+    const journeyHard={deadlineSeconds:180,blessingCount:70};
+    assert.match(await run('exp',{stageId:731001,groupId:731001,battleMode:402,journeyHard},
+     {journeyHard:{...journeyHard,combatSeconds:59,timedOut:false,blessingBonus:{attack:.7,speed:35,crit:.21,critDamage:.7}}}),
+     /时限 180 秒 · 战斗与结算 59\.00 秒 · 祝福 70 层 · 开场 攻击 \+70%、速度 \+35、暴击 \+21%、暴击伤害 \+70%/s);
+    await ui(length+'.value="5";'+length+'.dispatchEvent(new Event("input"))');
+    mockPve=(plan,request)=>{
+     assert.deepEqual(request.journeyHard,{deadlineSeconds:5,blessingCount:70});
+     return {...sample,...request,outcome:'loss',wavesCleared:0,journeyHard:{...request.journeyHard,
+      combatSeconds:7,timedOut:true,blessingBonus:{attack:.7,speed:35,crit:.21,critDamage:.7}}};
+    };
+    await ui(start+'.click()');
+    await until(reports+'.textContent.includes("种子 0 超时")');
+    assert.match(await ui(reports+'.textContent'),/原版判定超时 · 时限 5 秒/);
    }
    if(catalog.entries.has('MZB_fengmo')){
     await encounter('daily','逢魔木桩 巧劲');

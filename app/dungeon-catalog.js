@@ -592,6 +592,21 @@
       scoreWindowSeconds:trial.deadlineSeconds,codeStageId:trial.codeStageId,codeLabel:scene.name});
   }
 
+  function showJourneyHard(destination,entry,groups){
+    const source=window.AtlasJourneyHard;
+    if(entry.table!=='journey_hardbattle'||!matchesOpeningSource(source))return;
+    const challenge=groups[0].row,stageId=challenge?.battle_id,route=source.routes[stageId];
+    const stage=groups.find(group=>group.ref.table==='pve_stage_data')?.row;
+    const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===stageId);
+    if(challenge?.id!==route?.challengeId||!route||stage?.groupid!==stageId||stage.shishentotal!==source.memberCount||
+       formation?.row?.resindex!==source.sceneId||formation.waves.length!==1||
+       formation.waves[0].map(unit=>[unit.position,unit.id]).join()!==route.enemies.join())return;
+    destination.append(node('p','按当局填写祝福层数和战斗时限。敌方使用本版关卡原表配置。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:source.memberCount,
+      battleMode:source.battleMode,waveCount:1,label:`京畿净化 · ${challenge.title}`,version:source.resourceVersion,
+      journeyHard:true});
+  }
+
   function liveScoreTable(label,columns,rows){
     const detail=node('details'),table=node('table'),head=node('thead'),heading=node('tr'),body=node('tbody');
     for(const text of columns){
@@ -1170,6 +1185,7 @@
     showTuzhizhuPractice(destination,entry,groups);
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
     showGeneralSoulTrial(destination,entry,groups);
+    showJourneyHard(destination,entry,groups);
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
     const exams=window.AtlasSixRealmsExams;
@@ -1241,6 +1257,7 @@
       const spiritRoute=matchesOpeningSource(hunling)?hunling.routes[stageId]:null;
       const practice=Object.values(window.AtlasTuzhizhuPractice?.modes??{}).some(mode=>mode.groupId===stageId);
       if(practice)destination.append(node('p','请在「逢魔木桩练习」中选择普通入口或极词条，再按对应原版引擎复跑。','caption'));
+      else if(AtlasJourneyHard.routes[stageId])destination.append(node('p','从关联的京畿净化首领挑战入口填写祝福和时限。','caption'));
       else if(window.AtlasFengmoLive?.isLiveStage(stageId))destination.append(node('p','此编组用于逢魔实战。集结、评级与联机战报条件见逢魔实战入口。','caption'));
       else if(window.AtlasResourceEncounters.isResourceStage(row))showResourceEncounter(destination,stageId,row,formation);
       else if(orochiFloor)destination.append(node('p','真·八岐大蛇沿用同一场战斗的十层进度，选角与生命状态见玩法入口。','caption'));

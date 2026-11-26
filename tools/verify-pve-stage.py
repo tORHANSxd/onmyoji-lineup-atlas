@@ -19,6 +19,7 @@ def replay(args, runtime, work):
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
+    from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
@@ -44,6 +45,7 @@ def replay(args, runtime, work):
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
     general_soul = args.mode == GENERAL_SOUL_MODE
+    journey_hard = args.mode == JOURNEY_HARD_MODE
     spider = args.mode in PRACTICE_MODES
     shilian = args.mode in SHILIAN_MODES
     shilian_event = ({"id": args.shilian_event_id, "difficulty": args.shilian_difficulty, "moves": args.shilian_moves}
@@ -144,6 +146,14 @@ def replay(args, runtime, work):
             raise ValueError("General Soul Trial requires five owned shikigami")
         engine, group, general_soul_act, const = general_soul_stage(args.stage)
         group_id, wave_count = group["ID"], 1
+    elif journey_hard:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Sea Journey requires five owned shikigami")
+        journey = JourneyHardReplay(args.stage, args.journey_blessings, args.journey_deadline)
+        engine, group, const = journey.engine, journey.group, journey.const
+        group_id, wave_count = group["ID"], len(group["MonstersInfos"])
     elif spider:
         from DynamicConfigData import DATA_HERO
 
@@ -272,6 +282,8 @@ def replay(args, runtime, work):
         route = "fengmo-yanwu-solo"
     elif general_soul:
         route = "general-soul-activity-solo"
+    elif journey_hard:
+        route = "journey-hard-solo"
     elif spider:
         route = "tuzhizhu-practice-solo"
     elif args.mode == 29:
@@ -388,7 +400,7 @@ def replay(args, runtime, work):
         if args.mode == REGION_HARD_MODE:
             formation_matches = (formation_matches and engine.startLevel == args.region["star"]
                                  and engine.condition == args.region["modifierIds"])
-    elif yanwu or general_soul or spider or hunling or qiling or shilian:
+    elif yanwu or general_soul or journey_hard or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -577,6 +589,8 @@ def replay(args, runtime, work):
                                                                general_soul_act)
         if instructions:
             report["generalSoulTrial"].update(instructions.report())
+    if journey_hard:
+        report["journeyHard"] = journey.report()
     if spider_replay:
         report["tuzhizhuPractice"] = spider_replay.report(report["outcome"])
     if retreat:
@@ -632,6 +646,7 @@ def main():
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from hunling_stage import CAPTURE_ITEMS, HUNLING_BOSS, HUNLING_MODES, HUNLING_REPLAY_SECONDS
+    from journey_hard_stage import JOURNEY_HARD_MODE
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
     from regional_boss_stage import REGION_MODES
     from resource_stage import RESOURCE_MODE
@@ -645,7 +660,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, GENERAL_SOUL_MODE, QILING_GROUP_MODE, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, GENERAL_SOUL_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -658,6 +673,8 @@ def main():
     parser.add_argument("--capture-cards", type=int, nargs=3, choices=range(1, 6))
     parser.add_argument("--qiling-window", type=int)
     parser.add_argument("--qiling-hp", type=int)
+    parser.add_argument("--journey-blessings", type=int)
+    parser.add_argument("--journey-deadline", type=int)
     parser.add_argument("--shilian-trial-slot", type=int, choices=range(1, 7))
     parser.add_argument("--shilian-event-id", type=int)
     parser.add_argument("--shilian-difficulty", type=int, choices=(1, 2, 3))
@@ -678,6 +695,12 @@ def main():
         parser.error("A collective Hunling replay needs a valid scoring window and starting HP")
     if args.mode != QILING_GROUP_MODE and args.qiling_hp is not None:
         parser.error("Starting shared HP is only available for a collective Hunling replay")
+    if args.mode == JOURNEY_HARD_MODE:
+        if (args.journey_blessings is None or not 0 <= args.journey_blessings < 2 ** 53
+                or args.journey_deadline is None or not 1 <= args.journey_deadline < 2 ** 53):
+            parser.error("A Sea Journey boss challenge needs blessing stacks and a positive battle deadline")
+    elif args.journey_blessings is not None or args.journey_deadline is not None:
+        parser.error("Sea Journey settings only apply to its boss challenges")
     if (args.mode in SHILIAN_MODES) != (args.shilian_trial_slot is not None):
         parser.error("A Six Realms trial needs an explicit eligible roster position")
     if args.shilian_state is not None and (args.mode not in SHILIAN_MODES or not valid_run_state(args.shilian_state)):

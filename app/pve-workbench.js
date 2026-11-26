@@ -116,6 +116,13 @@
   const captureReady=!capture||new Set(capture.cards).size===3;
   const moves=pane.eventMoves?.valueAsNumber;
   const eventReady=!pane.eventMoves||Number.isSafeInteger(moves)&&moves>=0;
+  const journeyHard=pane.journeyDeadline?{
+   deadlineSeconds:pane.journeyDeadline.valueAsNumber,blessingCount:pane.journeyBlessings.valueAsNumber,
+  }:null;
+  const journeyReady=!journeyHard||Number.isSafeInteger(journeyHard.deadlineSeconds)&&journeyHard.deadlineSeconds>0&&
+   Number.isSafeInteger(journeyHard.blessingCount)&&journeyHard.blessingCount>=0;
+  pane.journeySettings=journeyReady?journeyHard:null;
+  if(pane.journeyDeadline)for(const field of [pane.journeyDeadline,pane.journeyBlessings])field.disabled=blocked;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   const coins=pane.artifactCoins?.valueAsNumber;
@@ -160,7 +167,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -171,6 +178,7 @@
    selected.length&&reserve&&!reserve.ready?reserve.hint:
    !captureReady?'请选择三个不同的出战式神位置。':
    !eventReady?'前行步数应为大于或等于 0 的整数。':
+   !journeyReady?'请填写正整数战斗时限和非负整数祝福层数。':
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
@@ -218,6 +226,10 @@
     <button class="secondary" type="button" data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
+   ${config.journeyHard?`<div class="actions">
+    <label class="pve-lineup-field">祝福层数 <input data-pve-journey-blessings type="number" value="0" min="0" step="1" required></label>
+    <label class="pve-lineup-field">战斗时限（秒） <input data-pve-journey-deadline type="number" min="1" step="1" required></label>
+   </div>`:''}
    ${config.shilianEventId?`<div class="actions">
     <label class="pve-lineup-field">难度档位 <select data-pve-event-difficulty>
     ${[1,2,3].map(value=>`<option value="${value}">${value}</option>`).join('')}
@@ -295,6 +307,7 @@
    <ol class="dungeon-battle-list" data-pve-results></ol>`;
   const part=name=>section.querySelector(`[data-pve-${name}]`);
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
+   journeyDeadline:part('journey-deadline'),journeyBlessings:part('journey-blessings'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
@@ -309,7 +322,8 @@
    if(job&&!busy())job.notice=null;
    update();
   };
-  for(const field of [pane.eventMoves,...pane.lifeCaps,...pane.marks,pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
+  for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,...pane.lifeCaps,...pane.marks,
+   pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -396,6 +410,7 @@
    run.native=true;
    try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:true,...(battleMode?{battleMode}:{}),
     ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{}),...(qilingWindow?{qilingWindow}:{}),
+    ...(run.journeyHard?{journeyHard:run.journeyHard}:{}),
     ...(trialSlot?{trialSlot}:{}),...(run.sixRealmsEvent?{sixRealmsEvent:run.sixRealmsEvent}:{}),
     ...(run.sixRealmsState?{sixRealmsState:run.sixRealmsState}:{})});}
    finally{run.native=false;}
@@ -422,7 +437,7 @@
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
-   const ranOut=(experience??report.coins)?.timedOut===true;
+   const ranOut=(experience??report.coins??report.journeyHard)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
@@ -548,7 +563,8 @@
   if(!pane||runeBusy()||!account()||!ready())return;
   const selected=selectedForReplay(knownLineups());
   const inventory=account(),reserve=orochiReserve(selected,inventory);
-  if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3)return;
+  if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
+     pane.journeyHard&&!pane.journeySettings)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
@@ -556,6 +572,7 @@
    id:Number(pane.guardChoice.value),level:Number(pane.guardLevel.value),breakthrough:pane.guardBreakthrough.checked,
   }:null;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
+   journeyHard:pane.journeySettings,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
    sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins||guard?

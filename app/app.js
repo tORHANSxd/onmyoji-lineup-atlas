@@ -160,14 +160,14 @@ function usesDungeonInventory(job){
  const active=account(),selected=job?.account;
  return !!active&&!!selected&&active.id===selected.id&&active.raw===selected.raw&&active.heroes===selected.heroes&&active.souls===selected.souls;
 }
-function describeBattle(report){
+function describeBattle(report,showCombatTime=true){
  if(!report.completed)return '复跑超时，未取得结算';
  const outcome={win:'本次复跑通关',loss:'本次复跑失败',unknown:'胜负待核对'}[report.outcome];
  const playback=report.animationPlayback;
  const playbackNotes=playback?[playback.interruptedClips?`${playback.interruptedClips} 段提前结束`:'',
   playback.unresolved?`${playback.unresolved} 项待核对`:''].filter(Boolean):[];
  const time=playback?[
-  ...(playback.combatElapsedMs==null?[]:[`引擎开战至结算 ${(playback.combatElapsedMs/1000).toFixed(2)} 秒`]),
+  ...(!showCombatTime||playback.combatElapsedMs==null?[]:[`引擎开战至结算 ${(playback.combatElapsedMs/1000).toFixed(2)} 秒`]),
   `${playback.combatOverlapMs==null?'':'交战'}动作重叠估算 ${((playback.combatOverlapMs??playback.overlapMs)/1000).toFixed(2)} 秒${playbackNotes.length?`（${playbackNotes.join('，')}）`:''}`,
  ]:report.overlapMs==null||report.unresolvedActions?[]:[`动作请求重叠 ${(report.overlapMs/1000).toFixed(2)} 秒`];
  const spirit=report.spirit,template=DATA.gameConfig.spirits?.[spirit?.id];
@@ -193,6 +193,10 @@ function sampleBattleMarkup(samples){
   const retreat=sample.guildRetreat;
   const yanwu=sample.fengmoYanwu;
   const generalSoul=sample.generalSoulTrial;
+  const journey=sample.journeyHard;
+  const journeyBonus=journey?Object.entries({attack:'攻击',defense:'防御',hp:'生命',speed:'速度',crit:'暴击',critDamage:'暴击伤害'})
+   .flatMap(([key,label])=>journey.blessingBonus[key]?[`${label} +${key==='speed'?journey.blessingBonus[key]:
+    journey.blessingBonus[key].toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}`]:[]):[];
   const spider=sample.tuzhizhuPractice;
   const relay=sample.underworld;
   const orochi=sample.trueOrochi;
@@ -221,6 +225,9 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${yanwu.damage.toLocaleString('zh-CN')} · 作战 ${yanwu.combatSeconds.toFixed(2)} 秒`:
    generalSoul?`${!sample.completed?'结算待确认':generalSoul.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${generalSoul.damage.toLocaleString('zh-CN')} · 战斗与结算 ${generalSoul.combatSeconds.toFixed(2)} 秒`:
+   journey?`${!sample.completed?'结算待确认':journey.timedOut?'原版判定超时':describeBattle(sample,false)} · `+
+    `时限 ${journey.deadlineSeconds} 秒 · 战斗与结算 ${journey.combatSeconds.toFixed(2)} 秒 · 祝福 ${journey.blessingCount} 层`+
+    (journeyBonus.length?` · 开场 ${journeyBonus.join('、')}`:''):
    qiling?`${{'boss-defeated':'击败首领','team-defeated':'本队落败','window-expired':'达到计分时限'}[qiling.reason]||'结算待核对'} · `+
     `个人伤害 ${qiling.damage.toLocaleString('zh-CN')} · 作战 ${qiling.combatSeconds.toFixed(2)} / ${qiling.windowSeconds} 秒 · `+
     `共享生命剩余 ${Math.round(qiling.remainingHp).toLocaleString('zh-CN')}`:

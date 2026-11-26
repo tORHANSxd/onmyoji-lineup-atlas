@@ -34,6 +34,12 @@
 
 五场首领挑战按 `SeaChallengeFightPanel.refreshUIByIdx` 的 `journey_hardbattle.battle_id` 查到通用 PvE 关卡、体力消耗、敌方波次和站位，并按 `on_tips` 展示 `defence_hard_battle` 原文。七人岬·扇对应关卡和编组 731001，体力消耗为 3，原表配置一波，站位 ID 为 716。原版面板模块的 marshal SHA-256 为 `addbb7d5bfe460f719d1c0e928f8b88b752969697dcd74be5d4a4af913c5b4c7`。
 
+五场首领挑战均支持从已知的五式神阵容离线复跑。`JSNormalScene` 将模式 402 的 `pve_data_flag` 对应回首领挑战，原版 `JSNormalEngine` 从该关卡读取实际编组并按 `buff_count` 施加祝福。用户填写当局祝福层数和时限，开场读取原表编组和属性，计时由原版整秒超时判断结算。客户端没有给出首领入场时服务器下发的截止时间，因此界面要求明确输入秒数。
+
+本版离线引擎的祝福常量 `8219` 每层直接增加 1% 攻击、0.5 速度、0.3% 暴击和 1% 暴击伤害，直接属性最多计 100 层。技能 `799` 仍读取实际祝福层数，在 20、50、80、100 层依次加入 20% 伤害减免、20% 吸血、行动后回复自身已损失生命的 25%、普通主动技能鬼火消耗减 1。资料界面保留 `defence_hard_battle` 的原文，复跑战报显示引擎实际加到开场属性上的数值。
+
+同一套真实库存以种子 0、伤害取下限复跑五场。设置 180 秒时限时，七人岬·扇、七人岬·桑、七人岬·须和蟹姬样本通关，久次良样本超时。七人岬·扇无祝福时从开战到结算 80.18 秒，70 层时为 59.00 秒。将七人岬·扇的时限设为 5 秒后，原版判定超时并在 8.14 秒完成结算。
+
 普通面板的 `YyMgr.send_mono_normal` 从单人棋局调用 `SeaJourneyMember.js_normal_dungeon_team_create`，提交星级和单人标记。多人棋局只在 `ON_NORMAL_BATTLE` 状态发出开战消息，业务消息体为空。首领面板以 `battle_idx` 请求入场。普通入口没有从四张静态资源参数表上传敌方编组。原版 `SeaJourneyMember` 的 marshal SHA-256 为 `fbac47ba761a03cd5a668e04c8f6a1d46bcd2888a0bdb3c857c3ac05a62b917f`。
 
 ### 六道之门
