@@ -167,7 +167,8 @@ function describeBattle(report){
   `${playback.combatOverlapMs==null?'':'交战'}动作重叠估算 ${((playback.combatOverlapMs??playback.overlapMs)/1000).toFixed(2)} 秒${playbackNotes.length?`（${playbackNotes.join('，')}）`:''}`,
  ]:report.overlapMs==null||report.unresolvedActions?[]:[`动作请求重叠 ${(report.overlapMs/1000).toFixed(2)} 秒`];
  const spirit=report.spirit,template=DATA.gameConfig.spirits?.[spirit?.id];
- return [outcome,`通过 ${report.wavesCleared} 波`,`共 ${report.bouts} 回合`,...time,
+ return [outcome,`通过 ${report.wavesCleared} 波`,`共 ${report.bouts} 回合`,
+  ...(report.minimumDamage?[`我方 ${report.minimumDamage.rolls} 次伤害浮动取下限`]:[]),...time,
   ...(spirit?[`已佩戴 ${template?.name||'契灵 '+spirit.id} ${spirit.star} 星 ${spirit.level} 级`]:[])].join(' · ');
 }
 function waveEngineSeconds(wave){
@@ -542,6 +543,7 @@ function renderDungeonStock(dungeon){
    return `<li><strong>${esc(names[row.heroIds[index]]?.name)}</strong><span>速度 ${speed} · 暴击 ${crit}%</span><span>${esc(suits)}</span></li>`;
   }).join('');
   return `<li class="dungeon-stock-card"><strong>${esc(row.title)}</strong><ul class="dungeon-stock-members" aria-label="式神">${members}</ul>
+   ${row.plan.damageFloor?'<p class="caption">我方伤害浮动取下限</p>':''}
    ${timing?`<p class="caption">共同种子中最慢 · 种子 ${timing.seed} · ${timing.combat?'开战至结算':'引擎全程'} ${timing.seconds.toFixed(2)} 秒</p>`:''}
    ${summary?`<p class="caption">${esc(summary)}</p>`:''}
    ${samples?`<details ${section('samples')}><summary>查看 ${row.samples.length} 个种子的战报</summary><ul class="dungeon-stock-samples">${samples}</ul></details>`:''}

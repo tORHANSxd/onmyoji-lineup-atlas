@@ -112,7 +112,8 @@ async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples
  const names=members.map(({hero})=>game.heroes[hero.heroId]?.name);
  const title=label+' · '+names.join('、')+' · '+(await sha256(hconf)).slice(0,10);
  const basicLevel=onmyoji.skinfo.find(([id])=>id===basic)?.[1];
- return G.validate(game,{title,desc:`资源 ${R.resourceVersion}，${samples} 个离线种子通关。阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`,
+ const damage=row.plan.damageFloor?'我方伤害取下限。':'';
+ return G.validate(game,{title,desc:`资源 ${R.resourceVersion}，${samples} 个离线种子通关。${damage}阴阳师普攻 ${basicLevel} 级，需核对实际配装。全随机分支待验证。`,
   select_stage_id:sceneId,hconf});
 }
 
@@ -129,14 +130,16 @@ async function sha256(value){
 async function fingerprint(code,accountId,plan,sceneId){
  const payload=[R.resourceVersion,sceneId,code,accountId,heroKeys(plan.onmyoji),plan.onmyoji.aiSkill,spiritKeys(plan.spirit),
   plan.members.map(m=>[m.instanceId,heroKeys(m.hero),m.aiSkill,m.souls.map(soulKeys)])];
+ if(plan.damageFloor)payload.push('minimum-player-damage');
  return sha256(payload);
 }
 
 async function receipt(row,account,code){
  const dungeonId=row.dungeonId??R.dungeonId,sceneId=R.sceneForDungeon(dungeonId);
  if(sceneId===null||!passed(row.samples,dungeonId))throw Error('当前配装尚未通过该副本的全部采样');
- const {onmyoji,spirit,members}=row.plan;
+ const {onmyoji,spirit,members,damageFloor}=row.plan;
  return {version:1,resourceVersion:R.resourceVersion,dungeonId,accountId:account.id,onmyoji,spirit,
+  ...(damageFloor?{damageFloor:true}:{}),
   members:members.map(m=>({id:m.instanceId,souls:m.souls.map(s=>s.id),aiSkill:m.aiSkill})),
   samples:row.samples.map(({seed,engineSeconds})=>({seed,engineSeconds})),
   digest:await fingerprint(code,account.id,row.plan,sceneId)};
@@ -161,7 +164,7 @@ async function restore(lineup,account){
  });
  const {onmyoji,spirit}=saved;
  if(spirit&&(!Array.isArray(account.raw.hunlings)||!account.raw.hunlings.some(q=>JSON.stringify(spiritKeys(q))===JSON.stringify(spiritKeys(spirit)))))return changed();
- const plan={onmyoji,...(spirit?{spirit}:{}),members};
+ const plan={onmyoji,...(spirit?{spirit}:{}),members,...(saved.damageFloor?{damageFloor:true}:{})};
  if(await fingerprint(lineup.code,account.id,plan,sceneId)!==saved.digest)return changed();
  return plan;
 }

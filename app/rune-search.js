@@ -7,13 +7,17 @@
 
 // 神罚的开场属性来自同版本的 RuneFbEngine。定位按客户端技能说明选取，
 // 例如雪御前的击败转火、因幡辉夜姬的愿力、不见岳的初始防御增伤。
-const openings=[[591,5913],[556,5563],[608,6083],[364,3643],[392,3923]];
-const finishers=[[389,3893],[579,5793],[568,5683],[392,3923],[591,5913],[556,5563]];
-const openingOrbs=[[596,5963],[395,3953],[205,2054],[280,2803]];
+const openings=[[608,6083],[607,6073],[591,5913],[556,5563],[364,3643],[392,3923]];
+const finishers=[[608,6083],[607,6073],[389,3893],[579,5793],[568,5683],[392,3923],[591,5913],[556,5563]];
+const openingOrbs=[[601,6013],[596,5963],[395,3953],[205,2054],[280,2803]];
+// Released set descriptions in 0.0.816 equip_suit name these chance effects.
+const volatileSuits=new Set(['魅妖','钟灵','招财猫','幽谷响','返魂香','应声虫','镜姬','木魅','狰','日女巳时',
+ '魍魉之匣','地藏像','轮入道','雪幽魂','胧车','针女','网切','薙魂','共潜','反枕']);
+const allowedSoul=soul=>!soul.unknown.length&&!volatileSuits.has(soul.set);
 const roles={
- opener:{heroes:openings,metric:1,sets:['海月火玉','针女','破势'],damage:true},
- finisher:{heroes:finishers,metric:1,sets:['针女','隐念','片叶之苇'],damage:true},
- fastFinisher:{heroes:finishers,metric:1,sets:['针女','隐念'],damage:true},
+ opener:{heroes:openings,metric:1,sets:['海月火玉','破势','狂骨'],damage:true},
+ finisher:{heroes:finishers,metric:1,sets:['隐念','片叶之苇','心眼'],damage:true},
+ fastFinisher:{heroes:finishers,metric:1,sets:['隐念','心眼'],damage:true},
  debuff:{heroes:[[557,5573],[341,3413],[583,5832]],metric:7,sets:['元兴寺','遗念火']},
  orbs:{heroes:[[372,3722],...openingOrbs],metric:7,sets:['火灵']},
  openingOrbs:{heroes:openingOrbs,metric:7,sets:['火灵']},
@@ -22,12 +26,12 @@ const roles={
  tempo:{heroes:[[596,5963],[341,3413],[601]],metric:7,sets:['火灵','遗念火']},
  groupHeal:{heroes:[[238,2383],[594,5943],[347,3473],[200,2002]],metric:10,sets:['树妖']},
  amplify:{heroes:[[347,3473],[594,5943],[557,5573]],metric:10,sets:['火灵']},
- criticalHeal:{heroes:[[554,5543],[594,5943],[200,2002]],metric:10,sets:['招财猫'],auto:11},
- accelerate:{heroes:[[237,2372],[261,2612],[596,5963],[601]],metric:7,sets:['火灵','招财猫']},
- markAmp:{heroes:[[369,3693],[363,3632],[367,3672],[583,5832]],metric:7,sets:['遗念火','招财猫']},
- lightDamage:{heroes:[[556,5563],[568,5683],[591,5913],[364,3643]],metric:1,sets:['海月火玉','针女','破势'],damage:true},
+ criticalHeal:{heroes:[[554,5543],[594,5943],[200,2002]],metric:10,sets:['火灵','树妖'],auto:11},
+ accelerate:{heroes:[[237,2372],[261,2612],[596,5963],[601]],metric:7,sets:['火灵','遗念火']},
+ markAmp:{heroes:[[369,3693],[363,3632],[367,3672],[583,5832]],metric:7,sets:['遗念火','火灵']},
+ lightDamage:{heroes:[[608,6083],[607,6073],[556,5563],[568,5683],[591,5913],[364,3643]],metric:1,sets:['海月火玉','破势','狂骨'],damage:true},
 };
-const groupBuff={name:'群疗增伤',roles:['orbs','amplify','groupHeal','opener','support'],sets:{opener:'针女'}};
+const groupBuff={name:'群疗增伤',roles:['orbs','amplify','groupHeal','opener','support']};
 const groupDebuff={name:'群疗与破防',roles:['openingOrbs','debuff','opener','groupHeal','support']};
 const groupDamage={name:'群疗与双输出',roles:['openingOrbs','groupHeal','opener','fastFinisher','criticalHeal']};
 const openingDamage={name:'开场输出与尾刀',roles:['opener','finisher','orbs','debuff','support']};
@@ -69,9 +73,15 @@ function actor(game){
  return {heroId,level:60,star:2,awake,skinfo,aiSkill:2};
 }
 
+const chanceText=text=>/随机|概率|几率/.test(text.replace(/(?<![\d.])100(?:\.0+)?\s*%\s*(?:的)?\s*(?:基础)?\s*(?:概率|几率)/g,''));
+
 function ownedSpirit(account,game,heroId){
  const owned=Array.isArray(account.raw?.hunlings)?account.raw.hunlings:[];
- const legal=owned.filter(q=>game.spirits?.[q?.id]?.heroes.includes(heroId)&&
+ const known=q=>{
+  const spirit=game.spirits?.[q?.id],description=G.levels(game,spirit?.skillId,0).at(-1)?.description;
+  return spirit?.heroes.includes(heroId)&&description&&!chanceText(description);
+ };
+ const legal=owned.filter(q=>known(q)&&
   Number.isSafeInteger(q.star)&&q.star>=1&&q.star<=6&&Number.isSafeInteger(q.lv)&&
   q.lv>=0&&q.lv<=game.spiritMaxLevel[q.star]&&typeof q.shiny==='boolean'&&
   Array.isArray(q.marks)&&q.marks.length<=6&&q.marks.every(id=>Object.hasOwn(game.marks,id)));
@@ -79,7 +89,32 @@ function ownedSpirit(account,game,heroId){
  if(row)return {id:row.id,star:row.star,lv:row.lv,shiny:row.shiny,marks:[...row.marks]};
 }
 
-function roleOptions(name,heroes,game,roster){
+function skillRisk(hero,game){
+ const seen=new Set();
+ let risks=0;
+ function visit(id,level){
+  if(seen.has(id))return;
+  seen.add(id);
+  const row=G.skill(game,id,level,hero.awake)??G.levels(game,id,hero.awake).at(-1);
+  if(!row?.description){risks+=2;return;}
+  risks+=Number(chanceText([row.description,row.upgrade].filter(Boolean).join(' ')));
+  for(const child of [...row.branches,...(row.aiBranches||[]),...row.related])visit(child,level);
+ }
+ for(const [id,level] of hero.raw.skinfo)visit(id,level);
+ return risks;
+}
+
+function preference(hero,game,rosterIndex){
+ const entry=rosterIndex.get(hero.shikigamiId),released=entry?.releasedAt;
+ return {released:/^\d{4}-\d{2}-\d{2}$/.test(released||'')?released:'',
+  highRarity:entry?.rarity==='SSR'||entry?.rarity==='SP',randomRisk:skillRisk(hero,game)};
+}
+function preferred(a,b){
+ return b.released.localeCompare(a.released)||Number(b.highRarity)-Number(a.highRarity)||
+  a.randomRisk-b.randomRisk||Number(b.hero.shikigamiId)-Number(a.hero.shikigamiId);
+}
+
+function roleOptions(name,heroes,game,roster,rosterIndex){
  const result=[];
  const role=roles[name];
  for(const [priority,[id,preferred]] of role.heroes.entries()){
@@ -92,12 +127,13 @@ function roleOptions(name,heroes,game,roster){
    const setting=G.aiChoices(game,{hero_id:id,awake:hero.awake,skills}).find(x=>x.id===preferred&&actual.has(x.id));
    if(preferred&&!setting)continue;
    const skillLevel=actual.get(preferred??game.heroes[id]?.skills[1])||0;
-   result.push({hero,id,aiSkill:role.auto??setting?.value??11,rank:hero.level+hero.star*5+skillLevel*5-priority*2});
+   result.push({hero,id,aiSkill:role.auto??setting?.value??11,...preference(hero,game,rosterIndex),
+    rank:hero.level+hero.star*5+skillLevel*5-priority*2});
   }
  }
  // Alternate species before considering extra copies of the same skill kit.
  const seen=new Set();
- return result.sort((a,b)=>b.rank-a.rank||a.hero.instanceId.localeCompare(b.hero.instanceId))
+ return result.sort((a,b)=>preferred(a,b)||b.rank-a.rank||a.hero.instanceId.localeCompare(b.hero.instanceId))
   .filter(({id})=>{if(seen.has(id))return false;seen.add(id);return true;}).slice(0,4);
 }
 
@@ -136,9 +172,10 @@ function candidates(account,data,alternatives=[],dungeonId=102){
 
 function buildCandidates(account,{gameConfig:game,roster,effects},profile,alternatives,dungeonId,max=limit){
  const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
- const heroes=Object.values(account.heroes),inventory=Object.values(account.souls).filter(q=>!q.unknown.length);
+ const heroes=Object.values(account.heroes),inventory=Object.values(account.souls).filter(allowedSoul);
+ const rosterIndex=new Map(roster.map(row=>[String(row.id),row]));
  const names=new Set(profile.strategies.flatMap(strategy=>strategy.roles));
- const available=Object.fromEntries([...names].map(name=>[name,roleOptions(name,heroes,game,roster)]));
+ const available=Object.fromEntries([...names].map(name=>[name,roleOptions(name,heroes,game,roster,rosterIndex)]));
  const {openingSpeed,bossSpeed,earlySpeed}=profile;
  const sampled=[],seen=new Set(alternatives);
  // Test different role combinations and sets. This bounds interactive search;
@@ -172,7 +209,7 @@ function buildCandidates(account,{gameConfig:game,roster,effects},profile,altern
     panels.push(build.rawPanel);
    }
    if(members.length!==strategy.roles.length)continue;
-   const plan={onmyoji,...(spirit?{spirit}:{}),members};
+   const plan={onmyoji,...(spirit?{spirit}:{}),members,damageFloor:true};
    const key=teamKey(plan);
    if(seen.has(key))continue;
    seen.add(key);
@@ -204,12 +241,13 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
  }
  const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
  const {byHero}=C.equipmentOwnership(account),kinds=game.heroes;
+ const rosterIndex=new Map(roster.map(row=>[String(row.id),row]));
  const equipped=Object.values(account.heroes).flatMap(hero=>{
   const gear=byHero.get(hero.instanceId),id=hero.shikigamiId,skills=hero.raw?.skinfo;
-  if(!gear||gear.some(soul=>soul.unknown.length)||kinds[id]?.kind!=='shikigami'||!C.baseFromRoster(hero,roster)||
+  if(!gear||!gear.every(allowedSoul)||kinds[id]?.kind!=='shikigami'||!C.baseFromRoster(hero,roster)||
      !skills?.length||skills.some(([skill,level])=>!G.skill(game,skill,level,hero.awake)))return [];
-  return [{hero,gear,quality:gear.reduce((score,soul)=>score+soul.star*4+soul.level,0)}];
- }).sort((a,b)=>b.hero.star-a.hero.star||b.hero.level-a.hero.level||b.quality-a.quality||
+  return [{hero,gear,...preference(hero,game,rosterIndex),quality:gear.reduce((score,soul)=>score+soul.star*4+soul.level,0)}];
+ }).sort((a,b)=>preferred(a,b)||b.hero.star-a.hero.star||b.hero.level-a.hero.level||b.quality-a.quality||
   a.hero.instanceId.localeCompare(b.hero.instanceId));
  const distinct=new Set(),team=equipped.filter(({hero})=>{
   if(distinct.has(hero.shikigamiId))return false;
@@ -218,7 +256,7 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
  if(team.length===memberCount){
   const plan={onmyoji,...(spirit?{spirit}:{}),members:team.map(({hero,gear})=>({
    instanceId:hero.instanceId,hero:hero.raw,souls:gear.map(soul=>soul.raw),aiSkill:0,
-  }))};
+  })),damageFloor:true};
   const key=teamKey(plan);
   const panels=team.map(({hero,gear})=>{
    const panel=C.panel(C.baseFromRoster(hero,roster),gear,data.effects);
@@ -252,7 +290,7 @@ function hun13Candidates(account,data,alternatives=[]){
    souls:remove(account.souls,new Set(lead.plan.members.flatMap(member=>member.souls.map(soul=>soul.id))))};
   for(const partner of buildCandidates(remaining,data,profiles[1-wave],[],103,2)){
    const rounds=wave===0?[lead,partner]:[partner,lead];
-   const plan={rounds:rounds.map(row=>row.plan)},key=hun13Key(plan);
+   const plan={rounds:rounds.map(row=>row.plan),damageFloor:true},key=hun13Key(plan);
    if(unseen.has(key))continue;
    unseen.add(key);rows.push({plan,rounds});break;
   }

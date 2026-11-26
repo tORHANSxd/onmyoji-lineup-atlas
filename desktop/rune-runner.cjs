@@ -31,6 +31,11 @@ function waitForExit(python,args,dir,signal){
 
 const MAX_BRANCH_TRIALS=8;
 
+function matchesDamagePolicy(report,requested){
+ const minimum=report.minimumDamage;
+ return requested?minimum?.side==='player'&&Number.isSafeInteger(minimum.rolls)&&minimum.rolls>=0:minimum==null;
+}
+
 function summary(report,seed,fixedStep,flips){
  if(report.resourceVersion!==resourceVersion||report.dungeonId!==dungeonId||report.fixture!=='selected-inventory'||
   report.seed!==seed||
@@ -68,7 +73,8 @@ function summary(report,seed,fixedStep,flips){
   animationPlayback:projected,
   randomBranchesVerified:false,overlapMs:Number.isFinite(sync?.overlapMs)?sync.overlapMs:null,
   unresolvedActions:Array.isArray(sync?.unresolved)?sync.unresolved.length:null,
-  spirit:spirit?{id:spirit.id,star:spirit.star,level:spirit.level}:null};
+  spirit:spirit?{id:spirit.id,star:spirit.star,level:spirit.level}:null,
+  ...(report.minimumDamage?{minimumDamage:report.minimumDamage}:{})};
 }
 
 function isCombatDecision(draw){
@@ -152,6 +158,7 @@ function createRuneRunner({configPath,scriptRoot,suits}){
     if(code!==0&&code!==1)throw Error('原版引擎未能完成复跑');
     const report=await fs.readFile(out,'utf8').then(JSON.parse).catch(()=>null);
     if(!report)throw Error('原版引擎未生成结算，请核对客户端资料和阵容配置');
+    if(!matchesDamagePolicy(report,plan.damageFloor===true))throw Error('原版复跑没有返回所选伤害口径');
     return {raw:report,result:summary(report,seed,fixedStep,indices),file:out,indices};
    }
    return await execute(replay,action.signal);
@@ -222,4 +229,4 @@ function createRuneRunner({configPath,scriptRoot,suits}){
  };
 }
 
-module.exports={createRuneRunner,planRandomTrials,readConfig};
+module.exports={createRuneRunner,planRandomTrials,readConfig,matchesDamagePolicy};

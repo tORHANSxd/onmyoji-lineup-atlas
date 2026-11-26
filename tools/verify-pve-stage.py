@@ -23,6 +23,9 @@ def replay(args, runtime, work):
     plan = json.loads(team_bytes)
     actor, fighters, inventory, choices = selected_team(plan, json.loads(suit_bytes))
     modules, host, evidence = prepare_runtime(runtime, work)
+    if args.minimum_damage:
+        from minimum_damage import install_minimum_damage
+        minimum = install_minimum_damage(modules)
     native_api = host.oracle.api
 
     def host_api(name, arguments):
@@ -240,6 +243,8 @@ def replay(args, runtime, work):
               "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
     if args.mode == 266:
         report["formationsVerified"] = len(verified_waves)
+    if args.minimum_damage:
+        report["minimumDamage"] = minimum
     try:
         report["monsterHealth"] = monster_waves(record)["waves"]
     except (KeyError, IndexError, TypeError, ValueError):
@@ -263,6 +268,7 @@ def main():
     parser.add_argument("--mode", type=int, choices=(3, 29, 266), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
+    parser.add_argument("--minimum-damage", action="store_true")
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")

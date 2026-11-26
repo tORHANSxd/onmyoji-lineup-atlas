@@ -40,6 +40,10 @@ def run(args, runtime, work):
 
     team_bytes, suit_bytes = args.team.read_bytes(), args.suit_index.read_bytes()
     plan = json.loads(team_bytes)
+    minimum = None
+    if plan.get("damageFloor") is True:
+        from minimum_damage import install_minimum_damage
+        minimum = install_minimum_damage(modules)
     actor, fighters, inventory, choices = selected_team(plan, json.loads(suit_bytes))
     if len(fighters) != 5 or any(hero["heroId"] not in DATA_HERO.data for hero in (actor, *fighters.values())):
         raise ValueError("Invalid selected inventory team")
@@ -154,6 +158,8 @@ def run(args, runtime, work):
               "outcome": "win" if winner == const.CampFlag.CAMP1 else "loss" if winner == const.CampFlag.CAMP2 else "unknown",
               "wavesCleared": engine.finishedWaveCount, "bouts": engine._bout_counter,
               "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
+    if minimum is not None:
+        result["minimumDamage"] = minimum
     if replay:
         try:
             result["monsterHealth"] = monster_waves(replay)["waves"]

@@ -5,7 +5,7 @@ const os=require('node:os');
 const path=require('node:path');
 const {spawn}=require('node:child_process');
 const {createHash}=require('node:crypto');
-const {readConfig}=require('./rune-runner.cjs');
+const {readConfig,matchesDamagePolicy}=require('./rune-runner.cjs');
 const {resourceVersion}=require('../app/rune-lineup.js');
 const awakeOpenings=require('../app/awake-openings.js');
 const secretOpenings=require('../app/secret-openings.js');
@@ -29,7 +29,7 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor}){
  const engine=engines[battleMode],awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  if(report?.resourceVersion!==resourceVersion||report.route!==engine.route||report.engineClass!==engine.name||
@@ -39,6 +39,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput}){
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
       report.formationsVerified>report.waveCount))||
     report.seed!==seed||report.fixedStepMs!==20||report.teamSHA256!==sha256(input)||report.suitIndexSHA256!==sha256(suitInput)||
+    !matchesDamagePolicy(report,damageFloor)||
     !validHash(report.nativeSHA256)||!validHash(report.scriptIndexSHA256)||!validHash(report.recordSHA256)||
     report.recordSHA256===sha256('')||!positive(report.recordLines)||!positive(report.waveCount)||
     !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>report.waveCount||
@@ -63,10 +64,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false}={}){
    if(current)throw Error('已有库存复跑正在运行');
    if(![3,29,266].includes(battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
-      !plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length<1||plan.members.length>5)
+      typeof damageFloor!=='boolean'||!plan?.onmyoji||!Array.isArray(plan.members)||plan.members.length<1||plan.members.length>5)
     throw Error('无效的关卡、种子或配装');
    if(battleMode===29&&(awakeOpenings.resourceVersion!==resourceVersion||
       awakeOpenings.floors[stageId]?.groupId!==groupId||plan.members.length!==5))
@@ -87,12 +88,13 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     await Promise.all([fs.writeFile(team,input,'utf8'),fs.writeFile(suitIndex,suitInput,'utf8')]);
     const args=['-X','utf8',entry,'--runtime',path.resolve(configPath),'--mode',String(battleMode),'--stage',String(stageId),'--seed',String(seed),
      '--team',team,'--suit-index',suitIndex,'--output',output];
+    if(damageFloor)args.push('--minimum-damage');
     const code=await launch(config.python,args,dir,AbortSignal.any([cancel.signal,deadline]));
     cancel.signal.throwIfAborted();
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput});
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');
     if(deadline.aborted)throw Error('副本原版复跑超时');

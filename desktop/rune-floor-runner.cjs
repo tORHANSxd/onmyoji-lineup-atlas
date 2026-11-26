@@ -5,7 +5,7 @@ const os=require('node:os');
 const path=require('node:path');
 const {spawn}=require('node:child_process');
 const {createHash}=require('node:crypto');
-const {readConfig}=require('./rune-runner.cjs');
+const {readConfig,matchesDamagePolicy}=require('./rune-runner.cjs');
 const {resourceVersion}=require('../app/rune-lineup.js');
 const sha256=value=>createHash('sha256').update(value).digest('hex');
 const emptyReplay=sha256('');
@@ -66,14 +66,16 @@ function createRuneFloorRunner({configPath,scriptRoot,suits}){
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     if(report.resourceVersion!==resourceVersion||report.dungeonId!==dungeonId||report.fixture!=='selected-inventory'||
        report.fixedStepMs!==20||report.seed!==seed||report.teamSHA256!==sha256(input)||report.suitIndexSHA256!==sha256(suitInput)||
+       !matchesDamagePolicy(report,plan.damageFloor===true)||
        typeof report.completed!=='boolean'||!['win','loss','unknown'].includes(report.outcome)||
        (report.completed&&(!/^[a-f0-9]{64}$/.test(report.recordSHA256)||report.recordSHA256===emptyReplay))||
        !Number.isSafeInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>3||
        !Number.isSafeInteger(report.bouts)||report.bouts<0||!Number.isFinite(report.engineSeconds)||report.engineSeconds<0){
      throw Error('悲鸣原版复跑没有返回可核验的结算');
     }
-    const {completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback}=report;
-    return {report,result:{seed,completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback}};
+    const {completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback,minimumDamage}=report;
+    return {report,result:{seed,completed,outcome,wavesCleared,bouts,engineSeconds,spirit,monsterHealth,animationPlayback,
+     ...(minimumDamage?{minimumDamage}:{})}};
    }catch(error){
     if(cancel.signal.aborted)throw Error('悲鸣复跑已停止');
     if(error.name==='AbortError')throw Error('悲鸣原版复跑超时');

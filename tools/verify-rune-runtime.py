@@ -166,6 +166,10 @@ def run(args):
     sys.modules[repository.__name__] = repository
     sys.modules["distserver.game"].GameServerRepo = repository
     sys.meta_path.insert(0, modules)
+    minimum = None
+    if args.team and plan.get("damageFloor") is True:
+        from minimum_damage import install_minimum_damage
+        minimum = install_minimum_damage(modules)
     sys.addaudithook(no_transport)
     os.chdir(work)
 
@@ -213,7 +217,7 @@ def run(args):
             raise ValueError("The random audit needs the verified standard Random generator")
         run_key = sha256(json.dumps([3, resource_version, native_hash, sha256(script_bytes),
                                       sha256(team_bytes), sha256(suit_bytes), args.seed,
-                                      args.fixed_step_ms]).encode())
+                                      args.fixed_step_ms, *(["minimum-player-damage"] if minimum else [])]).encode())
         random_audit = RandomAudit(variant_rng, run_key, random_reference, args.flip_random,
                                    lambda: (engine.battleState == const.BattleState.BS_STARTED,
                                             getattr(engine, "finishedWaveCount", 0) + 1))
@@ -346,6 +350,8 @@ def run(args):
         "entityModels": entity_models,
         "moduleSHA256": {row["module"]: row["marshalSHA256"] for row in modules.trace},
     }
+    if minimum is not None:
+        report["minimumDamage"] = minimum
     if random_audit is not None:
         report["randomAudit"] = random_audit.report()
     if replay:

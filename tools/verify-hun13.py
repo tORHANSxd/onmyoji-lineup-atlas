@@ -54,6 +54,10 @@ def replay(runtime, work, args):
     plan = json.loads(plan_bytes)
     heroes, inventory, rounds = prepare_teams(plan, json.loads(suit_bytes), selected_team)
     modules, host, evidence = prepare_runtime(runtime, work)
+    minimum = None
+    if plan.get("damageFloor") is True:
+        from minimum_damage import install_minimum_damage
+        minimum = install_minimum_damage(modules)
     native_api = host.oracle.api
 
     def host_api(name, arguments):
@@ -233,6 +237,8 @@ def replay(runtime, work, args):
               "completed": completed, "outcome": "win" if winner == const.CampFlag.CAMP1 else "loss" if completed else "unknown",
               "wavesCleared": sum(row["cleared"] is True for row in history.values()),
               "engineSeconds": round(engine.now_time() - start, 6), "rounds": list(history.values())}
+    if minimum is not None:
+        result["minimumDamage"] = minimum
     if record:
         try:
             waves = monster_waves(record)["waves"]

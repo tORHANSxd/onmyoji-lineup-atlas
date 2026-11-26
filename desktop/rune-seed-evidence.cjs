@@ -51,7 +51,7 @@ async function buildScope({configPath,scriptRoot,suits,dungeonId=soulKing},plan)
   ...Object.fromEntries(['game_resources.py','original_battle.py','original_host.py','original_modules.py','native_oracle.py']
    .map(name=>['host/'+name,path.join(config.gameTools,name)])),
   ...Object.fromEntries([...battleTools,
-   'extract-dungeon-catalog.py','rune_team.py','rune_replay.py','rune_random.py']
+   'extract-dungeon-catalog.py','rune_team.py','rune_replay.py','rune_random.py',...(plan.damageFloor?['minimum_damage.py']:[])]
    .map(name=>['tools/'+name,path.join(scriptRoot,name)])),
   runner:path.join(__dirname,'rune-runner.cjs'),
   ...(isSorrow?{floorRunner:path.join(__dirname,'rune-floor-runner.cjs')}:{ }),
@@ -61,6 +61,7 @@ async function buildScope({configPath,scriptRoot,suits,dungeonId=soulKing},plan)
  return {schema:1,route:isHun13?'normal-solo-hun13':'local-solo-rune',dungeonId,resourceVersion,stepMs:20,seedCount,
   nativeSHA256,scriptIndexSHA256:sha256(indexBytes),
   teamSHA256:sha256(JSON.stringify(plan)),suitIndexSHA256:sha256(JSON.stringify(suits)),inputSHA256,
+  ...(plan.damageFloor?{damageFloor:true}:{}),
   ...(isHun13?{engineSHA256:engineSHA256.Hun13Engine}:{})};
 }
 

@@ -200,7 +200,7 @@ async function main(){
    const equips=Array.from({length:6},(_,i)=>prefix+'-soul-'+i);
    heroes[prefix]={heroId:id,level:40,star:6,awake:1,skinfo,equips,
     attrs:[[8000,0,0,0],[101,0,0,0],[.5,0,0,0],[.1,0,0,0],[500,0,0,0],[2500,0,0,0],0,0]};
-   equips.forEach((id,i)=>items.push({id,slot:i+1,quality:6,level:15,setId:'招财猫',
+   equips.forEach((id,i)=>items.push({id,slot:i+1,quality:6,level:15,setId:'火灵',
     mainAttrType:['attack_flat','speed','defense_flat','attack_rate','hp_flat','crit_rate'][i],
     mainAttrValue:[486,57,104,.55,2052,.55][i],subAttributes:[{type:'crit_rate',value:.1}]}));
   }
@@ -264,7 +264,7 @@ async function main(){
    assert.equal(await ui('document.querySelector("[data-pve-start]")===null'),true);
    const awakeCalls=[];
    mockPve=(plan,options)=>{
-    assert.deepEqual(options,{stageId:40,groupId:4,battleMode:29,seed:options.seed});
+    assert.deepEqual(options,{stageId:40,groupId:4,battleMode:29,seed:options.seed,damageFloor:true});
     assert.equal(plan.members.length,5);
     assert.equal(new Set(plan.members.map(row=>row.instanceId)).size,5);
     awakeCalls.push(options.seed);
@@ -302,7 +302,7 @@ async function main(){
    assert.equal(await ui('document.querySelector("[data-pve-stock]")===null'),true);
    const secretCalls=[];
    mockPve=(plan,options)=>{
-    assert.deepEqual(options,{stageId:11,groupId:11,battleMode:266,seed:options.seed});
+    assert.deepEqual(options,{stageId:11,groupId:11,battleMode:266,seed:options.seed,damageFloor:true});
     assert.equal(plan.members.length,5);
     secretCalls.push(options.seed);
     return {...sample,...options,waveCount:3,wavesCleared:3};
@@ -709,7 +709,7 @@ async function main(){
   const heroes=Object.fromEntries(ids.map(id=>['stock-'+id,{heroId:id,level:40,star:6,awake:1,equips:[],
    skinfo:data.gameConfig.heroes[id].skills.map(s=>[s,1])}]));
   const stats=[['attack_flat',486],['speed',57],['defense_flat',104],['attack_rate',.55],['hp_flat',2052],['crit_rate',.55]];
-  const hero_equips=['海月火玉','针女','火灵','元兴寺','心眼','网切'].flatMap((setId,i)=>stats.map(([mainAttrType,mainAttrValue],j)=>({
+  const hero_equips=['海月火玉','破势','火灵','元兴寺','心眼','狂骨'].flatMap((setId,i)=>stats.map(([mainAttrType,mainAttrValue],j)=>({
    id:`stock-${i}-${j}`,slot:j+1,quality:6,level:15,setId,mainAttrType,mainAttrValue,subAttributes:[{type:'crit_rate',value:.1}]
   })));
   const calls=[];let winner,lateLoser;
@@ -911,7 +911,7 @@ async function main(){
    heroes[prefix]={heroId:Number(m.shikigamiId),level:m.level,star:m.star,awake:m.awakening,
     skinfo:m.skills.map(s=>[s.id,s.level]),equips,
     attrs:[[8000,0,0,0],[101,0,0,0],[.5,0,0,0],[.1,0,0,0],[500,0,0,0],[2500,0,0,0],0,0]};
-   equips.forEach((id,i)=>items.push({id,slot:i+1,quality:6,level:15,setId:'招财猫',
+   equips.forEach((id,i)=>items.push({id,slot:i+1,quality:6,level:15,setId:'火灵',
     mainAttrType:['attack_flat','speed','defense_flat','attack_rate','hp_flat','crit_rate'][i],
     mainAttrValue:[486,57,104,.55,2052,.55][i],subAttributes:[{type:'crit_rate',value:.1}]}));
   }

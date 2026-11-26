@@ -6,7 +6,7 @@ const path=require('node:path');
 const {execFile}=require('node:child_process');
 const {promisify}=require('node:util');
 const {createHash}=require('node:crypto');
-const {readConfig}=require('./rune-runner.cjs');
+const {readConfig,matchesDamagePolicy}=require('./rune-runner.cjs');
 const {resourceVersion}=require('../app/rune-lineup.js');
 const {engineSHA256}=require('../app/rune-openings.js');
 
@@ -35,6 +35,7 @@ function verifyReport(report,seed,team,suits){
   throw Error('虚无原版引擎未返回可核验的双波战报');
  }
  const plan=JSON.parse(team);
+ if(!matchesDamagePolicy(report,plan.damageFloor===true))throw Error('虚无原版复跑没有返回所选伤害口径');
  if(!rounds.every((round,index)=>round.onmyojiId===plan.rounds[index].onmyoji.heroId&&round.spiritId===(plan.rounds[index].spirit?.id??null)))
   throw Error('虚无战报的阴阳师或契灵与选定配置不一致');
  return report;

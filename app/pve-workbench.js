@@ -104,7 +104,7 @@
   return row;
  }
 
- async function replay(run,row,plan){
+ async function replay(run,row,plan,damageFloor=false){
   const teamKey=AtlasRuneSearch.teamKey(plan);
   for(const seed of seeds){
    if(!active(run))return;
@@ -113,7 +113,7 @@
    let report;
    run.native=true;
    const {stageId,groupId,battleMode}=run.pane;
-   try{report=await api.runPve(plan,{stageId,groupId,seed,...(battleMode?{battleMode}:{})});}
+   try{report=await api.runPve(plan,{stageId,groupId,seed,...(battleMode?{battleMode}:{}),...(damageFloor?{damageFloor:true}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
    row.samples.push(report);
@@ -208,8 +208,8 @@
    if(!active(run))return;
    const names=item.heroIds.map(id=>run.data.gameConfig.heroes[id]?.name||`式神 ${id}`);
    const row=addRow(run,`${item.title} · ${names.join('、')}`);
-   row.details.insertAdjacentHTML('beforeend','<p class="caption">备选使用 60 级晴明、满级言灵·星和言灵·守。</p>');
-   try{await replay(run,row,item.plan);}
+   row.details.insertAdjacentHTML('beforeend','<p class="caption">备选使用 60 级晴明、满级言灵·星和言灵·守。我方伤害浮动取下限。</p>');
+   try{await replay(run,row,item.plan,true);}
    catch(error){if(active(run))row.state.textContent=runeError(error);}
    if(!active(run)||row.verdict!=='pass'||!run.pane.codeStageId)continue;
    try{

@@ -5,7 +5,7 @@ const C=require('../app/core.js');
 const G=require('../app/game-config.js');
 const R=require('../app/rune-candidate.js');
 const T=require('../desktop/ta-codec.cjs');
-const {candidates,teamKey,sampleSeeds,baseSampleSeeds,hun13Candidates,hun13Key,hun13SampleSeeds}=require('../app/rune-search.js');
+const {candidates,pveCandidates,teamKey,sampleSeeds,baseSampleSeeds,hun13Candidates,hun13Key,hun13SampleSeeds}=require('../app/rune-search.js');
 const data=require('../data/bundle.json');
 
 function inventory(){
@@ -16,9 +16,9 @@ function inventory(){
  }));
  const types=['attack_flat','speed','defense_flat','attack_rate','hp_flat','crit_rate'];
  const values=[486,57,104,.55,2052,.55];
- const gear=Array.from({length:36},(_,index)=>{
+ const gear=Array.from({length:48},(_,index)=>{
   const slot=index%6;
-  return {id:'soul-'+index,setId:['海月火玉','针女','火灵','元兴寺','心眼','网切'][Math.floor(index/6)],
+  return {id:'soul-'+index,setId:['海月火玉','针女','火灵','元兴寺','心眼','网切','破势','狂骨'][Math.floor(index/6)],
    slot:slot+1,level:15,quality:6,mainAttrType:types[slot],mainAttrValue:values[slot],
    subAttributes:[{type:'crit_rate',value:.1}]};
  });
@@ -31,12 +31,14 @@ test('魂王独立于阵容码生成队伍，只使用互不重复的库存实�
  const found=candidates(account,data);
  assert.ok(found.length>0&&found.length<=6);
  const candidate=found[0];
+ assert.equal(candidate.plan.damageFloor,true);
  const members=candidate.plan.members;
  assert.equal(new Set(members.map(row=>row.instanceId)).size,5);
  assert.ok(members.every(row=>row.hero===account.heroes[row.instanceId].raw));
  const souls=members.flatMap(row=>row.souls);
  assert.equal(new Set(souls.map(row=>row.id)).size,30);
  assert.ok(souls.every(row=>row===account.souls[row.id].raw));
+ assert.ok(souls.every(row=>!['针女','网切'].includes(row.setId)));
  assert.ok(members.every(row=>new Set(row.souls.map(q=>q.slot)).size===6));
  assert.deepEqual(candidate.plan.onmyoji.skinfo,[[1003,5],[1008,5],[1011,5]]);
  assert.equal(candidate.plan.onmyoji.aiSkill,2);
@@ -44,6 +46,27 @@ test('魂王独立于阵容码生成队伍，只使用互不重复的库存实�
  assert.equal(Object.hasOwn(candidate.plan.spirit,'uid'),false);
  const existing=found.map(row=>teamKey(row.plan));
  assert.ok(candidates(account,data,existing).every(row=>!existing.includes(teamKey(row.plan))));
+});
+
+test('库存搜索同等稀有度优先少随机技能，再优先有已核实日期的新式神',()=>{
+ const raw=inventory();
+ const ids=[556,591,608];
+ const skills={...data.gameConfig.skills};
+ raw.heroes=Object.fromEntries(ids.map(id=>{
+  const sources=data.gameConfig.heroes[id].skills;
+  const skinfo=sources.map(skillId=>{
+   const entry=skills[skillId];
+   skills[skillId]={...entry,variants:Object.fromEntries(Object.entries(entry.variants).map(([key,levels])=>
+    [key,levels.map(row=>({...row,description:id===591?'有 25% 的概率追加攻击。':'固定攻击目标。',upgrade:'',
+     branches:[],aiBranches:[],related:[]}))]))};
+   return [skillId,G.levels(data.gameConfig,skillId,1).at(-1).level];
+  });
+  return ['hero-'+id,{heroId:id,level:40,star:6,awake:1,equips:[],skinfo}];
+ }));
+ const catalog={...data,gameConfig:{...data.gameConfig,skills}};
+ assert.equal(pveCandidates(C.parseAccount(raw),catalog,1)[0].heroIds[0],608);
+ delete raw.heroes['hero-608'];
+ assert.equal(pveCandidates(C.parseAccount(raw),catalog,1)[0].heroIds[0],556);
 });
 
 test('魂王有可用群疗式神时优先试能抵消低生命惩罚的配搭',()=>{
