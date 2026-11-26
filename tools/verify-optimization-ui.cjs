@@ -1247,7 +1247,8 @@ async function main(){
   await ui('selectView("accounts");$("account-equip-presets").open=true');
   assert.deepEqual(await ui('[...$("account-equip-preset-select").options].map(option=>option.textContent)'),['同名方案（1）','同名方案（2）']);
   assert.match(await ui('$("account-equip-preset-detail").textContent'),/引用 2 件 · 找到 1 件 · 库存未提供 1 件.*6 号位.*火灵.*6 星 · \+15/s);
-  await ui('$("account-equip-preset-select").value="1";$("account-equip-preset-select").dispatchEvent(new Event("change"));renderAccounts(false)');
+  await ui('$("account-equip-preset-select").value="1";$("account-equip-preset-select").dispatchEvent(new Event("change"));'+
+   'STATE={...STATE,accounts:STATE.accounts.map(row=>row===account()?{...row,server:"已核对的区服"}:row)};renderAccounts(false)');
   assert.deepEqual(await ui('[$("account-equip-presets").open,$("account-equip-preset-select").value]'),[true,'1']);
   assert.match(await ui('$("account-equip-preset-detail").textContent'),/此预设没有引用御魂/);
   win.setContentSize(720,960);

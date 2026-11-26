@@ -1009,8 +1009,9 @@ function accountAssets(a){
 function renderAccounts(recommendations=true){if(view!=='accounts')return;if(recommendations)renderRecommendations();
  const a=account();$('account-pagination').hidden=!a;
  if(!a){$('account-summary').innerHTML='';$('account-heroes').innerHTML='<p class="muted">导入平安志 JSON 后选择账号。</p>';$('account-souls').innerHTML='';return;}
- const expanded=accountInventoryCache?.account.id===a.id?[...$('account-summary').querySelectorAll('details[open]')].map(el=>el.id):[];
- const selectedPreset=accountInventoryCache?.account===a?$('account-equip-preset-select')?.value:null;
+ const previous=accountInventoryCache?.account,sameAccount=previous?.id===a.id;
+ const expanded=sameAccount?[...$('account-summary').querySelectorAll('details[open]')].map(el=>el.id):[];
+ const selectedPreset=sameAccount&&previous.snapshot?.equipPresets===a.snapshot?.equipPresets?$('account-equip-preset-select')?.value:null;
  if(accountInventoryCache?.account!==a){const heroes=Object.values(a.heroes).sort((a,b)=>b.level-a.level||Number(b.shikigamiId)-Number(a.shikigamiId)||a.instanceId.localeCompare(b.instanceId)),souls=Object.values(a.souls),suitCounts=new Map();for(const s of souls){const count=suitCounts.get(s.set)||{total:0,maxed:0};count.total++;if(s.star===6&&s.level===15)count.maxed++;suitCounts.set(s.set,count);}accountInventoryCache={account:a,heroes,souls,suitCounts};}
  const {heroes,souls,suitCounts}=accountInventoryCache;
  const ownership=accountInventorySolver.equipmentOwnership(a);
