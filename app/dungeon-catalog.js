@@ -478,7 +478,7 @@
   }
 
   function encounterKind(entry) {
-    return entry.fengmoLive||['阴界之门入口','妖气封印','现世鬼王'].includes(entry.kind)||
+    return entry.fengmoLive||['阴界之门入口','妖气封印','现世鬼王','现世妖约·策划鼠'].includes(entry.kind)||
       entry.table==='pve_stage_data'&&['daily','guild'].includes(entry.family)?entry.kind:titles[entry.table]||entry.kind;
   }
 
@@ -1167,7 +1167,8 @@
       if(!route||mapId!==null&&!route.entries.includes(mapId))return false;
       const stage=isMap?groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===id)?.row:row;
       const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===id);
-      return stage?.groupid===id&&stage.shishentotal===5&&formation?.row?.resindex===route.sceneId&&
+      return stage?.groupid===id&&stage.shishentotal===5&&
+        (!route.deadlineSeconds||stage.battleTime===route.deadlineSeconds)&&formation?.row?.resindex===route.sceneId&&
         formation.waves.length===route.waves.length&&formation.waves.every((wave,waveIndex)=>
           wave.length===route.waves[waveIndex].length&&wave.every(({position,id,level},i)=>{
             const [expectedSlot,expectedId,expectedLevel]=route.waves[waveIndex][i];
@@ -1184,7 +1185,7 @@
       return control;
     };
     const stage=select('关卡等级档','mapBossStage',stages.map(id=>[id,`${source.stages[id].level} 级档 · ${id}`]));
-    const canSimulateAlone=source.stages[stages[0]].battleMode===source.lbsMode;
+    const canSimulateAlone=source.partyPositions(source.stages[stages[0]].battleMode,1);
     const players=select('参战人数','mapBossPlayers',[
       ...(canSimulateAlone?[[1,'单人演练']]:[]),[2,'两人组队'],[3,'三人组队'],
     ]);
@@ -1194,11 +1195,14 @@
       const positions=source.partyPositions(route.battleMode,mapBossPlayers);
       const assignments=positions.map((indices,i)=>
         `${i?'队友 '+i:mapBossPlayers===1?'式神':'队长'} ${indices.join('、')} 号位`);
-      const enemies=route.waves.length>1?`敌方 ${route.waves.length} 波`:`敌方 ${Math.min(route.level,40)} 级`;
-      slots.textContent=`${enemies} · ${assignments.join(' · ')}`;
+      const enemies=route.waves.length>1?`敌方 ${route.waves.length} 波`:`敌方 ${route.waves[0][0][2]} 级`;
+      const limit=route.deadlineSeconds?` · 原版时限 ${route.deadlineSeconds} 秒 · 阴阳师被动 LBS周年烟花`:'';
+      slots.textContent=`${enemies} · ${assignments.join(' · ')}${limit}`;
+      const codeScene=DATA.gameConfig.stages[route.codeStageId];
       workbench.replaceChildren();
       window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:stageId,memberCount:positions.flat().length,battleMode:route.battleMode,
-        mapBossPlayers,waveCount:route.waves.length,label:`${route.label} · ${route.level} 级档`,version:source.resourceVersion});
+        mapBossPlayers,waveCount:route.waves.length,label:`${route.label} · ${route.level} 级档`,version:source.resourceVersion,
+        codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?route.codeStageId:null,codeLabel:codeScene?.name});
     };
     stage.addEventListener('change',render);players.addEventListener('change',render);
     render();

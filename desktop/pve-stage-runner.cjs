@@ -50,9 +50,7 @@ const engines={
   [battleMode,{name:engine,route,sha256:engineSHA256}])),
  [tianfa.battleMode]:{name:tianfa.engine,route:tianfa.route,sha256:tianfa.engineSHA256},
  [journeyHard.battleMode]:{name:'JSNormalEngine',route:'journey-hard-solo',sha256:journeyHard.engineSHA256},
- ...Object.fromEntries(mapBoss.battleModes.map(mode=>[mode,mode===mapBoss.lbsMode?
-  {name:'LBSBossEngine',route:'map-boss-local-team',sha256:mapBoss.lbsEngineSHA256}:
-  {name:'WorldBossEngine',route:'map-boss-local-team',sha256:mapBoss.engineSHA256}])),
+ ...Object.fromEntries(Object.entries(mapBoss.engines).map(([mode,engine])=>[mode,{...engine,route:'map-boss-local-team'}])),
  ...Object.fromEntries(Object.entries(tuzhizhuPractice.modes).map(([id,mode])=>
   [id,{name:mode.engine,route:'tuzhizhu-practice-solo',sha256:mode.sha256}])),
  [firstExperience.battleMode]:null,
@@ -505,7 +503,10 @@ function validMapBossReport(report,route,players){
  const data=report.mapBoss,rewards=data?.rewardInputs;
  if(report.sceneId!==route.sceneId||report.waveCount!==route.waves.length||data?.kind!==route.kind||
     data.level!==route.level||data.players!==players||!sameTactics(data.positions,mapBoss.partyPositions(route.battleMode,players)))return false;
- if(route.waves.length>1){
+ if(route.deadlineSeconds&&(data.deadlineSeconds!==route.deadlineSeconds||data.passiveSkill!==route.passiveSkill||
+    !Number.isFinite(data.combatSeconds)||data.combatSeconds<0||typeof data.timedOut!=='boolean'||
+    (data.timedOut&&(report.outcome!=='loss'||data.combatSeconds<route.deadlineSeconds))))return false;
+ if(route.waves.length>1||route.deadlineSeconds){
   const count=data.waves?.length;
   return Array.isArray(data.waves)&&count>=1&&count<=route.waves.length&&report.formationsVerified===count&&
    report.wavesCleared<=count&&(report.outcome!=='win'||report.wavesCleared===route.waves.length)&&

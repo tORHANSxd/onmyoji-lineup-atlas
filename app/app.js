@@ -238,6 +238,7 @@ function sampleBattleMarkup(samples){
     `河童${protectedUnits.targetAlive?'存活':'阵亡'} · 敌方剩余 ${protectedUnits.enemiesAlive} 位`:
    secretActor?`${describeBattle(sample)} · 指定角色 ${secretActor.name} · ${secretActor.level} 级 · ${secretActor.star} 星`:
    mapBoss?`${describeBattle(sample,false)} · ${mapBoss.players===1?'单人演练':mapBoss.players+' 人组队'} · ${mapBoss.level} 级档`+
+    (mapBoss.deadlineSeconds?` · ${mapBoss.timedOut?'达到原版时限 · ':''}战斗与结算 ${mapBoss.combatSeconds.toFixed(2)} 秒 · 原版时限 ${mapBoss.deadlineSeconds} 秒`:'')+
     (mapBoss.rewardInputs?` · ${mapBoss.kind==='yearBeast'?'虚弱阶段':'首领特殊阶段'}伤害比例 `+
       mapBoss.rewardInputs.phaseDamageRatio.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})+
       (mapBoss.rewardInputs.paperManCount?` · 小纸人 ${mapBoss.rewardInputs.paperManCount}`:''):''):

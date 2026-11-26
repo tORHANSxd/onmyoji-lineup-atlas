@@ -6,7 +6,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from dungeon_encounters import encounter_index
 from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
-from map_boss_stage import LBS_MODE, MODE, SEAL_MODE, entry_for_stage, party_positions
+from map_boss_stage import LBS_ACTIVITY_MODE, LBS_MODE, MODE, SEAL_MODE, entry_for_stage, party_positions
 
 
 class EncounterIndexTests(unittest.TestCase):
@@ -194,6 +194,33 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertIsNone(entry_for_stage(bosses, 10601, LBS_MODE))
         self.assertEqual(party_positions(LBS_MODE, 1), ((2, 3, 4),))
         self.assertIsNone(party_positions(MODE, 1))
+
+    def test_lbs_activity_connects_the_matching_site_rules_passive_and_lineup_code(self):
+        boss = {"id": 19042, "type": 58, "name": "LBS策划鼠鬼王", "gk_list": [[200180, 10]]}
+        site = {"act_id": 15037, "mapbossid": 19042}
+        rules = ["鼠鼠活动", "鼠鼠商店", "鼠鼠赠送"]
+        tables = {
+            "map_boss": [[19042, boss]],
+            "activity_lbs_intro": [[52, {"act_type": 58, "activity_id": 15037, "ui": ["window", "csd", *rules]}]],
+            "activity_offline_lbs_mass": [[408, site]],
+            "activity": [[15037, {}]],
+            "system_rule_dsc": [[key, {"rule_dsc": key}] for key in rules],
+            "battle_mode_routes": [[LBS_ACTIVITY_MODE, {"mode_symbol": "MODE_LBS_ACTIVITY_BOSS_NEW",
+                                                       "scene_engine": "LBSActivityBossEngine"}]],
+            "team_assist_stage": [[101006, {}]],
+            "pve_stage_data": [["200180", {"id": "200180", "groupid": 200180}]],
+            "BattleMonstersInfo": [[200180, {"resindex": 233}]],
+            "skill": [[{"$tuple": [skill, 1, -1]}, {}] for skill in range(101010, 101014)],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "daily", "fields": []} for name in tables]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entry = next(entry for entry in index["entries"] if entry["table"] == "map_boss")
+        self.assertEqual((entry["family"], entry["title"]), ("event", "现世妖约 · 广州塔策划鼠"))
+        self.assertEqual([ref["key"] for ref in entry["refs"][:8]], [52, 408, 15037, *rules, LBS_ACTIVITY_MODE, 101006])
+        self.assertIn({"$tuple": [101013, 1, -1]}, [ref["key"] for ref in entry["refs"]])
+        self.assertEqual(entry_for_stage({19042: boss}, 200180, LBS_ACTIVITY_MODE), ("lbsActivity", None, 233, None, 10))
+        self.assertIsNone(entry_for_stage({19042: boss}, 200180, LBS_MODE))
+        self.assertEqual(party_positions(LBS_ACTIVITY_MODE, 1), ((2, 3, 4, 5, 6),))
 
     def test_regional_boss_preserves_weighted_rules_and_level_one_modifier_variants(self):
         base_skill = {"$tuple": [61701, 1, -1]}

@@ -6,7 +6,7 @@
   pve_stage_data:'7d376d64c733f53882acc6e88291a4607b6c290828981fbad7adc3dcf7ad36b0',
   BattleMonstersInfo:'8747286d03333c0073d5d2d72e3cec1e89a25f043efb920ee4fcaa8b55b29111',
  };
- const bossMode=3000,sealMode=855,lbsMode=3001;
+ const bossMode=3000,sealMode=855,lbsMode=3001,lbsActivityMode=3022;
  const bossRoutes=[
   {base:14400,entries:[69],label:'石距',kind:'stone',sceneId:44,ids:[[23]]},
   {base:25300,entries:[73],label:'愤怒的石距',kind:'angryStone',sceneId:40055,ids:[[9991101,9997247,9998247]]},
@@ -67,7 +67,7 @@
  ].map(([base,entry,name,lastWave])=>({base,entries:[entry],label:'现世鬼王 · '+name,kind:'lbs',sceneId:39,ids:[...lbsFirstWaves,lastWave]}));
  const buildStages=(routes,battleMode)=>routes.flatMap(({ids, ...route})=>Array.from({length:9},(_,i)=>{
   const level=10+5*i,stageId=route.base+i;
-  const waves=ids.map((wave,waveIndex)=>wave.map((id,slot)=>{
+  const waves=route.waves??ids.map((wave,waveIndex)=>wave.map((id,slot)=>{
    // 椒图最低档第二波第三位保留原表的 1 级。
    const enemyLevel=stageId===1100&&waveIndex===1&&slot===2?1:
     Math.min(40,level-(battleMode===sealMode&&slot>0?3:0));
@@ -75,12 +75,23 @@
   }));
   return [stageId,{...route,battleMode,level,waves}];
  }));
- const stages=Object.fromEntries([...buildStages(bossRoutes,bossMode),...buildStages(sealRoutes,sealMode),...buildStages(lbsRoutes,lbsMode)]);
+ const activityRoutes=[
+  {base:200180,entries:[19042],label:'现世妖约 · 广州塔策划鼠'},
+  {base:200190,entries:[19043],label:'现世妖约 · 上海五角场策划鼠'},
+ ].map(route=>({...route,kind:'lbsActivity',sceneId:233,waves:[[[2,14451,40],[3,14452,40],[4,14453,40]]],
+  deadlineSeconds:300,passiveSkill:101013,codeStageId:101006}));
+ const stages=Object.fromEntries([...buildStages(bossRoutes,bossMode),...buildStages(sealRoutes,sealMode),
+  ...buildStages(lbsRoutes,lbsMode),...buildStages(activityRoutes,lbsActivityMode)]);
  const positions={2:[[5,6],[2,3,4]],3:[[3],[2,5],[4,6]]};
- const rules={resourceVersion:'0.0.816',battleModes:[bossMode,sealMode,lbsMode],lbsMode,tableSHA256,stages,
-  partyPositions:(mode,players)=>Number.isSafeInteger(players)?(mode===lbsMode&&players===1?[[2,3,4]]:positions[players]):undefined,
-  engineSHA256:'d11c14d3eb97e361bee50a58ac8666a56f3332b484e851a8dde36a80c7fe53b4',
-  lbsEngineSHA256:'045487760b52efb8c5f3157471c4cc8d21a3a3cb020fc1e11310cd4f17386a7d',
+ const singlePositions={[lbsMode]:[[2,3,4]],[lbsActivityMode]:[[2,3,4,5,6]]};
+ const worldBossEngine={name:'WorldBossEngine',sha256:'d11c14d3eb97e361bee50a58ac8666a56f3332b484e851a8dde36a80c7fe53b4'};
+ const engines={
+  [bossMode]:worldBossEngine,[sealMode]:worldBossEngine,
+  [lbsMode]:{name:'LBSBossEngine',sha256:'045487760b52efb8c5f3157471c4cc8d21a3a3cb020fc1e11310cd4f17386a7d'},
+  [lbsActivityMode]:{name:'LBSActivityBossEngine',sha256:'e5fceb3cace7a72b6b323b83db6cfafe6a5bfb4a1dce013a84388992b32b9062'},
+ };
+ const rules={resourceVersion:'0.0.816',battleModes:[bossMode,sealMode,lbsMode,lbsActivityMode],lbsMode,lbsActivityMode,tableSHA256,stages,engines,
+  partyPositions:(mode,players)=>Number.isSafeInteger(players)?(players===1?singlePositions[mode]:positions[players]):undefined,
  };
  if(typeof module==='object'&&module.exports)module.exports=rules;
  else root.AtlasMapBoss=rules;

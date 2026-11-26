@@ -3,12 +3,22 @@
 MODE = 3000
 SEAL_MODE = 855
 LBS_MODE = 3001
-MODES = (MODE, SEAL_MODE, LBS_MODE)
+LBS_ACTIVITY_MODE = 3022
+MODES = (MODE, SEAL_MODE, LBS_MODE, LBS_ACTIVITY_MODE)
 ENGINE = "battleengine.engine.WorldBossEngine"
 LBS_ENGINE = "battleengine.engine.LBSBossEngine"
+LBS_ACTIVITY_ENGINE = "battleengine.engine.LBSActivityBossEngine"
+LBS_ACTIVITY_SKILLS = (101010, 101011, 101012, 101013)
+LBS_ACTIVITY_ASSIST = 101006
+LBS_ACTIVITY_SECONDS = 300
+LBS_ACTIVITY_ENTRIES = {
+    19042: (52, 408, "广州塔"),
+    19043: (53, 409, "上海五角场"),
+}
 SOURCE_HASHES = {
     ENGINE: "d11c14d3eb97e361bee50a58ac8666a56f3332b484e851a8dde36a80c7fe53b4",
     LBS_ENGINE: "045487760b52efb8c5f3157471c4cc8d21a3a3cb020fc1e11310cd4f17386a7d",
+    LBS_ACTIVITY_ENGINE: "e5fceb3cace7a72b6b323b83db6cfafe6a5bfb4a1dce013a84388992b32b9062",
     "com.data.cdata.map_boss": "d88b6c83b76e7daa399684185869702a2e4e94f179dc58f0c9cb8b718f8e2a2f",
 }
 KINDS = {
@@ -22,8 +32,8 @@ POSITIONS = {2: ((5, 6), (2, 3, 4)), 3: ((3,), (2, 5), (4, 6))}
 
 
 def party_positions(mode, players):
-    if mode == LBS_MODE and players == 1:
-        return ((2, 3, 4),)
+    if players == 1:
+        return {LBS_MODE: ((2, 3, 4),), LBS_ACTIVITY_MODE: ((2, 3, 4, 5, 6),)}.get(mode)
     return POSITIONS.get(players)
 
 
@@ -37,6 +47,11 @@ def entry_for_stage(entries, stage_id, mode=None):
             for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
                 if stage == stage_id:
                     return kind, flag, scene, boss, level
+    if mode in (None, LBS_ACTIVITY_MODE):
+        for entry_id in LBS_ACTIVITY_ENTRIES:
+            for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
+                if stage == stage_id:
+                    return "lbsActivity", None, 233, None, level
     if mode in (None, SEAL_MODE, LBS_MODE):
         for entry_id, row in entries.items():
             kind = "seal" if mode != LBS_MODE and is_fragment_entry(entry_id, row) else (
@@ -55,7 +70,8 @@ class MapBossReplay:
         from com.data.cdata import map_boss
         from DynamicConfigData import DATA_PVE_STAGE_DATA, BattleMonstersInfo
 
-        sources = (LBS_ENGINE if mode == LBS_MODE else ENGINE, "com.data.cdata.map_boss")
+        engine_source = {LBS_MODE: LBS_ENGINE, LBS_ACTIVITY_MODE: LBS_ACTIVITY_ENGINE}.get(mode, ENGINE)
+        sources = (engine_source, "com.data.cdata.map_boss")
         if any(modules.rows[name]["marshalSHA256"] != SOURCE_HASHES[name] for name in sources):
             raise ValueError("The map boss engine or stage table has changed")
         entry = entry_for_stage(map_boss.data, stage_id, mode)
@@ -70,7 +86,11 @@ class MapBossReplay:
             raise RuntimeError("Original map boss stage and formation disagree")
         waves = formation["MonstersInfos"]
         self.wave_count = len(waves)
-        if flag is None:
+        self.lbs_activity = mode == LBS_ACTIVITY_MODE
+        if self.lbs_activity:
+            if stage.get("battleTime") != LBS_ACTIVITY_SECONDS or [len(wave) for wave in waves] != [3]:
+                raise RuntimeError("Original LBS activity timing or formation differs from the verified route")
+        elif flag is None:
             if [len(wave) for wave in waves] != [4, 4, 6]:
                 raise RuntimeError("Original map boss has an unexpected set of waves")
         elif len(waves) != 1 or waves[0][0][:2] != [1, self.boss_id]:
@@ -80,7 +100,17 @@ class MapBossReplay:
         params = {"pve_data_flag": str(stage_id)}
         if flag:
             params[flag] = True
-        if mode == LBS_MODE:
+        if self.lbs_activity:
+            from battleengine.engine.LBSActivityBossEngine import LBSActivityBossEngine, YYS_EXTRA_PASSIVE_SKILL_ID
+
+            if YYS_EXTRA_PASSIVE_SKILL_ID != LBS_ACTIVITY_SKILLS[-1]:
+                raise RuntimeError("Original LBS activity uses a different passive")
+            self.engine = LBSActivityBossEngine(params)
+            self.engine.battleMode = const.BattleMode.MODE_LBS_ACTIVITY_BOSS_NEW
+            self.started = None
+            self.passive_verified = False
+            self.observe_deadline()
+        elif mode == LBS_MODE:
             from battleengine.engine.LBSBossEngine import LBSBossEngine
 
             self.engine = LBSBossEngine(params)
@@ -120,8 +150,25 @@ class MapBossReplay:
             uid = entity.HeroComp.heroData.heroUid
             if uid in selected:
                 actual[uid] = entity.ownerController, entity.posIndex
+            if self.lbs_activity and uid == "selected-onmyoji":
+                skill = entity.SkillMgrComp.getSkillComp(LBS_ACTIVITY_SKILLS[-1])
+                self.passive_verified = skill is not None and skill.skillLevel == 1
         if actual != selected:
             raise RuntimeError("The original map boss placed the selected lineup differently")
+        if self.lbs_activity and not self.passive_verified:
+            raise RuntimeError("The original LBS activity did not install the Onmyoji passive")
+
+    def observe_deadline(self):
+        set_deadline = self.engine.set_haltBattleTime
+
+        def record_deadline(value):
+            now = self.engine.now_time()
+            if value is None or abs(value - now - LBS_ACTIVITY_SECONDS) > 1e-7:
+                raise RuntimeError("The original LBS activity set a different battle limit")
+            self.started = now
+            return set_deadline(value)
+
+        self.engine.set_haltBattleTime = record_deadline
 
     def observe_waves(self):
         spawn, create = self.engine._createNextRoundMons, self.engine.createMonsterEntity
@@ -165,6 +212,13 @@ class MapBossReplay:
     def report(self, outcome):
         if not self.waves or outcome == "win" and len(self.waves) != self.wave_count:
             raise RuntimeError("The original map boss did not create enemies")
+        if self.lbs_activity:
+            if self.started is None or not self.passive_verified:
+                raise RuntimeError("The original LBS activity did not start combat")
+            return {"kind": self.kind, "level": self.level, "players": len(self.positions),
+                    "positions": self.positions, "waves": self.waves, "passiveSkill": LBS_ACTIVITY_SKILLS[-1],
+                    "deadlineSeconds": LBS_ACTIVITY_SECONDS, "timedOut": outcome == "loss" and bool(self.engine.isHaltBattle),
+                    "combatSeconds": round(self.engine.now_time() - self.started, 6)}
         if self.wave_count > 1:
             return {"kind": self.kind, "level": self.level, "players": len(self.positions),
                     "positions": self.positions, "waves": self.waves}

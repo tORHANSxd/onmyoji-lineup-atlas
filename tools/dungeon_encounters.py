@@ -4,7 +4,7 @@ from collections import Counter
 from functools import cache
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
-from map_boss_stage import LBS_MODE, SEAL_MODE, is_fragment_entry
+from map_boss_stage import LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS, LBS_MODE, SEAL_MODE, is_fragment_entry
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 
 
@@ -435,6 +435,26 @@ def encounter_index(source, load_rows):
             elif row.get("type") == 2:
                 if route := relation("battle_mode_routes", LBS_MODE, "现世鬼王战斗引擎", False):
                     links.append(route)
+            elif activity_route := LBS_ACTIVITY_ENTRIES.get(row.get("id")):
+                intro_id, site_id, _ = activity_route
+                _, intro = table("activity_lbs_intro").get(str(intro_id), (None, {}))
+                _, site = table("activity_offline_lbs_mass").get(str(site_id), (None, {}))
+                if intro.get("act_type") == row.get("type") and site.get("mapbossid") == row.get("id") \
+                        and site.get("act_id") == intro.get("activity_id"):
+                    refs = (("activity_lbs_intro", intro_id, "活动入口配置"),
+                            ("activity_offline_lbs_mass", site_id, "活动地点"),
+                            ("activity", intro["activity_id"], "活动开放时间"))
+                    links.extend(ref for dest, value, label in refs
+                                 if (ref := relation(dest, value, label, False)))
+                    for rule, label in zip(intro.get("ui", ())[2:5], ("挑战规则", "现世商店规则", "现世赠送规则")):
+                        links.append(rule_reference(rule, label))
+                refs = (("battle_mode_routes", LBS_ACTIVITY_MODE, "策划鼠战斗引擎"),
+                        ("team_assist_stage", LBS_ACTIVITY_ASSIST, "暴打策划鼠阵容码分类"))
+                links.extend(ref for dest, value, label in refs if (ref := relation(dest, value, label, False)))
+                for skill in LBS_ACTIVITY_SKILLS:
+                    label = "阴阳师被动" if skill == LBS_ACTIVITY_SKILLS[-1] else "策划鼠机制"
+                    if ref := relation("skill", level_one_skill(skill), label, False):
+                        links.append(ref)
             links.extend(relation("pve_stage_data", stage_id, label, True)
                          for stage_id, label in map_boss_stages.get(row.get("id"), {}).items())
         if name == "BattleMonstersInfo":
@@ -718,6 +738,9 @@ def encounter_index(source, load_rows):
             elif table_name == "map_boss" and row.get("type") == 2:
                 entry_kind = "现世鬼王"
                 title = f"{entry_kind} · {title}"
+            elif table_name == "map_boss" and key in LBS_ACTIVITY_ENTRIES:
+                entry_family, entry_kind = "event", "现世妖约·策划鼠"
+                title = f"现世妖约 · {LBS_ACTIVITY_ENTRIES[key][2]}策划鼠"
             if table_name == "MZB_fengmo":
                 trait_id = row.get("skill_id")
                 _, trait = table("skill").get(reference_key(level_one_skill(trait_id)), (None, {}))

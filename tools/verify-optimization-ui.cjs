@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,855,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,855,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -342,7 +342,7 @@ async function main(){
    known('superghost',100942,5),known('superghost-five',100943,5),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
-   known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),
+   known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
    known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
    known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
@@ -639,6 +639,23 @@ async function main(){
     await ui('qaEncounterInput("daily","地图首领入口 桃花妖 1001")');
     await until(panel+'.textContent.includes("此入口的原版复跑待接入")');
     assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='map_boss'&&entry.key===19042&&entry.kind==='现世妖约·策划鼠')){
+    await encounter('event','现世妖约 广州塔策划鼠');
+    assert.match(await ui(panel+'.textContent'),/原版时限 300 秒 · 阴阳师被动 LBS周年烟花.*2026-09-25.*40.*LBSActivityBossEngine.*101006/s);
+    const rank='document.querySelector("[data-map-boss-stage]")';
+    assert.equal(await ui(rank+'.options.length'),9);
+    await ui(`${rank}.value="200188";${rank}.dispatchEvent(new Event("change"))`);
+    const expected={stageId:200188,groupId:200188,battleMode:3022,mapBossPlayers:1};
+    const report={kind:'lbsActivity',players:1,level:50,deadlineSeconds:300,passiveSkill:101013,timedOut:false,combatSeconds:113.1};
+    assert.match(await run('lbs-rat',expected,{mapBoss:report}),/单人演练 · 50 级档 · 战斗与结算 113\.10 秒 · 原版时限 300 秒/);
+    mockPve=(_plan,request)=>{
+     assert.deepEqual(request,{...expected,seed:0,damageFloor:true});
+     return {...sample,seed:request.seed,outcome:'loss',wavesCleared:0,mapBoss:{...report,timedOut:true,combatSeconds:302.86}};
+    };
+    await ui(start+'.click()');
+    await until(status+'.textContent.includes("未通过本次采样")');
+    assert.match(await ui(reports+'.textContent'),/达到原版时限 · 战斗与结算 302\.86 秒/);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');
