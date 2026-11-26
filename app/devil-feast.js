@@ -72,8 +72,25 @@
    return {ghost,difficulty,label:['简单','普通','困难'][difficulty-1],waveCount:ghost===1?3:1};
   },
  };
+ const fusion={
+  resourceVersion:laolao.resourceVersion,battleMode:3016,stageId:laolao.fusionStageId,sceneId:400200,memberCount:5,
+  deadlineSeconds:1200,bosses:[4899001,4899002,4899003,4899004],
+  groupBosses:[4899001,4899003,4899002,4899004],bossNames:['大姥姥','二姥姥','三姥姥','四姥姥'],
+  engine:{name:'LaoLaoHuoEngine',route:'laolao-fusion-local-team',
+   sha256:'ac7f1be55eb7e980507b354d89ffd6a4d9999f4487615395bc603f4040a8fd28'},
+  sceneSHA256:'724f26dde92dd4eda9fd4a0f59fe1001d7d4db511f90995b610c4d3824d5df2d',
+  tableSHA256:laolao.tableSHA256,
+  validSettings(settings){
+   if(!settings||Object.keys(settings).length!==5)return false;
+   const {group,windowSeconds,sharedHpPercent,faith,factions}=settings;
+   return ranged(group,1,4)&&ranged(windowSeconds,1,this.deadlineSeconds)&&laolao.validSettings({faith,factions})&&
+    Array.isArray(sharedHpPercent)&&sharedHpPercent.length===4&&Array.from(sharedHpPercent).every(value=>
+     Number.isFinite(value)&&value>=0&&value<=100)&&sharedHpPercent.some(Boolean)&&
+    (sharedHpPercent.reduce((sum,value)=>sum+value,0)<=100||sharedHpPercent[this.bosses.indexOf(this.groupBosses[group-1])]>0);
+  },
+ };
  return {
-  resourceVersion:'0.0.816',battleMode:445,teamType:190,stage,tower,laolao,
+  resourceVersion:'0.0.816',battleMode:445,teamType:190,stage,tower,laolao,fusion,
   validHp:hp=>typeof hp==='number'&&Number.isFinite(hp)&&hp>0&&hp<=Number.MAX_SAFE_INTEGER,
   engine:{name:'DevilFeastEngine',route:'devil-feast-activity',
    sha256:'63b9fd2c3a691fd0cf5b0f1290d30bb08c8552873bcf86d25c865d669e9b7695'},

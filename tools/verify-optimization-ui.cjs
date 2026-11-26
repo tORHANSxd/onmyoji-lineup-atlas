@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3016,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -893,9 +893,34 @@ async function main(){
     await ui(faith+'.scrollIntoView({block:"center",behavior:"instant"})');
     await capture('client-laolao-challenge');
     win.setContentSize(1440,1000);
-    await ui('qaEncounterInput("event","鬼王之宴 姥姥火·合魂 460000")');
+    await encounter('event','鬼王之宴 姥姥火·合魂 460000');
     await until(panel+'.textContent.includes("合魂集结规则")');
-    assert.equal(await ui(start+'===null'),true);
+    const fusionWindow='document.querySelector("[data-pve-fusion-window]")';
+    const fusionGroup='document.querySelector("[data-pve-fusion-group]")';
+    assert.equal(await ui(fusionWindow+'.max'),'1200');
+    assert.equal(await ui(fusionGroup+'.querySelector(\'option[value="2"]\').textContent'),'三姥姥');
+    await choose('superghost-five');
+    await ui(fusionWindow+'.value="1201";'+fusionWindow+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(`(()=>{
+     const update=(input,value)=>{input.value=value;input.dispatchEvent(new Event('input'));};
+     update(${fusionWindow},240);
+     update(document.querySelector('[data-pve-laolao-faith]'),150);
+     for(const input of document.querySelectorAll('[data-pve-fusion-hp]'))update(input,26);
+    })()`);
+    assert.match(await ui(panel+'.textContent'),/开场总余血 26% · 从单首领阶段开始/);
+    const fusionSettings={group:1,windowSeconds:240,sharedHpPercent:[26,26,26,26],faith:150,factions:[]};
+    const fusionResponse={settings:fusionSettings,reason:'bosses-defeated',damage:9144667,combatSeconds:146.78,sharedHp:[0,0,0,0],
+     transition:{seconds:14},phases:[{phase:1,seconds:0,opening:[{}]},{phase:2,seconds:46.64,opening:[{},{},{}]}]};
+    const fusionReport=await run('superghost-five',{stageId:460000,groupId:460000,battleMode:3016,fusionSettings},
+     {laolaoFusion:fusionResponse,engineSeconds:157.88});
+    assert.match(fusionReport,/本队伤害 9,144,667 · 战斗与结算 146\.78 秒 · 计分时长 240 秒/);
+    assert.match(fusionReport,/合魂阶段 · 46\.64 秒进场 · 原版生成 3 位首领.*14\.00 秒达到 25% 转阶段阈值/s);
+    win.setContentSize(720,960);
+    assert.equal(await ui('document.documentElement.scrollWidth<=innerWidth+2'),true);
+    await ui(fusionWindow+'.scrollIntoView({block:"center",behavior:"instant"})');
+    await capture('client-laolao-fusion');
+    win.setContentSize(1440,1000);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');
