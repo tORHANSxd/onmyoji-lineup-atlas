@@ -7,7 +7,7 @@
  const ghostKingTower=AtlasDevilFeast.tower;
  const laolao=AtlasDevilFeast.laolao;
  const fusion=AtlasDevilFeast.fusion;
- const dusk=AtlasFengmoLive.duskWraith;
+ const {duskWraith:dusk,songstress:song}=AtlasFengmoLive;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -203,6 +203,13 @@
    pane.duskWindow.setAttribute('aria-invalid',String(!pane.duskWindow.validity.valid));
    pane.duskMusic.setAttribute('aria-invalid',String(!dusk.validSettings({...duskSettings,windowSeconds:1})));
   }
+  const songWindow=pane.songWindow?.valueAsNumber;
+  const songReady=!pane.songWindow||pane.songWindow.validity.valid;
+  pane.songWindowSeconds=songReady?songWindow:undefined;
+  if(pane.songWindow){
+   pane.songWindow.disabled=blocked;
+   pane.songWindow.setAttribute('aria-invalid',String(!songReady));
+  }
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   const coins=pane.artifactCoins?.valueAsNumber;
@@ -247,7 +254,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -263,6 +270,7 @@
    !laolaoReady?'请核对信仰之佑层数。':
    !fusionReady?'请核对合魂共享生命和计分时长。':
    !duskReady?'时长须为 1 至 1200 秒，乐律顺序须包含 2 至 6 号位且各出现一次。':
+   !songReady?`计分时长须为 1 至 ${song.windowLimit} 秒的整数。`:
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
@@ -356,6 +364,9 @@
     </fieldset>`:''}
     <p class="caption" id="pve-tower-hint" data-pve-tower-hint role="status"></p>
    </details>`:''}
+   ${config.songstress?`<label class="pve-lineup-field">本地计分时长（秒）
+    <input data-pve-song-window type="number" min="1" max="${song.windowLimit}" step="1" value="${song.defaultWindow}" required>
+   </label>`:''}
    ${config.duskWraith?`<fieldset class="pve-reserve"><legend>夜荒魂模拟条件</legend>
     <div class="actions">
      <label class="pve-lineup-field">计分时长（秒）
@@ -481,6 +492,7 @@
    laolaoFaith:part('laolao-faith'),laolaoFactions:all('laolao-faction'),laolaoHint:part('laolao-hint'),
    fusionGroup:part('fusion-group'),fusionWindow:part('fusion-window'),fusionHp:all('fusion-hp'),fusionHint:part('fusion-hint'),
    duskWindow:part('dusk-window'),duskMusic:part('dusk-music'),
+   songWindow:part('song-window'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
@@ -497,7 +509,7 @@
    update();
   };
   for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
-   ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,
+   ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
@@ -633,6 +645,7 @@
     ...(run.laolaoSettings?{laolaoSettings:run.laolaoSettings}:{}),
     ...(run.fusionSettings?{fusionSettings:run.fusionSettings}:{}),
     ...(run.duskSettings?{duskSettings:run.duskSettings}:{}),
+    ...(run.songWindowSeconds?{songWindowSeconds:run.songWindowSeconds}:{}),
     ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(mapBossPlayers?{mapBossPlayers}:{}),...(tianfaTeam?{tianfaTeam}:{}),
     ...(qinfeiBoss?{qinfeiBoss}:{}),
@@ -803,7 +816,7 @@
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
      pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
-     pane.duskWindow&&!pane.duskSettings)return;
+     pane.duskWindow&&!pane.duskSettings||pane.songWindow&&!pane.songWindowSeconds)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
@@ -816,6 +829,7 @@
    towerSettings:pane.towerSettings,
    laolaoSettings:pane.fusionWindow?null:pane.laolaoSettings,fusionSettings:pane.fusionSettings,
    duskSettings:pane.duskSettings,
+   songWindowSeconds:pane.songWindowSeconds,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
    sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins||guard?

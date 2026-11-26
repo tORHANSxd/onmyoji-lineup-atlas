@@ -41,6 +41,14 @@
  const rotationConstant=10631;
  const rotationSkills=[63402,63601,63404,63602,63405,63603,63406];
  const ref=(table,key,label)=>({table,key,label,found:true});
+ const songstress={
+  stageId:25016,battleMode:3015,codeStageId:10020217,sceneId:40065,
+  memberCount:6,windowLimit:1200,defaultWindow:600,
+  singer:9991300,umbrella:9991301,paper:9991311,whiteMaids:[9991303,9991304,9991305],blackMaids:[9991308,9991309,9991310],
+  phaseNames:['白衣侍女','黑衣侍女','救援歌伎'],
+  engine:{name:'HuaKuiEngine',route:'songstress-local-team',
+   sha256:'075c83107e6ad447a3901baf7710fa7292e2dea5431d1f15f50e6fdaa4007d00'},
+ };
  const duskWraith={
   stageId:25021,battleMode:3017,codeStageId:10020227,sceneId:4002271,eliteSceneId:4002272,
   memberCount:5,windowLimit:1200,defaultWindow:600,
@@ -73,6 +81,11 @@
     ref(route.ruleTable??'tipsInfoData_cn',route.rule,'客户端玩法说明'),
     ...coinConstants.map(([id,label])=>ref('Constant',id,label)),
    ];
+   if(route.stage===songstress.stageId){
+    refs.push(...songstress.blackMaids.map(id=>ref('monster',id,'第二阶段黑衣侍女')),
+     ...[[774,'黑衣侍女余血惩罚'],[779,'原版阶段控制'],[783,'白衣侍女击败增益']].map(([id,label])=>ref('skill',{$tuple:[id,1,-1]},label)),
+     ...[3628,3630,3631].map(id=>ref('Constant',id,'共享生命计算参数')));
+   }
    if(route.stage===duskWraith.stageId){
     refs.push(ref('BattleMonstersInfo',25022,'五位侍从编组'),ref('Combinesceneinfo',duskWraith.eliteSceneId,'侍从战斗场景'),
      ref('monster',993125,'首领再现的小鬼'),ref('BattleMonstersInfo',25026,'真身纸人编组'),
@@ -99,5 +112,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress};
 });

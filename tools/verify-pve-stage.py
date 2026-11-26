@@ -36,6 +36,7 @@ def replay(args, runtime, work):
     from journey_hard_stage import (JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, YINYANG_BOSS_STAGE, YINYANG_BOSS_WALL_SECONDS,
                                     JourneyHardReplay, YinYangBossReplay)
     from fengmo_dusk_stage import DUSK_MODE, DUSK_WALL_SECONDS, DuskWraithReplay
+    from fengmo_songstress_stage import SONG_MODE, SONG_WALL_SECONDS, SongstressReplay
     from laolao_fusion_stage import LAOLAO_FUSION_MODE, FUSION_WALL_SECONDS, LaolaoFusionReplay
     from pve_clock import NativePveClock, pve_wall_seconds
     from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, MEITUAN_MODE, NIAN_MODES,
@@ -87,6 +88,7 @@ def replay(args, runtime, work):
     ghost_king_tower = args.mode == TOWER_MODE
     laolao_challenge = args.mode == LAOLAO_MODE
     dusk_wraith = args.mode == DUSK_MODE
+    songstress = args.mode == SONG_MODE
     laolao_fusion = args.mode == LAOLAO_FUSION_MODE
     activity_score = SOLO_SCORE_MODES.get(args.mode)
     dojo_area = args.mode == DOJO_AREA_MODE
@@ -116,7 +118,7 @@ def replay(args, runtime, work):
         heroes = {**fighters, **{alias: profile for alias, (profile, _) in actors.items()}}
     else:
         actor, fighters, inventory, choices = selected_team(
-            plan, suits, member_limit=6 if yanwu or shilian or tianfa else 5,
+            plan, suits, member_limit=6 if yanwu or shilian or tianfa or songstress else 5,
             select_actor=not ten_boss and (args.mode != 266 or "onmyoji" in plan))
         heroes = {**fighters, "selected-onmyoji": actor} if actor else dict(fighters)
         if shilian:
@@ -316,6 +318,14 @@ def replay(args, runtime, work):
         laolao = LaolaoChallengeReplay(modules, args.stage, args.laolao_settings)
         engine, group, const = laolao.engine, laolao.group, laolao.const
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif songstress:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 6:
+            raise ValueError("Songstress requires six owned shikigami")
+        song = SongstressReplay(modules, args.song_window)
+        engine, group, const = song.engine, song.group, song.const
+        group_id, wave_count = group["ID"], 1
     elif dusk_wraith:
         from DynamicConfigData import DATA_HERO
 
@@ -544,6 +554,8 @@ def replay(args, runtime, work):
         route = "ghost-king-tower-archive"
     elif laolao_challenge:
         route = "laolao-challenge-solo"
+    elif songstress:
+        route = "songstress-local-team"
     elif dusk_wraith:
         route = "dusk-wraith-local-team"
     elif laolao_fusion:
@@ -741,7 +753,7 @@ def replay(args, runtime, work):
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == ten_groups[0]["resindex"]
                              and engine.defeat_monster_wave == 0 and engine.monster_wave_count == len(ten_groups)
                              and tuple(engine.wave_pve_flag_list) == tuple(group["ID"] for group in ten_groups))
-    elif yanwu or fengmo_band or band_together or devil_feast or ghost_king_tower or laolao_challenge or laolao_fusion or dusk_wraith or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or yinyang_boss or spider or hunling or qiling or shilian:
+    elif yanwu or fengmo_band or band_together or devil_feast or ghost_king_tower or laolao_challenge or laolao_fusion or dusk_wraith or songstress or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or yinyang_boss or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -782,6 +794,7 @@ def replay(args, runtime, work):
                       else DEVIL_FEAST_WALL_SECONDS if devil_feast
                       else TOWER_WALL_SECONDS if ghost_king_tower
                       else LAOLAO_WALL_SECONDS if laolao_challenge
+                      else SONG_WALL_SECONDS if songstress
                       else DUSK_WALL_SECONDS if dusk_wraith
                       else FUSION_WALL_SECONDS if laolao_fusion
                       else YINYANG_BOSS_WALL_SECONDS if yinyang_boss
@@ -804,7 +817,12 @@ def replay(args, runtime, work):
     artifact_replay = (ArtifactReplay(engine, controller, const, args.shilian_state, dao, start)
                        if shilian and args.shilian_state and args.shilian_state.get("artifacts") else None)
     if tactics:
-        boss = raid.boss["protoId"] if raid_battle else group["MonstersInfos"][0][0][1] if yanwu or qiling or activity_score else stage["monsters"][0][0]
+        if raid_battle:
+            boss = raid.boss["protoId"]
+        elif yanwu or qiling or activity_score or songstress or dusk_wraith:
+            boss = group["MonstersInfos"][0][0][1]
+        else:
+            boss = stage["monsters"][0][0]
         instructions = HuntOpening(engine, controller, const, tactics, boss)
 
     def verify_selected_equipment():
@@ -850,6 +868,8 @@ def replay(args, runtime, work):
             fusion.update(controller)
         if dusk_wraith:
             dusk.update()
+        if songstress:
+            song.update()
         if qinfei_food:
             map_boss_replay.advance_pile(controller)
         if secret_mechanic_replay:
@@ -1068,8 +1088,17 @@ def replay(args, runtime, work):
     if laolao_challenge:
         report["laolaoChallenge"] = laolao.report()
         report["formationsVerified"] = len(laolao.waves)
+    if songstress:
+        report["songstress"] = song.report(completed, outcome)
+        if instructions:
+            report["songstress"].update(instructions.report())
+        report["waveCount"] = 1
+        report["wavesCleared"] = int(outcome == "win")
+        report["formationsVerified"] = len(report["songstress"]["phases"])
     if dusk_wraith:
         report["duskWraith"] = dusk.report(completed, outcome)
+        if instructions:
+            report["duskWraith"].update(instructions.report())
         report["sceneId"] = group["resindex"]
         report["waveCount"] = 1
         report["wavesCleared"] = int(outcome == "win")
@@ -1172,6 +1201,7 @@ def main():
     from journey_hard_stage import (JOURNEY_HARD_MODE, YINYANG_BOSS_BUFF_IDS, YINYANG_BOSS_MODE,
                                     YINYANG_BOSS_STAGE, YINYANG_BOSS_WALL_SECONDS)
     from fengmo_dusk_stage import DUSK_MODE, DUSK_STAGE, DUSK_WALL_SECONDS, valid_dusk_settings
+    from fengmo_songstress_stage import SONG_MODE, SONG_STAGE, SONG_WALL_SECONDS, SONG_WINDOW
     from laolao_fusion_stage import LAOLAO_FUSION_MODE, LAOLAO_FUSION_STAGE, FUSION_WALL_SECONDS, valid_fusion_settings
     from pve_clock import pve_wall_seconds
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
@@ -1195,11 +1225,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
     parser.add_argument("--fusion-settings", type=json.loads)
     parser.add_argument("--dusk-settings", type=json.loads)
+    parser.add_argument("--song-window", type=int)
     parser.add_argument("--yinyang-drums", type=int, choices=range(10))
     parser.add_argument("--yinyang-buffs", type=int, nargs="+", choices=YINYANG_BOSS_BUFF_IDS)
     parser.add_argument("--devil-feast-hp", type=float)
@@ -1251,6 +1282,11 @@ def main():
             parser.error("Laolao Challenge requires one of its twelve stages and valid faith settings")
     elif args.laolao_settings is not None:
         parser.error("Laolao Challenge conditions apply only to its original mode")
+    if args.mode == SONG_MODE:
+        if args.stage != SONG_STAGE or args.song_window is None or not 1 <= args.song_window <= SONG_WINDOW:
+            parser.error("Songstress needs its original stage and a valid scoring window")
+    elif args.song_window is not None:
+        parser.error("Songstress scoring window applies only to its original mode")
     if args.mode == DUSK_MODE:
         if args.stage != DUSK_STAGE or not valid_dusk_settings(args.dusk_settings):
             parser.error("Night Wraith needs its original stage, music order and battle window")
@@ -1358,6 +1394,7 @@ def main():
                         LAOLAO_WALL_SECONDS + 20 if args.mode == LAOLAO_MODE else
                         FUSION_WALL_SECONDS + 20 if args.mode == LAOLAO_FUSION_MODE else
                         DUSK_WALL_SECONDS + 20 if args.mode == DUSK_MODE else
+                        SONG_WALL_SECONDS + 20 if args.mode == SONG_MODE else
                         YINYANG_BOSS_WALL_SECONDS + 20 if args.mode == YINYANG_BOSS_MODE else
                         BAND_TOGETHER_WALL_SECONDS + 20 if args.mode == BAND_TOGETHER_MODE else
                         TEN_REPLAY_SECONDS + 20 if args.mode in (*TEN_OWNED_MODES, TEN_BOSS_MODE, TEN_EXPLORE_MODE) else

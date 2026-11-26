@@ -15,9 +15,9 @@
   common?require('./general-soul-trial.js'):root.AtlasGeneralSoulTrial,
   (common?require('./journey-hard.js'):root.AtlasJourneyHard).boss,
   (common?require('./devil-feast.js'):root.AtlasDevilFeast).fusion,
-  (common?require('./fengmo-live.js'):root.AtlasFengmoLive).duskWraith);
+  common?require('./fengmo-live.js'):root.AtlasFengmoLive);
  if(common)module.exports=api;else root.AtlasRuneCandidate=api;
-})(globalThis,function(G,R,S,yanwu,band,qiling,crevice,ghost,qinfei,dojo,forest,tenBoss,generalSoul,yinYang,fusion,dusk){
+})(globalThis,function(G,R,S,yanwu,band,qiling,crevice,ghost,qinfei,dojo,forest,tenBoss,generalSoul,yinYang,fusion,fengmoLive){
 'use strict';
 
 const mainAttrs={attack_rate:'atk_per',crit_rate:'critical_rate',crit_damage:'critical_pow',speed:'spd',
@@ -115,10 +115,11 @@ function pveGoalMet(report,battleMode){
 
 const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.fengmoBand??report.fengmoBandTogether??report.qilingCollective??report.guildCrevice??
  report.superGhost??report.historicalSuperGhost??report.qinfeiBoss??report.dojoArea??report.guildForest??
- report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore??report.yinyangBoss??report.laolaoFusion??report.duskWraith;
+ report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore??report.yinyangBoss??report.laolaoFusion??report.duskWraith??report.songstress;
 const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===band.battleMode||mode===band.together.battleMode||mode===qiling.battleMode||
  mode===crevice.battleMode||mode===ghost.battleMode||mode===ghost.historicalBattleMode||mode===qinfei.battleMode||mode===dojo.battleMode||
- mode===forest.battleMode||mode===tenBoss.battleMode||mode===yinYang.battleMode||mode===fusion.battleMode||mode===dusk.battleMode||
+ mode===forest.battleMode||mode===tenBoss.battleMode||mode===yinYang.battleMode||mode===fusion.battleMode||
+ mode===fengmoLive.duskWraith.battleMode||mode===fengmoLive.songstress.battleMode||
  Object.hasOwn(generalSoul.modes,mode);
 const creditedDamage=report=>!report.guildHunt||report.outcome==='win';
 

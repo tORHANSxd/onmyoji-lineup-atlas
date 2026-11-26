@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3015,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -141,7 +141,7 @@ async function main(){
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
   const panel='$("client-dungeons-encounter-detail")';
-  const {encounters,duskWraith}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  const {encounters,duskWraith,songstress}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
   assert.equal(entries.length,12);
   for(const entry of entries){
    const query=entry.title.replace(' · ',' ');
@@ -160,6 +160,9 @@ async function main(){
     assert.equal(await ui(music+'.getAttribute("aria-invalid")'),'true');
     await ui(`(()=>{const input=${music};input.value="6，5，4，3，2";input.dispatchEvent(new Event("input"));})()`);
     assert.equal(await ui(music+'.getAttribute("aria-invalid")'),'false');
+   }else if(entry.fengmoLive.stage===songstress.stageId){
+    assert.match(info,/六位式神和一位阴阳师.*第二阶段黑衣侍女.*白衣侍女击败增益/s);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-song-window]")?.valueAsNumber'),songstress.defaultWindow);
    }else assert.equal(await ui(panel+'.querySelector("[data-pve-stock]")'),null);
   }
   await ui('qaEncounterInput("daily","逢魔实战 稀有·土蜘蛛")');
@@ -351,7 +354,7 @@ async function main(){
    known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
-   known('dusk-wraith',10020227,5),
+   known('dusk-wraith',10020227,5),known('songstress',10020217,6,10,notes),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
    known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
@@ -946,6 +949,21 @@ async function main(){
      {outcome:'loss',wavesCleared:0,duskWraith});
     assert.match(details,/达到计分时限 · 本队伤害 289,754 · 作战 17\.00 \/ 17 秒/);
     assert.match(details,/初始形态 · 0\.00 秒进场 · 首领余血 100%/);
+    await encounter('daily','逢魔实战 稀有·鬼灵歌伎');
+    const windowField='document.querySelector("[data-pve-song-window]")';
+    await choose('songstress');
+    await ui(windowField+'.value="1201";'+windowField+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(windowField+'.getAttribute("aria-invalid")'),'true');
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(windowField+'.value="600";'+windowField+'.dispatchEvent(new Event("input"))');
+    const songstress={windowSeconds:600,reason:'singer-rescued',damage:44497047,combatSeconds:503.32,singerMaximum:19721319,
+     singerHp:6095047,umbrellaHp:0,whiteMaidsDefeated:21,punishments:2,remainingMaidsAtRescue:0,
+     phases:[{phase:1,seconds:0,singerHp:19721319},{phase:2,seconds:282.52,singerHp:13523815},
+      {phase:3,seconds:406.1,singerHp:6398134}]};
+    const songReport=await run('songstress',{stageId:25016,groupId:25016,battleMode:3015,songWindowSeconds:600},
+     {songstress},tactical,10,6);
+    assert.match(songReport,/已救出歌伎 · 本队伤害 44,497,047.*黑衣侍女 · 282\.52 秒进场/s);
+    assert.match(songReport,/余血惩罚 2 次 · 救援时尚存黑衣侍女 0 位.*持伞人剩余生命 0/s);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');
