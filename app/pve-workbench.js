@@ -4,7 +4,6 @@
  const seeds=AtlasRuneSearch.baseSampleSeeds;
  const isDamageMode=AtlasRuneCandidate.damageMode;
  const isWaveMode=mode=>mode===2001;
- const screenSize=2,finalistCount=5;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
  function checkedLineups(){
@@ -122,7 +121,8 @@
   const teamKey=relay?AtlasRuneSearch.relayKey(plan):AtlasRuneSearch.teamKey(plan);
   for(const seed of seeds.slice(row.samples.length,sampleCount)){
    if(!active(run))return;
-   run.message=`正在复跑第 ${row.index} 套 · 种子 ${seed}`;
+   run.message=scoring?`正在${sampleCount===seeds.length?'复评':'初筛'}第 ${row.index} 套 · 已完成 ${row.samples.length} / ${sampleCount} 场 · 种子 ${seed}`:
+    `正在复跑第 ${row.index} 套 · 种子 ${seed}`;
    update();
    let report;
    run.native=true;
@@ -317,41 +317,24 @@
  }
 
  async function scoreStock(run,candidates){
-  const shortlist=[];
-  const tried=new Set(run.alternatives);
-  async function screen(item){
-   const key=AtlasRuneSearch.teamKey(item.plan);
-   if(!active(run)||tried.has(key))return;
-   tried.add(key);
-   const candidate=addCandidate(run,item);
-   await replayCandidate(run,candidate,screenSize);
-   if(candidate.row.verdict==='screened')shortlist.push({...candidate,score:AtlasRuneCandidate.damageResult(candidate.row.samples)});
+  const cards=new Map();
+  const {trials,finalists}=await AtlasRuneCandidate.rankedDamageSearch(candidates,run.data.gameConfig,{
+   active:()=>active(run),alternatives:run.alternatives,
+   async measure(trial,count){
+    if(!cards.has(trial))cards.set(trial,addCandidate(run,trial.item));
+    const candidate=cards.get(trial);
+    candidate.row.verdict='unknown';
+    await replayCandidate(run,candidate,count);
+    return candidate.row.samples;
+   },
+  });
+  if(!active(run))return;
+  for(const trial of trials.filter(trial=>trial.score&&!finalists.includes(trial))){
+   const {row}=cards.get(trial);
+   row.state.textContent=`初筛 ${trial.samples.length} 场 · 平均伤害 ${damageText(trial.score.average)} · 未进入六场复评`;
+   run.alternatives.push(trial.key);
   }
-  for(const item of candidates){
-   if(!active(run))return;
-   await screen(item);
-  }
-  shortlist.sort((a,b)=>AtlasRuneCandidate.compareDamage(a.score,b.score));
-  const leader=shortlist[0];
-  if(leader){
-   for(const item of AtlasRuneSearch.scoreVariants(leader.item,run.data.gameConfig)){
-    if(!active(run))return;
-    await screen(item);
-   }
-  }
-  shortlist.sort((a,b)=>AtlasRuneCandidate.compareDamage(a.score,b.score));
-  const finalists=shortlist.slice(0,finalistCount);
-  if(leader&&!finalists.includes(leader))finalists[finalists.length-1]=leader;
-  for(const {row,item,score} of shortlist.filter(candidate=>!finalists.includes(candidate))){
-   row.state.textContent=`初筛 ${screenSize} 场 · 平均伤害 ${damageText(score.average)} · 未进入复评`;
-   run.alternatives.push(AtlasRuneSearch.teamKey(item.plan));
-  }
-  for(const candidate of finalists){
-   if(!active(run))return;
-   candidate.row.verdict='unknown';
-   await replayCandidate(run,candidate);
-   await makeCandidateCode(run,candidate);
-  }
+  for(const trial of finalists)await makeCandidateCode(run,cards.get(trial));
  }
 
  async function stockCandidates(run){

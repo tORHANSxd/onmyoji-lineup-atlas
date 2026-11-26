@@ -22,6 +22,32 @@ test('地域鬼王只在共同种子回合与承伤均占优时判定更佳',()=
  assert.equal(R.regionalResult([{...score(0,4,500),outcome:'loss'}]),null);
 });
 
+test('计分搜索允许第二套阵容凭开场操作反超，且决选使用相同六个种子',async()=>{
+ const groups=[[591,389,596,557,379],[591,389,596,554,379],[591,389,596,200,379]];
+ const items=groups.map((heroIds,index)=>({
+  title:String(index),heroIds,combatRoles:['bossDamage','lightDamage','orbs','healer','support'],
+  panels:heroIds.map((_,i)=>({attack:5000-i*300,crit:1,critDamage:2,speed:120+i*10})),
+  plan:{onmyoji:{heroId:10},members:heroIds.map(heroId=>({instanceId:String(heroId),souls:[],aiSkill:0,
+   hero:{heroId,awake:1,skinfo:data.gameConfig.heroes[heroId].skills.map(id=>[id,1])}}))},
+ }));
+ const calls=[];
+ const result=await R.rankedDamageSearch(items,data.gameConfig,{active:()=>true,async measure(trial,count){
+  const index=trial.item.heroIds[3]===554?1:trial.item.heroIds[3]===200?2:0;
+  const tactics=trial.item.plan.tactics;
+  const damage=index===1&&tactics?.manualOpening?2200:[1600,1400,800][index];
+  const seeds=baseSampleSeeds.slice(trial.samples.length,count);
+  calls.push({index,tactics,seeds});
+  return [...trial.samples,...seeds.map(seed=>({seed,completed:true,outcome:'win',guildHunt:{damage}}))];
+ }});
+ assert.ok(calls.some(call=>call.index===2&&call.tactics?.redBoss&&call.seeds.length===1));
+ assert.ok(calls.some(call=>call.index===1&&call.tactics?.autoMode?.mode==='spell'));
+ const winner=result.finalists[0];
+ assert.equal(winner.item.heroIds[3],554);
+ assert.equal(winner.item.plan.tactics.manualOpening,true);
+ assert.ok(result.finalists.some(trial=>trial.item===items[0]));
+ for(const trial of result.finalists)assert.deepEqual(trial.samples.map(report=>report.seed),baseSampleSeeds);
+});
+
 function inventory(){
  const ids=[591,389,596,557,379];
  const heroes=Object.fromEntries(ids.map(id=>{

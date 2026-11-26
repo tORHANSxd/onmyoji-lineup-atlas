@@ -110,6 +110,78 @@ function compareDamage(a,b){
  return b.average-a.average||b.min-a.min||b.max-a.max;
 }
 
+async function rankedDamageSearch(items,game,{measure,active,alternatives=[]}){
+ const seeds=S.baseSampleSeeds, trials=[], registered=new Set(alternatives);
+ const rank=rows=>rows.filter(row=>row.score).sort((a,b)=>compareDamage(a.score,b.score));
+ const seedDamage=row=>personalScore(row.samples[0])?.damage??0;
+ async function advance(trial,count){
+  if(!active())return;
+  trial.samples=await measure(trial,count);
+  trial.score=trial.samples.length===count&&trial.samples.every((report,i)=>report.seed===seeds[i])?
+   damageResult(trial.samples):null;
+ }
+ async function enter(item,count){
+  const key=S.teamKey(item.plan);
+  if(!active()||registered.has(key))return null;
+  registered.add(key);
+  const trial={item,key,samples:[],score:null};
+  trials.push(trial);
+  await advance(trial,count);
+  return trial;
+ }
+ const baselines=[];
+ for(const item of items){
+  const trial=await enter(item,2);
+  if(trial?.score)baselines.push(trial);
+ }
+ const rankedBase=rank(baselines), control=rankedBase[0];
+ const anchorKeys=new Set();
+ const anchors=rankedBase.filter(({item})=>{
+  const key=item.plan.members.map(member=>Number(member.hero.heroId)).sort((a,b)=>a-b).join(',');
+  if(anchorKeys.has(key))return false;
+  anchorKeys.add(key);
+  return true;
+ }).slice(0,3);
+ for(const trial of rankedBase){
+  if(anchors.length===3)break;
+  if(!anchors.includes(trial))anchors.push(trial);
+ }
+ const groups=[];
+ for(const anchor of anchors){
+  if(!active())break;
+  const {probes,variants}=S.scoreVariants(anchor.item,game);
+  const group={anchor,variants,probes:[]};
+  for(const item of probes){
+   const trial=await enter(item,1);
+   if(trial?.score)group.probes.push(trial);
+  }
+  groups.push(group);
+ }
+ const bestSeed=group=>Math.max(seedDamage(group.anchor),...group.probes.map(seedDamage));
+ const promising=[...groups].sort((a,b)=>bestSeed(b)-bestSeed(a)).slice(0,2);
+ for(const group of promising){
+  for(const item of group.variants){
+   const trial=await enter(item,1);
+   if(trial?.score)group.probes.push(trial);
+  }
+ }
+ const leaders=groups.map(group=>rank(group.probes)[0]).filter(Boolean);
+ const oneSeed=rank(groups.flatMap(group=>group.probes));
+ const paired=[...new Set([...leaders,...oneSeed])].slice(0,6);
+ for(const trial of paired)await advance(trial,2);
+
+ const retainControl=(rows,width)=>{
+  const selected=rank(rows).slice(0,width);
+  if(control?.score&&!selected.includes(control))selected.splice(Math.min(width-1,selected.length),1,control);
+  return selected;
+ };
+ const review=retainControl([...baselines,...paired],7);
+ for(const trial of review)await advance(trial,3);
+ const finalists=retainControl(review,5);
+ for(const trial of finalists)await advance(trial,seeds.length);
+ return {trials,finalists:rank(finalists.filter(trial=>trial.samples.length===seeds.length))};
+}
+
 function waveResult(samples){
  if(!samples.length||samples.some(report=>!report.completed||report.waveCount!==70||
     !Number.isInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>70))return null;
@@ -256,6 +328,6 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageMode,damageResult,compareDamage,waveResult,
+return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageMode,damageResult,compareDamage,rankedDamageSearch,waveResult,
  regionalResult,regionalDominates,underworldTemplates,scoreInstructions,readScoreInstructions,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
 });

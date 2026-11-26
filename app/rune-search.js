@@ -182,8 +182,10 @@ function configFor(name,id,openingSpeed,bossSpeed,earlySpeed,set){
 }
 
 function teamKey(plan){
+ const tactics=plan.tactics&&Object.keys(plan.tactics).sort().map(key=>[key,key==='autoMode'?
+  [plan.tactics[key].slot,plan.tactics[key].mode]:plan.tactics[key]]);
  return JSON.stringify([plan.onmyoji,plan.spirit,plan.members.map(({instanceId,souls,aiSkill})=>
-  [instanceId,souls.map(row=>row.id).sort(),aiSkill]),...(plan.tactics?[plan.tactics]:[])]);
+  [instanceId,souls.map(row=>row.id).sort(),aiSkill]),...(tactics?.length?[tactics]:[])]);
 }
 
 function candidates(account,data,alternatives=[],dungeonId=102){
@@ -269,7 +271,8 @@ function buildCandidates(account,{gameConfig:game,roster,effects},profile,altern
    const key=teamKey(plan);
    if(seen.has(key))continue;
    seen.add(key);
-   sampled.push({dungeonId,title:strategy.name,heroIds:chosen.map(row=>row.id),plan,panels:fit.panels});
+   sampled.push({dungeonId,title:strategy.name,heroIds:chosen.map(row=>row.id),plan,panels:fit.panels,
+    combatRoles:chosen.map(row=>row.name)});
    if(sampled.length===max)break;
   }
  }
@@ -277,20 +280,28 @@ function buildCandidates(account,{gameConfig:game,roster,effects},profile,altern
 }
 
 function scoreVariants(item,game){
- const {plan,panels}=item;
- const slots=plan.members.map((member,index)=>({slot:index+1,member,panel:panels?.[index]}));
- const output=[...slots].sort((a,b)=>(b.panel?.attack??0)-(a.panel?.attack??0))[0];
+ const {plan,panels,combatRoles}=item;
+ const slots=plan.members.map((member,index)=>{
+  const panel=panels?.[index],id=Number(member.hero.heroId),role=combatRoles?.[index];
+  const attack=id===612?panel?.hp:panel?.attack;
+  const estimate=(attack??0)*(1+Math.min(1,panel?.crit??0)*Math.max(0,(panel?.critDamage??1)-1));
+  const offensive=role?!!roles[role]?.damage:roles.bossDamage.heroes.some(([hero])=>hero===id);
+  return {slot:index+1,member,panel,offensive,estimate};
+ });
+ const [output,second]=[...slots].sort((a,b)=>Number(b.offensive)-Number(a.offensive)||b.estimate-a.estimate);
  const first=[...slots].sort((a,b)=>(b.panel?.speed??0)-(a.panel?.speed??0))[0];
  const variant=(title,tactics,slot,aiSkill)=>({...item,title:`${item.title} · ${title}`,plan:{...plan,tactics,
   members:slot?plan.members.map((member,i)=>i+1===slot?{...member,aiSkill}:member):plan.members}});
  const red={redBoss:true},marks={...red,greenSlot:output.slot};
- const variants=[variant('开场红标',red),variant('开场红绿标',marks),variant('首动手动普攻',{manualOpening:true,...marks}),
+ const probes=[variant('开场红绿标',marks),variant('首动手动普攻',{manualOpening:true,...marks})];
+ const variants=[variant('开场红标',red),
   variant('自动妖术',{...marks,autoMode:{slot:output.slot,mode:'spell'}},output.slot,0),
   variant('自动普攻',{...marks,autoMode:{slot:first.slot,mode:'basic'}},first.slot,0)];
  const {hero}=output.member;
  const lock=G.aiChoices(game,{hero_id:hero.heroId,awake:hero.awake,skills:hero.skinfo}).filter(choice=>choice.slot>1&&choice.value!==output.member.aiSkill).at(-1);
  if(lock)variants.push(variant(`锁定第 ${lock.slot} 技能`,marks,output.slot,lock.value));
- return variants;
+ if(second?.offensive)variants.push(variant('绿标另一位输出',{...red,greenSlot:second.slot}));
+ return {probes,variants};
 }
 
 function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpeed=0,battleMode=3,actorId=null){
