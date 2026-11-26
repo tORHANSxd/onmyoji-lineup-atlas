@@ -14,3 +14,14 @@ SHILIAN_DAOS = {
     5: (938, 939, "ShiLianYanLingEngine", 110154),
     6: (940, 941, "ShiLianKongQueMingWangEngine", 110155),
 }
+
+
+def shilian_event_dao(row):
+    """Identify the permanent route from the matching client stage and pool ranges."""
+    battle_id, group = row.get("battle_id"), row.get("group_id")
+    if type(battle_id) is not int or type(group) is not int:
+        return None
+    dao = battle_id // 100 - 6999
+    if dao in SHILIAN_DAOS and group // 10 == dao:
+        return dao
+    return None

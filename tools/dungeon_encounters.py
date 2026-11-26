@@ -3,7 +3,7 @@
 from collections import Counter
 from functools import cache
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
-from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS
+from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 
 
 ROOTS = {
@@ -407,6 +407,11 @@ def encounter_index(source, load_rows):
             if row.get("type") == 40:
                 links.extend(ref for key in shilian_battles.get(row.get("event_group"), ())
                              if (ref := relation("shilian_event_battles", key, "原版战斗候选", False)))
+        if name == "shilian_event_battles" and (dao := shilian_event_dao(row)):
+            team, _, engine, code = SHILIAN_DAOS[dao]
+            targets = (("shilian_liudao", dao, "所属路线"), ("battle_team_routes", team, f"途中战斗引擎 {engine}"),
+                       ("team_assist_stage", code, "路线阵容码"))
+            links.extend(ref for dest, key, label in targets if (ref := relation(dest, key, label, False)))
         if name == "hunling_tansuo":
             region_id = row.get("id")
             links.append(rule_reference("qilingzhijing_map_tips", "地域开放与探索规则"))
@@ -621,6 +626,10 @@ def encounter_index(source, load_rows):
                           "shilian_level": row.get("grade_str")}.get(table_name, title)
                 parts = ("六道之门", label) if table_name == "shilian_liudao" else ("六道之门", label, detail)
                 title = " · ".join(filter(None, parts))
+            if table_name == "shilian_event_battles" and (dao := shilian_event_dao(row)):
+                _, realm = table("shilian_liudao").get(reference_key(dao), (None, {}))
+                _, battle = table("pve_stage_data").get(reference_key(row["battle_id"]), (None, {}))
+                title = " · ".join(filter(None, ("六道之门", name(realm), name(battle))))
             if table_name == "hunling_tansuo":
                 title = f"契灵之境 · {title}"
             if table_name == "hunling_boss":

@@ -1,13 +1,15 @@
 (() => {
 'use strict';
 
-const resourceVersion='0.0.816',battleMode=921,difficulty=1;
+const resourceVersion='0.0.816',battleMode=921,eventMode=208,difficulty=1;
 const tableSHA256={
  shilian_event_exam:'ece4724433f17119fbf5b29da9ba9cea75a0d564388abe695cb389a13f3a3df7',
  shilian_liudao:'a844aea0c9cb52aaeac319043e8bf60f8b1b885eb3b3cdc4a16d4bcd9e0aef9e',
  pve_stage_data:'7d376d64c733f53882acc6e88291a4607b6c290828981fbad7adc3dcf7ad36b0',
  BattleMonstersInfo:'8747286d03333c0073d5d2d72e3cec1e89a25f043efb920ee4fcaa8b55b29111',
 };
+const eventTableSHA256='16b323010f26def2b0db1b1b589e9f0151b82a80e5b5b0d293335613fb07d0eb';
+const eventSceneIds=[469102,469109,469111,469112,469114,469115];
 const trials=[
  {stageId:700036,dao:1,sceneId:469103,codeStageId:110150,eligible:[219,234,252],
   engine:'ShiLianYueDuEngine',sha256:'875bca1a805f379d5baf5499e8962325202e3e1d8a38dd7dc292fd03a21ead00',
@@ -24,7 +26,13 @@ const trials=[
   engine:'ShiLianKongQueMingWangEngine',sha256:'25aaedad16cb1f1e317a1b9680790ad7c52efa99afc17b91130264dfb2e999fc'},
 ];
 const routes=Object.fromEntries(trials.map(trial=>[trial.stageId,trial]));
-const value={resourceVersion,battleMode,difficulty,tableSHA256,routes};
+const byDao=Object.fromEntries(trials.map(trial=>[trial.dao,trial]));
+const eventRoute=stageId=>{
+ const dao=Math.floor(stageId/100)-6999,trial=byDao[dao];
+ if(!trial)return null;
+ return {dao,sceneId:eventSceneIds[dao-1],eligible:trial.eligible,codeStageId:trial.codeStageId,engine:trial.engine,sha256:trial.sha256};
+};
+const value={resourceVersion,battleMode,eventMode,difficulty,tableSHA256,eventTableSHA256,routes,eventRoute};
 if(typeof module==='object'&&module.exports)module.exports=value;
 else globalThis.AtlasSixRealmsExams=value;
 })();

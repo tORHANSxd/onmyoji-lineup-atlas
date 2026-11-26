@@ -1153,19 +1153,26 @@
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
     const exams=window.AtlasSixRealmsExams;
-    if(entry.table==='shilian_event_exam'&&matchesOpeningSource(exams)){
-      const exam=groups[0].row,trial=exams.routes[exam?.battle_id];
+    const sixRealmsEvent=entry.table==='shilian_event_battles';
+    if((sixRealmsEvent||entry.table==='shilian_event_exam')&&matchesOpeningSource(exams)){
+      const exam=groups[0].row,stageId=exam?.battle_id;
+      const trial=sixRealmsEvent?exams.eventRoute(stageId):exams.routes[stageId];
       const group=groups.find(({ref})=>ref.table==='BattleMonstersInfo');
       const realm=groups.find(({ref})=>ref.table==='shilian_liudao');
       const codeScene=DATA.gameConfig.stages[trial?.codeStageId];
-      if(trial&&exam.dao===trial.dao&&realm?.row?.hero?.join()===trial.eligible.join()&&
-         group?.ref.key===trial.stageId&&group?.row?.resindex===trial.sceneId&&codeScene?.actors===1&&codeScene.shikigami===6){
-        const scenario='以六位式神的满生命阵容复跑档位 1。途中技能、增益和守护条件见路线资料。';
+      const routeAgrees=sixRealmsEvent?Math.floor(exam?.group_id/10)===trial?.dao&&[0,1,2].includes(exam?.battle_type)&&
+        state.index.tables.find(table=>table.name==='shilian_event_battles')?.source?.marshalSHA256===exams.eventTableSHA256:
+        exam?.dao===trial?.dao;
+      if(trial&&routeAgrees&&realm?.row?.hero?.join()===trial.eligible.join()&&
+         group?.ref.key===stageId&&group?.row?.resindex===trial.sceneId&&codeScene?.actors===1&&codeScene.shikigami===6){
+        const scenario=sixRealmsEvent?'填写当局难度和前行步数。以满生命阵容复跑，途中取得的技能与守护条件见路线资料。':
+          '以六位式神的满生命阵容复跑档位 1。途中技能、增益和守护条件见路线资料。';
         destination.append(node('p',scenario,'caption'));
         if(trial.phases)destination.append(node('p','月之海按原版两阶段战斗复跑，演出等待使用原版服务端超时机制并在战报单列。','caption'));
-        window.AtlasPveWorkbench?.mount(destination,{stageId:trial.stageId,groupId:group.ref.key,memberCount:6,waveCount:trial.phases?.length??1,
-          battleMode:exams.battleMode,version:exams.resourceVersion,codeStageId:trial.codeStageId,codeLabel:codeScene.name,
-          trialEligible:trial.eligible,label:'六道之门 · 单场首领试炼'});
+        window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:group.ref.key,memberCount:6,waveCount:trial.phases?.length??1,
+          battleMode:sixRealmsEvent?exams.eventMode:exams.battleMode,version:exams.resourceVersion,codeStageId:trial.codeStageId,codeLabel:codeScene.name,
+          trialEligible:trial.eligible,shilianEventId:sixRealmsEvent?exam.id:null,
+          label:sixRealmsEvent?'六道之门 · 途中战斗':'六道之门 · 单场首领试炼'});
       }
     }
     if(entry.table==='hunling_boss')mountQiLingWindow(destination,Number(entry.key));

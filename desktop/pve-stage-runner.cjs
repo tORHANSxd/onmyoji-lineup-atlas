@@ -41,11 +41,17 @@ const engines={
   [id,{name:mode.engine,route:'tuzhizhu-practice-solo',sha256:mode.sha256}])),
  [firstExperience.battleMode]:null,
  [sixRealms.battleMode]:null,
+ [sixRealms.eventMode]:null,
 };
 const positive=value=>Number.isSafeInteger(value)&&value>0;
 const sha256=value=>createHash('sha256').update(value).digest('hex');
 const validHash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const regionModes=[3004,3023];
+const sixRealmsModes=[sixRealms.battleMode,sixRealms.eventMode];
+
+function validSixRealmsEvent(event){
+ return event&&positive(event.id)&&[1,2,3].includes(event.difficulty)&&Number.isSafeInteger(event.moves)&&event.moves>=0;
+}
 
 function validTactics(plan,battleMode){
  if(!Object.hasOwn(plan,'tactics'))return true;
@@ -296,8 +302,9 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsTrial,trialSlot}){
- const engine=sixRealmsTrial?{name:sixRealmsTrial.engine,route:'six-realms-full-health-trial',sha256:sixRealmsTrial.sha256}:
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot}){
+ const engine=sixRealmsRoute?{name:sixRealmsRoute.engine,sha256:sixRealmsRoute.sha256,
+  route:sixRealmsEvent?'six-realms-full-health-encounter':'six-realms-full-health-trial'}:
   resource?{name:resource.engine,route:resource.route,sha256:resource.engineSHA256??resourceEncounters.engineSHA256}:engines[battleMode];
  const awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
@@ -313,11 +320,13 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
  const invalidYuling=yuling&&(!Array.isArray(report?.opening)||report.opening.length!==yuling.enemies.length||
   !yuling.enemies.every((unit,index)=>Object.entries(unit).every(([key,value])=>report.opening[index]?.[key]===value)));
  const trial=report?.sixRealms;
- const invalidTrial=sixRealmsTrial&&(!trial||trial.dao!==sixRealmsTrial.dao||trial.difficulty!==sixRealms.difficulty||
+ const invalidEvent=sixRealmsEvent&&(trial?.eventId!==sixRealmsEvent.id||trial.moveCount!==sixRealmsEvent.moves||
+  ![0,1,2].includes(trial.battleType)||!Number.isFinite(trial.enemyAttributeBonus)||trial.enemyAttributeBonus<0);
+ const invalidTrial=sixRealmsRoute&&(!trial||trial.dao!==sixRealmsRoute.dao||trial.difficulty!==(sixRealmsEvent?.difficulty??sixRealms.difficulty)||
   trial.trialSlot!==trialSlot||trial.trialHero!==Number(rounds[0].members[trialSlot-1].hero.heroId)||
   !Number.isSafeInteger(trial.rounds)||trial.rounds<0||
-  (sixRealmsTrial.phases?!validMoonPhases(report,sixRealmsTrial.phases):
-   report.sceneId!==sixRealmsTrial.sceneId||report.waveCount!==1));
+  (sixRealmsRoute.phases?!validMoonPhases(report,sixRealmsRoute.phases):
+   report.sceneId!==sixRealmsRoute.sceneId||report.waveCount!==1));
  if(report?.resourceVersion!==resourceVersion||report.route!==engine.route||report.engineClass!==engine.name||
     report.engineSHA256!==engine.sha256||report.battleMode!==battleMode||report.stageId!==stageId||report.groupId!==groupId||
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
@@ -330,7 +339,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===orochi.battleMode&&!validOrochiReport(report,rounds[0]))||
     (hunlingRoute&&!validHunlingReport(report,hunlingRoute,capture))||
     (qilingEntry&&!validQiLingReport(report,qilingEntry,qilingWindow,rounds[0]))||
-    invalidTrial||
+    invalidTrial||invalidEvent||
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
@@ -371,16 +380,16 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
-     ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?[sixRealms.battleMode]:[])]};
+     ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,trialSlot}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
-   const maxMembers=[fengmoYanwu.battleMode,orochi.battleMode,sixRealms.battleMode].includes(battleMode)?6:5;
+   const maxMembers=[fengmoYanwu.battleMode,orochi.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
       typeof damageFloor!=='boolean'||!Array.isArray(rounds)||rounds.length<1||rounds.length>4||rounds.some(row=>
        !row?.onmyoji||!Array.isArray(row.members)||row.members.length<minMembers||row.members.length>maxMembers||!validTactics(row,battleMode))||
@@ -418,11 +427,15 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('请选择可用式盘和三个不同的出战式神位置');
    if(battleMode===3&&(hunling.routes[stageId]||stageId===800021||stageId>=810001&&stageId<=810009))
     throw Error('契灵之境需要使用原版探查、挑战或集结入口');
-   const sixRealmsTrial=battleMode===sixRealms.battleMode?sixRealms.routes[stageId]:null;
-   if(battleMode===sixRealms.battleMode&&(sixRealms.resourceVersion!==resourceVersion||!sixRealmsTrial||stageId!==groupId||
+   const isSixRealmsEvent=battleMode===sixRealms.eventMode;
+   const sixRealmsRoute=isSixRealmsEvent?sixRealms.eventRoute(stageId):
+    battleMode===sixRealms.battleMode?sixRealms.routes[stageId]:null;
+   if(sixRealmsModes.includes(battleMode)&&(sixRealms.resourceVersion!==resourceVersion||!sixRealmsRoute||stageId!==groupId||
       plan.members.length!==6||!Number.isInteger(trialSlot)||trialSlot<1||trialSlot>6||
-      !sixRealmsTrial.eligible.includes(Number(plan.members[trialSlot-1]?.hero?.heroId)))||trialSlot!==undefined&&!sixRealmsTrial)
-    throw Error('六道之门试炼需要同路线的六式神阵容和符合条件的试炼式神');
+      !sixRealmsRoute.eligible.includes(Number(plan.members[trialSlot-1]?.hero?.heroId)))||trialSlot!==undefined&&!sixRealmsRoute)
+    throw Error('六道之门需要同路线的六式神阵容和符合条件的试炼式神');
+   if(isSixRealmsEvent?!validSixRealmsEvent(sixRealmsEvent):sixRealmsEvent!==undefined)
+    throw Error('六道之门途中战斗需要有效的原版事件、难度档位和前行步数');
    const qilingEntry=battleMode===qilingGroups.battleMode?qilingGroups.routes[stageId]:null;
    if(battleMode===qilingGroups.battleMode&&(qilingGroups.resourceVersion!==resourceVersion||qilingEntry?.groupId!==groupId||
       plan.members.length!==5||!validQiLingWindow(qilingWindow,qilingEntry))||qilingWindow!==undefined&&!qilingEntry)
@@ -445,7 +458,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===3&&resourceEncounters.routes[stageId])throw Error('经验妖怪和金币妖怪需要资源副本的原版入口');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const deadlineMs=spider?645000:battleMode===306||qilingEntry?245000:sixRealmsTrial?175000:
+   const deadlineMs=spider?645000:battleMode===306||qilingEntry?245000:sixRealmsRoute?175000:
     hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000;
    const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
    let release,dir;
@@ -463,7 +476,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      '--guild-members',String(retreat.guildMembers),'--window-seconds',String(retreat.windowSeconds));
     if(regionModes.includes(battleMode))args.push('--region',JSON.stringify(region));
     if(capture)args.push('--capture-item',String(capture.itemId),'--capture-cards',...capture.cards.map(String));
-    if(sixRealmsTrial)args.push('--shilian-trial-slot',String(trialSlot));
+    if(sixRealmsRoute)args.push('--shilian-trial-slot',String(trialSlot));
+    if(isSixRealmsEvent)args.push('--shilian-event-id',String(sixRealmsEvent.id),'--shilian-difficulty',String(sixRealmsEvent.difficulty),
+     '--shilian-moves',String(sixRealmsEvent.moves));
     if(qilingEntry){
      args.push('--qiling-window',String(qilingWindow.windowSeconds));
      if(qilingWindow.startingHp!==undefined)args.push('--qiling-hp',String(qilingWindow.startingHp));
@@ -473,7 +488,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsTrial,trialSlot,
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');

@@ -21,7 +21,7 @@ def replay(args, runtime, work):
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
-    from shilian_routes import SHILIAN_EXAM_MODE
+    from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, SHILIAN_MODES
     from shilian_stage import MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, shilian_stage, verify_opening
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
@@ -43,7 +43,9 @@ def replay(args, runtime, work):
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
     spider = args.mode in PRACTICE_MODES
-    shilian = args.mode == SHILIAN_EXAM_MODE
+    shilian = args.mode in SHILIAN_MODES
+    shilian_event = ({"id": args.shilian_event_id, "difficulty": args.shilian_difficulty, "moves": args.shilian_moves}
+                     if args.mode == SHILIAN_EVENT_MODE else None)
     if relay:
         heroes, inventory, actors, rounds = underworld_teams(plan, suits)
     elif orochi:
@@ -107,7 +109,7 @@ def replay(args, runtime, work):
     elif shilian:
         from DynamicConfigData import DATA_HERO
 
-        engine, group, dao, const = shilian_stage(args.stage, fighters, args.shilian_trial_slot)
+        engine, group, dao, const = shilian_stage(args.stage, fighters, args.shilian_trial_slot, shilian_event)
         group_id, wave_count = group["ID"], 1
     elif qiling:
         from DynamicConfigData import DATA_HERO
@@ -251,7 +253,7 @@ def replay(args, runtime, work):
     elif qiling:
         route = "qiling-collective-local-window"
     elif shilian:
-        route = "six-realms-full-health-trial"
+        route = "six-realms-full-health-encounter" if shilian_event else "six-realms-full-health-trial"
     elif regional:
         route = "regional-boss-ordinary-scenario" if args.mode == REGION_MODE else "regional-boss-hard-scenario"
     elif yanwu:
@@ -392,7 +394,7 @@ def replay(args, runtime, work):
         raise RuntimeError("The original engine initialized a different battle")
     recorder = engine.battleRecorder or BattleRecorderRune(engine, controller)
     engine.battleRecorder = recorder
-    moon_trial = MoonTrial(engine, controller, group, choices) if shilian and dao == 1 else None
+    moon_trial = MoonTrial(engine, controller, group, choices) if args.mode == SHILIAN_EXAM_MODE and dao == 1 else None
     if not relay:
         engine.op_init(controller, actor_id, avatar.defaultHeros[:], [])
     engine.battleState = const.BattleState.BS_LOADING
@@ -406,6 +408,7 @@ def replay(args, runtime, work):
     equipped_spirit = None
     instructions = None
     trial_hero = None
+    event_bonus = None
     if tactics:
         boss = raid.boss["protoId"] if retreat else group["MonstersInfos"][0][0][1] if yanwu or qiling else stage["monsters"][0][0]
         instructions = HuntOpening(engine, controller, const, tactics, boss)
@@ -448,6 +451,8 @@ def replay(args, runtime, work):
             continue
         if shilian:
             trial_hero = verify_opening(engine, group, args.shilian_trial_slot)
+            if shilian_event:
+                event_bonus = engine.get_monster_add_all_attr_rate()
         pending = dict(choices)
         for entity in engine.heroEntities.values():
             if entity.ownerController is not controller:
@@ -519,6 +524,9 @@ def replay(args, runtime, work):
         report["sixRealms"] = {"dao": dao, "trialSlot": args.shilian_trial_slot, "trialHero": trial_hero,
                                "difficulty": engine.difficulty, "rounds": engine.lbs_bout_counter}
         report["wavesCleared"] = int(outcome == "win")
+        if shilian_event:
+            report["sixRealms"].update(eventId=shilian_event["id"], moveCount=engine.move_count,
+                                       battleType=engine.battle_type, enemyAttributeBonus=event_bonus)
         if moon_trial:
             phases = moon_trial.report(report["outcome"])
             report["sixRealms"].update(phases)
@@ -586,7 +594,7 @@ def main():
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
     from regional_boss_stage import REGION_MODES
     from resource_stage import RESOURCE_MODE
-    from shilian_routes import SHILIAN_EXAM_MODE
+    from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_MODES
     from shilian_stage import REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS
@@ -596,7 +604,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, QILING_GROUP_MODE, SHILIAN_EXAM_MODE, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, QILING_GROUP_MODE, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -610,6 +618,9 @@ def main():
     parser.add_argument("--qiling-window", type=int)
     parser.add_argument("--qiling-hp", type=int)
     parser.add_argument("--shilian-trial-slot", type=int, choices=range(1, 7))
+    parser.add_argument("--shilian-event-id", type=int)
+    parser.add_argument("--shilian-difficulty", type=int, choices=(1, 2, 3))
+    parser.add_argument("--shilian-moves", type=int)
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
@@ -625,15 +636,21 @@ def main():
         parser.error("A collective Hunling replay needs a valid scoring window and starting HP")
     if args.mode != QILING_GROUP_MODE and args.qiling_hp is not None:
         parser.error("Starting shared HP is only available for a collective Hunling replay")
-    if (args.mode == SHILIAN_EXAM_MODE) != (args.shilian_trial_slot is not None):
+    if (args.mode in SHILIAN_MODES) != (args.shilian_trial_slot is not None):
         parser.error("A Six Realms trial needs an explicit eligible roster position")
+    event_options = (args.shilian_event_id, args.shilian_difficulty, args.shilian_moves)
+    if args.mode == SHILIAN_EVENT_MODE:
+        if any(value is None for value in event_options) or args.shilian_event_id <= 0 or not 0 <= args.shilian_moves < 2 ** 53:
+            parser.error("A Six Realms encounter needs the original event ID, difficulty and a nonnegative move count")
+    elif any(value is not None for value in event_options):
+        parser.error("Six Realms encounter options are only valid for an encounter")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
                         OROCHI_REPLAY_SECONDS + 20 if args.mode == OROCHI_MODE else
                         HUNLING_REPLAY_SECONDS + 20 if args.mode in HUNLING_MODES else
                         QILING_GROUP_REPLAY_SECONDS + 20 if args.mode == QILING_GROUP_MODE else
-                        SHILIAN_REPLAY_SECONDS + 20 if args.mode == SHILIAN_EXAM_MODE else
+                        SHILIAN_REPLAY_SECONDS + 20 if args.mode in SHILIAN_MODES else
                         240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
     faulthandler.dump_traceback_later(watchdog_seconds, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:

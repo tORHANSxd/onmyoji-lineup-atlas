@@ -21,7 +21,7 @@ class EncounterIndexTests(unittest.TestCase):
             "shilian_area": [[14, {"type": 40, "event_group": 7, "tips_key": "island"}],
                              [15, {"type": 20, "event_group": 7}]],
             "shilian_event_battles": [[201, {"group_id": 7, "battle_id": 700120}],
-                                      [202, {"group_id": 8, "battle_id": 700121}]],
+                                      [202, {"group_id": 21, "battle_id": 700121}]],
             "pve_stage_data": [[str(key), {"id": key, "groupid": key}]
                                for key in (690036, 700036, 700101, 700120, 700121, 700133, 760000)],
             "BattleMonstersInfo": [[key, {"resindex": 100}]
@@ -54,6 +54,10 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertIn(("BattleScenesInfo", 811), references("shilian_event_exam", 2))
         self.assertIn(("shilian_event_exam", 3), references("pve_stage_data", 700133))
         self.assertIn(("shilian_event_battles", 201), references("pve_stage_data", 700120))
+        self.assertNotIn(("shilian_liudao", 2), references("shilian_event_battles", 201))
+        self.assertIn(("shilian_liudao", 2), references("shilian_event_battles", 202))
+        self.assertIn(("battle_team_routes", 927), references("shilian_event_battles", 202))
+        self.assertIn(("team_assist_stage", 110151), references("shilian_event_battles", 202))
         self.assertEqual([key for table, key in references("pve_stage_data", 760000) if table == "shilian_liudao"], [0, 1])
         self.assertEqual(references("shilian_area", 14), [("tipsInfoData_cn", "island"), ("shilian_event_battles", 201)])
         self.assertEqual(references("shilian_area", 15), [])

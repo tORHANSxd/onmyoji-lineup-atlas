@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,921,1031,1032,1041,2000,2001,3004,3005,3023,5550,5551,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,528,921,1031,1032,1041,2000,2001,3004,3005,3023,5550,5551,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -431,6 +431,22 @@ async function main(){
     await ui(start+'.click()');
     await until(status+'.textContent.includes("全随机分支待验证")',20000);
     assert.match(await ui(reports+'.textContent'),/首领阶段 2 \/ 2 · 服务端演出等待 90\.04 秒/);
+    await encounter('daily','六道之门战斗配置 香行域 700101 113');
+    await choose('six-realms');
+    const moves='document.querySelector("[data-pve-event-moves]")',difficulty='document.querySelector("[data-pve-event-difficulty]")';
+    await ui(moves+'.value="-1";'+moves+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(moves+'.value="12";'+moves+'.dispatchEvent(new Event("input"));'+difficulty+'.value="3"');
+    assert.equal(await ui(start+'.disabled'),false);
+    mockPve=(plan,request)=>{
+     assert.deepEqual(request,{battleMode:208,stageId:700101,groupId:700101,seed:request.seed,damageFloor:true,trialSlot:6,
+      sixRealmsEvent:{id:113,difficulty:3,moves:12}});
+     return {...sample,seed:request.seed,sixRealms:{dao:2,trialSlot:6,trialHero:217,difficulty:3,rounds:4,
+      eventId:113,moveCount:12,battleType:0,enemyAttributeBonus:.12}};
+    };
+    await ui(start+'.click()');
+    await until(status+'.textContent.includes("全随机分支待验证")',20000);
+    assert.match(await ui(reports+'.textContent'),/档位 3 · 前行 12 步 · 敌方属性系数加成 12%/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='800017'&&entry.kind==='契灵之境')){
     await encounter('daily','契灵之境 平安京 770005');

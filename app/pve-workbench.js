@@ -104,6 +104,13 @@
   pane.reserve=reserve;
   const capture=pane.captureItem?.value?{itemId:Number(pane.captureItem.value),cards:pane.captureCards.map(field=>Number(field.value))}:null;
   const captureReady=!capture||new Set(capture.cards).size===3;
+  const moves=pane.eventMoves?.valueAsNumber;
+  const eventReady=!pane.eventMoves||Number.isSafeInteger(moves)&&moves>=0;
+  if(pane.trial)pane.trial.disabled=blocked;
+  if(pane.eventMoves){
+   pane.eventMoves.disabled=blocked;
+   pane.eventDifficulty.disabled=blocked;
+  }
   pane.capture=capture;
   if(pane.captureItem){
    pane.captureItem.disabled=blocked;
@@ -115,7 +122,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -125,6 +132,7 @@
    blocked?'已有原版复跑或正在停止，请等待其结束。':
    selected.length&&reserve&&!reserve.ready?reserve.hint:
    !captureReady?'请选择三个不同的出战式神位置。':
+   !eventReady?'前行步数应为大于或等于 0 的整数。':
    job?.notice?job.notice:
    selected.length?`已选 ${selected.length} 套已知阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
    available.length?'从下拉列表选择，或先在阵容库勾选对应阵容。':'阵容库暂无可用于此副本的完整阵容。请先解析或手动制作阵容码。';
@@ -170,6 +178,12 @@
     <button class="secondary" type="button" data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
+   ${config.shilianEventId?`<div class="actions">
+    <label class="pve-lineup-field">难度档位 <select data-pve-event-difficulty>
+    ${[1,2,3].map(value=>`<option value="${value}">${value}</option>`).join('')}
+    </select></label>
+    <label class="pve-lineup-field">前行步数 <input data-pve-event-moves type="number" min="0" step="1" value="0" required></label>
+   </div>`:''}
    ${config.battleMode===AtlasTrueOrochi.battleMode?`<fieldset class="pve-reserve">
     <legend>备选阵容</legend>
     <p class="caption">备选式神沿用当前御魂。原版引擎按可用阵容继续挑战下一层。</p>
@@ -188,11 +202,15 @@
    <ol class="dungeon-battle-list" data-pve-results></ol>`;
   const part=name=>section.querySelector(`[data-pve-${name}]`);
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
-   trial:part('trial'),
+   trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial].filter(Boolean))field.onchange=()=>{
+  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.eventDifficulty].filter(Boolean))field.onchange=()=>{
+   if(job&&!busy())job.notice=null;
+   update();
+  };
+  if(pane.eventMoves)pane.eventMoves.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -229,7 +247,7 @@
    run.native=true;
    try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:true,...(battleMode?{battleMode}:{}),
     ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{}),...(qilingWindow?{qilingWindow}:{}),
-    ...(trialSlot?{trialSlot}:{})});}
+    ...(trialSlot?{trialSlot}:{}),...(run.sixRealmsEvent?{sixRealmsEvent:run.sixRealmsEvent}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
    row.samples.push(report);
@@ -371,6 +389,7 @@
   const focus=document.activeElement===pane.start;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    trialSlot:Number(pane.trial?.value)||0,
+   sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
    startingInventory:reserve?reserveInventory(reserve,inventory):inventory,
    pveMemberCount:pane.memberCount,message:'正在准备库存…'};
   pane.results.replaceChildren();

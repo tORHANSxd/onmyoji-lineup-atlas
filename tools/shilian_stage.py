@@ -1,46 +1,53 @@
-"""Replay a single Six Realms trial with full-health owned shikigami."""
+"""Replay Six Realms battles with full-health owned shikigami."""
 
 from importlib import import_module
 
-from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, SHILIAN_EXAM_MODE
+from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, shilian_event_dao
 
 
 REPLAY_SECONDS = 145
 TRIAL_DIFFICULTY = 1
 
 
-def shilian_stage(stage_id, fighters, slot):
+def shilian_stage(stage_id, fighters, slot, event=None):
     from com import const
-    from com.data.cdata import shilian_event_exam, shilian_liudao
+    from com.data.cdata import shilian_event_battles, shilian_event_exam, shilian_liudao
     from DynamicConfigData import BattleMonstersInfo, DATA_PVE_STAGE_DATA
 
-    trial = next((row for row in shilian_event_exam.data.values() if row["battle_id"] == stage_id), None)
-    if trial is None or trial["dao"] not in SHILIAN_DAOS or trial["battle_type"] != 2:
-        raise ValueError("This Six Realms trial is not available as a single offline replay")
-    dao = trial["dao"]
+    if event is None:
+        config = next((row for row in shilian_event_exam.data.values() if row["battle_id"] == stage_id), {})
+        dao = config.get("dao")
+        if dao not in SHILIAN_DAOS or config.get("battle_type") != 2:
+            raise ValueError("This Six Realms trial is not available as a single offline replay")
+    else:
+        config = shilian_event_battles.data.get(event["id"], {})
+        dao = shilian_event_dao(config)
+        if dao is None or config["battle_id"] != stage_id or config["battle_type"] not in (0, 1, 2):
+            raise ValueError("The Six Realms battle does not match the original route and encounter")
     realm = shilian_liudao.data[dao]
     alias = f"member-{slot}"
     if len(fighters) != 6 or alias not in fighters or fighters[alias]["heroId"] not in realm["hero"]:
-        raise ValueError("Six Realms trials need six owned shikigami and one eligible trial position")
+        raise ValueError("Six Realms battles need six owned shikigami and one eligible trial position")
 
     stage = DATA_PVE_STAGE_DATA.data[str(stage_id)]
     group = BattleMonstersInfo.data[stage["groupid"]]
-    if len(group["MonstersInfos"]) != (2 if dao == 1 else 1):
-        raise ValueError("The Six Realms trial does not have the expected enemy formations")
+    if len(group["MonstersInfos"]) != (2 if event is None and dao == 1 else 1):
+        raise ValueError("The Six Realms battle does not have the expected enemy formations")
     engine_name = SHILIAN_DAOS[dao][2]
     engine_class = getattr(import_module("battleengine.engine." + engine_name), engine_name)
     engine = engine_class({
         "pve_data_flag": str(stage_id),
         "dao_id": dao,
-        "is_exam": True,
+        "is_exam": event is None,
         "trial_hero_uid": alias,
         "trial_hero_id": fighters[alias]["heroId"],
         "battle_heroes_uid": list(fighters),
         "hero_attr_info": {uid: {"cur_hp_per": 1.0} for uid in fighters},
-        "difficulty": TRIAL_DIFFICULTY,
-        "battle_type": trial["battle_type"],
+        "difficulty": TRIAL_DIFFICULTY if event is None else event["difficulty"],
+        "move_count": 0 if event is None else event["moves"],
+        "battle_type": config["battle_type"],
     })
-    engine.battleMode = SHILIAN_EXAM_MODE
+    engine.battleMode = SHILIAN_EXAM_MODE if event is None else SHILIAN_EVENT_MODE
     return engine, group, dao, const
 
 
