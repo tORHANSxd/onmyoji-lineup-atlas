@@ -2,6 +2,7 @@
 
 from collections import Counter
 from functools import cache
+from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 
@@ -255,6 +256,21 @@ def encounter_index(source, load_rows):
     shilian_route_stages = {}
     for key, row in table("shilian_liudao").values():
         shilian_route_stages.setdefault(numeric_key(row.get("pve_id")), []).append(key)
+
+    crevice_stages = {}
+    crevice_by_boss = {}
+    crevice_targets = dict(table("guild_crevice_battle").values())
+    for stage_id in sorted(CREVICE_STAGES):
+        _, stage = table("pve_stage_data").get(str(stage_id), (None, None))
+        if not stage:
+            continue
+        _, group = table("BattleMonstersInfo").get(numeric_key(stage.get("groupid")), (None, None))
+        if not group:
+            continue
+        route = crevice_route(stage_id, stage, group, crevice_targets)
+        crevice_stages[str(stage_id)] = route
+        if stage_id == route["groupId"] and route["bossId"]:
+            crevice_by_boss[route["bossId"]] = stage_id
 
     def hunling_references(route):
         region, level, spirit, _ = route
@@ -514,6 +530,23 @@ def encounter_index(source, load_rows):
                 resolved = relation("guild_crevice_battle", key, "暗域敌人", True)
                 if resolved:
                     links.append(resolved)
+            links.extend(ref for dest, target, label in (
+                ("pve_stage_data", 6140051, "通用小怪关卡"),
+                ("battle_team_routes", 1161, "狭间暗域战斗入口"),
+                ("normal_battle_config", CREVICE_MODE, "战斗配置与时限"),
+                ("guild_crevice_const", 11, "小队战斗时限"),
+                ("guild_crevice_const", 12, "暗域活动时长"),
+                ("normal_battle_constant", 23, "击破小怪后的援助增益"),
+            ) if (ref := relation(dest, target, label, False)))
+        if name == "guild_crevice_battle" and (stage_id := crevice_by_boss.get(row["monster_id"])):
+            if ref := relation("pve_stage_data", stage_id, "查看敌方编组和模拟", False):
+                links.append(ref)
+        if name == "pve_stage_data" and (route := crevice_stages.get(numeric_key(row.get("id")))):
+            links.extend(ref for dest, target, label in (
+                ("guild_crevice_battle", route["bossId"], "暗域敌人规则"),
+                ("guild_crevice_area", route["area"], "所属暗域"),
+                ("battle_team_routes", 1161, "原版战斗入口"),
+            ) if (ref := relation(dest, target, label, False)))
         if name == "gve_battleinfo":
             week = row.get("week_day")
             if type(week) is int and 0 <= week < len(HUNT_CODE_TARGETS):
@@ -638,6 +671,9 @@ def encounter_index(source, load_rows):
             if table_name == "pve_stage_data" and row.get("name") in RESOURCE_STAGES:
                 entry_family, entry_kind = "daily", RESOURCE_STAGES[row["name"]][0]
                 title = f"{entry_kind} · 新服首次" if numeric_key(key) == "2111" else f"{entry_kind} · 编组 {row['groupid']}"
+            if table_name == "pve_stage_data" and numeric_key(key) in crevice_stages:
+                entry_family, entry_kind = "guild", "狭间暗域战斗"
+                title = f"狭间暗域 · {row['name'].removeprefix('阴界裂缝')}"
             if table_name == "pve_stage_data" and (floor := orochi_floors.get(numeric_key(key))):
                 entry_family, entry_kind = "daily", "真·八岐大蛇"
                 title = f"{entry_kind} · 第 {floor} 层"

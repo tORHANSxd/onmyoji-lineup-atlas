@@ -54,7 +54,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,402,528,921,1031,1032,1041,2000,2001,2069,2507,2600,3004,3005,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,402,528,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3004,3005,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -320,7 +320,7 @@ async function main(){
   const notes='资源 0.0.816，6 场离线结算。我方伤害取下限。阴阳师普攻 1 级。开场操作。入场前把第1位式神设为自动普攻。手动开场，首动普攻首领后切自动。红标首领。绿标第3位式神。全分支待验证。';
   const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
-   known('secret-race',10700011,5),
+   known('secret-race',10700011,5),known('crevice',10020211,5),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),
@@ -540,6 +540,19 @@ async function main(){
     assert.match(await run('qiling-group',{stageId:1,groupId:810002,battleMode:1041,qilingWindow:{windowSeconds:37,startingHp:123456}},
       {outcome:'loss',wavesCleared:0,qilingCollective:{reason:'window-expired',damage:23456,remainingHp:100000,combatSeconds:37,windowSeconds:37}}),
       /单场最高 23,456.*达到计分时限.*共享生命剩余 100,000/s);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&Number(entry.key)===6140011)){
+    await encounter('guild','6140011 狭间暗域');
+    assert.match(await ui(panel+'.textContent'),/敌方共享生命按原版满血初始化/);
+    const creviceTime='document.querySelector("[data-crevice-window]")';
+    await ui(`${creviceTime}.value="181";${creviceTime}.dispatchEvent(new Event("change"))`);
+    assert.equal(await ui(start+'===null'),true);
+    await ui(`${creviceTime}.value="30";${creviceTime}.dispatchEvent(new Event("change"))`);
+    assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-crevice']);
+    assert.match(await run('crevice',{stageId:6140011,groupId:6140011,battleMode:1121,creviceWindow:30},
+      {outcome:'loss',wavesCleared:0,guildCrevice:{reason:'window-expired',damage:318000,windowSeconds:30,
+       combatSeconds:30,sharedHp:true,enemies:[{position:1,startingHp:205000000,remainingHp:204682000}]}}),
+      /单场最高 318,000.*达到计分窗口.*共享生命余量.*204,682,000/s);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');

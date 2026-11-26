@@ -468,7 +468,7 @@
   }
 
   function encounterKind(entry) {
-    return entry.fengmoLive||entry.kind==='阴界之门入口'||entry.table==='pve_stage_data'&&entry.family==='daily'?entry.kind:titles[entry.table]||entry.kind;
+    return entry.fengmoLive||entry.kind==='阴界之门入口'||entry.table==='pve_stage_data'&&['daily','guild'].includes(entry.family)?entry.kind:titles[entry.table]||entry.kind;
   }
 
   function encounterKeyLabel(entry){
@@ -1146,6 +1146,38 @@
     render();
   }
 
+  function mountCreviceWindow(block,stageId,row,formation){
+    const source=window.AtlasGuildCrevice,route=source.routes[stageId];
+    if(!matchesOpeningSource(source)||row?.groupid!==route.groupId||row?.shishentotal!==5||
+       formation?.row?.resindex!==source.sceneId||formation.waves.length!==1||
+       formation.waves[0].length!==route.formation.length||!route.formation.every(([position,id,level],i)=>{
+         const unit=formation.waves[0][i];
+         return unit.position===position&&unit.id===id&&unit.level===level;
+       }))return;
+    const controls=node('div','','actions'),workbench=node('div'),label=node('label','计分窗口（秒）','pve-lineup-field');
+    const input=document.createElement('input'),limit=source.deadlineSeconds;
+    Object.assign(input,{type:'number',min:'1',max:String(limit),step:'1',value:String(limit),required:true});
+    input.dataset.creviceWindow='';
+    label.append(input);
+    controls.append(label);
+    block.append(node('p',route.kind===1?'小怪使用本队独立敌方血量。':
+      '敌方共享生命按原版满血初始化，战报只计本队伤害。','caption'),controls,workbench);
+    const render=()=>{
+      if(!input.checkValidity()){
+        window.AtlasPveWorkbench?.unmount();
+        workbench.replaceChildren(node('p',`计分窗口请输入 1 至 ${limit} 秒的整数。`,'caption'));
+        return;
+      }
+      const seconds=input.valueAsNumber;
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:route.groupId,battleMode:source.battleMode,
+        memberCount:5,waveCount:1,creviceWindow:seconds,scoreWindowSeconds:seconds,version:source.resourceVersion,
+        codeStageIds:route.codeStageIds,label:`狭间暗域 · ${route.label}`});
+    };
+    input.addEventListener('change',render);
+    render();
+  }
+
   async function showEncounter(entry) {
     if (!entry) return;
     window.AtlasPveWorkbench?.unmount();
@@ -1293,6 +1325,7 @@
       const spiritRoute=matchesOpeningSource(hunling)?hunling.routes[stageId]:null;
       const practice=Object.values(window.AtlasTuzhizhuPractice?.modes??{}).some(mode=>mode.groupId===stageId);
       if(practice)destination.append(node('p','请在「逢魔木桩练习」中选择普通入口或极词条，再按对应原版引擎复跑。','caption'));
+      else if(window.AtlasGuildCrevice.routes[stageId])mountCreviceWindow(destination,stageId,row,formation);
       else if(AtlasJourneyHard.routes[stageId])destination.append(node('p','从关联的京畿净化首领挑战入口填写祝福和时限。','caption'));
       else if(window.AtlasFengmoLive?.isLiveStage(stageId))destination.append(node('p','此编组用于逢魔实战。集结、评级与联机战报条件见逢魔实战入口。','caption'));
       else if(window.AtlasResourceEncounters.isResourceStage(row))showResourceEncounter(destination,stageId,row,formation);

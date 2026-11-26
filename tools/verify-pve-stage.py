@@ -16,6 +16,7 @@ def replay(args, runtime, work):
     from game_resources import sha256
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE, FengmoYanwuReplay, fengmo_yanwu_stage
     from general_soul_stage import SCORE_STAGES, SOLO_SCORE_MODES, SoloScoreReplay, solo_score_stage
+    from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, CREVICE_WALL_SECONDS, CreviceReplay
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
@@ -42,6 +43,7 @@ def replay(args, runtime, work):
     orochi = args.mode == OROCHI_MODE
     hunling = args.mode in HUNLING_MODES
     qiling = args.mode == QILING_GROUP_MODE
+    crevice = args.mode == CREVICE_MODE
     retreat = args.mode == RETREAT_MODE
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
@@ -129,6 +131,14 @@ def replay(args, runtime, work):
         collective = QiLingGroupReplay(args.stage, args.qiling_window, args.qiling_hp)
         engine, group, const = collective.engine, collective.group, collective.const
         group_id, wave_count = group["ID"], 1
+    elif crevice:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("The Guild Crevice replay needs five owned shikigami")
+        crevice_replay = CreviceReplay(args.stage, args.crevice_window)
+        engine, const = crevice_replay.engine, crevice_replay.const
+        group_id, wave_count = crevice_replay.route["groupId"], 1
     elif regional:
         from battleengine.engine.LBSWorldBossEngine import const
         from DynamicConfigData import DATA_HERO
@@ -245,6 +255,8 @@ def replay(args, runtime, work):
             raise ValueError("This activity requires its dedicated original score battle engine")
         if args.stage in TIANFA_STAGES:
             raise ValueError("Tianfa requires its dedicated original battle engine")
+        if args.stage in CREVICE_STAGES:
+            raise ValueError("The Guild Crevice requires its dedicated original battle engine")
         if stage.get("name") in RESOURCE_STAGE_NAMES:
             raise ValueError("Experience and coin encounters require their dedicated entry")
         if any(args.stage == floor[0] for floor in map_boss.data[OROCHI_STAGE]["gk_list"]):
@@ -300,6 +312,8 @@ def replay(args, runtime, work):
         route = "hunling-personal-challenge" if hunling_route[2] is not None else "hunling-regional-exploration"
     elif qiling:
         route = "qiling-collective-local-window"
+    elif crevice:
+        route = "guild-crevice-local-window"
     elif shilian:
         state_label = "configured" if args.shilian_state else "full-health"
         route = f"six-realms-{state_label}-{'encounter' if shilian_event else 'trial'}"
@@ -478,6 +492,7 @@ def replay(args, runtime, work):
 
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else OROCHI_REPLAY_SECONDS if orochi
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
+                      else CREVICE_WALL_SECONDS if crevice
                       else SHILIAN_REPLAY_SECONDS if shilian else TIANFA_REPLAY_SECONDS if tianfa else 130 if relay else 75)
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
@@ -533,6 +548,10 @@ def replay(args, runtime, work):
         if qiling:
             collective.update(winner)
             if collective.reason:
+                break
+        if crevice:
+            crevice_replay.update(winner)
+            if crevice_replay.reason:
                 break
         if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk or controller.isExited:
             continue
@@ -592,6 +611,8 @@ def replay(args, runtime, work):
     if qiling:
         completed = collective.reason is not None
         outcome = "win" if collective.reason == "boss-defeated" else "loss" if completed else "unknown"
+    if crevice:
+        completed, outcome = crevice_replay.reason is not None, crevice_replay.outcome
     module = "battleengine.engine." + type(engine).__name__
     report = {**evidence, "route": route, "stageId": args.stage, "groupId": group_id,
               "engineClass": type(engine).__name__, "engineSHA256": modules.rows[module]["marshalSHA256"],
@@ -615,6 +636,9 @@ def replay(args, runtime, work):
         report["qilingCollective"] = collective.report()
         if instructions:
             report["qilingCollective"].update(instructions.report())
+        report["wavesCleared"] = int(outcome == "win")
+    if crevice:
+        report["guildCrevice"] = crevice_replay.report()
         report["wavesCleared"] = int(outcome == "win")
     if shilian:
         report["sixRealms"] = {"dao": dao, "trialSlot": args.shilian_trial_slot, "trialHero": trial_hero,
@@ -708,6 +732,7 @@ def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
     from general_soul_stage import SOLO_SCORE_MODES
+    from guild_crevice_stage import CREVICE_MODE, CREVICE_TIME
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from hunling_stage import CAPTURE_ITEMS, HUNLING_BOSS, HUNLING_MODES, HUNLING_REPLAY_SECONDS
@@ -726,7 +751,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, TIANFA_MODE, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, TIANFA_MODE, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -739,6 +764,7 @@ def main():
     parser.add_argument("--capture-cards", type=int, nargs=3, choices=range(1, 6))
     parser.add_argument("--qiling-window", type=int)
     parser.add_argument("--qiling-hp", type=int)
+    parser.add_argument("--crevice-window", type=int)
     parser.add_argument("--journey-blessings", type=int)
     parser.add_argument("--journey-deadline", type=int)
     parser.add_argument("--shilian-trial-slot", type=int, choices=range(1, 7))
@@ -763,6 +789,9 @@ def main():
         parser.error("A collective Hunling replay needs a valid scoring window and starting HP")
     if args.mode != QILING_GROUP_MODE and args.qiling_hp is not None:
         parser.error("Starting shared HP is only available for a collective Hunling replay")
+    if (args.mode == CREVICE_MODE) != (args.crevice_window is not None) or (
+            args.crevice_window is not None and not 1 <= args.crevice_window <= CREVICE_TIME):
+        parser.error("The Guild Crevice replay needs a 1 to 180 second window")
     if args.mode == JOURNEY_HARD_MODE:
         if (args.journey_blessings is None or not 0 <= args.journey_blessings < 2 ** 53
                 or args.journey_deadline is None or not 1 <= args.journey_deadline < 2 ** 53):
