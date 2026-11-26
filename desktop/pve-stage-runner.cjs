@@ -10,6 +10,7 @@ const {resourceVersion}=require('../app/rune-lineup.js');
 const awakeOpenings=require('../app/awake-openings.js');
 const secretOpenings=require('../app/secret-openings.js');
 const yulingOpenings=require('../app/yuling-openings.js');
+const guildHuntOpenings=require('../app/guild-hunt-openings.js');
 const resourceEncounters=require('../app/resource-encounters.js');
 const {firstExperience}=resourceEncounters;
 
@@ -18,6 +19,7 @@ const engines={
  29:{name:'AwakeFbEngine',route:'awake-ordinary-solo',sha256:awakeOpenings.engineSHA256},
  266:{name:'ChallengeFbEngine',route:'secret-ordinary-solo',sha256:secretOpenings.engineSHA256},
  267:{name:'GorenFbEngine',route:'yuling-solo',sha256:yulingOpenings.engineSHA256},
+ 2000:{name:'GuildHuntingBattleEngine',route:'guild-hunting-local-owned',sha256:guildHuntOpenings.engineSHA256},
  [firstExperience.battleMode]:{name:'NewExpEngine',route:'resource-first-new-server-exp',sha256:resourceEncounters.engineSHA256},
 };
 const positive=value=>Number.isSafeInteger(value)&&value>0;
@@ -38,6 +40,10 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
  const engine=engines[battleMode],awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;
+ const hunt=battleMode===2000?guildHuntOpenings.floors[stageId]:null;
+ const huntReport=report?.guildHunt;
+ const invalidHunt=hunt&&(!huntReport||huntReport.deadlineSeconds!==240||huntReport.phaseRandomSeed!==seed||!Number.isSafeInteger(huntReport.damage)||
+  huntReport.damage<0||!Object.entries(hunt.enemy).every(([key,value])=>huntReport.opening?.[key]===value));
  const invalidYuling=yuling&&(!Array.isArray(report?.opening)||report.opening.length!==yuling.enemies.length||
   !yuling.enemies.every((unit,index)=>Object.entries(unit).every(([key,value])=>report.opening[index]?.[key]===value)));
  const experience=battleMode===firstExperience.battleMode?report?.experience:null;
@@ -53,6 +59,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     report.engineSHA256!==engine.sha256||report.battleMode!==battleMode||report.stageId!==stageId||report.groupId!==groupId||
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
     (yuling&&(report.sceneId!==yuling.sceneId||report.waveCount!==1||report.formationsVerified!==1||invalidYuling))||
+    (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
       report.formationsVerified>report.waveCount))||
@@ -76,9 +83,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),has('resource_stage.py')]);
+    const [awake,secret,yuling,resource,hunt]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+     has('resource_stage.py'),has('guild_hunt_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
-     ...(resource?[firstExperience.battleMode]:[])]};
+     ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -97,6 +105,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===267&&(yulingOpenings.resourceVersion!==resourceVersion||stageId!==groupId||
       !yulingOpenings.floors[stageId]||plan.members.length!==5))
     throw Error('御灵复跑需要已核验的楼层和五式神配装');
+   if(battleMode===2000&&(guildHuntOpenings.resourceVersion!==resourceVersion||stageId!==groupId||
+      !guildHuntOpenings.floors[stageId]||plan.members.length!==5))
+    throw Error('麒麟狩猎复跑需要已核验的战斗和五位自有式神');
    if(battleMode===firstExperience.battleMode&&(resourceEncounters.resourceVersion!==resourceVersion||
       stageId!==firstExperience.stageId||groupId!==firstExperience.groupId||plan.members.length!==firstExperience.memberCount))
     throw Error('此入口只适用于新服首次经验妖怪的五式神配装');

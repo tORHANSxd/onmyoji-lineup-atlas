@@ -9,6 +9,21 @@ from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_guild_retreat_difficulty_follows_the_composite_raid_key(self):
+        tables = {
+            "guild_boss_reward": [[1, {"difficulty": 1, "raid_id": 1}]],
+            "raid_info": [[{"$tuple": [2, 1]}, {"fbId": 2, "bossInfo": [202]}],
+                          [{"$tuple": [1, 1]}, {"fbId": 1, "bossInfo": [101]}]],
+            "boss_info": [[101, {"protoId": 1200501}], [202, {"protoId": 1300000}]],
+            "monster": [[1200501, {"name": "冥界小鬼"}], [1300000, {"name": "其他首领"}]],
+        }
+        manifest = [{"name": table, "status": "decoded", "family": "guild",
+                     "fields": list({field for _, row in rows for field in row})} for table, rows in tables.items()]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifest}, tables.__getitem__)
+        refs = index["entries"][0]["refs"]
+        self.assertEqual([(ref["table"], ref["key"]) for ref in refs],
+                         [("raid_info", {"$tuple": [1, 1]}), ("boss_info", 101), ("monster", 1200501)])
+
     def test_team_decorator_preserves_shared_literal_registrations(self):
         code = compile("""
 @team_type_base.team_type(const.team_battle_type.TEAM_BATTLE_TYPE_NEW_EXP,

@@ -26,6 +26,8 @@ ROOTS = {
     "DramaProcess": ("daily", "主线剧情进程"),
     "BossTower": ("daily", "探索式神挑战"),
     "guild_boss_show": ("guild", "首领退治"),
+    "guild_boss_reward": ("guild", "首领退治难度"),
+    "gve_battleinfo": ("guild", "麒麟狩猎"),
     "guild_crevice_area": ("guild", "狭间暗域"),
     "guild_crevice_battle": ("guild", "狭间暗域"),
     "guild_dinner_monster": ("guild", "阴阳寮宴会"),
@@ -52,6 +54,9 @@ RESOURCE_CONSTANTS = {
     "2009": ((9821, "原版金币关卡 ID 列表"), (9822, "引擎截止时间"), (9823, "选角时间"),
              (9828, "金币计算参数"), (9829, "首领生命百分比档位"), (9830, "金币档位倍率"), (9831, "基础金币量")),
 }
+GUILD_BOSS_TROOPS = {101, 102, 111, 112, 121, 122}
+HUNT_CODE_TARGETS = (10020208, 10020207, 10020209, 10020210)
+RETREAT_CODE_TARGETS = {1200501: 10020206, 1200500: 10020204, 1200600: 10020205}
 
 # The raw fields remain available. Each relation below names the ID namespace
 # used by the corresponding client table.
@@ -74,6 +79,8 @@ EDGES = {
     "SuperGhost_mission": (("actid", "activity", "活动开放配置"), ("sceneid", "Combinesceneinfo", "关卡场景")),
     "SuperGhost_bossmission": (("sceneid", "Combinesceneinfo", "关卡场景"),),
     "guild_boss_show": (("bossID", "monster", "首领"),),
+    "gve_battleinfo": (("scene", "Combinesceneinfo", "关卡场景"),),
+    "boss_info": (("protoId", "monster", "首领模板"),),
     "guild_crevice_battle": (("easy_main_monster", "monster", "简单首领"),
                              ("normal_main_monster", "monster", "普通首领"),
                              ("hard_main_monster", "monster", "困难首领"),
@@ -82,7 +89,7 @@ EDGES = {
     "Combinesceneinfo": (("battlesceneinfo", "BattleScenesInfo", "战斗站位"),),
 }
 FOLLOWED_TABLES = {"pve_stage_data", "BattleMonstersInfo", "Combinesceneinfo", "dungeon_awake_scene",
-                   "normal_battle_tips", "battle_team_routes"}
+                   "normal_battle_tips", "battle_team_routes", "raid_info", "boss_info"}
 BATTLE_ID_FIELDS = ("battle_id", "battleId", "pve_stage_id", "pve_id")
 RULE_TEXT_FIELDS = {"tip": "关卡提示", "fbtips": "副本规则", "attack_tip": "战斗提示",
                     "rule": "玩法规则", "boss_rule": "首领机制", "notice": "机制说明", "fb1_defs": "竞速规则"}
@@ -98,6 +105,14 @@ def numeric_key(value):
     if isinstance(value, str) and value.isascii() and value.isdecimal() and int(value) > 0:
         return str(int(value))
     return None
+
+
+def reference_key(value):
+    if isinstance(value, dict) and set(value) == {"$tuple"} and isinstance(value["$tuple"], list):
+        parts = tuple(numeric_key(item) for item in value["$tuple"])
+        if parts and None not in parts:
+            return parts
+    return numeric_key(value) or (value if isinstance(value, str) and value else None)
 
 
 def name(row):
@@ -122,11 +137,11 @@ def encounter_index(source, load_rows):
         if name not in lookup:
             rows = load_rows(name) if name in manifests else []
             lookup[name] = {key_id: (key, row) for key, row in rows
-                            if (key_id := numeric_key(key)) is not None}
+                            if (key_id := reference_key(key)) is not None}
         return lookup[name]
 
     def relation(destination, value, label, unresolved):
-        key_id = numeric_key(value)
+        key_id = reference_key(value)
         if key_id is None:
             return None
         match = table(destination).get(key_id)
@@ -247,6 +262,43 @@ def encounter_index(source, load_rows):
                 resolved = relation("guild_crevice_battle", key, "暗域敌人", True)
                 if resolved:
                     links.append(resolved)
+        if name == "gve_battleinfo":
+            week = row.get("week_day")
+            if type(week) is int and 0 <= week < len(HUNT_CODE_TARGETS):
+                links.extend(ref for destination, target, label in (
+                    ("battle_mode_routes", 2000, "原版麒麟战斗入口"),
+                    ("team_assist_stage", HUNT_CODE_TARGETS[week], "原版阵容码目标"),
+                ) if (ref := relation(destination, target, label, False)))
+        if name == "guild_boss_show":
+            for key, boss in table("boss_info").values():
+                if boss.get("protoId") == row.get("bossID"):
+                    links.append({"table": "boss_info", "key": key, "label": "首领阶段参数", "found": True})
+            links.extend(ref for destination, target, label in (
+                ("battle_mode_routes", 306, "原版首领退治入口"),
+                ("team_assist_stage", RETREAT_CODE_TARGETS.get(row.get("bossID")), "原版阵容码目标"),
+                ("active_time", "guild_boss", "首领退治开放时间"),
+            ) if (ref := relation(destination, target, label, False)))
+            for key, label in ((358, "阴阳师等级门槛"), (359, "集结时长（分钟）"), (360, "战斗开放时长（分钟）"),
+                               (3907, "集结人数档位"), (3908, "对应增伤率")):
+                ref = relation("Constant", key, label, False)
+                if ref:
+                    links.append(ref)
+        if name == "guild_boss_reward":
+            ref = relation("raid_info", {"$tuple": [1, row.get("raid_id")]}, "退治首领池和阶段属性", True)
+            if ref:
+                links.append(ref)
+            difficulty = row.get("difficulty")
+            if type(difficulty) is int:
+                clan = min((int(key) for key, level in table("Clanlevel").values()
+                            if level.get("guild_boss_hard_limit", 0) >= difficulty), default=None)
+                restriction = relation("Clanlevel", clan, "开启所需最低寮等级", False)
+                if restriction:
+                    links.append(restriction)
+        if name == "raid_info" and row.get("fbId") == 1:
+            for boss in row.get("bossInfo", ()):
+                ref = relation("boss_info", boss, "候选首领阶段参数", True)
+                if ref:
+                    links.append(ref)
         for field, label in RULE_TEXT_FIELDS.items():
             if panel_field and field == panel_field[0]:
                 continue
@@ -258,16 +310,16 @@ def encounter_index(source, load_rows):
     def related(table_name, key, row, direct):
         pending = [*explicit(table_name, row), *direct]
         references = []
-        seen = {(table_name, key)} if type(key) in (int, str) else set()
+        seen = {(table_name, reference_key(key) or key)} if reference_key(key) or type(key) in (int, str) else set()
         for link in pending:
             dest, key = link["table"], link["key"]
-            identity = (dest, key)
+            identity = (dest, reference_key(key) or key)
             if identity in seen:
                 continue
             seen.add(identity)
             references.append(link)
             if link["found"] and dest in FOLLOWED_TABLES:
-                _, data = table(dest)[numeric_key(key)]
+                _, data = table(dest)[reference_key(key)]
                 pending.extend(explicit(dest, data))
         return references
 
@@ -308,6 +360,19 @@ def encounter_index(source, load_rows):
             if scene_route:
                 entry_kind = "初始场景引擎"
             title = name(row)
+            if table_name == "gve_battleinfo":
+                monsters = row.get("monsters", ())
+                boss = monsters[0][0] if monsters and isinstance(monsters[0], list) and monsters[0] else None
+                _, info = table("monster").get(numeric_key(boss), (None, {}))
+                if row.get("difficulty") == 100:
+                    entry_kind, title = "阴界之门入口", f"阴界之门 · 入口 {key}"
+                else:
+                    title = f"麒麟狩猎 · {name(info)} · 难度 {row['difficulty']}"
+            if table_name == "guild_boss_reward":
+                title = f"首领退治 · 难度 {row['difficulty']}"
+            if table_name == "boss_troops" and row.get("groupId") in GUILD_BOSS_TROOPS:
+                entry_family, entry_kind = "guild", "首领退治机关编组"
+                title = f"首领退治 · 编组 {row['groupId']} · 方案 {row['id']}"
             if table_name == "pve_stage_data" and row.get("name") in RESOURCE_STAGES:
                 entry_family, entry_kind = "daily", RESOURCE_STAGES[row["name"]][0]
                 title = f"{entry_kind} · 新服首次" if numeric_key(key) == "2111" else f"{entry_kind} · 编组 {row['groupid']}"

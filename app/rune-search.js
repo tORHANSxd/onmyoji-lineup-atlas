@@ -55,6 +55,11 @@ const yulingStrategies=[
  {name:'增伤与首领输出',roles:['accelerate','orbs','bossMark','bossDamage','support']},
  {name:'首领输出与续航',roles:['orbs','bossMark','bossDamage','criticalHeal','support']},
 ];
+const guildHuntStrategies=[
+ {name:'清小麒麟与首领输出',roles:['orbs','bossMark','lightDamage','bossDamage','support']},
+ {name:'双输出与治疗',roles:['orbs','bossMark','lightDamage','bossDamage','criticalHeal']},
+ {name:'拉条与分裂清场',roles:['accelerate','orbs','lightDamage','fastFinisher','healer']},
+];
 const limit=6;
 // Check the observed losing seed before the two long fights found in the full-domain audit.
 const baseSampleSeeds=Object.freeze([0,1,2,3,7,42]);
@@ -276,7 +281,8 @@ function pveCandidates(account,data,memberCount,alternatives=[],openingEnemySpee
    {name:'拉条增伤与输出',roles:['accelerate','markAmp','lightDamage']}],
   [{name:'供火增伤与双输出',roles:['orbs','markAmp','opener','finisher']},
    {name:'拉条供火与治疗',roles:['accelerate','orbs','lightDamage','healer']}],
-  battleMode===267?[...yulingStrategies,hun13Pace,turnAdvance]:[hun13Pace,hun13Hold,groupBuff,turnAdvance,openingDamage,sustain],
+  battleMode===2000?[...guildHuntStrategies,hun13Pace,sustain]:
+   battleMode===267?[...yulingStrategies,hun13Pace,turnAdvance]:[hun13Pace,hun13Hold,groupBuff,turnAdvance,openingDamage,sustain],
  ][memberCount-1];
  if(!strategies)throw Error('当前关卡的上阵人数未接入库存备选');
  const speed=Number.isFinite(openingEnemySpeed)&&openingEnemySpeed>0?Math.floor(openingEnemySpeed)+1:0;

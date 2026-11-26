@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,528]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,528,2000]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
@@ -378,6 +378,40 @@ async function main(){
    assert.match(await ui('$("detail-heading").textContent'),/神龙·叁层/);
    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
    await capture('client-yuling-solo');
+   if(JSON.parse(await readEncounters(catalog)).entries.some(entry=>entry.table==='gve_battleinfo')){
+    const huntingCalls=[];
+    mockPve=(plan,options)=>{
+     assert.deepEqual(options,{stageId:61,groupId:61,battleMode:2000,seed:options.seed,damageFloor:true});
+     assert.equal(plan.members.length,5);
+     const firstCandidate=huntingCalls.length<6;
+     huntingCalls.push(options.seed);
+     const damage=firstCandidate?1000000+options.seed*100000:2000000;
+     return {...sample,...options,waveCount:1,wavesCleared:0,guildHunt:{damage}};
+    };
+    await ui(`window.qaGuildEncounter=(id,query)=>{
+     qaEncounterInput("guild",query);
+     [...$("client-dungeons-encounter-list").querySelectorAll("button")].find(el=>el.querySelector("small").textContent.endsWith(" · "+id)).click();
+    };qaGuildEncounter(61,"麒麟狩猎 火麒麟")`);
+    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/挑战时限 240 秒.*30 秒和 150 秒触发分裂.*90 秒触发属性召唤/s);
+    await ui(stock+'.click()');
+    await until(status+'.textContent.includes("其余按最低伤害排序")',20000);
+    assert.deepEqual(huntingCalls.slice(0,6),[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.firstElementChild.textContent'),/含未清场样本.*最低伤害 2,000,000.*个人结算成功 · 未清场/s);
+    assert.match(await ui(reports+'.textContent'),/最低伤害 1,000,000/);
+    await ui('document.querySelector("[data-pve-code]").click()');
+    assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
+    assert.match(await ui('$("detail-heading").textContent'),/狩猎战·火麒麟/);
+    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
+    await capture('client-guild-hunting');
+    await ui('qaEncounterInput("guild","贪婪的铁鼠")');
+    await until('$("client-dungeons-encounter-detail").textContent.includes("查看机关编组 122")');
+    await ui('[...$("client-dungeons-encounter-detail").querySelectorAll("button")].find(el=>el.textContent==="查看机关编组 122").click()');
+    await until('$("client-dungeons-encounter-detail").textContent.includes("我方 · 40 级 · 100 号位")');
+    await ui('qaGuildEncounter(1,"首领退治 难度")');
+    await until('$("client-dungeons-encounter-detail").textContent.includes("各轮攻击调整")');
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/开启消耗阴阳寮勋章350.*退治首领池和阶段属性/s);
+   }
   }finally{
    mockPve=null;stopPve=null;
    await ui(`stopMatch();STATE=${boot};selectedLineups.clear();$('client-dungeons').open=false;renderSelection();`);

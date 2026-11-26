@@ -13,6 +13,7 @@ import time
 
 def replay(args, runtime, work):
     from game_resources import sha256
+    from guild_hunt_stage import GUILD_HUNT_MODE
     from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
     from yuling_stage import YULING_MODE
     from rune_floor_host import prepare_runtime
@@ -80,6 +81,16 @@ def replay(args, runtime, work):
         if len(fighters) != 5:
             raise ValueError("Solo Undying Guardian requires five shikigami")
         group_id, wave_count = args.stage, 1
+    elif args.mode == GUILD_HUNT_MODE:
+        from battleengine.engine.GuildHuntingBattleEngine import const
+        from DynamicConfigData import DATA_HERO
+        from guild_hunt_stage import guild_hunt_stage, observe_guild_hunt_opening, seed_hunt_phases
+
+        engine, stage = guild_hunt_stage(args.stage)
+        seed_hunt_phases(modules, args.seed)
+        if len(fighters) != 5:
+            raise ValueError("Personal Guild Hunting requires five own shikigami")
+        group_id, wave_count = args.stage, 1
     else:
         from battleengine.engine.MonstarGuanKaEngine import MonstarGuanKaEngine, const
         from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA
@@ -132,6 +143,9 @@ def replay(args, runtime, work):
     elif args.mode == YULING_MODE:
         route = "yuling-solo"
         yuling_opening = observe_yuling_opening(engine, stage)
+    elif args.mode == GUILD_HUNT_MODE:
+        route = "guild-hunting-local-owned"
+        hunt_opening = observe_guild_hunt_opening(engine, stage)
     else:
         engine = MonstarGuanKaEngine({"pve_data_flag": stage_id})
         if engine.isDramaGuanKa or not engine.selectHeroEnabled:
@@ -215,6 +229,9 @@ def replay(args, runtime, work):
                              and engine.spectatorHeroCount == 4 and engine.get_timeout_seconds() == 150)
     elif args.mode == YULING_MODE:
         formation_matches = engine.fbId == args.stage and engine.combineSceneInfoId == stage["scene"]
+    elif args.mode == GUILD_HUNT_MODE:
+        formation_matches = (engine.fbId == args.stage and engine.combineSceneInfoId == stage["scene"]
+                             and engine.halt_battle_time == 240)
     else:
         formation_matches = engine.monstergroup == group_id
     if (engine.seed != args.seed or engine.random is not random_record or engine.battleMode != args.mode
@@ -288,6 +305,16 @@ def replay(args, runtime, work):
             raise RuntimeError("The original Undying Guardian never created its opening formation")
         report["formationsVerified"] = 1
         report["opening"] = yuling_opening
+    if args.mode == GUILD_HUNT_MODE:
+        from battleengine.engine.GuildHuntingBattleEngine import helpers
+
+        damage = engine.get_my_total_damage()
+        settled = engine.engineUserData.get("myTotalDmg")
+        if not hunt_opening or type(damage) is not int or damage < 0 or (
+                completed and (type(settled) not in (int, float) or helpers.deal_float_to_int(settled) != damage)):
+            raise RuntimeError("Guild Hunting did not return a matching original formation and score")
+        report["guildHunt"] = {"opening": hunt_opening, "damage": damage, "deadlineSeconds": engine.halt_battle_time,
+                               "phaseRandomSeed": args.seed}
     if args.minimum_damage:
         report["minimumDamage"] = minimum
     try:
@@ -308,13 +335,14 @@ def replay(args, runtime, work):
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from guild_hunt_stage import GUILD_HUNT_MODE
     from resource_stage import RESOURCE_MODE
     from yuling_stage import YULING_MODE
 
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")

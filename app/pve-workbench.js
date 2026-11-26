@@ -128,7 +128,7 @@
     row.state.textContent=ranOut?`种子 ${seed} 超时，击杀 ${experience.kills} / ${experience.requiredKills}`:`种子 ${seed} 未通关`;
     return;
    }
-   const objectiveMet=experience?experience.kills===run.pane.requiredKills:report.wavesCleared===report.waveCount;
+   const objectiveMet=AtlasRuneCandidate.pveGoalMet(report,battleMode);
    if(!report.completed||report.outcome!=='win'||!objectiveMet){
     row.state.textContent=`种子 ${seed} 未取得完整通关记录，可重试`;
     return;
@@ -195,7 +195,8 @@
    return saved;
   }
   action.onclick=()=>{
-   if(valid())openCandidateCode(output.lineup.title,'离线采样通过 · 全随机分支待验证',output,{
+   const evidence=run.pane.battleMode===2000?'个人伤害结算通过采样 · 全随机分支待验证':'离线采样通过 · 全随机分支待验证';
+   if(valid())openCandidateCode(output.lineup.title,evidence,output,{
     valid,save,savedMessage:'阵容码已保存到阵容库。',
    });
   };
@@ -255,14 +256,27 @@
    if(!active(next))return;
    const passed=[...next.previous,...next.rows].filter(row=>row.verdict==='pass');
    const timing=AtlasRuneCandidate.commonSampleTiming(passed);
-   passed.sort((a,b)=>timing.get(a).seconds-timing.get(b).seconds);
+   const hunting=next.pane.battleMode===2000;
+   const huntScores=new Map(hunting?passed.map(row=>[row,{
+    damage:Math.min(...row.samples.map(report=>report.guildHunt.damage)),
+    cleared:row.samples.every(report=>report.wavesCleared===report.waveCount),
+   }]):[]);
+   const byTime=(a,b)=>timing.get(a).seconds-timing.get(b).seconds;
+   passed.sort(hunting?(a,b)=>{
+    const first=huntScores.get(a),second=huntScores.get(b);
+    return Number(second.cleared)-Number(first.cleared)||(first.cleared?0:second.damage-first.damage)||byTime(a,b);
+   }:byTime);
    for(const row of passed){
     const time=timing.get(row);
-    row.state.textContent=`通过 ${seeds.length} 个采样种子 · 最慢种子 ${time.seed} · ${time.combat?'开战至结算':'引擎全程'} ${time.seconds.toFixed(2)} 秒`;
+    const score=huntScores.get(row);
+    const timeLabel=`最慢种子 ${time.seed} · ${time.combat?'开战至结算':'引擎全程'} ${time.seconds.toFixed(2)} 秒`;
+    row.state.textContent=score?`${seeds.length} 场个人结算 · ${score.cleared?'均清场':'含未清场样本'} · 最低伤害 ${score.damage.toLocaleString('zh-CN')} · ${timeLabel}`:
+     `通过 ${seeds.length} 个采样种子 · ${timeLabel}`;
    }
    next.pane.results.prepend(...passed.map(row=>row.el));
    if(!useStock)next.originalsComplete=next.rows.every(row=>['loss','infeasible'].includes(row.verdict));
-   next.notice=passed.length?`${passed.length} 套通过采样，已按最慢样本用时排序。全随机分支待验证。`:
+   next.notice=passed.length?(hunting?`${passed.length} 套取得个人结算。清场队优先比较用时，其余按最低伤害排序。全随机分支待验证。`:
+    `${passed.length} 套通过采样，已按最慢样本用时排序。全随机分支待验证。`):
     useStock?(next.rows.length?'这一批库存备选未通过全部采样。':'当前库存不足以生成可复跑的新备选。'):
     next.originalsComplete?'勾选原码均未通过，可从库存寻找备选。':
     '勾选原码中有待核对的条件，请处理后重试。';

@@ -23,6 +23,11 @@
     guild_crevice_battle: '阴阳寮狭间暗域战斗',
     guild_boss_show: '阴阳寮首领退治规则',
     guild_boss_reward: '阴阳寮首领奖励',
+    gve_battleinfo: '麒麟狩猎战斗配置',
+    boss_info: '退治首领阶段参数',
+    raid_info: '首领池与难度配置',
+    boss_troops: '首领机关编组',
+    active_time: '玩法开放时间表',
     guild_dinner_monster: '阴阳寮宴会首领',
     act_team_battle: '活动组队战斗',
     journey_hardbattle: '京畿净化首领挑战',
@@ -78,6 +83,8 @@
     rule: '玩法规则', boss_rule: '首领机制', attack_tip: '战斗提示', challenge_time: '挑战时限',
     begin_time: '开放时间', end_time: '关闭时间', reward_id: '奖励 ID',
     openTime: '开放星期', activity_time: '开放配置 ID', open_type: '开放方式', level_limit: '等级限制',
+    open_week_day: '开放星期索引', open_time: '开放时段',
+    guild_boss_hard_limit: '首领退治最高难度',
     need_team: '组队要求', notice: '机制说明', fb1_defs: '秘闻竞速规则', spec_skill: '首领特殊技能',
     remain_time: '存在时限', private_time: '私人挑战时限', crazy_time: '狂暴时限',
     atk_chng: '攻击调整', def_chng: '防御调整', hp_chng: '生命调整',
@@ -246,6 +253,12 @@
   }
 
   function enemyWaves(table, row) {
+    if (table==='gve_battleinfo'&&Array.isArray(row.monsters)) {
+      return [row.monsters.map(([id,level],index)=>({id,level,position:index+1}))];
+    }
+    if (table==='boss_troops'&&Array.isArray(row.monsterWaves)&&row.monsterWaves.every(unit=>Array.isArray(unit)&&unit.length===4)) {
+      return [row.monsterWaves.map(([id,position,camp,level])=>({id,position,level,side:camp===1?'我方':camp===2?'敌方':''}))];
+    }
     if (table === 'BattleMonstersInfo' && Array.isArray(row.MonstersInfos)) {
       return row.MonstersInfos.map(wave => Array.isArray(wave) ? wave.flatMap(slot =>
         Array.isArray(slot) && Number.isSafeInteger(slot[1]) && slot[1] > 0
@@ -306,6 +319,7 @@
       for (const unit of units) {
         const monster = monsters.get(unit.id);
         const label = [unit.copy?`复制我方 ${unit.position} 号位`:rowTitle(monster) || '怪物 ' + unit.id];
+        if(unit.side)label.push(unit.side);
         if (Number.isSafeInteger(unit.level) && unit.level > 0) label.push(unit.level + ' 级');
         if (Number.isSafeInteger(unit.position)) label.push(unit.position + ' 号位');
         if (unit.opening) label.push('开场速度 ' + openingNumber.format(unit.opening.speed));
@@ -456,6 +470,56 @@
       openingSpeed:opening.enemies[0].speed});
   }
 
+  function showGuildHunt(destination,entry,group){
+    const source=window.AtlasGuildHuntOpenings;
+    if(entry.table!=='gve_battleinfo'||!matchesOpeningSource(source))return;
+    const opening=source.floors[entry.key],unit=group.waves[0]?.[0];
+    if(!opening||!unit||opening.sceneId!==group.row?.scene||
+       !['id','position','level'].every(key=>unit[key]===opening.enemy[key]))return;
+    group.waves=[[{...unit,opening:opening.enemy}]];
+    destination.append(node('p',`挑战时限 240 秒 · 我方开场 ${opening.allyOrbs} 火 · 敌方开场 ${opening.enemyOrbs} 火`,'caption'));
+    if(group.row.difficulty===6)destination.append(node('p','30 秒和 150 秒触发分裂，击败两只小麒麟解除。90 秒触发属性召唤。','caption'));
+    destination.append(node('p','个人伤害可以计入寮内结算。战报另外记录首领是否清场。离线复跑只用五位自有式神。','caption'));
+    const stageId=Number(entry.key),scene=DATA.gameConfig.stages[opening.codeStageId];
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,battleMode:2000,waveCount:1,
+      label:'麒麟狩猎个人成绩',version:source.resourceVersion,openingSpeed:opening.enemy.speed,
+      codeStageId:scene?.actors===1&&scene.shikigami===5?opening.codeStageId:null,codeLabel:scene?.name});
+  }
+
+  function appendRetreatDetails(block,table,row){
+    if(table==='guild_boss_reward'){
+      const fields=document.createElement('dl');
+      for(const [key,label] of [['turn','首领轮数'],['cost_score','开启消耗阴阳寮勋章'],['player_reward','各轮个人奖励 ID']]){
+        if(Object.hasOwn(row,key))fields.append(node('dt',label),node('dd',String(row[key])));
+      }
+      block.append(fields);
+    }
+    if(table==='raid_info'&&row.fbId===1){
+      const fields=document.createElement('dl');
+      for(const [key,label] of [['attackAdditionVal','各轮攻击调整'],['defenseAdditionVal','各轮防御调整'],
+       ['maxHpAdditionVal','各轮生命调整'],['critRateAdditionVal','各轮暴击调整'],['speedAdditionVal','各轮速度调整']]){
+        if(Array.isArray(row.attr_adjust?.[key]))fields.append(node('dt',label),node('dd',row.attr_adjust[key].join(' / ')));
+      }
+      block.append(node('p',`${row.boss_num} 轮 · ${row.randomSelect?'首领从配置池随机选择':'固定首领顺序'}`,'caption'),fields);
+    }
+    if(table==='boss_info'&&row.param){
+      const indices={601:[2,3],611:[2,3],621:[0,1]}[row.ctrlSkill]||[];
+      const groups=indices.map(index=>row.param[index]?.[0]).filter(Number.isSafeInteger);
+      for(const group of groups){
+        const button=node('button',`查看机关编组 ${group}`,'secondary');
+        button.type='button';
+        button.onclick=()=>{
+          el('encounter-family').value='guild';
+          el('encounter-query').value=`首领退治 编组 ${group} 方案`;
+          filterEncounters();
+          el('encounter-list').querySelector('button')?.click();
+          el('encounter-list').querySelector('[aria-pressed="true"]')?.focus();
+        };
+        block.append(button);
+      }
+    }
+  }
+
   async function showEncounter(entry) {
     if (!entry) return;
     window.AtlasPveWorkbench?.unmount();
@@ -515,6 +579,7 @@
       destination.append(node('p','复制位读取我方同号位的式神及御魂技能。缺少可复制模板时使用原版默认怪物。','caption'));
     }
     showYulingEncounter(destination,entry,groups[0]);
+    showGuildHunt(destination,entry,groups[0]);
     if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
@@ -537,6 +602,7 @@
       const fields = fieldsFor(row, ref.table);
       if (fields.childElementCount) block.append(fields);
       appendSpecialDetails(block, ref.table, row);
+      appendRetreatDetails(block, ref.table, row);
       appendWaves(block,waves,monsters,entry.table==='dungeon_challenge_series'&&ref.primary);
       const details = document.createElement('details');
       const source = state.index.tables.find(t => t.name === ref.table)?.source;

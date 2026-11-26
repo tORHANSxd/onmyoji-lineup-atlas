@@ -183,7 +183,10 @@ function sampleBattleMarkup(samples){
    return seconds===null?[]:[`第 ${wave.wave} 波 ${seconds.toFixed(2)} 秒`];
   });
   const experience=sample.experience;
-  const outcome=experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:describeBattle(sample);
+  const hunt=sample.guildHunt;
+  const outcome=hunt?`${sample.outcome==='win'?'个人结算成功':sample.completed?'个人结算失败':'结算待确认'} · `+
+   `${sample.wavesCleared===sample.waveCount?'已清场':'未清场'} · 伤害 ${hunt.damage.toLocaleString('zh-CN')}`:
+   experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:describeBattle(sample);
   return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}</li>`;
  }).join('');
 }
