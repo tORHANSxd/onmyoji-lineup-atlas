@@ -307,6 +307,29 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertEqual(entry_for_stage({19040: boss}, 200160, LBS_ACTIVITY_MODE), ("lbsHistory", None, 39, None, 10))
         self.assertIsNone(entry_for_stage({19040: boss}, 200160, LBS_MODE))
 
+    def test_lbs_variants_keep_original_scenes_and_link_separate_event_rules(self):
+        rows = {entry: {"id": entry, "type": kind, "name": "联动鬼王", "gk_list": [[stage, 10]]}
+                for entry, kind, stage in ((19007, 48, 19300), (19028, 47, 20080),
+                                           (19030, 50, 20090), (19039, 55, 200150))}
+        tables = {
+            "map_boss": list(rows.items()),
+            "battle_mode_routes": [[LBS_ACTIVITY_MODE, {}], [595, {}]],
+            "currency": [[1433006, {"name": "融创挑战券"}], [1460317, {"name": "抖音挑战物品"}]],
+            "system_rule_dsc": [[key, {"rule_dsc": key}] for key in ("rongchuang_ski_tips", "LBS_douyin2023")],
+        }
+        manifest = [{"name": name, "status": "decoded", "family": "battle", "fields": []} for name in tables]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifest}, tables.__getitem__)
+        cases = {entry["key"]: entry for entry in index["entries"] if entry["table"] == "map_boss"}
+        self.assertIn("肯德基", cases[19028]["title"])
+        snow = {ref["key"]: ref["label"] for ref in cases[19030]["refs"]}
+        self.assertEqual(snow[595], "同活动的滑雪场景")
+        self.assertIn(1433006, snow)
+        self.assertIn("rongchuang_ski_tips", snow)
+        douyin = {ref["key"] for ref in cases[19039]["refs"]}
+        self.assertTrue({1460317, "LBS_douyin2023"}.issubset(douyin))
+        for stage, scene in ((19300, 40089), (20080, 40056), (20090, 62), (200150, 39)):
+            self.assertEqual(entry_for_stage(rows, stage, LBS_ACTIVITY_MODE), ("lbsHistory", None, scene, None, 10))
+
     def test_meituan_links_shop_locations_to_the_banquet_and_its_special_rules(self):
         stage = 20140
         maps = {key: {"id": key, "name": "联动鬼王", "type": 53, "gk_list": [[stage, 10]]}

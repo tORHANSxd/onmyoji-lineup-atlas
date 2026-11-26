@@ -92,6 +92,13 @@ MAP_BOSS_HELP = {
     74: ("NIANSHOU_TIPS", "年兽玩法原文"),
     75: ("NIANSHOU_TIPS", "年兽玩法原文"),
 }
+LBS_HISTORY_NAMES = {19028: "肯德基（KFC）鬼王", 19030: "融创雪世界 · 滑雪小王子垢尝"}
+LBS_HISTORY_RULES = {
+    19039: (("LBS_douyin2023", "抖音联动挑战规则"), ("LBS_douyin2023_shop", "现世商店规则"),
+            ("LBS_douyin2023_present", "现世赠送规则")),
+    19030: (("rongchuang_ski_tips", "同活动的银道雪场规则"),),
+}
+LBS_HISTORY_TICKETS = {19030: 1433006, 19039: 1460317}
 
 # The raw fields remain available. Each relation below names the ID namespace
 # used by the corresponding client table.
@@ -552,7 +559,15 @@ def encounter_index(source, load_rows):
                         links.append(ref)
             else:
                 links.extend(lbs_map_history(row))
-                if row.get("id") in LBS_HISTORY_ENTRIES:
+                entry_id = row.get("id")
+                links.extend(rule_reference(rule, label) for rule, label in LBS_HISTORY_RULES.get(entry_id, ())
+                             if rule in rules or rule in tips)
+                if ticket := relation("currency", LBS_HISTORY_TICKETS.get(entry_id), "挑战次数道具", False):
+                    links.append(ticket)
+                if entry_id == 19030:
+                    if ski := relation("battle_mode_routes", 595, "同活动的滑雪场景", False):
+                        links.append(ski)
+                if entry_id in LBS_HISTORY_ENTRIES:
                     if route := relation("battle_mode_routes", LBS_ACTIVITY_MODE, "现世妖约战斗引擎", False):
                         links.append(route)
             links.extend(relation("pve_stage_data", stage_id, label, True)
@@ -851,7 +866,7 @@ def encounter_index(source, load_rows):
             elif table_name == "map_boss" and (key in LBS_HISTORY_ENTRIES or key in lbs_sites
                                                or row.get("type") in lbs_intros_by_type):
                 entry_family, entry_kind = "event", "历史现世妖约"
-                title = f"{entry_kind} · {title}"
+                title = f"{entry_kind} · {LBS_HISTORY_NAMES.get(key, title)}"
             if table_name == "activity_lbs_intro":
                 title = row.get("act_title") or title
             if table_name == "activity_offline_lbs_mass":

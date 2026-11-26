@@ -22,8 +22,15 @@ LBS_ACTIVITY_ENTRIES = {
     19042: (52, 408, "广州塔"),
     19043: (53, 409, "上海五角场"),
 }
-LBS_HISTORY_ENTRIES = (19021, 19022, 19023, 19024, 19025, 19027, 19029, 19031, 19032, 19038, 19040, 19041)
-CHANG_LONG_ENTRY = 19041
+LBS_HISTORY_ENTRIES = (19007, 19021, 19022, 19023, 19024, 19025, 19027, 19028,
+                       19029, 19030, 19031, 19032, 19038, 19039, 19040, 19041)
+LBS_HISTORY_LAYOUTS = {
+    19007: (40089, (4, 4, 5)),
+    19028: (40056, (3,)),
+    19030: (62, (5,)),
+    19041: (39, (6,)),
+}
+LBS_HISTORY_DEFAULT_LAYOUT = (39, (4, 4, 5))
 NIAN_ENTRIES = dict(zip((19015, 19016, 19017, 19018, 19019, 19020, 19026), range(238, 245)))
 NIAN_STAGES = dict(zip(range(3340141, 3340150), range(10, 51, 5)))
 SPECIAL_NIAN_STAGES = dict(zip(range(3340150, 3340156), range(1, 7)))
@@ -72,6 +79,15 @@ def is_fragment_entry(entry_id, row):
     return row.get("type") == 1 and str(entry_id) not in {"10", "11"}
 
 
+def history_stage_info(entries, stage_id):
+    for entry_id in LBS_HISTORY_ENTRIES:
+        for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
+            if stage == stage_id:
+                scene, waves = LBS_HISTORY_LAYOUTS.get(entry_id, LBS_HISTORY_DEFAULT_LAYOUT)
+                return scene, waves, level
+    return None
+
+
 def entry_for_stage(entries, stage_id, mode=None):
     for route_mode, stages, map_ids, kind, scene, boss in (
             (NIAN_MODE, NIAN_STAGES, NIAN_ENTRIES, "lbsNianNormal", 40061, 100031),
@@ -94,10 +110,9 @@ def entry_for_stage(entries, stage_id, mode=None):
             for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
                 if stage == stage_id:
                     return "lbsActivity", None, 233, None, level
-        for entry_id in LBS_HISTORY_ENTRIES:
-            for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
-                if stage == stage_id:
-                    return "lbsHistory", None, 39, None, level
+        if history := history_stage_info(entries, stage_id):
+            scene, _, level = history
+            return "lbsHistory", None, scene, None, level
     if mode in (None, SEAL_MODE, LBS_MODE):
         for entry_id, row in entries.items():
             kind = "seal" if mode != LBS_MODE and is_fragment_entry(entry_id, row) else (
@@ -140,8 +155,8 @@ class MapBossReplay:
             if stage.get("battleTime") != LBS_ACTIVITY_SECONDS or [len(wave) for wave in waves] != [3]:
                 raise RuntimeError("Original LBS activity timing or formation differs from the verified route")
         elif self.kind == "lbsHistory":
-            chang_long = any(key == stage_id for key, _ in map_boss.data[CHANG_LONG_ENTRY]["gk_list"])
-            if stage.get("battleTime") is not None or [len(wave) for wave in waves] != ([6] if chang_long else [4, 4, 5]):
+            _, wave_sizes, _ = history_stage_info(map_boss.data, stage_id)
+            if stage.get("battleTime") is not None or tuple(map(len, waves)) != wave_sizes:
                 raise RuntimeError("Original historical LBS formation differs from the verified route")
         elif flag is None:
             if [len(wave) for wave in waves] != [4, 4, 6]:

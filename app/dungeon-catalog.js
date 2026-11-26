@@ -1211,7 +1211,9 @@
       const positions=source.partyPositions(route.battleMode,mapBossPlayers);
       const assignments=(route.lineupSlots?[route.lineupSlots]:positions).map((indices,i)=>
         `${i?'队友 '+i:mapBossPlayers===1?'式神':'队长'} ${indices.join('、')} 号位`);
-      const enemies=route.waves.length>1?`敌方 ${route.waves.length} 波`:`敌方 ${route.waves[0][0][2]} 级`;
+      const levels=route.waves[0].map(unit=>unit[2]),lowest=Math.min(...levels),highest=Math.max(...levels);
+      const enemies=route.waves.length>1?`敌方 ${route.waves.length} 波`:
+        `敌方 ${lowest===highest?lowest:lowest+'–'+highest} 级`;
       const limit=route.kind==='meituan'?' · 攻击食物小怪，食灵满意度达到 100% 时获胜':
         route.raidWindowSeconds?` · 从首领满血、剩余 ${route.raidWindowSeconds} 秒开始`:
         route.deadlineSeconds?` · 原版时限 ${route.deadlineSeconds} 秒 · 阴阳师被动 LBS周年烟花`:

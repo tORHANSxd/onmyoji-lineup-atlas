@@ -668,6 +668,18 @@ async function main(){
      {waveCount:1,wavesCleared:1,formationsVerified:1,mapBoss:{kind:'lbsHistory',players:3,level:40}}),
      /3 人组队 · 40 级档/);
    }
+   if(cases.some(entry=>entry.table==='map_boss'&&entry.key===19028&&entry.title.includes('肯德基'))){
+    await encounter('event','历史现世妖约 肯德基');
+    const rank='document.querySelector("[data-map-boss-stage]")';
+    assert.match(await ui(panel+'.textContent'),/敌方 10–20 级.*原表无固定战斗时限/s);
+    await ui(`${rank}.value="20085";${rank}.dispatchEvent(new Event("change"))`);
+    assert.match(await ui(panel+'.textContent'),/敌方 20–40 级/);
+    assert.match(await run('superghost-five',{stageId:20085,groupId:20085,battleMode:3022,mapBossPlayers:1},
+     {waveCount:1,wavesCleared:1,formationsVerified:1,mapBoss:{kind:'lbsHistory',players:1,level:35}}),
+     /单人演练 · 35 级档/);
+    await encounter('event','历史现世妖约 融创雪世界');
+    assert.match(await ui(panel+'.textContent'),/同活动的银道雪场规则.*融创LBS挑战券.*同活动的滑雪场景/s);
+   }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===19015&&entry.kind==='现世年兽')){
     await encounter('event','现世年兽 东北年兽');
     assert.equal(await ui('document.querySelector("[data-map-boss-players]").options.length'),1);

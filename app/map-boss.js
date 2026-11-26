@@ -81,7 +81,11 @@
  ].map(route=>({...route,kind:'lbsActivity',sceneId:233,waves:[[[2,14451,40],[3,14452,40],[4,14453,40]]],
   deadlineSeconds:300,passiveSkill:101013,codeStageId:101006}));
  const historyFirstWaves=[[7116262,7116218,7116218,7116218],[7116220,7116247,7116208,7116257]];
+ const recentHistoryWaves=[[8956262,8956218,8956218,8956218],[8956220,8956247,8956208,8956257]];
+ const recentHistoryAdds=[8956289,8956253,8956304,8956260];
  const historyRoutes=[
+  [19300,[19007],'侍神令',3390265,[[3390415,3390004,3390004,3390004],[3390420,3390005,3390005,3390005]],
+   [3390219,3390322,3390341,3391342],40089],
   [20020,[19021,19032],'京东／名创优品',7116330],
   [20030,[19022],'大触觉醒',7116311],
   [20040,[19023],'大江山之章',7116312],
@@ -90,20 +94,26 @@
   [20070,[19027],'上海主题店',7116343],
   [20130,[19031],'周生生',7116410,[[7116347,7116411,7116411,7116411],historyFirstWaves[1]]],
   [20150,[19038],'携程',7116379],
-  [200160,[19040],'九周年现世之约',8956330,[[8956262,8956218,8956218,8956218],[8956220,8956247,8956208,8956257]],
-   [8956289,8956253,8956304,8956260]],
- ].map(([base,entries,name,boss,initial=historyFirstWaves,adds=[7116289,7116253,7116304,7116260]])=>
-  ({base,entries,label:'历史现世妖约 · '+name,ids:[...initial,[boss,...adds]]}));
- const changLong={base:200170,entries:[19041],label:'历史现世妖约 · 广州长隆',
-  enemies:[1081287,1081251,1081252,1081253,1081254,1081256],
-  enemyLevels:[[10,7],[15,12],[20,20],[25,25],[30,30],[35,35],[37,37],[40,40],[40,40]],
- };
- const historyStages=[...historyRoutes,changLong].flatMap(({base,ids,enemies,enemyLevels,...route})=>Array.from({length:9},(_,rank)=>{
+  [200150,[19039],'抖音夏日百味大赏',8956392,recentHistoryWaves,recentHistoryAdds],
+  [200160,[19040],'九周年现世之约',8956330,recentHistoryWaves,recentHistoryAdds],
+ ].map(([base,entries,name,boss,initial=historyFirstWaves,adds=[7116289,7116253,7116304,7116260],sceneId=39])=>
+  ({base,entries,label:'历史现世妖约 · '+name,sceneId,ids:[...initial,[boss,...adds]]}));
+ const changLongEnemies=[1081287,1081251,1081252,1081253,1081254,1081256];
+ const changLongLevels=[[10,7],[15,12],[20,20],[25,25],[30,30],[35,35],[37,37],[40,40],[40,40]];
+ const historySingleRoutes=[
+  {base:20080,entries:[19028],sceneId:40056,label:'历史现世妖约 · 肯德基',
+   opening:(rank,level)=>[[1,9991052+Math.min(rank,4),rank<5?level:40],[5,9992237,20],[6,9992215,20]]},
+  {base:20090,entries:[19030],sceneId:62,label:'历史现世妖约 · 融创雪世界',
+   opening:(rank,level)=>[[1,339361,rank<5?level:40],...[2,4,5,6].map(slot=>[slot,339408,rank<5?15:35])]},
+  {base:200170,entries:[19041],sceneId:39,label:'历史现世妖约 · 广州长隆',
+   opening:rank=>changLongEnemies.map((id,i)=>[i+1,id,changLongLevels[rank][i?1:0]])},
+ ];
+ const historyStages=[...historyRoutes,...historySingleRoutes].flatMap(({base,ids,opening,...route})=>Array.from({length:9},(_,rank)=>{
   const level=10+5*rank;
   const waves=ids?ids.map((wave,index)=>wave.map((id,i)=>[
    (index===2?[1,2,4,5,6]:[1,2,3,4])[i],id,Math.min(40,level-(i?3:0)),
-  ])):[enemies.map((id,i)=>[i+1,id,enemyLevels[rank][i?1:0]])];
-  return [base+rank,{...route,battleMode:lbsActivityMode,kind:'lbsHistory',sceneId:39,level,waves}];
+  ])):[opening(rank,level)];
+  return [base+rank,{...route,battleMode:lbsActivityMode,kind:'lbsHistory',level,waves}];
  }));
  const sharedHpLineupSlots=[3,4,5,6,2];
  const nianRoutes=[
