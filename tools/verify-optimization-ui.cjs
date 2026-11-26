@@ -733,6 +733,20 @@ async function main(){
     const mapBoss={kind:'qinfeiFood',players:3,level:4,totalPiles:1,clearedPiles:1};
     const expected={stageId:26319,groupId:26319,battleMode:321,mapBossPlayers:3};
     assert.match(await run('superghost-five',expected,{mapBoss}),/3 人组队 · 普通第 4 层 · 食材堆 1\/1/);
+    await ui(`(()=>{const count=document.querySelector('[data-qinfei-food-count]');
+      count.value='3';count.dispatchEvent(new Event('change'));
+      const next=[...document.querySelectorAll('[data-qinfei-food-next]')];
+      next[0].value='26303';next[0].dispatchEvent(new Event('change',{bubbles:true}));
+      next[1].value='26307';next[1].dispatchEvent(new Event('change',{bubbles:true}));})()`);
+    assert.equal(await ui('document.querySelector("[data-qinfei-food-next]").options.length'),6);
+    assert.match(await run('superghost-five',{...expected,qinfeiFoodPiles:[26303,26307]},
+      {waveCount:3,wavesCleared:3,mapBoss:{...mapBoss,totalPiles:3,clearedPiles:3}}),/食材堆 3\/3/);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='6902022'&&entry.kind==='旧版寝肥食材战')){
+    await encounter('guild','旧版寝肥 6902022');
+    const mapBoss={kind:'qinfeiFood',players:1,level:0,archived:true,totalPiles:1,clearedPiles:1};
+    const expected={stageId:6902022,groupId:6902022,battleMode:321,mapBossPlayers:1};
+    assert.match(await run('superghost-five',expected,{mapBoss}),/旧版食材战 · 食材堆 1\/1/);
    }
    if(cases.some(entry=>entry.table==='raid_info'&&entry.kind==='寝肥本体')){
     await encounter('guild','寝肥本体 2026');

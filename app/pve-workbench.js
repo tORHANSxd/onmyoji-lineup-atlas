@@ -401,7 +401,8 @@
  }
 
  async function replay(run,row,plan,trialSlot){
-  const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,tianfaTeam,qinfeiBoss}=run.pane;
+  const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings,historicalGhostWindow,
+   mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles}=run.pane;
   const scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
   const orochi=battleMode===AtlasTrueOrochi.battleMode;
   for(const seed of seeds){
@@ -416,6 +417,7 @@
     ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(mapBossPlayers?{mapBossPlayers}:{}),...(tianfaTeam?{tianfaTeam}:{}),
     ...(qinfeiBoss?{qinfeiBoss}:{}),
+    ...(qinfeiFoodPiles?{qinfeiFoodPiles}:{}),
     ...(trialSlot?{trialSlot}:{}),...(run.sixRealmsEvent?{sixRealmsEvent:run.sixRealmsEvent}:{}),
     ...(run.sixRealmsState?{sixRealmsState:run.sixRealmsState}:{})});}
    finally{run.native=false;}

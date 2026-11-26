@@ -1186,13 +1186,14 @@
       const route=source.stages[id],mapId=isMap?Number(entry.key):null;
       if(!route||mapId!==null&&!route.entries.includes(mapId))return false;
       if(qinfeiEntry&&route.kind!=='qinfeiFood')return false;
-      if(route.kind==='qinfeiFood'&&(foodSource!==source.qinfeiFoodTableHash||
+      if(route.kind==='qinfeiFood'&&!route.archived&&(foodSource!==source.qinfeiFoodTableHash||
          !groups.some(({ref,row})=>ref.table==='boss_food_battle'&&row?.id===route.foodId&&
            row.up_battle_id===26300+route.foodId-900260)))return false;
       const stage=stageGroups.get(id);
       const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===id);
       return stage?.groupid===id&&stage.shishentotal===5&&
         (!route.deadlineSeconds||stage.battleTime===route.deadlineSeconds)&&formation?.row?.resindex===route.sceneId&&
+        (!route.rewardId||formation.row.passReward===route.rewardId)&&
         formation.waves.length===route.waves.length&&formation.waves.every((wave,waveIndex)=>
           wave.length===route.waves[waveIndex].length&&wave.every(({position,id,level},i)=>{
             const [expectedSlot,expectedId,expectedLevel]=route.waves[waveIndex][i];
@@ -1201,11 +1202,11 @@
     });
     if(!stages.length)return false;
     const controls=node('div','','actions'),workbench=node('div'),slots=node('p','','caption');
-    const select=(name,marker,options)=>{
+    const select=(name,marker,options,parent=controls)=>{
       const label=node('label',name,'pve-lineup-field'),control=document.createElement('select');
       control.dataset[marker]='';
       control.replaceChildren(...options.map(([value,text])=>new Option(text,String(value))));
-      label.append(control);controls.append(label);
+      label.append(control);parent.append(label);
       return control;
     };
     const stage=select('关卡档位','mapBossStage',stages.map(id=>{
@@ -1215,17 +1216,32 @@
     const playerOptions=[[1,'单人演练'],[2,'两人组队'],[3,'三人组队']];
     const mode=source.stages[stages[0]].battleMode;
     const players=select('参战人数','mapBossPlayers',playerOptions.filter(([count])=>source.partyPositions(mode,count)));
+    const pileCount=mode===source.qinfeiFoodMode?select('食材堆数','qinfeiFoodCount',
+      Array.from({length:source.qinfeiFoodMaxPiles},(_,i)=>[i+1,i+1])):null;
+    const pileControls=node('div','','actions');
+    const arrangePiles=()=>{
+      if(!pileCount)return;
+      const previous=Array.from(pileControls.querySelectorAll('select'),input=>input.value);
+      pileControls.replaceChildren();
+      const options=source.qinfeiFoodChoices(source.stages[stage.value]).map(([id,route])=>[id,`${route.tierLabel} · ${id}`]);
+      for(let i=0;i<Number(pileCount.value)-1;i++){
+        const input=select(`第 ${i+2} 堆`,'qinfeiFoodNext',options,pileControls);
+        input.value=options.some(([id])=>id===previous[i])?previous[i]:stage.value;
+      }
+    };
     destination.append(controls,node('p','阴阳师和式神来自当前账号。式神按阵容顺序填入原版战斗站位。','caption'),slots,workbench);
+    if(pileCount)controls.after(pileControls);
     if(entry.table==='activity'&&qinfeiEntry)destination.append(node('p','此处复跑食材战。搜索「寝肥本体 2026」可打开首领伤害演练。','caption'));
     const render=()=>{
       const stageId=Number(stage.value),mapBossPlayers=Number(players.value),route=source.stages[stageId];
+      const qinfeiFoodPiles=Array.from(pileControls.querySelectorAll('select'),input=>Number(input.value));
       const positions=source.partyPositions(route.battleMode,mapBossPlayers);
       const assignments=(route.lineupSlots?[route.lineupSlots]:positions).map((indices,i)=>
         `${i?'队友 '+i:mapBossPlayers===1?'式神':'队长'} ${indices.join('、')} 号位`);
       const levels=route.waves[0].map(unit=>unit[2]),lowest=Math.min(...levels),highest=Math.max(...levels);
       const enemies=route.waves.length>1?`敌方 ${route.waves.length} 波`:
         `敌方 ${lowest===highest?lowest:lowest+'–'+highest} 级`;
-      const limit=route.kind==='qinfeiFood'?' · 一堆食材 · 无额外祝福':
+      const limit=route.kind==='qinfeiFood'?` · ${qinfeiFoodPiles.length?`${qinfeiFoodPiles.length+1} 堆食材`:'一堆食材'} · 无额外祝福`:
         route.kind==='meituan'?' · 攻击食物小怪，食灵满意度达到 100% 时获胜':
         route.raidWindowSeconds?` · 从首领满血、剩余 ${route.raidWindowSeconds} 秒开始`:
         route.deadlineSeconds?` · 原版时限 ${route.deadlineSeconds} 秒 · 阴阳师被动 LBS周年烟花`:
@@ -1234,10 +1250,14 @@
       const codeScene=DATA.gameConfig.stages[route.codeStageId];
       workbench.replaceChildren();
       window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:stageId,memberCount:positions.flat().length,battleMode:route.battleMode,
-        mapBossPlayers,waveCount:route.waves.length,label:`${route.label} · ${route.tierLabel??route.level+' 级档'}`,version:source.resourceVersion,
+        mapBossPlayers,waveCount:route.waves.length+qinfeiFoodPiles.length,label:`${route.label} · ${route.tierLabel??route.level+' 级档'}`,version:source.resourceVersion,
+        qinfeiFoodPiles:qinfeiFoodPiles.length?qinfeiFoodPiles:null,
         codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?route.codeStageId:null,codeLabel:codeScene?.name});
     };
-    stage.addEventListener('change',render);players.addEventListener('change',render);
+    const rebuildPiles=()=>{arrangePiles();render();};
+    stage.addEventListener('change',rebuildPiles);players.addEventListener('change',render);
+    pileCount?.addEventListener('change',rebuildPiles);
+    pileControls.addEventListener('change',render);
     render();
     return true;
   }

@@ -521,15 +521,20 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function validMapBossReport(report,route,players){
+function validMapBossReport(report,route,players,qinfeiFoodPiles){
  const data=report.mapBoss,rewards=data?.rewardInputs;
- if(report.sceneId!==route.sceneId||report.waveCount!==route.waves.length||data?.kind!==route.kind||
+ if(report.sceneId!==route.sceneId||data?.kind!==route.kind||
     data.level!==route.level||data.players!==players||!sameTactics(data.positions,mapBoss.partyPositions(route.battleMode,players)))return false;
  if(route.kind==='qinfeiFood'){
-  const cleared=Number(report.outcome==='win');
-  return report.formationsVerified===1&&report.wavesCleared===cleared&&data.clearedPiles===cleared&&data.totalPiles===1&&
-   data.blessingId===0&&data.foodId===route.foodId&&sameTactics(data.waves,route.waves);
+  const stages=[report.stageId,...(qinfeiFoodPiles??[])],observed=data.waves?.length,cleared=data.clearedPiles;
+  return report.waveCount===stages.length&&data.totalPiles===stages.length&&sameTactics(data.stages,stages)&&
+   Array.isArray(data.waves)&&observed>=1&&observed<=stages.length&&report.formationsVerified===observed&&
+   Number.isSafeInteger(cleared)&&cleared>=0&&cleared<=observed&&observed<=cleared+1&&report.wavesCleared===cleared&&
+   (report.outcome!=='win'||cleared===stages.length)&&(report.outcome!=='loss'||observed===cleared+1)&&
+   data.archived===route.archived&&data.blessingId===0&&data.foodId===route.foodId&&
+   data.waves.every((wave,i)=>sameTactics(wave,mapBoss.stages[stages[i]].waves[0]));
  }
+ if(report.waveCount!==route.waves.length)return false;
  if(route.kind==='meituan'){
   return report.formationsVerified===1&&data.bossId===route.waves[0][0][1]&&sameTactics(data.opening,route.waves[0])&&
    sameTactics(data.lineupSlots,route.lineupSlots)&&sameTactics(data.skills,route.skills)&&data.openingHp===1&&
@@ -564,7 +569,7 @@ function validMapBossReport(report,route,players){
    rewards.paperManCount<=({stone:0,angryStone:4,yearBeast:5}[route.kind]):rewards===null);
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const engine=sixRealmsRoute?{name:sixRealmsRoute.engine,sha256:sixRealmsRoute.sha256,
   route:`six-realms-${sixRealmsState?'configured':'full-health'}-${sixRealmsEvent?'encounter':'trial'}`}:
@@ -603,7 +608,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (activityScore.modes[battleMode]&&!validActivityScore(report,rounds[0],activityScore.modes[battleMode]))||
     (battleMode===tianfa.battleMode&&!validTianfaReport(report,tianfa.stages[stageId],tianfaTeam))||
     (journeyRoute&&!validJourneyReport(report,journeyRoute,journeySettings))||
-    (mapBossRoute&&!validMapBossReport(report,mapBossRoute,mapBossPlayers))||
+    (mapBossRoute&&!validMapBossReport(report,mapBossRoute,mapBossPlayers,qinfeiFoodPiles))||
     (spider&&!validTuzhizhuPractice(report,spider,stageId,rounds[0]))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
     (battleMode===orochi.battleMode&&!validOrochiReport(report,rounds[0]))||
@@ -663,7 +668,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,tianfaTeam=false,qinfeiBoss}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,tianfaTeam=false,qinfeiBoss,qinfeiFoodPiles}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -775,6 +780,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(mapBossMode&&(mapBossRoute?.battleMode!==battleMode||mapBoss.resourceVersion!==resourceVersion||groupId!==stageId||
       !mapBossPositions||plan.members.length!==mapBossPositions.flat().length)||
       mapBossPlayers!==undefined&&!mapBossRoute)throw Error('地图首领需要正确的关卡、参战人数和阵容');
+   if(qinfeiFoodPiles!==undefined){
+    const allowed=mapBossRoute?.kind==='qinfeiFood'?new Set(mapBoss.qinfeiFoodChoices(mapBossRoute).map(([id])=>Number(id))):null;
+    if(!allowed||!Array.isArray(qinfeiFoodPiles)||qinfeiFoodPiles.length<1||qinfeiFoodPiles.length>=mapBoss.qinfeiFoodMaxPiles||
+       !Array.from(qinfeiFoodPiles).every(id=>allowed.has(id)))throw Error('寝肥连战最多五堆，请选择同种食材及版本的关卡');
+   }
    const ghostRoute=battleMode===superGhost.battleMode?superGhost.routes[stageId]:null;
    if(battleMode===superGhost.battleMode&&(superGhost.resourceVersion!==resourceVersion||!ghostRoute||groupId!==stageId||
       plan.members.length!==5||!validGhostSettings(ghostSettings,ghostRoute))||
@@ -785,7 +795,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       historicalGhostWindow!==undefined&&!historicalGhostRoute)throw Error('超鬼王历史挑战需要正确的关卡、阵容和计分时长');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const deadlineMs=spider?645000:battleMode===306||qilingEntry||ghostRoute||historicalGhostRoute||qinfeiBoss?245000:sixRealmsRoute||tianfaStage||creviceRoute||mapBossRoute?.raidWindowSeconds?175000:
+   const deadlineMs=spider?645000:battleMode===306||qilingEntry||ghostRoute||historicalGhostRoute||qinfeiBoss?245000:sixRealmsRoute||tianfaStage||creviceRoute||mapBossRoute?.raidWindowSeconds||qinfeiFoodPiles?175000:
     hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000;
    const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
    let release,dir;
@@ -816,6 +826,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(ghostRoute)args.push('--ghost-settings',JSON.stringify(ghostSettings));
     if(historicalGhostRoute)args.push('--historical-ghost-window',String(historicalGhostWindow));
     if(mapBossRoute)args.push('--map-boss-players',String(mapBossPlayers));
+    if(qinfeiFoodPiles)args.push('--qinfei-food-next',...qinfeiFoodPiles.map(String));
     if(qinfeiBoss)args.push('--qinfei-profile',String(qinfeiBoss.raidId),String(qinfeiBoss.difficulty),'--window-seconds',String(qinfeiBoss.windowSeconds));
     if(tianfaTeam)args.push('--tianfa-team');
     const code=await launch(config.python,args,dir,AbortSignal.any([cancel.signal,deadline]));
@@ -823,7 +834,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');

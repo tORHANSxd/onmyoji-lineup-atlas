@@ -26,9 +26,9 @@ def replay(args, runtime, work):
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
     from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, MEITUAN_MODE, NIAN_MODES,
-                                QINFEI_FOOD_MODE, QINFEI_FOOD_STAGES, QINFEI_STATIC_STAGES, SPECIAL_NIAN_MODE,
+                                QINFEI_FOOD_CHAIN_SECONDS, QINFEI_FOOD_MODE, QINFEI_STATIC_STAGES, SPECIAL_NIAN_MODE,
                                 MapBossReplay, MeituanReplay, NianReplay, QinfeiFoodReplay, entry_for_stage,
-                                party_positions)
+                                party_positions, qinfei_food_profile)
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_STAGE, QINFEI_BOSS_REPLAY_SECONDS, QinfeiBossRaid
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
@@ -59,6 +59,7 @@ def replay(args, runtime, work):
     historical_ghost = args.mode == HISTORICAL_GHOST_MODE
     retreat = args.mode == RETREAT_MODE
     qinfei_boss = args.mode == QINFEI_BOSS_MODE
+    qinfei_food = args.mode == QINFEI_FOOD_MODE
     raid_battle = retreat or qinfei_boss
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
@@ -222,12 +223,12 @@ def replay(args, runtime, work):
             map_boss_replay = NianReplay(modules, args.stage, args.map_boss_players, args.mode, ENGINE_START_SECONDS)
         elif args.mode == MEITUAN_MODE:
             map_boss_replay = MeituanReplay(modules, args.stage, args.map_boss_players)
-        elif args.mode == QINFEI_FOOD_MODE:
-            map_boss_replay = QinfeiFoodReplay(modules, args.stage, args.map_boss_players)
+        elif qinfei_food:
+            map_boss_replay = QinfeiFoodReplay(modules, args.stage, args.map_boss_players, args.qinfei_food_next or ())
         else:
             map_boss_replay = MapBossReplay(modules, args.stage, args.map_boss_players, args.mode)
         engine, const = map_boss_replay.engine, map_boss_replay.const
-        group_id, wave_count = map_boss_replay.group_id, map_boss_replay.wave_count
+        group_id, wave_count = map_boss_replay.group_id, 1 if qinfei_food else map_boss_replay.wave_count
     elif spider:
         from DynamicConfigData import DATA_HERO
 
@@ -311,7 +312,7 @@ def replay(args, runtime, work):
             raise ValueError("Experience and coin encounters require their dedicated entry")
         if any(args.stage == floor[0] for floor in map_boss.data[OROCHI_STAGE]["gk_list"]):
             raise ValueError("True Orochi floors require the original continuous dungeon engine")
-        if args.stage in QINFEI_FOOD_STAGES or args.stage in QINFEI_STATIC_STAGES:
+        if qinfei_food_profile(args.stage) or args.stage in QINFEI_STATIC_STAGES:
             raise ValueError("Qinfei stages require their original activity route")
         if args.stage in ARCHIVED_NIAN_STAGES or entry_for_stage(map_boss.data, args.stage):
             raise ValueError("Map boss stages require their original cooperative engine")
@@ -582,6 +583,7 @@ def replay(args, runtime, work):
                       else CREVICE_WALL_SECONDS if crevice
                       else SUPERGHOST_WALL_SECONDS if superghost or historical_ghost
                       else SHILIAN_REPLAY_SECONDS if shilian else TIANFA_REPLAY_SECONDS if tianfa
+                      else QINFEI_FOOD_CHAIN_SECONDS if qinfei_food and args.qinfei_food_next
                       else SPECIAL_NIAN_WALL_SECONDS if args.mode == SPECIAL_NIAN_MODE else 130 if relay else 75)
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
@@ -597,6 +599,8 @@ def replay(args, runtime, work):
         instructions = HuntOpening(engine, controller, const, tactics, boss)
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
+        if qinfei_food:
+            map_boss_replay.advance_pile(controller)
         if secret_mechanic_replay:
             secret_mechanic_replay.check_opening()
         if shilian and args.shilian_state and shilian_opening is None and engine.battleState == const.BattleState.BS_STARTED:
@@ -775,6 +779,8 @@ def replay(args, runtime, work):
     if map_boss_replay:
         report["mapBoss"] = map_boss_replay.report(report["outcome"])
         report["formationsVerified"] = len(map_boss_replay.waves)
+        if qinfei_food:
+            report["waveCount"] = map_boss_replay.wave_count
     if tianfa:
         report["tianfa"] = tianfa_replay.report(completed)
     if spider_replay:
@@ -841,7 +847,8 @@ def replay(args, runtime, work):
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from map_boss_stage import MODES as MAP_BOSS_MODES, SPECIAL_NIAN_MODE, party_positions
+    from map_boss_stage import (MODES as MAP_BOSS_MODES, QINFEI_FOOD_CHAIN_SECONDS, QINFEI_FOOD_MODE,
+                                SPECIAL_NIAN_MODE, party_positions, qinfei_food_sequence)
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
     from general_soul_stage import SOLO_SCORE_MODES
     from guild_crevice_stage import CREVICE_MODE, CREVICE_TIME
@@ -868,6 +875,7 @@ def main():
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
     parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--map-boss-players", type=int, choices=(1, 2, 3))
+    parser.add_argument("--qinfei-food-next", type=int, nargs="+")
     parser.add_argument("--qinfei-profile", type=int, nargs=2, metavar=("RAID", "DIFFICULTY"))
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
@@ -899,6 +907,11 @@ def main():
         parser.error("Map boss replay requires the number of players")
     if args.map_boss_players is not None and not party_positions(args.mode, args.map_boss_players):
         parser.error("Player count is unavailable for this map boss mode")
+    if args.mode == QINFEI_FOOD_MODE:
+        if not qinfei_food_sequence(args.stage, args.qinfei_food_next or ()):
+            parser.error("Qinfei food replay requires up to five verified stages of the same food and era")
+    elif args.qinfei_food_next:
+        parser.error("Qinfei food continuation is available only in the original food mode")
     if args.mode == TIANFA_MODE and args.stage not in TIANFA_STAGES:
         parser.error("Tianfa replay needs one of the three configured difficulty stages")
     if args.tianfa_team and args.mode != TIANFA_MODE:
@@ -955,6 +968,7 @@ def main():
                         SHILIAN_REPLAY_SECONDS + 20 if args.mode in SHILIAN_MODES else
                         TIANFA_REPLAY_SECONDS + 20 if args.mode == TIANFA_MODE else
                         QINFEI_BOSS_REPLAY_SECONDS + 20 if args.mode == QINFEI_BOSS_MODE else
+                        QINFEI_FOOD_CHAIN_SECONDS + 20 if args.qinfei_food_next else
                         SPECIAL_NIAN_WALL_SECONDS + 20 if args.mode == SPECIAL_NIAN_MODE else
                         240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
     faulthandler.dump_traceback_later(watchdog_seconds, exit=True)

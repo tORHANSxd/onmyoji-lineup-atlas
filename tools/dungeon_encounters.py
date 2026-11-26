@@ -490,18 +490,20 @@ def encounter_index(source, load_rows):
                     ("currency", food, "对应食材"),
                     ("battle_mode_routes", QINFEI_FOOD_MODE, "食材战斗原版引擎"),
                 ) if (ref := relation(dest, target, label, False)))
+            elif qinfei_stage in QINFEI_ARCHIVED_FOOD:
+                if ref := relation("battle_mode_routes", QINFEI_FOOD_MODE, "旧版食材战原版引擎", False):
+                    links.append(ref)
             elif qinfei_stage in QINFEI_STATIC_STAGES:
                 refs = []
                 if qinfei_stage in (QINFEI_BOSS_STAGE, 6902001):
                     refs.append(("battle_mode_routes", QINFEI_BOSS_MODE, "首领战原版引擎"))
                     if qinfei_stage == 6902001:
                         refs.append(("boss_info", 202, "经典寝肥首领参数"))
-                elif qinfei_stage in QINFEI_ARCHIVED_FOOD:
-                    refs.append(("battle_mode_routes", QINFEI_FOOD_MODE, "食材战斗原版引擎"))
                 elif qinfei_stage == 26325:
                     refs.extend([("Constant", 3222, "入场券战斗配置"), ("currency", 900264, "入场券")])
                 else:
-                    refs.extend([("dojo_2024_const", 30, "筹备挑战体力消耗"),
+                    refs.extend([("dojo_2024_const", 28, "筹备副本关卡编号"),
+                                 ("dojo_2024_const", 30, "筹备挑战体力消耗"),
                                  ("dojo_2024_const", 31, "筹备每日挑战次数")])
                     if "Qinfei_choubei_tips" in rules:
                         links.append(rule_reference("Qinfei_choubei_tips", "筹备副本消耗、次数与奖励"))
@@ -1018,6 +1020,9 @@ def encounter_index(source, load_rows):
                 elif stage_id in MEITUAN_STAGES:
                     entry_family, entry_kind = "event", "宴席大赛"
                     title = f"{entry_kind} · {MEITUAN_STAGES[stage_id]} 级档"
+                elif stage_id in QINFEI_ARCHIVED_FOOD:
+                    entry_family, entry_kind = "guild", "旧版寝肥食材战"
+                    title = f"旧版{title}"
                 elif stage_id in QINFEI_FOOD_STAGES or stage_id in QINFEI_STATIC_STAGES:
                     entry_family, entry_kind = "guild", "寝肥合战"
             if table_name == "pve_stage_data" and numeric_key(key) in crevice_stages:

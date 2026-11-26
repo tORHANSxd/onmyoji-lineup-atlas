@@ -52,8 +52,10 @@ QINFEI_FOOD_TABLE = "com.data.cdata.boss_food_battle"
 QINFEI_FOODS = (900260, 900261, 900262, 900263)
 QINFEI_FOOD_STAGES = range(26300, 26324)
 QINFEI_ARCHIVED_FOOD = (*range(25006, 25014), *range(6902011, 6902015), *range(6902021, 6902025))
-QINFEI_STATIC_STAGES = (25005, 6902001, 26325, 501200, *QINFEI_ARCHIVED_FOOD)
+QINFEI_STATIC_STAGES = (25005, 6902001, 26325, 501200)
 QINFEI_FOOD_SCENES = (40056, 40057, 40058, 40059)
+QINFEI_FOOD_MAX_PILES = 5
+QINFEI_FOOD_CHAIN_SECONDS = 145
 SOURCE_HASHES = {
     QINFEI_FOOD_ENGINE: "ce5a64f1e5daf5ee6ba826066df856b70d14d45d4cf854d45659a7ba5bab768d",
     QINFEI_FOOD_TABLE: "0c5b3887f7c88341a910bbd8fc6c6c74af95ac83fb79fa0123504a1ded52cf0d",
@@ -300,48 +302,100 @@ class MapBossReplay:
                 "positions": self.positions, "opening": self.waves[0], "rewardInputs": rewards}
 
 
+def qinfei_food_profile(stage_id):
+    if stage_id in QINFEI_FOOD_STAGES:
+        level, index = divmod(stage_id - QINFEI_FOOD_STAGES.start, len(QINFEI_FOODS))
+        return index, level, False
+    if stage_id in QINFEI_ARCHIVED_FOOD:
+        return QINFEI_ARCHIVED_FOOD.index(stage_id) % len(QINFEI_FOODS), 0, True
+    return None
+
+
+def qinfei_food_sequence(stage_id, following):
+    profile = qinfei_food_profile(stage_id)
+    if not profile or len(following) >= QINFEI_FOOD_MAX_PILES:
+        return None
+    for stage in following:
+        selection = qinfei_food_profile(stage)
+        if not selection or (selection[0], selection[2]) != (profile[0], profile[2]):
+            return None
+    return (stage_id, *following)
+
+
 class QinfeiFoodReplay(MapBossReplay):
     kind = "qinfeiFood"
 
-    def __init__(self, modules, stage_id, players):
+    def __init__(self, modules, stage_id, players, following=()):
         from com import const
         from com.data.cdata import boss_food_battle
         from battleengine.engine.QinfeiBossFoodEngine import QinfeiBossFoodEngine
         from DynamicConfigData import DATA_PVE_STAGE_DATA, BattleMonstersInfo
 
-        if (stage_id not in QINFEI_FOOD_STAGES or any(
+        self.stages = qinfei_food_sequence(stage_id, following)
+        if (not self.stages or any(
                 modules.rows[name]["marshalSHA256"] != SOURCE_HASHES[name]
                 for name in (QINFEI_FOOD_ENGINE, QINFEI_FOOD_TABLE))):
             raise ValueError("Qinfei food replay requires a verified stage and original engine")
-        self.level, food_index = divmod(stage_id - QINFEI_FOOD_STAGES.start, len(QINFEI_FOODS))
+        food_index, self.level, self.archived = qinfei_food_profile(stage_id)
         self.food_id = QINFEI_FOODS[food_index]
-        if boss_food_battle.data[self.food_id]["up_battle_id"] != QINFEI_FOOD_STAGES.start + food_index:
+        if not self.archived and boss_food_battle.data[self.food_id]["up_battle_id"] != QINFEI_FOOD_STAGES.start + food_index:
             raise RuntimeError("The original Qinfei food and surprise stage disagree")
-        stage = DATA_PVE_STAGE_DATA.data[str(stage_id)]
-        self.group_id = stage["groupid"]
-        formation = BattleMonstersInfo.data[self.group_id]
         scene = QINFEI_FOOD_SCENES[food_index]
-        if (self.group_id != stage_id or stage.get("shishentotal") != 5 or formation["resindex"] != scene
-                or len(formation["MonstersInfos"]) != 1 or stage.get("battleTime") is not None):
-            raise RuntimeError("The original Qinfei food formation or timing changed")
+        self.group_id = stage_id
+        self.expected = []
+        for stage_id in self.stages:
+            stage = DATA_PVE_STAGE_DATA.data[str(stage_id)]
+            formation = BattleMonstersInfo.data[stage["groupid"]]
+            if (stage["groupid"] != stage_id or stage.get("shishentotal") != 5 or formation["resindex"] != scene
+                    or len(formation["MonstersInfos"]) != 1 or stage.get("battleTime") is not None
+                    or self.archived and formation.get("passReward") not in (self.food_id, self.food_id + 5)):
+                raise RuntimeError("The original Qinfei food formation, reward type or timing changed")
+            self.expected.append([tuple(enemy[:3]) for enemy in formation["MonstersInfos"][0]])
         self.const = const
         self.positions = party_positions(QINFEI_FOOD_MODE, players)
-        self.engine = QinfeiBossFoodEngine({"pve_data_flag": str(stage_id), "food_type": self.food_id,
-                                           "buff": 0, "total_pile": 1})
+        self.engine = QinfeiBossFoodEngine(self.pile_data(0))
         self.engine.battleMode = const.BattleMode.MODE_QINFEI_BOSS_FOOD
         if self.engine.battleMode != QINFEI_FOOD_MODE or self.engine.combineSceneInfoId != scene:
             raise RuntimeError("The original Qinfei food engine initialized another scene")
-        self.expected = [[tuple(enemy[:3]) for enemy in formation["MonstersInfos"][0]]]
-        self.wave_count = 1
+        self.wave_count = len(self.stages)
         self.waves = []
         self.observe_waves()
+        self.pending_pile = None
+        if self.wave_count > 1:
+            reward = self.engine.rewardWaveCountItem
+
+            def observe_reward(camp):
+                cleared = self.engine.finishedWaveCount
+                if (camp != self.const.CampFlag.CAMP1 or self.pending_pile is not None
+                        or cleared != len(self.waves) or not 1 <= cleared < self.wave_count):
+                    raise RuntimeError("The original Qinfei engine requested a different next pile")
+                result = reward(camp)
+                self.pending_pile = cleared
+                return result
+
+            self.engine.rewardWaveCountItem = observe_reward
+
+    def pile_data(self, index):
+        return {"pve_data_flag": str(self.stages[index]), "food_type": self.food_id,
+                "buff": 0, "total_pile": len(self.stages)}
+
+    def advance_pile(self, controller):
+        if self.pending_pile is not None:
+            data = self.pile_data(self.pending_pile)
+            self.pending_pile = None
+            self.engine.op_startNewWaveCout(controller, data)
 
     def report(self, outcome):
         cleared = self.engine.finishedWaveCount
-        if len(self.waves) != 1 or cleared != int(outcome == "win") or self.engine.getHaltBattleTime() is not None:
-            raise RuntimeError("The original Qinfei food engine did not settle the expected pile")
+        observed = len(self.waves)
+        if (self.engine.total_pile != self.wave_count or not 1 <= observed <= self.wave_count
+                or not 0 <= cleared <= observed <= cleared + 1 or self.engine.getHaltBattleTime() is not None
+                or outcome == "win" and cleared != self.wave_count
+                or outcome == "loss" and observed != cleared + 1):
+            raise RuntimeError("The original Qinfei food engine did not settle the requested piles")
         return {"kind": self.kind, "level": self.level, "players": len(self.positions),
                 "positions": self.positions, "waves": self.waves, "foodId": self.engine.food_type,
+                "stages": self.stages, "archived": self.archived,
                 "totalPiles": self.engine.total_pile, "clearedPiles": cleared,
                 "blessingId": self.engine.bless_buff_id}
 

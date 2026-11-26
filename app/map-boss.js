@@ -164,11 +164,23 @@
   const kind=index%qinfeiFoods.length,level=Math.floor(index/qinfeiFoods.length);
   return [26300+index,{entries:[],label:'寝肥合战 · '+qinfeiFoods[kind],
    tierLabel:level?`普通第 ${level} 层`:'惊喜战斗',
-   kind:'qinfeiFood',battleMode:qinfeiFoodMode,sceneId:40056+kind,foodId:900260+kind,level,
+   kind:'qinfeiFood',battleMode:qinfeiFoodMode,sceneId:40056+kind,foodId:900260+kind,level,archived:false,
    waves:[enemies.map((id,i)=>[qinfeiEnemySlots[level][i],id,40])]}];
  });
- const qinfeiStaticStages=[25005,6902001,26325,501200,25006,25007,25008,25009,25010,25011,25012,25013,
-  6902011,6902012,6902013,6902014,6902021,6902022,6902023,6902024];
+ const qinfeiArchivedFoods=[
+  ['鱼',[9991219,9991208,9991208,9991208]],
+  ['苹果',[9991237,9991232,9991232,9991232]],
+  ['酒',[9991282,9991206,9991206,9991206]],
+  ['肉',[9991290,9992290,9991207,9992290]],
+ ];
+ const qinfeiArchivedRoutes=[[25006,0],[25010,5],[6902011,0],[6902021,5]].flatMap(([first,rewardOffset])=>
+  qinfeiArchivedFoods.map(([food,enemies],index)=>[first+index,{
+   entries:[],label:'旧版寝肥 · '+food,tierLabel:'历史食材战',kind:'qinfeiFood',battleMode:qinfeiFoodMode,
+   sceneId:40056+index,foodId:900260+index,rewardId:900260+index+rewardOffset,level:0,archived:true,
+   waves:[enemies.map((id,slot)=>[slot+1,id,40])],
+  }]));
+ const qinfeiStaticStages=[25005,6902001,26325,501200];
+ const qinfeiFoodMaxPiles=5;
  const qinfeiBoss={
   resourceVersion:'0.0.816',battleMode:320,stageId:25005,sceneId:40023,maxWindowSeconds:1200,codeStageId:101002,
   engine:{name:'QinfeiBossEngine',route:'qinfei-boss-personal-window',
@@ -187,7 +199,7 @@
  };
  const stages=Object.fromEntries([...buildStages(bossRoutes,bossMode),...buildStages(sealRoutes,sealMode),
   ...buildStages(lbsRoutes,lbsMode),...buildStages(activityRoutes,lbsActivityMode),...historyStages,...nianRoutes,
-  ...buildStages(meituanRoutes,meituanMode),...qinfeiFoodRoutes]);
+  ...buildStages(meituanRoutes,meituanMode),...qinfeiFoodRoutes,...qinfeiArchivedRoutes]);
  const positions={2:[[5,6],[2,3,4]],3:[[3],[2,5],[4,6]]};
  const fiveSlots=[[2,3,4,5,6]],singleTeamModes=[nianMode,specialNianMode,meituanMode];
  const singlePositions={[lbsMode]:[[2,3,4]],[lbsActivityMode]:fiveSlots,[nianMode]:fiveSlots,[qinfeiFoodMode]:fiveSlots,
@@ -203,7 +215,9 @@
   [lbsActivityMode]:{name:'LBSActivityBossEngine',sha256:'e5fceb3cace7a72b6b323b83db6cfafe6a5bfb4a1dce013a84388992b32b9062'},
  };
  const rules={resourceVersion:'0.0.816',battleModes:[bossMode,sealMode,lbsMode,lbsActivityMode,qinfeiFoodMode,...singleTeamModes],
-  lbsMode,lbsActivityMode,qinfeiBoss,qinfeiFoodMode,qinfeiFoodTableHash,qinfeiStaticStages,tableSHA256,stages,engines,
+  lbsMode,lbsActivityMode,qinfeiBoss,qinfeiFoodMode,qinfeiFoodMaxPiles,qinfeiFoodTableHash,qinfeiStaticStages,tableSHA256,stages,engines,
+  qinfeiFoodChoices:route=>Object.entries(stages).filter(([,candidate])=>candidate.kind==='qinfeiFood'&&
+   candidate.foodId===route.foodId&&candidate.archived===route.archived),
   archivedNianStages:[3340033,3340034],
   partyPositions:(mode,players)=>{
    if(players===1)return singlePositions[mode];
