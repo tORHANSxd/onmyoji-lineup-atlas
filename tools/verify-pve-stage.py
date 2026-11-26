@@ -42,7 +42,7 @@ def replay(args, runtime, work):
     from superghost_stage import HISTORICAL_GHOST_MODE, SUPERGHOST_MODE, SUPERGHOST_WALL_SECONDS, HistoricalGhostReplay, SuperGhostReplay
     from tianfa_stage import (TIANFA_LOBBY_STAGE, TIANFA_MEMBER_COUNT, TIANFA_MODE, TIANFA_REPLAY_SECONDS,
                               TIANFA_STAGES, TianfaReplay)
-    from ten_anniversary_stage import (TEN_BONUSES, TEN_OWNED_MODES, TEN_REPLAY_SECONDS, TEN_TOWER,
+    from ten_anniversary_stage import (TEN_DEFAULT_BONUS, TEN_OWNED_MODES, TEN_REPLAY_SECONDS, TEN_TOWER,
                                        TenAnniversaryReplay, is_ten_anniversary_stage, ten_anniversary_stage)
     from ten_anniversary_boss import TEN_BOSS_MODE, TEN_BOSS_STAGE, TenBossReplay, ten_boss_stage
     from ten_anniversary_explore import TEN_EXPLORE_MODE, TenExploreReplay, exploration_uid, ten_explore_stage
@@ -226,7 +226,7 @@ def replay(args, runtime, work):
 
         if len(fighters) != 5:
             raise ValueError("Shichangji activity requires five owned shikigami")
-        ten_bonuses = [TEN_BONUSES[0], *args.ten_bonuses]
+        ten_bonuses = [TEN_DEFAULT_BONUS, *args.ten_bonuses]
         engine, group, const, ten_deadline = ten_anniversary_stage(modules, args.mode, args.stage, ten_bonuses)
         group_id, wave_count = group["ID"], 1
     elif forest:
@@ -997,7 +997,9 @@ def main():
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_MODES
     from shilian_stage import REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, valid_run_state
     from tianfa_stage import TIANFA_MODE, TIANFA_REPLAY_SECONDS, TIANFA_STAGES
-    from ten_anniversary_stage import TEN_BONUSES, TEN_OWNED_MODES, TEN_REPLAY_SECONDS, valid_ten_bonuses
+    from ten_anniversary_stage import (
+        TEN_OPTIONAL_BONUSES, TEN_OWNED_MODES, TEN_REPLAY_SECONDS, valid_ten_optional_bonuses,
+    )
     from ten_anniversary_boss import TEN_BOSS_MODE, TEN_BOSS_STAGE
     from ten_anniversary_explore import TEN_EXPLORE_MODE
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
@@ -1011,7 +1013,7 @@ def main():
     parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--dojo-area", type=int, nargs=3, metavar=("YEAR", "PLAY", "REGION_STATE"))
     parser.add_argument("--forest-event", type=int)
-    parser.add_argument("--ten-bonuses", type=int, nargs="+", choices=TEN_BONUSES[1:], default=[])
+    parser.add_argument("--ten-bonuses", type=int, nargs="+", choices=TEN_OPTIONAL_BONUSES, default=[])
     parser.add_argument("--map-boss-players", type=int, choices=(1, 2, 3))
     parser.add_argument("--qinfei-food-next", type=int, nargs="+")
     parser.add_argument("--qinfei-profile", type=int, nargs=2, metavar=("RAID", "DIFFICULTY"))
@@ -1047,8 +1049,8 @@ def main():
             parser.error("Forest of Secrets requires a stage and event")
     elif args.forest_event is not None:
         parser.error("--forest-event requires the original Forest of Secrets mode")
-    if args.ten_bonuses and (args.mode not in TEN_OWNED_MODES or not valid_ten_bonuses(args.ten_bonuses)):
-        parser.error("Shichangji bonuses must be unique, ordered, and used with the original inventory battle")
+    if args.ten_bonuses and (args.mode not in TEN_OWNED_MODES or not valid_ten_optional_bonuses(args.ten_bonuses)):
+        parser.error("Shichangji allows up to two unique, ordered optional bonuses in the original inventory battle")
     if args.mode == TEN_BOSS_MODE and args.stage != TEN_BOSS_STAGE:
         parser.error("Shichangji boss battle starts at the first phase")
     if args.mode == DOJO_AREA_MODE:

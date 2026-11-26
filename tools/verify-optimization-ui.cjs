@@ -815,10 +815,14 @@ async function main(){
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='12130002'&&entry.kind==='拾光永恒战斗')){
     await encounter('event','虚无精锐 困难 12130002');
-    const buff='document.querySelector("[data-ten-bonus=\\"810243\\"]")';
-    await ui(buff+'.checked=true;'+buff+'.dispatchEvent(new Event("change",{bubbles:true}))');
-    assert.match(await run('ten-tower',{stageId:12130002,groupId:12130002,battleMode:9591,tenBonuses:[810243]},
-      {tenAnniversary:{timedOut:false,bonuses:[810241,810243],combatSeconds:108.28,deadlineSeconds:180}}),/助战石长姬 · 生效增益 2 项/);
+    const tenBuff=id=>`document.querySelector('[data-ten-bonus="${id}"]')`;
+    await ui(`${tenBuff(810243)}.click();${tenBuff(810244)}.click();`);
+    assert.equal(await ui(tenBuff(810245)+'.disabled'),true);
+    await ui(tenBuff(810243)+'.click()');
+    assert.equal(await ui(tenBuff(810245)+'.disabled'),false);
+    await ui(tenBuff(810243)+'.click()');
+    assert.match(await run('ten-tower',{stageId:12130002,groupId:12130002,battleMode:9591,tenBonuses:[810243,810244]},
+      {tenAnniversary:{timedOut:false,bonuses:[810241,810243,810244],combatSeconds:120.14,deadlineSeconds:180}}),/助战石长姬 · 生效增益 3 项/);
     await encounter('event','黄金之河 虚无浪潮 12');
     assert.match(await ui(panel+'.textContent'),/原版时限 300 秒 · 助战石长姬/);
     assert.match(await run('ten-map',{stageId:12130069,groupId:12130069,battleMode:9593},

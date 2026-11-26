@@ -14,7 +14,10 @@ TEN_ENCOUNTER_STAGES = range(12130069, 12130076)
 TEN_BOSS_STAGES = range(12135001, 12135006)
 TEN_ACTIVITY = 12130
 TEN_ASSIST = 105
-TEN_BONUSES = tuple(range(810241, 810246))
+TEN_GROW_ACTIVITY = 12132
+TEN_DEFAULT_BONUS = 810241
+TEN_OPTIONAL_BONUSES = (810242, 810243, 810244, 810245)
+TEN_BONUS_SLOTS = 2
 TEN_REPLAY_SECONDS = 110
 TEN_ENTRIES = {
     TEN_TOWER: ("TenAnniversaryTowerBattleEngine", "6fa68668f4c91f78be4d07ed3aec45cc190b27d16d650b373eab89c96429353a",
@@ -29,6 +32,8 @@ TEN_SOURCES = {
     "com.data.cdata.normal_battle_config": "51124450333f6b6859599013d31c8d70c90c57972d154bbb17f1d3aaa8a6db66",
     "com.data.cdata.normal_battle_assist_hero": "12a458cabd758009220dd8b7a3cf2b42be839f6e3997d9e74629ea628a711394",
     "com.data.cdata.normal_battle_develop_skill_new": "9c8f37291d3fc86f8f19b3ba530858621a65ad63ccff28f26eec42ac85818d9a",
+    "com.data.cdata.asura_develop": "416ff9213f22c09526d4605f05c4191cb0d111c6d50a9b840daa50212f555699",
+    "com.data.cdata.asura_load": "827aae396458361c14b03de5447dafda6d196f4692d54fcd52e08fbde3bf72cf",
 }
 
 
@@ -37,14 +42,15 @@ def is_ten_anniversary_stage(stage_id):
         TEN_TOWER_STAGES, TEN_EXPLORATION_STAGES, TEN_ENCOUNTER_STAGES, TEN_BOSS_STAGES))
 
 
-def valid_ten_bonuses(bonuses):
-    return (isinstance(bonuses, list) and all(type(value) is int and value in TEN_BONUSES for value in bonuses)
+def valid_ten_optional_bonuses(bonuses):
+    return (isinstance(bonuses, list) and len(bonuses) <= TEN_BONUS_SLOTS
+            and all(type(value) is int and value in TEN_OPTIONAL_BONUSES for value in bonuses)
             and bonuses == sorted(set(bonuses)))
 
 
 def ten_anniversary_stage(modules, mode, stage_id, bonuses):
     from com import const
-    from com.data.cdata import ten_anni_2026_const, ten_anni_2026_dungeon_battle
+    from com.data.cdata import asura_develop, asura_load, ten_anni_2026_const, ten_anni_2026_dungeon_battle
     from DynamicConfigData import DATA_PVE_STAGE_DATA, BattleMonstersInfo
 
     engine_name, digest, route, route_digest = TEN_ENTRIES[mode]
@@ -53,6 +59,17 @@ def ten_anniversary_stage(modules, mode, stage_id, bonuses):
     sources = {**TEN_SOURCES, engine_module: digest, route_module: route_digest}
     if any(modules.rows[name]["marshalSHA256"] != hash_ for name, hash_ in sources.items()):
         raise ValueError("The original Shichangji activity engine or tables changed")
+    if not bonuses or bonuses[0] != TEN_DEFAULT_BONUS or not valid_ten_optional_bonuses(bonuses[1:]):
+        raise ValueError("Shichangji requires the default bonus and up to two selected bonuses")
+    if (asura_load.data[TEN_GROW_ACTIVITY]["load_max"] != TEN_BONUS_SLOTS
+            or ten_anni_2026_const.data[54]["value"] != list(TEN_OPTIONAL_BONUSES)
+            or ten_anni_2026_const.data[55]["value"] != [TEN_DEFAULT_BONUS]):
+        raise RuntimeError("The original Shichangji bonus configuration changed")
+    for skill_id in bonuses:
+        row = asura_develop.data[skill_id]
+        if (row["activity_id"] != TEN_GROW_ACTIVITY or row["max_lv"] != 1 or row["default_unlock"] != 1
+                or row["default_equiped"] != int(skill_id == TEN_DEFAULT_BONUS)):
+            raise RuntimeError(f"The original Shichangji bonus {skill_id} changed")
     options = {}
     if mode == TEN_TOWER and stage_id in TEN_TOWER_STAGES:
         const_id = TEN_TOWER_STAGES[stage_id]

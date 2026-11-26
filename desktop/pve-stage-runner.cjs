@@ -879,9 +879,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    }else if(forest!==undefined)throw Error('青森之秘事件配置仅适用于其活动入口');
    if(battleMode===3&&ten.isStage(stageId))throw Error('拾光永恒需要原版活动战斗入口');
    if(ten.modes[battleMode]){
+    if(!ten.validBonuses(tenBonuses??[]))throw Error(`拾光永恒最多可选 ${ten.bonusSlots} 项不同的额外增益`);
     if(ten.resourceVersion!==resourceVersion||ten.modeFor(stageId)!==battleMode||stageId!==groupId||
-       plan.members.length!==5||!ten.validBonuses(tenBonuses??[]))
-     throw Error('拾光永恒需要对应的关卡、养成增益和五位自有式神');
+       plan.members.length!==5)throw Error('拾光永恒需要对应的关卡和五位自有式神');
    }else if(tenBonuses!==undefined)throw Error('石长姬养成增益仅适用于虚无精锐和遭遇战');
    if(battleMode===tenBoss.battleMode&&(ten.resourceVersion!==resourceVersion||stageId!==tenBoss.stageId||
       groupId!==stageId||plan.members.length!==5))throw Error('炼石成金从第一层开始，需要五位自有式神');

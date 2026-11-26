@@ -14,11 +14,12 @@
  const modeFor=id=>range(id,12130001,12130002)?tower:range(id,12130069,12130075)?encounter:null;
  const boss=id=>range(id,12135001,12135005);
  const exploration=id=>range(id,12130016,12130059);
+ const bonusSlots=2;
  const bonuses={
-  810242:'每回合对各敌人的首段伤害提高 50%',
-  810243:'助战石长姬速度提高 120%，伤害提高 200%',
-  810244:'友方回合结束后获得 20% 增伤，最多五层',
-  810245:'友方造成伤害时无视 100 点防御',
+  810242:'震地千钧 · 每回合对各敌人的首段伤害提高 50%',
+  810243:'大地之助 · 助战石长姬速度提高 120%，伤害提高 200%',
+  810244:'越战越勇 · 友方回合结束后获得 20% 增伤，最多五层',
+  810245:'穿甲强击 · 友方造成伤害时无视 100 点防御',
  };
  const bossRoute={
   battleMode:9592,teamType:2322,codeStageId:100999,stageId:12135001,activityId:12135,deadlineSeconds:180,
@@ -51,12 +52,12 @@
     new Set(members.map(([id])=>id)).size===members.length;
   },
  };
- const data={resourceVersion:'0.0.816',modes,modeFor,boss,exploration,bonuses,defaultBonus:810241,
+ const data={resourceVersion:'0.0.816',modes,modeFor,boss,exploration,bonuses,bonusSlots,defaultBonus:810241,
   bossRoute,exploreRoute,
   isStage:id=>modeFor(id)!==null||boss(id)||exploration(id),
   hard:id=>id===12130002,
   deadlineFor:id=>range(id,12130069,12130073)?300:modeFor(id)===null?null:180,
-  validBonuses:ids=>Array.isArray(ids)&&ids.every((id,i)=>
+  validBonuses:ids=>Array.isArray(ids)&&ids.length<=bonusSlots&&ids.every((id,i)=>
    Number.isSafeInteger(id)&&Object.hasOwn(bonuses,id)&&(!i||ids[i-1]<id)),
   tableSHA256:{
    pve_stage_data:'7d376d64c733f53882acc6e88291a4607b6c290828981fbad7adc3dcf7ad36b0',

@@ -1460,8 +1460,8 @@
     if(stage?.battleTime!==seconds||stage.shishentotal!==5||group?.waves?.length!==1)return true;
     const caption=node('p',`原版时限 ${seconds} 秒 · 助战石长姬 · 默认提升友方 20% 暴击，溢出转为暴击伤害`,'caption');
     const details=node('details','','encounter-source');
-    details.append(node('summary','设置已解锁的养成增益'),
-      node('p','助战属性按基础值模拟，可勾选当时已解锁的技能。','caption'));
+    details.append(node('summary','选择当局额外增益'),
+      node('p',`会心一击固定生效，额外增益最多选 ${source.bonusSlots} 项。助战属性按原版基础值模拟。`,'caption'));
     const workbench=node('div'),options=[];
     for(const [id,text] of Object.entries(source.bonuses)){
       const label=node('label','','pve-lineup-field'),input=document.createElement('input');
@@ -1474,10 +1474,12 @@
     }
     destination.append(caption,details,workbench);
     const render=()=>{
+      const selected=options.filter(input=>input.checked);
+      for(const input of options)input.disabled=!input.checked&&selected.length>=source.bonusSlots;
       workbench.replaceChildren();
       window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:stage.groupid,memberCount:5,waveCount:1,battleMode,
         version:source.resourceVersion,label:entry.title,codeStageIds:[route.codeStageId],
-        tenBonuses:options.filter(input=>input.checked).map(input=>Number(input.value))});
+        tenBonuses:selected.map(input=>Number(input.value))});
     };
     details.addEventListener('change',render);
     render();
