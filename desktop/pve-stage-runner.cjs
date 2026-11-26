@@ -20,6 +20,7 @@ const dojoAreaRules=require('../app/dojo-area.js');
 const forestRules=require('../app/guild-forest.js');
 const ten=require('../app/ten-anniversary.js');
 const tenBoss=ten.bossRoute;
+const tenExplore=ten.exploreRoute;
 const tianfa=require('../app/tianfa.js');
 const journeyHard=require('../app/journey-hard.js');
 const mapBoss=require('../app/map-boss.js');
@@ -38,6 +39,7 @@ const engines={
  [forestRules.battleMode]:forestRules.engine,
  ...ten.modes,
  [tenBoss.battleMode]:tenBoss.engine,
+ [tenExplore.battleMode]:tenExplore.engine,
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  29:{name:'AwakeFbEngine',route:'awake-ordinary-solo',sha256:awakeOpenings.engineSHA256},
  266:{name:'ChallengeFbEngine',route:'secret-ordinary-solo',sha256:secretOpenings.engineSHA256},
@@ -664,6 +666,20 @@ function validTenBoss(report){
    positive(assist.heroId)&&[101,102,103].includes(assist.position));
 }
 
+function validTenExplore(report,plan){
+ const data=report.tenAnniversaryExplore,limit=tenExplore.deadlineSeconds;
+ const expected=[[tenExplore.actorId,plan.actorLevel===1?10:plan.actorLevel],...plan.members];
+ return report.waveCount===1&&report.formationsVerified===1&&data?.actId===12130&&
+  data.actorLevel===plan.actorLevel&&data.deadlineSeconds===limit&&
+  Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&
+  typeof data.timedOut==='boolean'&&(!data.timedOut||data.combatSeconds>=limit-1)&&
+  Array.isArray(data.party)&&data.party.length===expected.length&&data.party.every((unit,index)=>
+   unit.id===expected[index][0]&&unit.level===expected[index][1]&&unit.position===index+1&&
+   positive(unit.suitId)&&Array.isArray(unit.suitSkills)&&unit.suitSkills.every(positive)&&
+   Array.isArray(unit.skills)&&unit.suitSkills.every(id=>unit.skills.some(([skill,level])=>skill===id&&level===1))&&
+   [unit.hp,unit.speed,unit.attack,unit.defense,unit.critRate].every(Number.isFinite))&&Array.isArray(data.opening)&&data.opening.length>0;
+}
+
 function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,dojoArea,forest,tenBonuses}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const qinfeiSide=battleMode===3?mapBoss.qinfeiSideBattles[stageId]:null;
@@ -708,6 +724,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (forest&&!validForestReport(report,forest,rounds[0]))||
     (ten.modes[battleMode]&&!validTenAnniversary(report,stageId,tenBonuses??[]))||
     (battleMode===tenBoss.battleMode&&!validTenBoss(report))||
+    (battleMode===tenExplore.battleMode&&!validTenExplore(report,rounds[0]))||
     (!qinfeiSide&&(pveDeadlineSeconds!==undefined||pveDeadline!==undefined)&&
      (battleMode!==3||!positive(expectedPveDeadline)||!validPveClock(report,pveDeadline,expectedPveDeadline)))||
     (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
@@ -759,10 +776,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice,ghost,mapBossAvailable,qinfeiAvailable,dojoAreaAvailable,forestAvailable,tenAvailable,tenBossAvailable]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice,ghost,mapBossAvailable,qinfeiAvailable,dojoAreaAvailable,forestAvailable,tenAvailable,tenBossAvailable,tenExploreAvailable]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
      has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),
      has('fengmo_yanwu_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py'),
-     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py'),has('tianfa_stage.py'),has('guild_crevice_stage.py'),has('superghost_stage.py'),has('map_boss_stage.py'),has('qinfei_boss_stage.py'),has('dojo_area_stage.py'),has('guild_forest_stage.py'),has('ten_anniversary_stage.py'),has('ten_anniversary_boss.py')]);
+     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py'),has('tianfa_stage.py'),has('guild_crevice_stage.py'),has('superghost_stage.py'),has('map_boss_stage.py'),has('qinfei_boss_stage.py'),has('dojo_area_stage.py'),has('guild_forest_stage.py'),has('ten_anniversary_stage.py'),has('ten_anniversary_boss.py'),has('ten_anniversary_explore.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
@@ -771,7 +788,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(crevice?[guildCrevice.battleMode]:[]),...(ghost?[superGhost.battleMode,superGhost.historicalBattleMode]:[]),
      ...(mapBossAvailable?mapBoss.battleModes:[]),...(qinfeiAvailable&&retreat?[qinfei.battleMode]:[]),
      ...(dojoAreaAvailable&&yanwu?[dojoAreaRules.battleMode]:[]),...(forestAvailable?[forestRules.battleMode]:[]),
-     ...(tenAvailable&&yanwu?Object.keys(ten.modes).map(Number):[]),...(tenAvailable&&tenBossAvailable?[tenBoss.battleMode]:[])]};
+     ...(tenAvailable&&yanwu?Object.keys(ten.modes).map(Number):[]),...(tenAvailable&&tenBossAvailable?[tenBoss.battleMode]:[]),
+     ...(tenAvailable&&yanwu&&tenExploreAvailable?[tenExplore.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -782,10 +800,12 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const minMembers=battleMode===2001?5:1;
    const maxMembers=[fengmoYanwu.battleMode,orochi.battleMode,tianfa.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
    const stageActor=battleMode===tenBoss.battleMode||battleMode===266&&secretOpenings.floors[stageId]?.replacement;
+   const explore=battleMode===tenExplore.battleMode;
+   const validPlan=explore?tenExplore.validPlan(plan):Array.isArray(rounds)&&rounds.length>=1&&rounds.length<=4&&
+    rounds.every(row=>row&&(stageActor||row.onmyoji)&&Array.isArray(row.members)&&
+     row.members.length>=minMembers&&row.members.length<=maxMembers&&validTactics(row,battleMode));
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
-      typeof damageFloor!=='boolean'||!Array.isArray(rounds)||rounds.length<1||rounds.length>4||rounds.some(row=>
-       !row||(!stageActor&&!row.onmyoji)||!Array.isArray(row.members)||row.members.length<minMembers||row.members.length>maxMembers||!validTactics(row,battleMode))||
-      !validTactics(plan,battleMode))
+      typeof damageFloor!=='boolean'||!validPlan||!validTactics(plan,battleMode))
     throw Error('无效的关卡、种子或配装');
    if(battleMode===29&&(awakeOpenings.resourceVersion!==resourceVersion||
       awakeOpenings.floors[stageId]?.groupId!==groupId||plan.members.length!==5))
@@ -865,6 +885,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    }else if(tenBonuses!==undefined)throw Error('石长姬养成增益仅适用于虚无精锐和遭遇战');
    if(battleMode===tenBoss.battleMode&&(ten.resourceVersion!==resourceVersion||stageId!==tenBoss.stageId||
       groupId!==stageId||plan.members.length!==5))throw Error('炼石成金从第一层开始，需要五位自有式神');
+   if(explore&&(ten.resourceVersion!==resourceVersion||!ten.exploration(stageId)||groupId!==stageId))
+    throw Error('巡于黄金之河需要对应的普通探索关卡');
    if(battleMode===3&&activityScore.stages[stageId])throw Error(`${activityScore.stages[stageId].label}需要使用原版活动计分入口`);
    const tianfaStage=tianfa.stages[stageId];
    if(typeof tianfaTeam!=='boolean'||tianfaTeam&&battleMode!==tianfa.battleMode)throw Error('三人复跑设置只适用于彼世逢魔');

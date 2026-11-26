@@ -228,7 +228,10 @@
     if (showStages) {
       el('status').textContent = '';
       if (!stage.rows && !stage.loading) void loadEncounters();
-    } else window.AtlasPveWorkbench?.cancel();
+    } else {
+      window.AtlasPveWorkbench?.cancel();
+      window.AtlasTenExploreWorkbench?.cancel();
+    }
   }
 
   async function loadEncounters() {
@@ -279,6 +282,7 @@
     stage.page = 0;
     if (!stage.matches.includes(stage.selected)) {
       window.AtlasPveWorkbench?.unmount();
+      window.AtlasTenExploreWorkbench?.cancel();
       stage.token++;
       stage.selected = null;
       el('encounter-detail').replaceChildren();
@@ -1423,7 +1427,28 @@
     if(source.boss(stageId))return true;
     const battleMode=source.modeFor(stageId);
     if(!battleMode){
-      destination.append(node('p','此战斗使用地图内招募的式神和培养等级。活动队伍复跑待接入。','caption'));
+      const route=source.exploreRoute;
+      const registration=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===route.teamType)?.row;
+      const stage=groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===stageId)?.row;
+      if(!matchesOpeningSource(source)||
+         !matchesOpeningSource({resourceVersion:source.resourceVersion,tableSHA256:route.tableSHA256})||
+         registration?.battleMode!==route.battleMode||registration.route_sha256!==route.routeSHA256||
+         stage?.groupid!==stageId||stage.battleTime!==route.deadlineSeconds)return true;
+      const host=node('div');
+      const message=node('p','正在读取原版活动招募名单…','caption');
+      host.append(message);
+      destination.append(host);
+      const ids=Object.keys(route.recruitLevels).map(Number);
+      api.records('ten_anni_2026_hero',ids).then(profiles=>{
+        if(!host.isConnected)return;
+        if(!Array.isArray(profiles)||profiles.length!==ids.length||!profiles.every((row,index)=>
+            row?.hero_id===ids[index]&&row.init_lv===route.recruitLevels[ids[index]]&&typeof row.name==='string')){
+          message.textContent='活动招募名单与此版本的原表不一致。';
+          return;
+        }
+        host.replaceChildren();
+        window.AtlasTenExploreWorkbench?.mount(host,stageId,profiles);
+      }).catch(()=>{message.textContent='无法读取活动招募名单。';});
       return true;
     }
     const route=source.modes[battleMode];
@@ -1563,6 +1588,7 @@
   async function showEncounter(entry) {
     if (!entry) return;
     window.AtlasPveWorkbench?.unmount();
+    window.AtlasTenExploreWorkbench?.cancel();
     const token = ++stage.token, destination = el('encounter-detail');
     stage.selected = entry;
     for (const button of el('encounter-list').children) {
@@ -1925,7 +1951,10 @@
     return;
   }
   panel.addEventListener('toggle', () => {
-    if (!panel.open) window.AtlasPveWorkbench?.cancel();
+    if (!panel.open) {
+      window.AtlasPveWorkbench?.cancel();
+      window.AtlasTenExploreWorkbench?.cancel();
+    }
     if (panel.open && !state.index) api.index().then(setIndex).catch(error => {
       el('status').textContent = '无法读取副本资料。' + error.message;
     });

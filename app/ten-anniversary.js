@@ -32,8 +32,27 @@
    normal_battle_yys_replace:'0ed028082bc8f51caa6343fe206f1320283782593afdb8b1898c0d2324d19c5d',
   },
  };
+ const recruitLevels={200:10,205:1,238:1,249:10,251:20,260:1,262:10,295:20,311:25,332:10,335:20,
+  347:30,372:30,379:30,591:30,594:30,595:30};
+ const exploreRoute={
+  battleMode:9590,teamType:2319,codeStageId:101000,actorId:20608,deadlineSeconds:180,recruitLevels,
+  routeSHA256:'ae62817484f3ebbb8851b3dd94f6ed827fe9104dff875b51e0093202fd98fd1f',
+  engine:{name:'TenAnniversaryExploreBattleEngine',route:'ten-anniversary-exploration',
+   sha256:'6aeb50221eabb93a29d8f8e91de279f23d56bcaa3172ec7fe1f1ad5e33a420af'},
+  tableSHA256:{
+   ten_anni_2026_hero:'af4fda15c4033e2189f4474dfecd4446edbd736709f9eb89c8bfda340f771e59',
+   ten_anni_2026_hero_attr:'9cdf3cd3acf82479800bf10696024b2ff7c175b298196e8fed541c1d570f61a7',
+  },
+  validPlan(plan){
+   const {actorLevel,members}=plan??{};
+   return range(actorLevel,1,40)&&Array.isArray(members)&&range(members.length,1,5)&&
+    members.every(row=>Array.isArray(row)&&row.length===2&&Number.isSafeInteger(row[0])&&
+     Object.hasOwn(recruitLevels,row[0])&&range(row[1],recruitLevels[row[0]],40))&&
+    new Set(members.map(([id])=>id)).size===members.length;
+  },
+ };
  const data={resourceVersion:'0.0.816',modes,modeFor,boss,exploration,bonuses,defaultBonus:810241,
-  bossRoute,
+  bossRoute,exploreRoute,
   isStage:id=>modeFor(id)!==null||boss(id)||exploration(id),
   hard:id=>id===12130002,
   deadlineFor:id=>range(id,12130069,12130073)?300:modeFor(id)===null?null:180,

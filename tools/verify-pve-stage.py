@@ -45,6 +45,7 @@ def replay(args, runtime, work):
     from ten_anniversary_stage import (TEN_BONUSES, TEN_OWNED_MODES, TEN_REPLAY_SECONDS, TEN_TOWER,
                                        TenAnniversaryReplay, is_ten_anniversary_stage, ten_anniversary_stage)
     from ten_anniversary_boss import TEN_BOSS_MODE, TEN_BOSS_STAGE, TenBossReplay, ten_boss_stage
+    from ten_anniversary_explore import TEN_EXPLORE_MODE, TenExploreReplay, exploration_uid, ten_explore_stage
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
@@ -75,6 +76,7 @@ def replay(args, runtime, work):
     forest = args.mode == FOREST_MODE
     ten_anniversary = args.mode in TEN_OWNED_MODES
     ten_boss = args.mode == TEN_BOSS_MODE
+    ten_explore = args.mode == TEN_EXPLORE_MODE
     tianfa = args.mode == TIANFA_MODE
     journey_hard = args.mode == JOURNEY_HARD_MODE
     map_boss_replay = None
@@ -86,7 +88,9 @@ def replay(args, runtime, work):
     secret_actor_report = None
     shilian_event = ({"id": args.shilian_event_id, "difficulty": args.shilian_difficulty, "moves": args.shilian_moves}
                      if args.mode == SHILIAN_EVENT_MODE else None)
-    if relay:
+    if ten_explore:
+        heroes, fighters, inventory, choices = {}, {}, {}, {}
+    elif relay:
         heroes, inventory, actors, rounds = underworld_teams(plan, suits)
     elif orochi:
         fighters, inventory, choices, actors = orochi_team(plan, suits)
@@ -203,6 +207,12 @@ def replay(args, runtime, work):
         if len(fighters) != member_count:
             raise ValueError("The selected roster does not match the original solo Fengmo Yanwu route")
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif ten_explore:
+        from DynamicConfigData import DATA_HERO
+
+        engine, group, const, ten_profiles = ten_explore_stage(modules, args.stage, plan)
+        actor = heroes["selected-onmyoji"] = stage_actor_placeholder()
+        group_id, wave_count = group["ID"], 1
     elif ten_boss:
         from DynamicConfigData import DATA_HERO
 
@@ -387,7 +397,7 @@ def replay(args, runtime, work):
     player = preset_player(heroes, actors, actor_id) if relay or orochi else {"heroes": heroes, "yysid": actor_id}
     if shilian and args.shilian_state and args.shilian_state.get("guard"):
         player["behind_spirit_info"] = guard_battle_input(args.shilian_state["guard"])
-    spirit = None if relay or orochi or shilian or ten_boss or secret_actor_config else plan.get("spirit")
+    spirit = None if relay or orochi or shilian or ten_boss or ten_explore or secret_actor_config else plan.get("spirit")
     if spirit is not None:
         from AttrCalc import HunlingAttrCalc
         from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
@@ -409,7 +419,10 @@ def replay(args, runtime, work):
     if local_party:
         avatar.defaultHeros = [uid for uid in local_party[0]["heroes"] if uid in fighters]
 
-    if raid_battle:
+    if ten_explore:
+        avatar.defaultHeros = [exploration_uid(avatar, hero) for hero, _ in plan["members"]]
+        route = "ten-anniversary-exploration"
+    elif raid_battle:
         route = "qinfei-boss-personal-window" if qinfei_boss else "guild-retreat-personal-window"
         raid_window = RaidDamageWindow(raid, const, args.window_seconds)
     elif relay:
@@ -548,6 +561,7 @@ def replay(args, runtime, work):
     forest_replay = ForestReplay(engine, group, const, forest_event) if forest else None
     ten_replay = TenAnniversaryReplay(engine, group, const, ten_deadline, ten_bonuses) if ten_anniversary else None
     ten_boss_replay = TenBossReplay(engine, ten_groups, const, ten_actor, ten_assists) if ten_boss else None
+    ten_explore_replay = TenExploreReplay(engine, group, const, ten_profiles, plan, controller) if ten_explore else None
     spider_replay = TsuchigumoPractice(engine, stage, group, const) if spider else None
     verified_waves = set()
     secret_protection_replay = None
@@ -617,7 +631,7 @@ def replay(args, runtime, work):
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == ten_groups[0]["resindex"]
                              and engine.defeat_monster_wave == 0 and engine.monster_wave_count == len(ten_groups)
                              and tuple(engine.wave_pve_flag_list) == tuple(group["ID"] for group in ten_groups))
-    elif yanwu or dojo_area or forest or ten_anniversary or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
+    elif yanwu or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -654,7 +668,7 @@ def replay(args, runtime, work):
         engine.op_sceneLoaded(current)
 
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else QINFEI_BOSS_REPLAY_SECONDS if qinfei_boss
-                      else TEN_REPLAY_SECONDS if ten_anniversary or ten_boss
+                      else TEN_REPLAY_SECONDS if ten_anniversary or ten_boss or ten_explore
                       else OROCHI_REPLAY_SECONDS if orochi
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
                       else CREVICE_WALL_SECONDS if crevice
@@ -708,6 +722,8 @@ def replay(args, runtime, work):
             ten_replay.update()
         if ten_boss_replay:
             ten_boss_replay.update()
+        if ten_explore_replay:
+            ten_explore_replay.update()
         if tianfa:
             tianfa_replay.update()
         if spider_replay:
@@ -753,6 +769,8 @@ def replay(args, runtime, work):
             secret_actor_report = check_secret_actor(engine, controller, secret_actor_config)
         if ten_boss_replay:
             ten_boss_replay.verify_actor(controller)
+        if ten_explore_replay:
+            ten_explore_replay.verify_selection()
         pending = dict(choices)
         for entity in engine.heroEntities.values():
             owner = entity.ownerController
@@ -877,6 +895,9 @@ def replay(args, runtime, work):
         report["waveCount"] = len(ten_groups)
         report["formationsVerified"] = len(ten_boss_replay.phases)
         report["wavesCleared"] = len(ten_boss_replay.phases) - 1
+    if ten_explore_replay:
+        report["tenAnniversaryExplore"] = ten_explore_replay.report(completed)
+        report["formationsVerified"] = 1
     if journey_hard:
         report["journeyHard"] = journey.report()
     if map_boss_replay:
@@ -978,6 +999,7 @@ def main():
     from tianfa_stage import TIANFA_MODE, TIANFA_REPLAY_SECONDS, TIANFA_STAGES
     from ten_anniversary_stage import TEN_BONUSES, TEN_OWNED_MODES, TEN_REPLAY_SECONDS, valid_ten_bonuses
     from ten_anniversary_boss import TEN_BOSS_MODE, TEN_BOSS_STAGE
+    from ten_anniversary_explore import TEN_EXPLORE_MODE
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS
     from underworld_stage import UNDERWORLD_MODE
@@ -986,7 +1008,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--dojo-area", type=int, nargs=3, metavar=("YEAR", "PLAY", "REGION_STATE"))
     parser.add_argument("--forest-event", type=int)
     parser.add_argument("--ten-bonuses", type=int, nargs="+", choices=TEN_BONUSES[1:], default=[])
@@ -1096,7 +1118,7 @@ def main():
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
-                        TEN_REPLAY_SECONDS + 20 if args.mode in (*TEN_OWNED_MODES, TEN_BOSS_MODE) else
+                        TEN_REPLAY_SECONDS + 20 if args.mode in (*TEN_OWNED_MODES, TEN_BOSS_MODE, TEN_EXPLORE_MODE) else
                         OROCHI_REPLAY_SECONDS + 20 if args.mode == OROCHI_MODE else
                         HUNLING_REPLAY_SECONDS + 20 if args.mode in HUNLING_MODES else
                         QILING_GROUP_REPLAY_SECONDS + 20 if args.mode == QILING_GROUP_MODE else

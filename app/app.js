@@ -77,7 +77,13 @@ async function copyCode(button,code,message='原始阵容码已复制'){
 }
 function selectView(name){
  const pages={builder:['阵容制作器','按游戏规则配置成员、技能和御魂，生成阵容码。'],library:['阵容库','按副本找阵容，用自己的库存核对差距。'],decode:['阵容码查看','解析原码，核对成员、技能与御魂要求。'],accounts:['我的账号','查看本地库存，为阵容匹配选择账号。'],manage:['阵容库管理','整理原码、分类与备注，处理失败和失效记录。'],audit:['来源与覆盖','核对资料来源、资源覆盖和计算范围。']};
- if(!pages[name]||!DATA)return;view=name;if(name!=='library')window.AtlasPveWorkbench?.cancel();if(name==='builder')renderBuilder();
+ if(!pages[name]||!DATA)return;
+ view=name;
+ if(name!=='library'){
+  window.AtlasPveWorkbench?.cancel();
+  window.AtlasTenExploreWorkbench?.cancel();
+ }
+ if(name==='builder')renderBuilder();
  document.querySelectorAll('.view').forEach(el=>el.hidden=el.id!=='view-'+name);
  document.querySelectorAll('[data-view]').forEach(el=>{el.classList.toggle('active',el.dataset.view===name);if(el.matches('.nav')){if(el.dataset.view===name)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');}});
  $('add-code').hidden=name!=='library';$('add-bulk').hidden=name!=='library';$('account-selector').hidden=!['library','accounts','manage'].includes(name);
@@ -215,6 +221,7 @@ function sampleBattleMarkup(samples){
   const forest=sample.guildForest;
   const ten=sample.tenAnniversary;
   const tenBoss=sample.tenAnniversaryBoss;
+  const tenExplore=sample.tenAnniversaryExplore;
   const damageWindow=sample.guildCrevice??ghost??historicalGhost;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
@@ -283,6 +290,8 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${tenBoss.damage.toLocaleString('zh-CN')} · 到达第 ${tenBoss.phases.length} / 5 层 · `+
     `战斗与结算 ${tenBoss.combatSeconds.toFixed(2)} 秒`+
     (tenBoss.phases.length===5?` · 末层小怪已重生 ${tenBoss.minionRespawns} 次`:''):
+   tenExplore?`${tenExplore.timedOut?'原版判定超时':describeBattle(sample,false)} · 石长姬活动 ${tenExplore.actorLevel} 级 · `+
+    `${tenExplore.party.length-1} 位招募式神 · 战斗与结算 ${tenExplore.combatSeconds.toFixed(2)} 秒`:
    damageWindow?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':
     historicalGhost&&historicalGhost.windowSeconds<historicalGhost.deadlineSeconds?'达到计分窗口':'原版时限结束',
     'window-expired':'达到计分窗口'}[damageWindow.reason]||'结算待核对'} · `+
@@ -330,7 +339,12 @@ function sampleBattleMarkup(samples){
    return `<li>第 ${phase.phase} 层 · ${phase.seconds.toFixed(2)} 秒进场 · 敌方 ${phase.enemies.length} 位`+
     (names.length?` · 助战 ${esc(names.join('、'))}`:'')+'</li>';
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}</li>`;
+  const activityParty=tenExplore?`<details><summary>查看原版活动队伍</summary><ol>${tenExplore.party.map(unit=>{
+   const name=unit.position===1?'石长姬':DATA.gameConfig.heroes[unit.id]?.name??unit.id;
+   return `<li>${esc(name)} · 原版实体 ${unit.level} 级 · 速度 ${unit.speed.toFixed(2)} · `+
+    `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}</li>`;
+  }).join('')}</ol></details>`:'';
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}</li>`;
  }).join('');
 }
 
@@ -380,7 +394,8 @@ function planSeedAudits(job){
 }
 function battleBusy(job){return usesDungeonInventory(job)&&!job.cancelled&&(job.running||job.activeSeedAudit||job.activeFullSeedAudit||job.rows.some(row=>row.state==='waiting'));}
 function hun13Busy(){return !!(dungeonHun13?.running||dungeonHun13?.activeFullSeedAudit||dungeonHun13?.activeSeedAudit);}
-function runeBusy(){return !!(dungeonStopPending||battleBusy(dungeonBattle)||hun13Busy()||window.AtlasPveWorkbench?.busy());}
+function runeBusy(){return !!(dungeonStopPending||battleBusy(dungeonBattle)||hun13Busy()||
+ window.AtlasPveWorkbench?.busy()||window.AtlasTenExploreWorkbench?.busy());}
 async function verifyDungeonSeeds(job,row,selector){
  if(runeBusy()||!usesDungeonInventory(job)||row.verdict!=='pass'||failedSeedAudit(row)||fullSeedPassed(row))return;
  const audit=row.seedAudit??={samples:[]};
@@ -761,6 +776,7 @@ async function verifyHun13Pair(selection){
 
 function renderDungeonSelection(){
  window.AtlasPveWorkbench?.refresh();
+ window.AtlasTenExploreWorkbench?.refresh();
  if(!$('dungeon-workbench').open)return;
  const dungeon=selectedDungeon();
  const selection=checkedDungeonLineups(dungeon);
@@ -1322,6 +1338,7 @@ function renderSelection(ls=filteredLineups()){
  $('gap-statistics').disabled=!account()||!ls.length;
  document.querySelectorAll('[data-select-lineup]').forEach(input=>{input.checked=selectedLineups.has(input.dataset.selectLineup);input.closest('.lineup-card').classList.toggle('is-selected',input.checked);});
  window.AtlasPveWorkbench?.refresh();
+ window.AtlasTenExploreWorkbench?.refresh();
 }
 async function saveTargets(remove=false){
  const active=account();if(!active||targetSaving||!selectedLineups.size)return;

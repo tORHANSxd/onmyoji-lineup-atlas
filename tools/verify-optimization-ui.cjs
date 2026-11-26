@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -359,7 +359,9 @@ async function main(){
   jinyujiStageActor.members.shift();
   const tenBossStageActor=known('ten-boss',100999,5);
   tenBossStageActor.members.shift();
-  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor,tenBossStageActor);
+  const tenExplore=known('ten-explore',101000,5);
+  tenExplore.members=tenExplore.members.filter(member=>[591,379].includes(Number(member.shikigamiId)));
+  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor,tenBossStageActor,tenExplore);
   const boot=await ui('JSON.stringify(STATE)');
   const cases=encounterCases;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -822,8 +824,33 @@ async function main(){
     assert.match(await run('ten-map',{stageId:12130069,groupId:12130069,battleMode:9593},
       {tenAnniversary:{timedOut:false,bonuses:[810241],combatSeconds:190,deadlineSeconds:300}}),/原版时限 300 秒/);
     await ui('qaEncounterInput("event","黄金之河 石长姬-探索1 12130016")');
-    await until(panel+'.textContent.includes("活动队伍复跑待接入")');
+    const exploreStart='document.querySelector("[data-explore-start]")';
+    await until(exploreStart+'!==null');
     assert.equal(await ui(start+'===null'),true);
+    assert.equal(await ui(exploreStart+'.disabled'),true);
+    const activeAccount=await ui('STATE.activeAccount');
+    await ui(`STATE.activeAccount="";(()=>{
+      const choice=document.querySelector('[data-explore-known]');
+      choice.value='qa-known-ten-explore';
+      choice.dispatchEvent(new Event('change',{bubbles:true}));
+      const actor=document.querySelector('[data-explore-actor]');
+      actor.value='35';
+      actor.dispatchEvent(new Event('change',{bubbles:true}));
+    })()`);
+    const plan={actorLevel:35,members:[[591,30],[379,30]]},seen=[];
+    mockPve=(party,request)=>{
+     assert.deepEqual(party,plan);
+     assert.deepEqual(request,{battleMode:9590,stageId:12130016,groupId:12130016,seed:request.seed,damageFloor:true});
+     seen.push(request.seed);
+     const opening=[[20608,35],[591,30],[379,30]].map(([id,level],index)=>({id,level,position:index+1,speed:128,attack:1200,hp:6000}));
+     return {...sample,...request,tenAnniversaryExplore:{actorLevel:35,party:opening,combatSeconds:30.24,timedOut:false}};
+    };
+    await until(exploreStart+'.disabled===false');
+    await ui(exploreStart+'.click()');
+    await until('document.querySelector("[data-explore-status]").textContent.includes("6 / 6 个采样种子通关")');
+    assert.deepEqual(seen,[0,1,2,3,7,42]);
+    assert.match(await ui('document.querySelector("[data-explore-results]").textContent'),/石长姬活动 35 级 · 2 位招募式神/);
+    await ui('STATE.activeAccount='+JSON.stringify(activeAccount));
    }
    if(cases.some(entry=>entry.table==='activity'&&entry.key===12135&&entry.refs.some(ref=>ref.table==='stake_boss'))){
     await encounter('event','炼石成金 12135');

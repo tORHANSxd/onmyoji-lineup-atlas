@@ -662,6 +662,12 @@ def encounter_index(source, load_rows):
                     team, mode, code, activity = 2321, 9593, 101000, 12134
                 else:
                     team, mode, code, activity = 2319, 9590, 101000, 12134
+                    for dest, target, label in (
+                        ("normal_battle_yys_replace", 216, "原版石长姬替换配置"),
+                        ("ten_anni_2026_hero", 20608, "石长姬活动养成与御魂"),
+                    ):
+                        if ref := relation(dest, target, label, False):
+                            links.append(ref)
                 links.extend(ref for dest, target, label in (
                     ("ten_anni_2026_dungeon_battle", ten_dungeon_by_stage.get(stage_id), "地图战斗配置"),
                     ("battle_team_routes", team, "专用组队入口"),
