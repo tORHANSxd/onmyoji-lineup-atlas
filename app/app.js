@@ -197,7 +197,7 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${retreat.damage.toLocaleString('zh-CN')} · 作战 ${retreat.combatSeconds.toFixed(2)} 秒 · ${retreat.phases.length} 次阶段切换`:
    yanwu?`${!sample.completed?'结算待确认':yanwu.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${yanwu.damage.toLocaleString('zh-CN')} · 作战 ${yanwu.combatSeconds.toFixed(2)} 秒`:
-   spider?`${describeBattle(sample)} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
+   spider?`${sample.completed?describeBattle(sample):'本机复跑达到运行时限，结算待核对'} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
     `战斗 ${spider.combatSeconds.toFixed(2)} 秒`+
     (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):
    relay?`${sample.completed?'结算':'结算待确认'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 波 · `+

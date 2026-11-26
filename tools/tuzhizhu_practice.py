@@ -1,6 +1,7 @@
 """Ordinary and extreme Tsuchigumo practice from the original client tables."""
 
 PRACTICE_MODES = (5550, 5551)
+PRACTICE_REPLAY_SECONDS = 620
 
 
 def practice_stage(entry_id, battle_mode):

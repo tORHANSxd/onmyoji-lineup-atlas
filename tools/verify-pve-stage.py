@@ -19,7 +19,7 @@ def replay(args, runtime, work):
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
-    from tuzhizhu_practice import PRACTICE_MODES, TsuchigumoPractice, practice_stage
+    from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_player, underworld_stage, underworld_teams
     from yuling_stage import YULING_MODE
     from rune_floor_host import prepare_runtime
@@ -331,7 +331,8 @@ def replay(args, runtime, work):
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
 
-    deadline, start = time.monotonic() + (220 if retreat or spider else 130 if relay else 75), engine.now_time()
+    replay_seconds = PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else 130 if relay else 75
+    deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
     equipped_spirit = None
     instructions = None
@@ -477,7 +478,7 @@ def main():
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from regional_boss_stage import REGION_MODES
     from resource_stage import RESOURCE_MODE
-    from tuzhizhu_practice import PRACTICE_MODES
+    from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS
     from underworld_stage import UNDERWORLD_MODE
     from yuling_stage import YULING_MODE
 
@@ -502,8 +503,9 @@ def main():
         parser.error("--region is required only for a Regional Boss scenario")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
-    faulthandler.dump_traceback_later(240 if args.mode == RETREAT_MODE or args.mode in PRACTICE_MODES else
-                                      150 if args.mode == UNDERWORLD_MODE else 95, exit=True)
+    watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
+                        240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
+    faulthandler.dump_traceback_later(watchdog_seconds, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:
         previous = Path.cwd()
         work = Path(directory).resolve()

@@ -292,7 +292,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('此入口只适用于新服首次经验妖怪的五式神配装');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const cancel=new AbortController(),deadline=AbortSignal.timeout(battleMode===306||spider?245000:battleMode===2001?155000:100000);
+   const deadlineMs=spider?645000:battleMode===306?245000:battleMode===2001?155000:100000;
+   const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
    let release,dir;
    current={cancel,done:new Promise(resolve=>{release=resolve;})};
    try{

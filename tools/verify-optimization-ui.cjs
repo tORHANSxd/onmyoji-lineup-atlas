@@ -662,6 +662,8 @@ async function main(){
     await until(status+'.textContent.includes("按最慢样本用时排序")',25000);
     assert.deepEqual(spiderSeeds.slice(0,6),[0,1,2,3,7,42]);
     assert.match(await ui(reports+'.firstElementChild.textContent'),/击破 4 \/ 4 个关键部位.*击破白茧 2 \/ 3/s);
+    assert.match(await ui('sampleBattleMarkup([{seed:0,completed:false,outcome:"unknown",tuzhizhuPractice:{partsRemaining:[1250171],combatSeconds:1804.18}}])'),
+     /本机复跑达到运行时限，结算待核对.*击破 3 \/ 4 个关键部位/);
     await ui('document.querySelector("[data-pve-code]").click()');
     const code=require('../desktop/ta-codec.cjs').decodeLineupData(await ui('$("stock-candidate-code").value'));
     assert.equal(code.select_stage_id,10020221);
