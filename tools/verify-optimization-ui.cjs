@@ -343,6 +343,7 @@ async function main(){
     };
     await ui('qaEncounterInput("daily","经验妖怪 新服首次")');
     await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+    assert.equal(await ui('$("client-dungeons-encounter-list").querySelector("small").textContent'),'经验妖怪 · 2111');
     assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/击杀 30 只.*击杀后补位.*引擎时限 150 秒.*开场速度 88/s);
     await ui(stock+'.click()');
     await until(status+'.textContent.includes("全随机分支待验证")',20000);

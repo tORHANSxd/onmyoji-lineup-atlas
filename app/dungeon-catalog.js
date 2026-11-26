@@ -217,7 +217,7 @@
     el('encounter-list').replaceChildren(...records.map((entry, index) => {
       const button = node('button', entry.title || titles[entry.table] || entry.kind, 'secondary');
       const entrance=entry.table==='dungeon_challenge_series'&&entranceNames[secretFloors[entry.key]?.entrance];
-      const metadata=[titles[entry.table] || entry.kind,keyText(entry.key),entrance].filter(Boolean).join(' · ');
+      const metadata=[encounterKind(entry),keyText(entry.key),entrance].filter(Boolean).join(' · ');
       button.append(node('small',metadata));
       button.type = 'button';
       button.dataset.index = start + index;
@@ -389,6 +389,10 @@
         state.index.tables.find(table=>table.name===name)?.source?.marshalSHA256===hash);
   }
 
+  function encounterKind(entry) {
+    return entry.table==='pve_stage_data'&&entry.family==='daily'?entry.kind:titles[entry.table]||entry.kind;
+  }
+
   function awakeOpening(entry,groups) {
     const source = window.AtlasAwakeOpenings;
     if (entry.table!=='dungeon_awake'||!matchesOpeningSource(source)) return null;
@@ -463,7 +467,7 @@
       }));
     }
     if (token !== stage.token) return;
-    destination.replaceChildren(header, node('p', (titles[entry.table] || entry.kind) + ' · ' + keyText(entry.key), 'caption'));
+    destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + keyText(entry.key), 'caption'));
     const awake=awakeOpening(entry,groups);
     if (awake) {
       const codeScene=DATA.gameConfig.stages[awake.codeStageId];
