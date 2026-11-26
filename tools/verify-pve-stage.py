@@ -41,6 +41,7 @@ def replay(args, runtime, work):
     from fengmo_catfish_stage import CATFISH_MODE, CATFISH_WALL_SECONDS, CatfishReplay
     from fengmo_skeleton_stage import SKELETON_MODE, SKELETON_WALL_SECONDS, SkeletonReplay
     from fengmo_longche_stage import LONGCHE_MODE, LONGCHE_WALL_SECONDS, LongcheReplay
+    from fengmo_spider_stage import SPIDER_LIVE_MODE, SPIDER_LIVE_WALL_SECONDS, SpiderLiveReplay
     from laolao_fusion_stage import LAOLAO_FUSION_MODE, FUSION_WALL_SECONDS, LaolaoFusionReplay
     from pve_clock import NativePveClock, pve_wall_seconds
     from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, MEITUAN_MODE, NIAN_MODES,
@@ -97,6 +98,7 @@ def replay(args, runtime, work):
     catfish = args.mode == CATFISH_MODE
     skeleton = args.mode == SKELETON_MODE
     longche = args.mode == LONGCHE_MODE
+    spider_live = args.mode == SPIDER_LIVE_MODE
     laolao_fusion = args.mode == LAOLAO_FUSION_MODE
     activity_score = SOLO_SCORE_MODES.get(args.mode)
     dojo_area = args.mode == DOJO_AREA_MODE
@@ -350,6 +352,15 @@ def replay(args, runtime, work):
         longche_replay = LongcheReplay(modules, args.longche_settings)
         engine, group, const = longche_replay.engine, longche_replay.group, longche_replay.const
         group_id, wave_count = group["ID"], 1
+    elif spider_live:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Extreme Tsuchigumo requires five owned shikigami")
+        random.seed(args.seed)
+        spider_live_replay = SpiderLiveReplay(modules, args.spider_live_settings)
+        engine, group, const = spider_live_replay.engine, spider_live_replay.group, spider_live_replay.const
+        group_id, wave_count = group["ID"], 1
     elif mirage:
         from DynamicConfigData import DATA_HERO
 
@@ -600,6 +611,8 @@ def replay(args, runtime, work):
         route = "skeleton-local-team"
     elif longche:
         route = "longche-local-team"
+    elif spider_live:
+        route = "spider-live-local-team"
     elif mirage:
         route = "mirage-local-team"
     elif songstress:
@@ -801,7 +814,7 @@ def replay(args, runtime, work):
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == ten_groups[0]["resindex"]
                              and engine.defeat_monster_wave == 0 and engine.monster_wave_count == len(ten_groups)
                              and tuple(engine.wave_pve_flag_list) == tuple(group["ID"] for group in ten_groups))
-    elif yanwu or fengmo_band or band_together or devil_feast or ghost_king_tower or laolao_challenge or laolao_fusion or dusk_wraith or songstress or mirage or catfish or skeleton or longche or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or yinyang_boss or spider or hunling or qiling or shilian:
+    elif yanwu or fengmo_band or band_together or devil_feast or ghost_king_tower or laolao_challenge or laolao_fusion or dusk_wraith or songstress or mirage or catfish or skeleton or longche or spider_live or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or yinyang_boss or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -845,6 +858,7 @@ def replay(args, runtime, work):
                       else CATFISH_WALL_SECONDS if catfish
                       else SKELETON_WALL_SECONDS if skeleton
                       else LONGCHE_WALL_SECONDS if longche
+                      else SPIDER_LIVE_WALL_SECONDS if spider_live
                       else MIRAGE_WALL_SECONDS if mirage
                       else SONG_WALL_SECONDS if songstress
                       else DUSK_WALL_SECONDS if dusk_wraith
@@ -871,6 +885,8 @@ def replay(args, runtime, work):
     if tactics:
         if raid_battle:
             boss = raid.boss["protoId"]
+        elif spider_live:
+            boss = group["MonstersInfos"][0][1][1]
         elif yanwu or qiling or activity_score or songstress or dusk_wraith or mirage or catfish or skeleton or longche:
             boss = group["MonstersInfos"][0][0][1]
         else:
@@ -891,6 +907,8 @@ def replay(args, runtime, work):
             setting = pending.pop(alias)
             if spider_replay:
                 spider_replay.check_selected(entity)
+            if spider_live:
+                spider_live_replay.check_selected(entity)
             if setting:
                 engine.op_setAutoSkill(owner, entity.uid, setting)
                 if owner.autoSkill.get(entity.uid) != setting:
@@ -930,6 +948,8 @@ def replay(args, runtime, work):
             skeleton_replay.update()
         if longche:
             longche_replay.update()
+        if spider_live:
+            spider_live_replay.update()
         if qinfei_food:
             map_boss_replay.advance_pile(controller)
         if secret_mechanic_replay:
@@ -1169,6 +1189,13 @@ def replay(args, runtime, work):
         report["waveCount"] = 1
         report["wavesCleared"] = int(outcome == "win")
         report["formationsVerified"] = len(report["longche"]["phases"])
+    if spider_live:
+        report["spiderLive"] = spider_live_replay.report(completed, outcome)
+        if instructions:
+            report["spiderLive"].update(instructions.report())
+        report["waveCount"] = 1
+        report["wavesCleared"] = int(outcome == "win")
+        report["formationsVerified"] = 1
     if mirage:
         report["mirage"] = mirage_replay.report(completed, outcome)
         if instructions:
@@ -1294,6 +1321,7 @@ def main():
     from fengmo_catfish_stage import CATFISH_MODE, CATFISH_STAGE, CATFISH_WALL_SECONDS, valid_catfish_settings
     from fengmo_skeleton_stage import SKELETON_MODE, SKELETON_STAGE, SKELETON_WALL_SECONDS, valid_skeleton_settings
     from fengmo_longche_stage import LONGCHE_MODE, LONGCHE_STAGE, LONGCHE_WALL_SECONDS, valid_longche_settings
+    from fengmo_spider_stage import SPIDER_LIVE_MODE, SPIDER_LIVE_STAGE, SPIDER_LIVE_WALL_SECONDS, valid_spider_live_settings
     from laolao_fusion_stage import LAOLAO_FUSION_MODE, LAOLAO_FUSION_STAGE, FUSION_WALL_SECONDS, valid_fusion_settings
     from pve_clock import pve_wall_seconds
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
@@ -1317,7 +1345,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, CATFISH_MODE, SKELETON_MODE, LONGCHE_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, CATFISH_MODE, SKELETON_MODE, LONGCHE_MODE, SPIDER_LIVE_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
     parser.add_argument("--fusion-settings", type=json.loads)
@@ -1327,6 +1355,7 @@ def main():
     parser.add_argument("--catfish-settings", type=json.loads)
     parser.add_argument("--skeleton-settings", type=json.loads)
     parser.add_argument("--longche-settings", type=json.loads)
+    parser.add_argument("--spider-live-settings", type=json.loads)
     parser.add_argument("--yinyang-drums", type=int, choices=range(10))
     parser.add_argument("--yinyang-buffs", type=int, nargs="+", choices=YINYANG_BOSS_BUFF_IDS)
     parser.add_argument("--devil-feast-hp", type=float)
@@ -1393,6 +1422,11 @@ def main():
             parser.error("Longche needs its original stage and valid phase settings")
     elif args.longche_settings is not None:
         parser.error("Longche phase settings apply only to its original mode")
+    if args.mode == SPIDER_LIVE_MODE:
+        if args.stage != SPIDER_LIVE_STAGE or not valid_spider_live_settings(args.spider_live_settings):
+            parser.error("Extreme Tsuchigumo needs its original stage and valid phase settings")
+    elif args.spider_live_settings is not None:
+        parser.error("Extreme Tsuchigumo phase settings apply only to its original mode")
     if args.mode == MIRAGE_MODE:
         if args.stage != MIRAGE_STAGE or not valid_mirage_settings(args.mirage_settings):
             parser.error("Mirage needs its original stage and valid phase settings")
@@ -1515,6 +1549,7 @@ def main():
                         CATFISH_WALL_SECONDS + 20 if args.mode == CATFISH_MODE else
                         SKELETON_WALL_SECONDS + 20 if args.mode == SKELETON_MODE else
                         LONGCHE_WALL_SECONDS + 20 if args.mode == LONGCHE_MODE else
+                        SPIDER_LIVE_WALL_SECONDS + 20 if args.mode == SPIDER_LIVE_MODE else
                         YINYANG_BOSS_WALL_SECONDS + 20 if args.mode == YINYANG_BOSS_MODE else
                         BAND_TOGETHER_WALL_SECONDS + 20 if args.mode == BAND_TOGETHER_MODE else
                         TEN_REPLAY_SECONDS + 20 if args.mode in (*TEN_OWNED_MODES, TEN_BOSS_MODE, TEN_EXPLORE_MODE) else

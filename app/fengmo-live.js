@@ -18,7 +18,7 @@
  // Event and code identities come from DuskConst.BossID and DuskLogic.add_ta_btn.
  const bosses=[
   {name:'土蜘蛛',eventId:40001,eventParam:1,sceneId:40005,
-   normal:{stage:25001,rally:303,code:10020220,rule:'TUZHIZHU_TIPS'},
+   normal:{stage:25001,rally:303,mode:3003,code:10020220,rule:'TUZHIZHU_TIPS'},
    extreme:{stage:25017,rally:316,mode:4440,code:10020221,rule:'TUZHIZHUJI_TIPS'}},
   {name:'胧车',eventId:40011,eventParam:11,sceneId:40010,
    normal:{stage:25002,rally:301,mode:3006,code:10020226,rule:'LONGCHE_TIPS'},
@@ -41,6 +41,20 @@
  const rotationConstant=10631;
  const rotationSkills=[63402,63601,63404,63602,63405,63603,63406];
  const ref=(table,key,label)=>({table,key,label,found:true});
+ const spiderLive={
+  stageId:25017,battleMode:4440,codeStageId:10020221,sceneId:40005,openingTarget:250172,
+  memberCount:5,windowLimit:3600,cocoonSeconds:60,defaultTrait:63402,
+  traits:['巧劲','异变·易碎','咒术','异变·猛火','狂风','异变·斗魂','疾行'].map((label,i)=>({id:rotationSkills[i],label})),
+  parts:[[1,250171,'本体'],[2,250172,'钳'],[3,250173,'背'],[4,250174,'脚']],
+  cocoons:[[6,250180],[7,250179],[8,250180]],
+  engine:{name:'TuzhizhuXEngine',route:'spider-live-local-team',
+   sha256:'af0d2b39ff63f6b8e5a36e9e1fe396435069f50c318b3b4a74d0060f924442ee'},
+  validSettings(settings){
+   const {windowSeconds,trait}=settings??{};
+   return Object.keys(settings??{}).length===2&&Number.isSafeInteger(windowSeconds)&&windowSeconds>=1&&windowSeconds<=this.windowLimit&&
+    this.traits.some(row=>row.id===trait);
+  },
+ };
  const longche={
   stageId:25002,battleMode:3006,codeStageId:10020226,sceneId:40010,boss:90,
   memberCount:5,windowLimit:1200,defaultWindow:1200,repairLimit:150,defaultRepairSeconds:30,defaultCommander:159,
@@ -182,8 +196,10 @@
     refs.push(ref('battle_team_routes',route.team??route.mode,'客户端组队注册'),
      ref('Constant',rotationConstant,'极词条轮换池'),...rotationSkills.map(id=>ref('skill',{$tuple:[id,1,-1]},'极词条技能')));
    }
-   if(hard&&soil)refs.push(ref('Constant',10639,'白茧剩余时限'),ref('Constant',10760,'显示积分的最低伤害'),
-    ref('Constant',10761,'极土蜘蛛评级门槛'));
+   if(hard&&soil)refs.push(ref('Constant',10639,'白茧剩余时限'),ref('Constant',10641,'白茧部位配置'),
+    ...[63408,63409,63410,63411].map(id=>ref('skill',{$tuple:[id,1,-1]},'原版部位与召唤技能')),
+    ...[250175,250176,250177,250178,250179,250180].map(id=>ref('monster',id,'原版召唤物')),
+    ref('Constant',10760,'显示积分的最低伤害'),ref('Constant',10761,'极土蜘蛛评级门槛'));
    return {table,key,title:`逢魔实战 · ${title}`,family:'daily',kind:hard?'逢魔实战·极':'逢魔实战·普通',
     refs:refs.filter(({table:source})=>available.has(source)),
     fengmoLive:{eventId,eventParam,hard,soil,stage:route.stage,rally:route.rally,mode:route.mode}};
@@ -198,5 +214,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton,longche};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton,longche,spiderLive};
 });

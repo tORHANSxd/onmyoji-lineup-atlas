@@ -210,6 +210,7 @@ function sampleBattleMarkup(samples){
   const catfish=sample.catfish;
   const skeleton=sample.skeleton;
   const longche=sample.longche;
+  const spiderLive=sample.spiderLive;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -291,6 +292,8 @@ function sampleBattleMarkup(samples){
     `本队伤害 ${skeleton.damage.toLocaleString('zh-CN')} · 作战 ${skeleton.combatSeconds.toFixed(2)} / ${skeleton.settings.windowSeconds} 秒`:
    longche?`${{'boss-defeated':'击败胧车','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[longche.reason]} · `+
     `本队伤害 ${longche.damage.toLocaleString('zh-CN')} · 作战 ${longche.combatSeconds.toFixed(2)} / ${longche.settings.windowSeconds} 秒`:
+   spiderLive?`${{'boss-defeated':'击败极·土蜘蛛','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[spiderLive.reason]} · `+
+    `本队伤害 ${spiderLive.damage.toLocaleString('zh-CN')} · 作战 ${spiderLive.combatSeconds.toFixed(2)} / ${spiderLive.settings.windowSeconds} 秒`:
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+
@@ -431,6 +434,19 @@ function sampleBattleMarkup(samples){
      红、蓝修理呱余血 ${result.remaining.map(percent).join(' / ')}${result.healed?` · 胧车恢复 ${Math.round(result.healed).toLocaleString('zh-CN')} 生命`:''}</li>`).join('')}</ul>`:''}
    <p class="caption">击败地面纸人 ${longche.groundPapersDefeated} 位 · 击败维修纸人 ${longche.papersDefeated} 位</p></details>`;
   })():'';
+  const spiderLiveStages=spiderLive?(()=>{
+   const {parts,traits}=AtlasFengmoLive.spiderLive;
+   const cocoon=spiderLive.cocoons;
+   const trait=traits.find(row=>row.id===spiderLive.settings.trait).label;
+   const hp=value=>Math.round(value).toLocaleString('zh-CN');
+   return `<details><summary>查看极·土蜘蛛部位与白茧</summary>
+    <p class="caption">突变词条 ${trait} · 击败纸人 ${spiderLive.papersDefeated} 位 · 击败金色小蜘蛛 ${spiderLive.goldDefeated} 只</p>
+    <ul>${spiderLive.parts.map((unit,i)=>`<li>${parts[i][2]} · ${unit.hp<=1?'已击破':`${hp(unit.hp)} / ${hp(unit.maximumHp)} 生命`}</li>`).join('')}</ul>
+    <p class="caption">${cocoon?`白茧 ${cocoon.startedAt.toFixed(2)} 秒出现 · 击破 ${cocoon.defeated} / 3 ·
+     ${cocoon.announcedResult==='broken'?'全部击破':cocoon.announcedResult==='expired'?'白茧超时':'尚未结算'}`:'尚未召出白茧'}</p>
+    ${cocoon?.recovery.length?`<p class="caption">恢复生命 · ${cocoon.recovery.map(row=>
+     `${parts[row.position-1][2]} +${hp(row.amount)}`).join('、')}</p>`:''}</details>`;
+  })():'';
   const towerLife=ghostKingTower?.kind==='boss'?`<div class="caption">敌方余血 · ${esc(ghostKingTower.enemies.map(unit=>
    `${unit.position} 号位 ${unit.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})}`).join(' · '))}
    ${sample.completed&&ghostKingTower.enemies.some(unit=>unit.remainingHp>0)?
@@ -450,7 +466,7 @@ function sampleBattleMarkup(samples){
    return `<li>${esc(name)} · 原版实体 ${unit.level} 级 · 速度 ${unit.speed.toFixed(2)} · `+
     `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}</li>`;
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}</li>`;
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}</li>`;
  }).join('');
 }
 

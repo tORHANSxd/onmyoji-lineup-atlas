@@ -7,7 +7,7 @@
  const ghostKingTower=AtlasDevilFeast.tower;
  const laolao=AtlasDevilFeast.laolao;
  const fusion=AtlasDevilFeast.fusion;
- const {duskWraith:dusk,songstress:song,mirage,catfish,skeleton,longche}=AtlasFengmoLive;
+ const {duskWraith:dusk,songstress:song,mirage,catfish,skeleton,longche,spiderLive}=AtlasFengmoLive;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -257,6 +257,17 @@
     else input.removeAttribute('aria-describedby');
    }
   }
+  const spiderLiveSettings=pane.spiderLiveWindow?{windowSeconds:pane.spiderLiveWindow.valueAsNumber,
+   trait:Number(pane.spiderLiveTrait.value)}:null;
+  const spiderLiveReady=!spiderLiveSettings||spiderLive.validSettings(spiderLiveSettings);
+  pane.spiderLiveSettings=spiderLiveReady?spiderLiveSettings:null;
+  if(spiderLiveSettings)for(const input of [pane.spiderLiveWindow,pane.spiderLiveTrait]){
+   input.disabled=blocked;
+   const invalid=!input.validity.valid;
+   input.setAttribute('aria-invalid',String(invalid));
+   if(invalid)input.setAttribute('aria-describedby','pve-spider-live-status');
+   else input.removeAttribute('aria-describedby');
+  }
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   const coins=pane.artifactCoins?.valueAsNumber;
@@ -301,7 +312,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -322,6 +333,7 @@
    !catfishReady?'请核对时长、减伤层数和人数，其他队伍的击破人数不可超过参战人数。':
    !skeletonReady?'请选择两个不同的真部下位置，并填写有效的模拟时长。':
    !longcheReady?`计分时长须为 1 至 ${longche.windowLimit} 秒，修理时限须为 1 至 ${longche.repairLimit} 秒，均填写整数。`:
+   !spiderLiveReady?`计分时长须为 1 至 ${spiderLive.windowLimit} 秒的整数，并选择一项突变词条。`:
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
@@ -359,14 +371,15 @@
   section.innerHTML=`<h4>模拟已知阵容</h4>
    <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子${config.scoreWindowSeconds?
     ` · ${config.retreat||config.qilingWindow||config.creviceWindow||config.ghostSettings||config.historicalGhostWindow?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
-   <p class="caption"${config.longche?' id="pve-longche-status"':''} data-pve-status role="status"></p>
+   <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive?' id="pve-spider-live-status"':''} data-pve-status role="status"></p>
    <div class="actions">
     <label class="pve-lineup-field">已知阵容 <select data-pve-lineup></select></label>
     ${config.trialEligible?`<label class="pve-lineup-field">试炼式神位置 <select data-pve-trial>
     <option value="">自动识别唯一可选式神</option>
     ${Array.from({length:config.memberCount},(_,i)=>`<option value="${i+1}">阵容中第 ${i+1} 位式神</option>`).join('')}
     </select></label>`:''}
-    <button class="secondary" type="button"${config.longche?' aria-describedby="pve-longche-status"':''} data-pve-start>开始离线模拟</button>
+    <button class="secondary" type="button"${config.longche?' aria-describedby="pve-longche-status"':
+    config.spiderLive?' aria-describedby="pve-spider-live-status"':''} data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
    ${config.journeyHard?`<div class="actions">
@@ -415,6 +428,17 @@
     </fieldset>`:''}
     <p class="caption" id="pve-tower-hint" data-pve-tower-hint role="status"></p>
    </details>`:''}
+   ${config.spiderLive?`<fieldset class="pve-reserve"><legend>极·土蜘蛛模拟条件</legend>
+    <div class="actions">
+     <label class="pve-lineup-field">本地计分时长（秒）
+      <input data-pve-spider-live-window type="number" min="1" max="${spiderLive.windowLimit}" step="1" value="${spiderLive.windowLimit}" required>
+     </label>
+     <label class="pve-lineup-field">当局突变词条
+      <select data-pve-spider-live-trait required>${spiderLive.traits.map(({id,label})=>
+       `<option value="${id}" ${id===spiderLive.defaultTrait?'selected':''}>${label}</option>`).join('')}</select>
+     </label>
+    </div>
+   </fieldset>`:''}
    ${config.longche?`<fieldset class="pve-reserve"><legend>胧车模拟条件</legend>
     <div class="actions">
      <label class="pve-lineup-field">本地计分时长（秒）
@@ -608,6 +632,7 @@
    catfishPlayers:part('catfish-players'),catfishBreaks:part('catfish-breaks'),
    skeletonWindow:part('skeleton-window'),skeletonPositions:all('skeleton-position'),
    longcheWindow:part('longche-window'),longcheRepair:part('longche-repair'),longcheCommander:part('longche-commander'),
+   spiderLiveWindow:part('spider-live-window'),spiderLiveTrait:part('spider-live-trait'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
@@ -620,7 +645,7 @@
   for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,
-   ...pane.skeletonPositions,pane.longcheCommander].filter(Boolean))field.onchange=()=>{
+   ...pane.skeletonPositions,pane.longcheCommander,pane.spiderLiveTrait].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -628,7 +653,7 @@
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.mirageWindow,pane.mirageGeneral,
    pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,
-   pane.skeletonWindow,pane.longcheWindow,pane.longcheRepair,
+   pane.skeletonWindow,pane.longcheWindow,pane.longcheRepair,pane.spiderLiveWindow,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
@@ -769,6 +794,7 @@
     ...(run.catfishSettings?{catfishSettings:run.catfishSettings}:{}),
     ...(run.skeletonSettings?{skeletonSettings:run.skeletonSettings}:{}),
     ...(run.longcheSettings?{longcheSettings:run.longcheSettings}:{}),
+    ...(run.spiderLiveSettings?{spiderLiveSettings:run.spiderLiveSettings}:{}),
     ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(mapBossPlayers?{mapBossPlayers}:{}),...(tianfaTeam?{tianfaTeam}:{}),
     ...(qinfeiBoss?{qinfeiBoss}:{}),
@@ -785,7 +811,8 @@
    if(!active(run))return;
    row.samples.push(report);
    row.details.hidden=false;
-   if(scoring&&row.samples.length===1&&AtlasRuneCandidate.damageResult([report]))showScoreInstructions(row,plan,run.data.gameConfig);
+   if(scoring&&row.samples.length===1&&AtlasRuneCandidate.damageResult([report]))
+    showScoreInstructions(row,plan,run.data.gameConfig,run.pane.battleMode);
    row.report.innerHTML=sampleBattleMarkup(row.samples);
    row.state.textContent=`已复跑 ${row.samples.length} / ${seeds.length} 个种子`;
    if(scoring){
@@ -916,10 +943,12 @@
   return AtlasGame.aiChoices(game,{hero_id:hero.heroId,awake:hero.awake,skills:hero.skinfo});
  }
 
- function showScoreInstructions(row,plan,game){
+ function showScoreInstructions(row,plan,game,battleMode){
   const names=plan.members.map(({hero})=>game.heroes[hero.heroId]?.name||`式神 ${hero.heroId}`);
   const {tactics}=plan;
-  const opening=AtlasRuneCandidate.scoreInstructions(tactics,plan,game).replace(/第([1-6])位式神/g,(_,slot)=>`${names[slot-1]}（式神第 ${slot} 位）`);
+  const instructions=AtlasRuneCandidate.scoreInstructions(tactics,plan,game)
+   .replace(/第([1-6])位式神/g,(_,slot)=>`${names[slot-1]}（式神第 ${slot} 位）`);
+  const opening=battleMode===spiderLive.battleMode?instructions.replace(/首领/g,'钳'):instructions;
   const roster=plan.members.map(({hero,aiSkill},index)=>({hero,aiSkill,name:names[index]}));
   if(plan.onmyoji)roster.unshift({hero:plan.onmyoji,aiSkill:plan.onmyoji.aiSkill,
    name:game.heroes[plan.onmyoji.heroId]?.name||'阴阳师'});
@@ -940,7 +969,8 @@
      pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
      pane.duskWindow&&!pane.duskSettings||pane.songWindow&&!pane.songWindowSeconds||pane.mirageWindow&&!pane.mirageSettings||
-     pane.catfishWindow&&!pane.catfishSettings||pane.skeletonWindow&&!pane.skeletonSettings||pane.longcheWindow&&!pane.longcheSettings)return;
+     pane.catfishWindow&&!pane.catfishSettings||pane.skeletonWindow&&!pane.skeletonSettings||pane.longcheWindow&&!pane.longcheSettings||
+     pane.spiderLiveWindow&&!pane.spiderLiveSettings)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
@@ -958,6 +988,7 @@
    catfishSettings:pane.catfishSettings,
    skeletonSettings:pane.skeletonSettings,
    longcheSettings:pane.longcheSettings,
+   spiderLiveSettings:pane.spiderLiveSettings,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
    sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins||guard?

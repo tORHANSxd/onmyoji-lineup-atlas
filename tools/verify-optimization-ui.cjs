@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -141,7 +141,7 @@ async function main(){
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
   const panel='$("client-dungeons-encounter-detail")';
-  const {encounters,duskWraith,songstress,mirage,catfish,skeleton,longche}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  const {encounters,duskWraith,songstress,mirage,catfish,skeleton,longche,spiderLive}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
   assert.equal(entries.length,12);
   for(const entry of entries){
    const query=entry.title.replace(' · ',' ');
@@ -179,11 +179,16 @@ async function main(){
     assert.equal(await ui(panel+'.querySelector("[data-pve-longche-window]")?.valueAsNumber'),longche.defaultWindow);
     assert.equal(await ui(panel+'.querySelector("[data-pve-longche-repair]")?.valueAsNumber'),longche.defaultRepairSeconds);
     assert.equal(await ui(panel+'.querySelector("[data-pve-longche-commander]")?.value'),String(longche.defaultCommander));
+   }else if(entry.fengmoLive.stage===spiderLive.stageId){
+    assert.match(info,/战报记录部位余血和白茧恢复.*白茧部位配置/s);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-spider-live-window]")?.valueAsNumber'),spiderLive.windowLimit);
+    assert.deepEqual(await ui('[...'+panel+'.querySelector("[data-pve-spider-live-trait]").options].map(el=>Number(el.value))'),
+     spiderLive.traits.map(({id})=>id));
    }else assert.equal(await ui(panel+'.querySelector("[data-pve-stock]")'),null);
   }
   await ui('qaEncounterInput("daily","逢魔实战 稀有·土蜘蛛")');
   await until(panel+'.textContent.includes("按个人伤害比较评级门槛")');
-  assert.match(await ui(panel+'.textContent'),/星期三.*个人伤害下限.*2,000,000/s);
+  assert.match(await ui(panel+'.textContent'),/星期三.*战斗模式 3003.*个人伤害下限.*2,000,000/s);
   await ui('qaEncounterInput("daily","逢魔实战 极·土蜘蛛")');
   await until(panel+'.textContent.includes("极土蜘蛛个人伤害低于")');
   await ui(`[...${panel}.querySelectorAll('summary')].find(el=>el.textContent==="查看客户端积分与奖励表").click()`);
@@ -369,7 +374,7 @@ async function main(){
    known('secret-race',10700011,5),known('crevice',10020211,5),
    known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
-   known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
+   known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5,10,notes),
    known('dusk-wraith',10020227,5),known('songstress',10020217,6,10,notes),known('mirage',10020218,5,10,notes),
    known('catfish',10020224,5,10,notes),known('skeleton',10020222,5,10,notes),known('longche',10020226,5,10,notes),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
@@ -1055,6 +1060,25 @@ async function main(){
       {seconds:345.5,interrupted:false,timeout:true,remaining:[.91,.97],healed:504000}]};
     const longcheReport=await run('longche',{stageId:25002,groupId:25002,battleMode:3006,longcheSettings},{longche},tactical);
     assert.match(longcheReport,/击败胧车 · 本队伤害 7,895,200.*胧车升空 · 71\.42 秒进场.*大天狗呱.*打断修理.*修理超时.*胧车恢复 504,000 生命/s);
+    await encounter('daily','逢魔实战 极·土蜘蛛');
+    await choose('spider');
+    const spiderWindow='document.querySelector("[data-pve-spider-live-window]")';
+    const setSpiderWindow=value=>ui(`(()=>{const input=${spiderWindow};input.value='${value}';input.dispatchEvent(new Event('input'));})()`);
+    await setSpiderWindow(0);
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(spiderWindow+'.getAttribute("aria-invalid")'),'true');
+    assert.match(await ui(`document.getElementById(${spiderWindow}.getAttribute('aria-describedby')).textContent`),/计分时长须为 1 至 3600 秒/);
+    await setSpiderWindow(1000);
+    await ui(`(()=>{const input=document.querySelector('[data-pve-spider-live-trait]');
+     input.value='63601';input.dispatchEvent(new Event('change'));})()`);
+    const spiderLiveSettings={windowSeconds:1000,trait:63601};
+    const spiderLive={settings:spiderLiveSettings,reason:'boss-defeated',damage:25000000,combatSeconds:721.34,
+     parts:Array.from({length:4},()=>({hp:0,maximumHp:2000000})),cocoonSeconds:60,
+     cocoons:{startedAt:145.02,announcedResult:'expired',defeated:1,recovery:[{position:3,amount:408110}]},
+     papersDefeated:2,goldDefeated:1};
+    const spiderLiveReport=await run('spider',{stageId:25017,groupId:25017,battleMode:4440,spiderLiveSettings},{spiderLive},tactical);
+    assert.match(spiderLiveReport,/击败极·土蜘蛛 · 本队伤害 25,000,000.*异变·易碎.*本体 · 已击破.*白茧 145\.02 秒出现.*击破 1 \/ 3.*白茧超时.*背 \+408,110/s);
+    assert.match(await ui('document.querySelector("[data-score-tactics]").textContent'),/普攻钳.*红标钳/);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');
