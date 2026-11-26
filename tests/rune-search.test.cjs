@@ -48,6 +48,20 @@ test('计分搜索允许第二套阵容凭开场操作反超，且决选使用�
  for(const trial of result.finalists)assert.deepEqual(trial.samples.map(report=>report.seed),baseSampleSeeds);
 });
 
+test('计分复评优先保留逐场伤害不同的操作',async()=>{
+ const [item]=pveCandidates(C.parseAccount(inventory()),data,5);
+ const result=await R.rankedDamageSearch([item],data.gameConfig,{active:()=>true,async measure(trial,count){
+  const tactics=trial.item.plan.tactics;
+  const damage=!tactics?1000:tactics.manualOpening?1800:tactics.autoMode?.mode==='basic'?2200:
+   tactics.greenSlot===1?1600:2000;
+  return [...trial.samples,...baseSampleSeeds.slice(trial.samples.length,count).map(seed=>
+   ({seed,completed:true,outcome:'win',guildRetreat:{damage}}))];
+ }});
+ assert.ok(result.finalists.some(trial=>trial.item.plan.tactics.manualOpening));
+ assert.ok(result.finalists.some(trial=>trial.item.plan.tactics.autoMode?.mode==='basic'));
+ assert.ok(result.finalists.some(trial=>trial.item===item));
+});
+
 function inventory(){
  const ids=[591,389,596,557,379];
  const heroes=Object.fromEntries(ids.map(id=>{

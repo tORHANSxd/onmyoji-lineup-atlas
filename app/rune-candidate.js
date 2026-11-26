@@ -114,6 +114,20 @@ async function rankedDamageSearch(items,game,{measure,active,alternatives=[]}){
  const seeds=S.baseSampleSeeds, trials=[], registered=new Set(alternatives);
  const rank=rows=>rows.filter(row=>row.score).sort((a,b)=>compareDamage(a.score,b.score));
  const seedDamage=row=>personalScore(row.samples[0])?.damage??0;
+ const distinctFirst=rows=>{
+  const signatures=new Set(), matched=[];
+  const distinct=rows.filter(trial=>{
+   const key=JSON.stringify([
+    trial.item.plan.onmyoji,trial.item.plan.spirit,
+    trial.item.plan.members.map(({instanceId,souls})=>[instanceId,souls.map(soul=>soul.id).sort()]),
+    trial.samples.map(report=>[report.seed,report.outcome,personalScore(report).damage]),
+   ]);
+   if(signatures.has(key)){matched.push(trial);return false;}
+   signatures.add(key);
+   return true;
+  });
+  return [...distinct,...matched];
+ };
  async function advance(trial,count){
   if(!active())return;
   trial.samples=await measure(trial,count);
@@ -167,11 +181,11 @@ async function rankedDamageSearch(items,game,{measure,active,alternatives=[]}){
  }
  const leaders=groups.map(group=>rank(group.probes)[0]).filter(Boolean);
  const oneSeed=rank(groups.flatMap(group=>group.probes));
- const paired=[...new Set([...leaders,...oneSeed])].slice(0,6);
+ const paired=distinctFirst([...new Set([...leaders,...oneSeed])]).slice(0,6);
  for(const trial of paired)await advance(trial,2);
 
  const retainControl=(rows,width)=>{
-  const selected=rank(rows).slice(0,width);
+  const selected=distinctFirst(rank(rows)).slice(0,width);
   if(control?.score&&!selected.includes(control))selected.splice(Math.min(width-1,selected.length),1,control);
   return selected;
  };
