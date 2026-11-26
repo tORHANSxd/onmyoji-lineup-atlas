@@ -5,7 +5,8 @@ from functools import cache
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
 from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS,
-                            LBS_MODE, NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, SEAL_MODE,
+                            LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MEITUAN_SKILLS, MEITUAN_STAGES,
+                            NIAN_ENTRIES, NIAN_MODE, NIAN_PASSIVE, NIAN_STAGES, SEAL_MODE,
                             SPECIAL_NIAN_MODE, SPECIAL_NIAN_STAGES, is_fragment_entry)
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 
@@ -215,6 +216,20 @@ def encounter_index(source, load_rows):
         links.extend(ref for dest, key, label in refs if (ref := relation(dest, key, label, False)))
         return links
 
+    def meituan_references():
+        refs = (("activity_lbs_intro", 46, "美团联动入口配置"), ("activity", 7236, "活动开放时间"),
+                ("battle_team_routes", 721, "美团组队入口"), ("battle_mode_routes", MEITUAN_MODE, "宴席大赛战斗场景"),
+                ("Constant", 10090, "按参战人数修正生命"), ("skill", level_one_skill(MEITUAN_SKILLS[0]), "珍馐"),
+                ("skill", level_one_skill(MEITUAN_SKILLS[1]), "美馔"))
+        return [rule_reference(key, label) for key, label in (
+            ("LBS_meituan2021_zhandou", "宴席大赛机制"), ("LBS_meituan2021", "联动挑战规则"),
+            ("LBS_meituan2021_shop", "现世商店规则"), ("LBS_meituan2021_present", "现世赠送规则"),
+            ("LBS_meituan2021_seal", "美食印章规则"), ("LBS_meituan2021_takeaway", "美食速递规则"),
+            ("LBS_meituan2021_redenvelope", "美食福袋规则"),
+        ) if key in rules or key in tips] + [
+            ref for dest, key, label in refs if (ref := relation(dest, key, label, False))
+        ]
+
     def region_modifiers():
         constants = table("Constant")
         if not any(str(key) in constants for key in REGION_DIFFICULTY_SKILLS):
@@ -271,6 +286,10 @@ def encounter_index(source, load_rows):
         map_boss_stages[key] = stages
         for stage_id in stages:
             map_boss_by_stage.setdefault(numeric_key(stage_id), []).append(key)
+    meituan_sites = {}
+    for key, site in table("activity_offline_lbs_mass").values():
+        if site.get("act_id") == 7236 and site.get("mapbossid") in MEITUAN_ENTRIES:
+            meituan_sites.setdefault(site["mapbossid"], []).append(key)
     hunling_routes = {str(stage_id): row for stage_id, row in (*exploration_stages(), *challenge_stages())}
     hunling_codes = {row["search_id"]: key for key, row in table("team_assist_stage").values()
                      if isinstance(row.get("name"), str) and row["name"].startswith("契灵")}
@@ -405,6 +424,8 @@ def encounter_index(source, load_rows):
                 links.extend(nian_references(NIAN_MODE))
             elif nian_stage in SPECIAL_NIAN_STAGES:
                 links.extend(nian_references(SPECIAL_NIAN_MODE))
+            if nian_stage in MEITUAN_STAGES:
+                links.extend(meituan_references())
             for key in regions_by_stage.get(stage_id, ()):
                 links.append({"table": "lbs_world_boss_area", "key": key, "label": "地域鬼王玩法入口", "found": True})
             tip = relation("normal_battle_tips", row.get("id"), "通用战斗规则", False)
@@ -456,6 +477,10 @@ def encounter_index(source, load_rows):
                 links.extend(nian_references(NIAN_MODE))
                 if site := relation("activity_offline_lbs_mass", site_id, "地区地点及信物", False):
                     links.append(site)
+            elif row.get("id") in MEITUAN_ENTRIES:
+                links.extend(meituan_references())
+                links.extend(relation("activity_offline_lbs_mass", key, "联动门店", False)
+                             for key in sorted(meituan_sites.get(row["id"], ())))
             elif activity_route := LBS_ACTIVITY_ENTRIES.get(row.get("id")):
                 intro_id, site_id, _ = activity_route
                 _, intro = table("activity_lbs_intro").get(str(intro_id), (None, {}))
@@ -762,6 +787,9 @@ def encounter_index(source, load_rows):
             elif table_name == "map_boss" and key in NIAN_ENTRIES:
                 entry_family, entry_kind = "event", "现世年兽"
                 title = f"{entry_kind} · {title}"
+            elif table_name == "map_boss" and key in MEITUAN_ENTRIES:
+                entry_family, entry_kind = "event", "宴席大赛"
+                title = f"{entry_kind} · {title}"
             elif table_name == "map_boss" and key in LBS_ACTIVITY_ENTRIES:
                 entry_family, entry_kind = "event", "现世妖约·策划鼠"
                 title = f"现世妖约 · {LBS_ACTIVITY_ENTRIES[key][2]}策划鼠"
@@ -805,6 +833,9 @@ def encounter_index(source, load_rows):
                 elif stage_id in SPECIAL_NIAN_STAGES:
                     entry_family, entry_kind = "event", "专属年兽"
                     title = f"{entry_kind} · 第 {SPECIAL_NIAN_STAGES[stage_id]} 档"
+                elif stage_id in MEITUAN_STAGES:
+                    entry_family, entry_kind = "event", "宴席大赛"
+                    title = f"{entry_kind} · {MEITUAN_STAGES[stage_id]} 级档"
             if table_name == "pve_stage_data" and numeric_key(key) in crevice_stages:
                 entry_family, entry_kind = "guild", "狭间暗域战斗"
                 title = f"狭间暗域 · {row['name'].removeprefix('阴界裂缝')}"

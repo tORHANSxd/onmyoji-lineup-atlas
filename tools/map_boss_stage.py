@@ -6,8 +6,10 @@ LBS_MODE = 3001
 LBS_ACTIVITY_MODE = 3022
 NIAN_MODE = 534
 SPECIAL_NIAN_MODE = 535
+MEITUAN_MODE = 880
 NIAN_MODES = (NIAN_MODE, SPECIAL_NIAN_MODE)
-MODES = (MODE, SEAL_MODE, LBS_MODE, LBS_ACTIVITY_MODE, *NIAN_MODES)
+SINGLE_TEAM_MODES = (*NIAN_MODES, MEITUAN_MODE)
+MODES = (MODE, SEAL_MODE, LBS_MODE, LBS_ACTIVITY_MODE, *SINGLE_TEAM_MODES)
 ENGINE = "battleengine.engine.WorldBossEngine"
 LBS_ENGINE = "battleengine.engine.LBSBossEngine"
 LBS_ACTIVITY_ENGINE = "battleengine.engine.LBSActivityBossEngine"
@@ -27,10 +29,16 @@ SPECIAL_NIAN_ENGINE = "battleengine.engine.SpecialLBSNianEngine"
 NIAN_PASSIVE = 62050
 SPECIAL_NIAN_WINDOW = 600
 NIAN_PHASES = ("step_1", "step_2", "step_3")
-NIAN_LINEUP_SLOTS = (3, 4, 5, 6, 2)
+SHARED_HP_LINEUP_SLOTS = (3, 4, 5, 6, 2)
+MEITUAN_ENTRIES = tuple(range(19033, 19038))
+MEITUAN_STAGES = dict(zip(range(20140, 20149), range(10, 51, 5)))
+MEITUAN_ENGINE = "battleengine.engine.MTLBSBossEngine"
+MEITUAN_SKILLS = (61270, 61271)
+MEITUAN_ENEMIES = (4262369, 4262208, 4262312, 4262281, 4262301, 4262342)
 SOURCE_HASHES = {
     NIAN_ENGINE: "294a00b948adb8855bf45e686b470ec987cd289b865a4c9dcdf9f1b5af8f4256",
     SPECIAL_NIAN_ENGINE: "48a2b5ffb7dcc0feb1172c13023cf503ba131b1acb70c5a42d5a9acda5a4f9f5",
+    MEITUAN_ENGINE: "438bf4444da738e084f33dfe72a46c706945a840ffad2231d2e391e5124fe699",
     ENGINE: "d11c14d3eb97e361bee50a58ac8666a56f3332b484e851a8dde36a80c7fe53b4",
     LBS_ENGINE: "045487760b52efb8c5f3157471c4cc8d21a3a3cb020fc1e11310cd4f17386a7d",
     LBS_ACTIVITY_ENGINE: "e5fceb3cace7a72b6b323b83db6cfafe6a5bfb4a1dce013a84388992b32b9062",
@@ -48,10 +56,10 @@ POSITIONS = {2: ((5, 6), (2, 3, 4)), 3: ((3,), (2, 5), (4, 6))}
 
 def party_positions(mode, players):
     if players == 1:
-        if mode in (*NIAN_MODES, LBS_ACTIVITY_MODE):
+        if mode in (*SINGLE_TEAM_MODES, LBS_ACTIVITY_MODE):
             return ((2, 3, 4, 5, 6),)
         return ((2, 3, 4),) if mode == LBS_MODE else None
-    if mode in NIAN_MODES:
+    if mode in SINGLE_TEAM_MODES:
         return None
     return POSITIONS.get(players)
 
@@ -61,12 +69,15 @@ def is_fragment_entry(entry_id, row):
 
 
 def entry_for_stage(entries, stage_id, mode=None):
-    if mode in (None, NIAN_MODE) and stage_id in NIAN_STAGES:
-        expected = (stage_id, NIAN_STAGES[stage_id])
-        if not all(any(tuple(pair) == expected for pair in entries.get(entry_id, {}).get("gk_list", ()))
-                   for entry_id in NIAN_ENTRIES):
-            return None
-        return "lbsNianNormal", None, 40061, 100031, expected[1]
+    for route_mode, stages, map_ids, kind, scene, boss in (
+            (NIAN_MODE, NIAN_STAGES, NIAN_ENTRIES, "lbsNianNormal", 40061, 100031),
+            (MEITUAN_MODE, MEITUAN_STAGES, MEITUAN_ENTRIES, "meituan", 41146, MEITUAN_ENEMIES[0])):
+        if mode in (None, route_mode) and stage_id in stages:
+            expected = (stage_id, stages[stage_id])
+            if not all(any(tuple(pair) == expected for pair in entries.get(entry_id, {}).get("gk_list", ()))
+                       for entry_id in map_ids):
+                return None
+            return kind, None, scene, boss, expected[1]
     if mode in (None, SPECIAL_NIAN_MODE) and stage_id in SPECIAL_NIAN_STAGES:
         return "lbsNianSpecial", None, 40061, 100031, SPECIAL_NIAN_STAGES[stage_id]
     if mode in (None, MODE):
@@ -92,6 +103,9 @@ def entry_for_stage(entries, stage_id, mode=None):
 
 
 class MapBossReplay:
+    lbs_activity = False
+    lineup_slots = None
+
     def __init__(self, modules, stage_id, players, mode):
         from com import const
         from com.data.cdata import map_boss
@@ -169,7 +183,7 @@ class MapBossReplay:
 
     def verify_selection(self, controllers):
         selected = {"selected-onmyoji": (controllers[0], 1)}
-        for controller, positions in zip(controllers, self.positions):
+        for controller, positions in zip(controllers, self.lineup_slots or self.positions):
             selected.update((uid, (controller, position))
                             for uid, position in zip(controller.ctrlPlayer.defaultHeros, positions))
         actual = {}
@@ -274,6 +288,8 @@ class SoloNianRaid:
 
 
 class NianReplay(MapBossReplay):
+    lineup_slots = (SHARED_HP_LINEUP_SLOTS,)
+
     def __init__(self, modules, stage_id, players, mode, start_time):
         from com import const
         from com.data.cdata import map_boss
@@ -340,14 +356,9 @@ class NianReplay(MapBossReplay):
         self.engine.change_to_state = record_phase
 
     def verify_selection(self, controllers):
-        controller, = controllers
-        expected = dict(zip(["selected-onmyoji", *controller.ctrlPlayer.defaultHeros], (1, *NIAN_LINEUP_SLOTS)))
-        actual = {entity.HeroComp.heroData.heroUid: entity.posIndex for entity in self.engine.heroEntities.values()
-                  if entity.ownerController is controller and entity.HeroComp.heroData.heroUid in expected}
+        super().verify_selection(controllers)
         boss = self.engine.boss_entity
         passive = boss.SkillMgrComp.getSkillById(NIAN_PASSIVE)
-        if actual != expected:
-            raise RuntimeError(f"The original LBS Nian placed the lineup at {actual}, expected {expected}")
         if passive is None or passive.skillLevel != 1:
             raise RuntimeError("The original LBS Nian did not install the boss passive")
         self.opening_hp = boss.AttrComp.hp
@@ -365,8 +376,107 @@ class NianReplay(MapBossReplay):
         if outcome == "win" and (remaining_hp != 0 or self.special and not self.raid.win_sent):
             raise RuntimeError("The original LBS Nian did not confirm the boss defeat")
         return {"kind": self.kind, "level": self.level, "bossId": self.boss_id, "players": 1,
-                "positions": self.positions, "lineupSlots": NIAN_LINEUP_SLOTS, "opening": self.waves[0], "passiveSkill": NIAN_PASSIVE,
+                "positions": self.positions, "lineupSlots": SHARED_HP_LINEUP_SLOTS, "opening": self.waves[0], "passiveSkill": NIAN_PASSIVE,
                 "openingHp": self.opening_hp, "remainingHp": remaining_hp, "phases": self.phases,
                 "personalDamage": engine.myTotalDmg if self.special else engine.my_total_damage,
                 "raidWindowSeconds": SPECIAL_NIAN_WINDOW if self.special else None, "timedOut": timed_out,
                 "roomElapsedSeconds": round(engine.now_time() - self.start_time, 6)}
+
+
+class MeituanTeam:
+    """One local participant, with the group properties read by the original engine."""
+
+    def __init__(self, uid):
+        self.battle_teams = {uid: {"bmembers": [1]}}
+        self.properties = {}
+        self.winner = None
+
+    def group_get_property(self, team_uid, name, default):
+        return self.properties.get(name, default)
+
+    def group_set_property(self, team_uid, name, value):
+        self.properties[name] = value
+
+    def group_forward_msgs(self, team_uid, messages):
+        for message in messages:
+            if message["op"] == "members_win" and message["params"]["member_id"] == 1:
+                self.winner = message["params"]["winCamp"]
+
+
+class MeituanReplay(MapBossReplay):
+    lineup_slots = (SHARED_HP_LINEUP_SLOTS,)
+
+    def __init__(self, modules, stage_id, players):
+        from com import const
+        from com.data.cdata import map_boss
+        from DynamicConfigData import DATA_CONSTANT, DATA_PVE_STAGE_DATA, BattleMonstersInfo
+        from battleengine.engine.MTLBSBossEngine import MTLBSBossEngine
+
+        for name in (MEITUAN_ENGINE, "com.data.cdata.map_boss"):
+            if modules.rows[name]["marshalSHA256"] != SOURCE_HASHES[name]:
+                raise ValueError("The Meituan engine or stage table has changed")
+        entry = entry_for_stage(map_boss.data, stage_id, MEITUAN_MODE)
+        self.positions = party_positions(MEITUAN_MODE, players)
+        if not entry or not self.positions:
+            raise ValueError("Meituan replay requires a verified banquet stage and one participant")
+        self.kind, _, scene, self.boss_id, self.level = entry
+        self.const = const
+        self.group_id = stage_id
+        self.wave_count = 1
+        self.waves = []
+        self.started = None
+        self.final_hp = None
+        stage_key = str(stage_id)
+        stage = DATA_PVE_STAGE_DATA.data[stage_key]
+        formation = BattleMonstersInfo.data[stage_id]
+        self.expected = [[(slot, enemy, min(self.level, 40)) for slot, enemy in enumerate(MEITUAN_ENEMIES, 1)]]
+        if (stage["groupid"] != stage_id or stage["shishentotal"] != 5 or stage.get("battleTime") is not None
+                or formation["resindex"] != scene
+                or [[tuple(enemy[:3]) for enemy in wave] for wave in formation["MonstersInfos"]] != self.expected):
+            raise RuntimeError("The original Meituan stage has a different opening")
+        if DATA_CONSTANT.data[10090]["value"] != [2, 2.8, 3.6, 4.3, 5]:
+            raise RuntimeError("The original Meituan team HP scaling has changed")
+
+        uid = "local-meituan"
+        self.team = MeituanTeam(uid)
+        self.engine = MTLBSBossEngine({"pve_data_flag": stage_key, "teamUid": uid, "team": self.team, "is_leader": True})
+        self.engine.battleMode = const.BattleMode.MODE_LBS_MEITUAN_BOSS
+        if self.engine.battleMode != MEITUAN_MODE or self.engine.combineSceneInfoId != scene:
+            raise RuntimeError("The original Meituan engine initialized a different scene")
+        self.observe_waves()
+        change = self.engine.onBattleStateChanged
+        finish = self.engine.doBattleEnded
+
+        def record_start(*args):
+            result = change(*args)
+            if self.started is None and self.engine.battleState == const.BattleState.BS_STARTED:
+                self.started = self.engine.now_time()
+            return result
+
+        def record_end(camp):
+            self.final_hp = self.boss.AttrComp.hp
+            return finish(camp)
+
+        self.engine.onBattleStateChanged = record_start
+        self.engine.doBattleEnded = record_end
+
+    def verify_selection(self, controllers):
+        super().verify_selection(controllers)
+        self.boss = self.engine.getAliveEntity(self.engine.bossUid)
+        if (self.boss.protoid != self.boss_id or self.boss.posIndex != 1 or self.boss.AttrComp.hp != 1
+                or self.boss.AttrComp.specialMaxHpAdditionRate != 2 or self.boss.uid not in self.engine.shared_entity_uids
+                or any(self.boss.SkillMgrComp.getSkillById(skill) is None for skill in MEITUAN_SKILLS)):
+            raise RuntimeError("The original Meituan engine did not initialize the banquet mechanics")
+        self.target_hp = self.boss.AttrComp.maxHp
+
+    def report(self, outcome):
+        if not self.waves or self.started is None or self.engine.timeout_stamp is not None:
+            raise RuntimeError("The original Meituan battle did not start with the verified rules")
+        completion_hp = self.final_hp if self.final_hp is not None else self.boss.AttrComp.hp
+        if outcome == "win" and (completion_hp < self.target_hp or self.team.winner != self.const.CampFlag.CAMP1):
+            raise RuntimeError("The original Meituan engine did not confirm full satisfaction")
+        return {"kind": self.kind, "level": self.level, "players": 1, "positions": self.positions,
+                "lineupSlots": SHARED_HP_LINEUP_SLOTS, "opening": self.waves[0], "skills": MEITUAN_SKILLS,
+                "bossId": self.boss_id, "openingHp": 1, "targetHp": self.target_hp, "completionHp": completion_hp,
+                "personalSatisfaction": self.engine.my_total_damage,
+                "combatSeconds": round(self.engine.now_time() - self.started, 6)}

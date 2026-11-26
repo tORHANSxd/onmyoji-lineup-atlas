@@ -25,8 +25,9 @@ def replay(args, runtime, work):
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
-    from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, NIAN_MODES, SPECIAL_NIAN_MODE,
-                                MapBossReplay, NianReplay, entry_for_stage, party_positions)
+    from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, MEITUAN_MODE, NIAN_MODES,
+                                SPECIAL_NIAN_MODE, MapBossReplay, MeituanReplay, NianReplay, entry_for_stage,
+                                party_positions)
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
@@ -205,6 +206,8 @@ def replay(args, runtime, work):
             raise ValueError("Selected shikigami count does not match the original map boss positions")
         if args.mode in NIAN_MODES:
             map_boss_replay = NianReplay(modules, args.stage, args.map_boss_players, args.mode, ENGINE_START_SECONDS)
+        elif args.mode == MEITUAN_MODE:
+            map_boss_replay = MeituanReplay(modules, args.stage, args.map_boss_players)
         else:
             map_boss_replay = MapBossReplay(modules, args.stage, args.map_boss_players, args.mode)
         engine, const = map_boss_replay.engine, map_boss_replay.const

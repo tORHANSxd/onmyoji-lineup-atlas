@@ -503,6 +503,13 @@ function validMapBossReport(report,route,players){
  const data=report.mapBoss,rewards=data?.rewardInputs;
  if(report.sceneId!==route.sceneId||report.waveCount!==route.waves.length||data?.kind!==route.kind||
     data.level!==route.level||data.players!==players||!sameTactics(data.positions,mapBoss.partyPositions(route.battleMode,players)))return false;
+ if(route.kind==='meituan'){
+  return report.formationsVerified===1&&data.bossId===route.waves[0][0][1]&&sameTactics(data.opening,route.waves[0])&&
+   sameTactics(data.lineupSlots,route.lineupSlots)&&sameTactics(data.skills,route.skills)&&data.openingHp===1&&
+   Number.isFinite(data.targetHp)&&data.targetHp>1&&Number.isFinite(data.completionHp)&&data.completionHp>=1&&
+   data.completionHp<=data.targetHp&&Number.isSafeInteger(data.personalSatisfaction)&&data.personalSatisfaction>=0&&
+   Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&(report.outcome!=='win'||data.completionHp===data.targetHp);
+ }
  if(route.lineupSlots){
   const phases=data.phases,expectedPhases=['step_1','step_2','step_3'];
   return report.formationsVerified===1&&data.bossId===route.waves[0][0][1]&&sameTactics(data.opening,route.waves[0])&&

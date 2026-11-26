@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,534,535,855,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,534,535,855,880,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -678,6 +678,24 @@ async function main(){
     await ui(start+'.click()');
     await until(status+'.textContent.includes("未通过本次采样")');
     assert.match(await ui(reports+'.textContent'),/原版判定超时 · 单人演练 · 第 6 档 · 房间时限 600 秒/);
+   }
+   if(cases.some(entry=>entry.table==='map_boss'&&entry.key===19033&&entry.kind==='宴席大赛')){
+    await encounter('event','宴席大赛 来伊份鬼王');
+    assert.match(await ui(panel+'.textContent'),/食灵满意度达到 100% 时获胜/);
+    assert.match(await ui(panel+'.textContent'),/联动门店.*来伊份/s);
+    assert.equal(await ui('document.querySelector("[data-map-boss-players]").options.length'),1);
+    assert.equal(await ui('document.querySelector("[data-map-boss-stage]").options.length'),9);
+    const mapBoss={kind:'meituan',players:1,level:10,targetHp:159426,completionHp:159426,
+     personalSatisfaction:159425,combatSeconds:63.4};
+    const expected={stageId:20140,groupId:20140,battleMode:880,mapBossPlayers:1};
+    assert.match(await run('superghost-five',expected,{mapBoss}),/食灵满意度 100% · 本队贡献 159,425/);
+    mockPve=(_plan,request)=>{
+     assert.deepEqual(request,{...expected,seed:0,damageFloor:true});
+     return {...sample,seed:request.seed,outcome:'loss',wavesCleared:0,mapBoss:{...mapBoss,completionHp:159425,personalSatisfaction:159424}};
+    };
+    await ui(start+'.click()');
+    await until(status+'.textContent.includes("未通过本次采样")');
+    assert.match(await ui(reports+'.textContent'),/食灵满意度 99\.99% · 本队贡献 159,424/);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');

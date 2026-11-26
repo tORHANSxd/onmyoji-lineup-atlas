@@ -6,8 +6,8 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from dungeon_encounters import encounter_index
 from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
-from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MODE, NIAN_ENTRIES, NIAN_MODE, SEAL_MODE,
-                            SPECIAL_NIAN_MODE, entry_for_stage, party_positions)
+from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MODE, NIAN_ENTRIES,
+                            NIAN_MODE, SEAL_MODE, SPECIAL_NIAN_MODE, entry_for_stage, party_positions)
 
 
 class EncounterIndexTests(unittest.TestCase):
@@ -254,6 +254,36 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertEqual(entry_for_stage(bosses, special, SPECIAL_NIAN_MODE), ("lbsNianSpecial", None, 40061, 100031, 1))
         self.assertIsNone(entry_for_stage(bosses, special, NIAN_MODE))
         self.assertIsNone(party_positions(SPECIAL_NIAN_MODE, 2))
+
+    def test_meituan_links_shop_locations_to_the_banquet_and_its_special_rules(self):
+        stage = 20140
+        maps = {key: {"id": key, "name": "联动鬼王", "type": 53, "gk_list": [[stage, 10]]}
+                for key in MEITUAN_ENTRIES}
+        tables = {
+            "map_boss": list(maps.items()),
+            "activity_lbs_intro": [[46, {}]],
+            "activity": [[7236, {}]],
+            "activity_offline_lbs_mass": [[300, {"act_id": 7236, "mapbossid": 19033}],
+                                          [301, {"act_id": 7236, "mapbossid": 19034}],
+                                          [302, {"act_id": 7016, "mapbossid": 19033}]],
+            "system_rule_dsc": [["LBS_meituan2021_zhandou", {"rule_dsc": "食灵满意度"}]],
+            "battle_team_routes": [[721, {"battleMode": MEITUAN_MODE}]],
+            "Constant": [[10090, {"value": [2.0, 2.8, 3.6, 4.3, 5.0]}]],
+            "pve_stage_data": [[str(stage), {"id": str(stage), "groupid": stage}]],
+            "BattleMonstersInfo": [[stage, {"resindex": 41146}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle", "fields": []} for name in tables]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], str(entry["key"])): entry for entry in index["entries"]}
+        root = entries["map_boss", "19033"]
+        self.assertEqual((root["family"], root["title"]), ("event", "宴席大赛 · 联动鬼王"))
+        self.assertEqual([ref["key"] for ref in root["refs"] if ref["table"] == "activity_offline_lbs_mass"], [300])
+        detail = entries["pve_stage_data", str(stage)]
+        self.assertEqual([ref["key"] for ref in detail["refs"] if ref["table"] == "battle_team_routes"], [721])
+        self.assertIn("LBS_meituan2021_zhandou", [ref["key"] for ref in detail["refs"]])
+        self.assertEqual(entry_for_stage(maps, stage, MEITUAN_MODE), ("meituan", None, 41146, 4262369, 10))
+        self.assertIsNone(entry_for_stage(maps, stage, LBS_ACTIVITY_MODE))
+        self.assertIsNone(party_positions(MEITUAN_MODE, 2))
 
     def test_regional_boss_preserves_weighted_rules_and_level_one_modifier_variants(self):
         base_skill = {"$tuple": [61701, 1, -1]}
