@@ -224,7 +224,8 @@ function sampleBattleMarkup(samples){
    regional?.metrics?`${describeBattle(sample)} · ${regional.metrics.rounds} 回合 · 我方承伤 ${Math.round(regional.metrics.receivedDamage).toLocaleString('zh-CN')}${modifiers}`:
    trial?`${describeBattle(sample)} · 试炼式神 ${DATA.gameConfig.heroes[trial.trialHero]?.name||trial.trialHero} · ${trial.rounds} 回合`+
     (trial.phases?` · 首领阶段 ${trial.phasesCleared} / ${sample.waveCount} · 服务端演出等待 ${(trial.montageWaitMs/1000).toFixed(2)} 秒`:'')+
-    (trial.eventId?` · 档位 ${trial.difficulty} · 前行 ${trial.moveCount} 步 · 敌方属性系数加成 ${trial.enemyAttributeBonus.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}`:''):
+    (trial.eventId?` · 档位 ${trial.difficulty} · 前行 ${trial.moveCount} 步 · 敌方属性系数加成 ${trial.enemyAttributeBonus.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}`:'')+
+    (trial.runState?` · 开场生命上限 ${trial.runState.opening.map(unit=>unit.lifeCap+'%').join(' / ')} · 印记 ${trial.runState.opening.filter(unit=>unit.markId).length} 枚`:''):
    experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:
    coins?`${coins.timedOut?'超时':sample.outcome==='win'?'击破首领':sample.completed?'队伍落败':'结算待确认'} · `+
     `首领剩余生命 ${(coins.bossHpFraction*100).toFixed(2)}% · 金币预览 ${coins.previewCoins.toLocaleString('zh-CN')} · `+

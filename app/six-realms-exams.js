@@ -9,6 +9,7 @@ const tableSHA256={
  BattleMonstersInfo:'8747286d03333c0073d5d2d72e3cec1e89a25f043efb920ee4fcaa8b55b29111',
 };
 const eventTableSHA256='16b323010f26def2b0db1b1b589e9f0151b82a80e5b5b0d293335613fb07d0eb';
+const markTableSHA256='3b8fae07480d03cac292c84fb7fedeaccd95b009cea82ca8131cfd2aa37b6603';
 const eventSceneIds=[469102,469109,469111,469112,469114,469115];
 const trials=[
  {stageId:700036,dao:1,sceneId:469103,codeStageId:110150,eligible:[219,234,252],
@@ -32,7 +33,7 @@ const eventRoute=stageId=>{
  if(!trial)return null;
  return {dao,sceneId:eventSceneIds[dao-1],eligible:trial.eligible,codeStageId:trial.codeStageId,engine:trial.engine,sha256:trial.sha256};
 };
-const value={resourceVersion,battleMode,eventMode,difficulty,tableSHA256,eventTableSHA256,routes,eventRoute};
+const value={resourceVersion,battleMode,eventMode,difficulty,tableSHA256,eventTableSHA256,markTableSHA256,routes,eventRoute};
 if(typeof module==='object'&&module.exports)module.exports=value;
 else globalThis.AtlasSixRealmsExams=value;
 })();

@@ -106,6 +106,9 @@
   const captureReady=!capture||new Set(capture.cards).size===3;
   const moves=pane.eventMoves?.valueAsNumber;
   const eventReady=!pane.eventMoves||Number.isSafeInteger(moves)&&moves>=0;
+  const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
+  const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
+  for(const field of [...pane.lifeCaps,...pane.marks])field.disabled=blocked;
   if(pane.trial)pane.trial.disabled=blocked;
   if(pane.eventMoves){
    pane.eventMoves.disabled=blocked;
@@ -122,7 +125,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -133,6 +136,7 @@
    selected.length&&reserve&&!reserve.ready?reserve.hint:
    !captureReady?'请选择三个不同的出战式神位置。':
    !eventReady?'前行步数应为大于或等于 0 的整数。':
+   !stateReady?'生命上限应在 0% 至 100% 之间。':
    job?.notice?job.notice:
    selected.length?`已选 ${selected.length} 套已知阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
    available.length?'从下拉列表选择，或先在阵容库勾选对应阵容。':'阵容库暂无可用于此副本的完整阵容。请先解析或手动制作阵容码。';
@@ -184,6 +188,17 @@
     </select></label>
     <label class="pve-lineup-field">前行步数 <input data-pve-event-moves type="number" min="0" step="1" value="0" required></label>
    </div>`:''}
+   ${config.trialEligible?`<details class="pve-reserve">
+    <summary>设置途中状态</summary>
+    <p class="caption">按阵容中的式神顺序填写生命上限。0% 表示已阵亡。专属印记须由对应式神装备。</p>
+    ${Array.from({length:config.memberCount},(_,index)=>`<div class="actions">
+     <label class="pve-lineup-field">第 ${index+1} 位生命上限（%）
+      <input data-pve-life-cap type="number" min="0" max="100" step="any" value="100" required></label>
+     <label class="pve-lineup-field">第 ${index+1} 位印记 <select data-pve-yinji><option value="0">未装备</option>
+      ${config.markOptions.map(({id,name,level,source,owner})=>`<option value="${esc(id)}" title="${esc(source)}">${esc(name)} · ${esc(level)} 级${owner?' · '+esc(owner)+'专属':''}</option>`).join('')}
+     </select></label>
+    </div>`).join('')}
+   </details>`:''}
    ${config.battleMode===AtlasTrueOrochi.battleMode?`<fieldset class="pve-reserve">
     <legend>备选阵容</legend>
     <p class="caption">备选式神沿用当前御魂。原版引擎按可用阵容继续挑战下一层。</p>
@@ -203,6 +218,7 @@
   const part=name=>section.querySelector(`[data-pve-${name}]`);
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
+   lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
@@ -210,7 +226,7 @@
    if(job&&!busy())job.notice=null;
    update();
   };
-  if(pane.eventMoves)pane.eventMoves.oninput=()=>{
+  for(const field of [pane.eventMoves,...pane.lifeCaps,...pane.marks].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -247,7 +263,8 @@
    run.native=true;
    try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:true,...(battleMode?{battleMode}:{}),
     ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{}),...(qilingWindow?{qilingWindow}:{}),
-    ...(trialSlot?{trialSlot}:{}),...(run.sixRealmsEvent?{sixRealmsEvent:run.sixRealmsEvent}:{})});}
+    ...(trialSlot?{trialSlot}:{}),...(run.sixRealmsEvent?{sixRealmsEvent:run.sixRealmsEvent}:{}),
+    ...(run.sixRealmsState?{sixRealmsState:run.sixRealmsState}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
    row.samples.push(report);
@@ -321,6 +338,12 @@
      row.state.textContent=trialSlot?'该位置的式神不属于本路线的试炼名单':'这套阵容有多个试炼式神，请指定位置';
      return;
     }
+    if(run.sixRealmsState?.marks.some((id,i)=>id!==0&&!run.pane.markOptions.some(
+     mark=>mark.id===id&&(mark.heroId===0||mark.heroId===Number(plan.members[i].hero.heroId))))){
+     row.verdict='infeasible';
+     row.state.textContent='专属印记与装备位置的式神不匹配';
+     return;
+    }
    }
    if(run.reserve){
     const profile=AtlasRuneLineup.selectedOnmyoji(run.reserve.actor,run.account,run.data.gameConfig);
@@ -387,9 +410,11 @@
   const inventory=account(),reserve=orochiReserve(selected,inventory);
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3)return;
   const focus=document.activeElement===pane.start;
+  const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value));
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
+   sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)?{lifeCaps,marks}:null,
    startingInventory:reserve?reserveInventory(reserve,inventory):inventory,
    pveMemberCount:pane.memberCount,message:'正在准备库存…'};
   pane.results.replaceChildren();

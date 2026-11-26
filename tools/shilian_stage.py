@@ -1,6 +1,7 @@
-"""Replay Six Realms battles with full-health owned shikigami."""
+"""Replay Six Realms battles with owned shikigami and optional run state."""
 
 from importlib import import_module
+from math import isclose, isfinite
 
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, shilian_event_dao
 
@@ -9,7 +10,7 @@ REPLAY_SECONDS = 145
 TRIAL_DIFFICULTY = 1
 
 
-def shilian_stage(stage_id, fighters, slot, event=None):
+def shilian_stage(stage_id, fighters, slot, event=None, run_state=None):
     from com import const
     from com.data.cdata import shilian_event_battles, shilian_event_exam, shilian_liudao
     from DynamicConfigData import BattleMonstersInfo, DATA_PVE_STAGE_DATA
@@ -35,6 +36,7 @@ def shilian_stage(stage_id, fighters, slot, event=None):
         raise ValueError("The Six Realms battle does not have the expected enemy formations")
     engine_name = SHILIAN_DAOS[dao][2]
     engine_class = getattr(import_module("battleengine.engine." + engine_name), engine_name)
+    life_caps, marks = run_state_inputs(run_state, fighters, fighters[alias]["heroId"])
     engine = engine_class({
         "pve_data_flag": str(stage_id),
         "dao_id": dao,
@@ -42,13 +44,72 @@ def shilian_stage(stage_id, fighters, slot, event=None):
         "trial_hero_uid": alias,
         "trial_hero_id": fighters[alias]["heroId"],
         "battle_heroes_uid": list(fighters),
-        "hero_attr_info": {uid: {"cur_hp_per": 1.0} for uid in fighters},
+        "hero_attr_info": life_caps,
+        "yinji_info": marks,
         "difficulty": TRIAL_DIFFICULTY if event is None else event["difficulty"],
         "move_count": 0 if event is None else event["moves"],
         "battle_type": config["battle_type"],
     })
+    effect_group = engine.check_skill_effect_only
+
+    def effect_group_key(skill_id):
+        group = effect_group(skill_id)
+        # The headless table reader exposes arrays as lists. The original engine keys
+        # unique team effects by the complete, ordered group of skill IDs.
+        return tuple(group) if isinstance(group, list) else group
+
+    engine.check_skill_effect_only = effect_group_key
     engine.battleMode = SHILIAN_EXAM_MODE if event is None else SHILIAN_EVENT_MODE
     return engine, group, dao, const
+
+
+def run_state_inputs(state, roster, trial_id):
+    if not state:
+        return {uid: {"cur_hp_per": 1.0} for uid in roster}, {}
+    from com.data.cdata import shilian_fight_skill, shilian_yinji
+
+    life_caps, marks = {}, {}
+    for uid, cap, mark_id in zip(roster, state["lifeCaps"], state["marks"], strict=True):
+        life_caps[uid] = {"cur_hp_per": cap / 100}
+        if mark_id:
+            row = shilian_yinji.data.get(mark_id)
+            skill = shilian_fight_skill.data.get(row["skill_id"]) if row else None
+            if not skill or row["hero_id"] not in (0, roster[uid]["heroId"]) or skill["hero_id"] not in (0, trial_id):
+                raise ValueError("A Six Realms mark is unavailable for the selected shikigami")
+            marks[uid] = (row["skill_id"], 1)
+    return life_caps, marks
+
+
+def valid_run_state(state):
+    if not isinstance(state, dict) or set(state) != {"lifeCaps", "marks"}:
+        return False
+    caps, marks = state["lifeCaps"], state["marks"]
+    return (isinstance(caps, list) and isinstance(marks, list) and len(caps) == len(marks) == 6
+            and all(type(cap) in (int, float) and 0 <= cap <= 100 for cap in caps)
+            and all(type(mark) is int and 0 <= mark < 2 ** 53 for mark in marks))
+
+
+def verify_run_state(engine, controller, run_state):
+    from com.data.cdata import shilian_yinji
+
+    members = {unit.HeroComp.heroData.heroUid: unit for unit in engine.heroEntities.values()
+               if unit.ownerController is controller}
+    opening = []
+    for index, (cap, mark_id) in enumerate(zip(run_state["lifeCaps"], run_state["marks"], strict=True), 1):
+        uid = f"member-{index}"
+        unit = members[uid]
+        hp, limit = unit.AttrComp.hp, unit.AttrComp.maxHp
+        base = limit + unit.AttrComp.maxHpDec
+        if (not all(isfinite(value) for value in (hp, limit, base)) or base <= 0
+                or (not isclose(limit / base, cap / 100) if cap else hp != 0)):
+            raise RuntimeError("The original Six Realms engine did not apply the requested life cap")
+        mark_skill = shilian_yinji.data[mark_id]["skill_id"] if mark_id else 0
+        if mark_skill and ((mark_skill, 1) not in engine.hero_bead_skill.get(uid, ())
+                           or (cap and not engine.bead_skill_num_on_stage.get(mark_skill))):
+            raise RuntimeError("The original Six Realms engine did not equip the requested mark")
+        opening.append({"slot": index, "lifeCap": cap, "hp": hp, "maxHp": limit if cap else 0, "baseHp": base,
+                        "markId": mark_id, "markSkill": mark_skill})
+    return {"opening": opening}
 
 
 def verify_opening(engine, group, slot):

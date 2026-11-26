@@ -53,6 +53,21 @@ function validSixRealmsEvent(event){
  return event&&positive(event.id)&&[1,2,3].includes(event.difficulty)&&Number.isSafeInteger(event.moves)&&event.moves>=0;
 }
 
+function validSixRealmsState(state){
+ return state&&Object.keys(state).length===2&&Array.isArray(state.lifeCaps)&&state.lifeCaps.length===6&&
+  state.lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100)&&Array.isArray(state.marks)&&state.marks.length===6&&
+  state.marks.every(mark=>Number.isSafeInteger(mark)&&mark>=0);
+}
+
+function validSixRealmsStateReport(proof,state){
+ const ordering=proof?.opening;
+ return Array.isArray(ordering)&&ordering.length===6&&ordering.every((unit,i)=>unit&&unit.slot===i+1&&
+  unit.lifeCap===state.lifeCaps[i]&&unit.markId===state.marks[i]&&
+  (unit.markId>0?positive(unit.markSkill):unit.markSkill===0)&&
+  Number.isFinite(unit.baseHp)&&unit.baseHp>0&&Number.isFinite(unit.maxHp)&&unit.maxHp>=0&&Number.isFinite(unit.hp)&&unit.hp>=0&&
+  Math.abs(100*unit.maxHp/unit.baseHp-unit.lifeCap)<1e-7);
+}
+
 function validTactics(plan,battleMode){
  if(!Object.hasOwn(plan,'tactics'))return true;
  const {tactics}=plan;
@@ -302,9 +317,9 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState}){
  const engine=sixRealmsRoute?{name:sixRealmsRoute.engine,sha256:sixRealmsRoute.sha256,
-  route:sixRealmsEvent?'six-realms-full-health-encounter':'six-realms-full-health-trial'}:
+  route:`six-realms-${sixRealmsState?'configured':'full-health'}-${sixRealmsEvent?'encounter':'trial'}`}:
   resource?{name:resource.engine,route:resource.route,sha256:resource.engineSHA256??resourceEncounters.engineSHA256}:engines[battleMode];
  const awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
@@ -339,7 +354,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===orochi.battleMode&&!validOrochiReport(report,rounds[0]))||
     (hunlingRoute&&!validHunlingReport(report,hunlingRoute,capture))||
     (qilingEntry&&!validQiLingReport(report,qilingEntry,qilingWindow,rounds[0]))||
-    invalidTrial||invalidEvent||
+    invalidTrial||invalidEvent||(sixRealmsState&&!validSixRealmsStateReport(trial?.runState,sixRealmsState))||
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
@@ -385,7 +400,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -436,6 +451,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('六道之门需要同路线的六式神阵容和符合条件的试炼式神');
    if(isSixRealmsEvent?!validSixRealmsEvent(sixRealmsEvent):sixRealmsEvent!==undefined)
     throw Error('六道之门途中战斗需要有效的原版事件、难度档位和前行步数');
+   if(sixRealmsState!==undefined&&(!sixRealmsRoute||!validSixRealmsState(sixRealmsState)))
+    throw Error('六道之门途中状态需要六位式神的生命上限和印记设置');
    const qilingEntry=battleMode===qilingGroups.battleMode?qilingGroups.routes[stageId]:null;
    if(battleMode===qilingGroups.battleMode&&(qilingGroups.resourceVersion!==resourceVersion||qilingEntry?.groupId!==groupId||
       plan.members.length!==5||!validQiLingWindow(qilingWindow,qilingEntry))||qilingWindow!==undefined&&!qilingEntry)
@@ -477,6 +494,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(regionModes.includes(battleMode))args.push('--region',JSON.stringify(region));
     if(capture)args.push('--capture-item',String(capture.itemId),'--capture-cards',...capture.cards.map(String));
     if(sixRealmsRoute)args.push('--shilian-trial-slot',String(trialSlot));
+    if(sixRealmsState)args.push('--shilian-state',JSON.stringify(sixRealmsState));
     if(isSixRealmsEvent)args.push('--shilian-event-id',String(sixRealmsEvent.id),'--shilian-difficulty',String(sixRealmsEvent.difficulty),
      '--shilian-moves',String(sixRealmsEvent.moves));
     if(qilingEntry){
@@ -488,7 +506,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');

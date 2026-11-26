@@ -400,7 +400,7 @@ async function main(){
    await ui('selectedLineups.clear();renderSelection()');
    if(cases.some(entry=>entry.table==='shilian_event_exam'&&entry.key===3)){
     await encounter('daily','六道之门试炼关卡 香行域');
-    assert.match(await ui(panel+'.textContent'),/满生命阵容复跑档位 1/);
+    assert.match(await ui(panel+'.textContent'),/首领试炼使用档位 1/);
     assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-six-realms']);
     await choose('six-realms');
     const trialPosition='document.querySelector("[data-pve-trial]")';
@@ -437,16 +437,25 @@ async function main(){
     await ui(moves+'.value="-1";'+moves+'.dispatchEvent(new Event("input"))');
     assert.equal(await ui(start+'.disabled'),true);
     await ui(moves+'.value="12";'+moves+'.dispatchEvent(new Event("input"));'+difficulty+'.value="3"');
+    const caps='document.querySelectorAll("[data-pve-life-cap]")',marks='document.querySelectorAll("[data-pve-yinji]")';
+    await ui(caps+'[0].closest("details").open=true;'+caps+'[0].value="101";'+caps+'[0].dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(caps+'[0].value="98.75";'+caps+'[0].dispatchEvent(new Event("input"));'+caps+'[1].value="0";'+caps+'[1].dispatchEvent(new Event("input"))');
+    assert.equal(await ui(marks+'[5].querySelector("option[value=\'670093\']").textContent.trim()'),'印记·暴风 · 3 级 · 大天狗专属');
+    await ui(marks+'[5].value="670093";'+marks+'[5].dispatchEvent(new Event("input"))');
     assert.equal(await ui(start+'.disabled'),false);
+    const state={lifeCaps:[98.75,0,100,100,100,100],marks:[0,0,0,0,0,670093]};
     mockPve=(plan,request)=>{
      assert.deepEqual(request,{battleMode:208,stageId:700101,groupId:700101,seed:request.seed,damageFloor:true,trialSlot:6,
-      sixRealmsEvent:{id:113,difficulty:3,moves:12}});
+      sixRealmsEvent:{id:113,difficulty:3,moves:12},sixRealmsState:state});
      return {...sample,seed:request.seed,sixRealms:{dao:2,trialSlot:6,trialHero:217,difficulty:3,rounds:4,
-      eventId:113,moveCount:12,battleType:0,enemyAttributeBonus:.12}};
+      eventId:113,moveCount:12,battleType:0,enemyAttributeBonus:.12,
+      runState:{opening:state.lifeCaps.map((lifeCap,i)=>({lifeCap,markId:state.marks[i]}))}}};
     };
     await ui(start+'.click()');
     await until(status+'.textContent.includes("全随机分支待验证")',20000);
     assert.match(await ui(reports+'.textContent'),/档位 3 · 前行 12 步 · 敌方属性系数加成 12%/);
+    assert.match(await ui(reports+'.textContent'),/开场生命上限 98\.75% \/ 0%.*印记 1 枚/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='800017'&&entry.kind==='契灵之境')){
     await encounter('daily','契灵之境 平安京 770005');
