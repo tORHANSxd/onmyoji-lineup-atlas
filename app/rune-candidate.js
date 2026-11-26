@@ -110,6 +110,28 @@ function compareDamage(a,b){
  return b.average-a.average||b.min-a.min||b.max-a.max;
 }
 
+function manualSkillVariants(trial,game){
+ const {item,samples}=trial;
+ const choices=personalScore(samples[0])?.manualChoices;
+ if(!choices?.skills?.length)return [];
+ const {plan}=item,{actorSlot}=choices,marked=plan.tactics.greenSlot;
+ const actor=plan.members[actorSlot-1]?.hero;
+ if(!actor)return [];
+ const ownSkills=new Map(actor.skinfo);
+ const allies=[...new Set([marked,...plan.members.map((_,index)=>index+1)])].filter(slot=>slot&&slot!==actorSlot);
+ const options=choices.skills.filter(({skillId})=>ownSkills.has(skillId)).map(({skillId,targets})=>{
+  const name=G.skill(game,skillId,ownSkills.get(skillId),actor.awake)?.name;
+  if(!name)return [];
+  const selections=targets.flatMap(target=>target==='ally'?allies.slice(0,1):[target]);
+  if(targets.includes('ally')&&allies.length>1)selections.push(allies[1]);
+  return selections.map(target=>({
+   ...item,title:`${item.title.replace(/ · 首动手动普攻$/,'')} · 首动${name}${Number.isInteger(target)?`点第${target}位`:''}`,
+   plan:{...plan,tactics:{...plan.tactics,manualOpening:{actorSlot,skillId,target}}},
+  }));
+ });
+ return [...options.flatMap(row=>row.slice(0,1)),...options.flatMap(row=>row.slice(1))].slice(0,2);
+}
+
 async function rankedDamageSearch(items,game,{measure,active,alternatives=[]}){
  const seeds=S.baseSampleSeeds, trials=[], registered=new Set(alternatives);
  const rank=rows=>rows.filter(row=>row.score).sort((a,b)=>compareDamage(a.score,b.score));
@@ -174,7 +196,8 @@ async function rankedDamageSearch(items,game,{measure,active,alternatives=[]}){
  const bestSeed=group=>Math.max(seedDamage(group.anchor),...group.probes.map(seedDamage));
  const promising=[...groups].sort((a,b)=>bestSeed(b)-bestSeed(a)).slice(0,2);
  for(const group of promising){
-  for(const item of group.variants){
+  const manual=group.probes.find(trial=>trial.item.plan.tactics?.manualOpening===true);
+  for(const item of [...(manual?manualSkillVariants(manual,game):[]),...group.variants]){
    const trial=await enter(item,1);
    if(trial?.score)group.probes.push(trial);
   }
@@ -231,19 +254,40 @@ async function underworldTemplates(row,data,{stageId,groupId,codeStageId,codeLab
  }));
 }
 
-function scoreInstructions(tactics){
+function scoreInstructions(tactics,plan,game){
  if(!tactics)return '';
  const {manualOpening,redBoss,greenSlot,autoMode}=tactics;
- return (autoMode?`入场前把第${autoMode.slot}位式神设为自动${autoMode.mode==='basic'?'普攻':'妖术'}。`:'')+
-  (manualOpening?'手动开场，首动普攻首领后切自动。':'')+(redBoss?'红标首领。':'')+(greenSlot?`绿标第${greenSlot}位式神。`:'');
+ const specific=manualOpening&&manualOpening!==true;
+ let opening=manualOpening?'手动开场，首动普攻首领后切自动。':'';
+ if(specific){
+  const {actorSlot,skillId,target}=manualOpening;
+  const targetLabel={simple:'直接释放',boss:'点首领',self:'点自身'}[target]??`点第${target}位`;
+  opening=`第${actorSlot}位手动技能${skillId}${targetLabel}后切自动。`;
+  if(plan&&game){
+   const member=plan.members[actorSlot-1]?.hero;
+   const actor=game.heroes[member?.heroId]?.name??`第 ${actorSlot} 位式神`;
+   const level=member?.skinfo.find(([id])=>id===skillId)?.[1];
+   const slot=G.skillLabel(game,member?.heroId,skillId);
+   const skill=G.skill(game,skillId,level,member?.awake)?.name??`技能 ${skillId}`;
+   const aimed=Number.isInteger(target)?`点${game.heroes[plan.members[target-1]?.hero.heroId]?.name??`第 ${target} 位式神`}`:targetLabel;
+   opening=`手动开场，${actor}首动用${slot}「${skill}」，${aimed}后切自动。`;
+  }
+ }
+ const mode=autoMode?.mode==='basic'?'普攻':'妖术';
+ const preset=autoMode?(specific&&!plan?`第${autoMode.slot}位自动${mode}。`:`入场前把第${autoMode.slot}位式神设为自动${mode}。`):'';
+ return preset+opening+(redBoss?'红标首领。':'')+(greenSlot?`绿标第${greenSlot}位式神。`:'');
 }
 
 function readScoreInstructions(notes){
  if(typeof notes!=='string')return null;
- const match=/^资源 0\.[\d.]+，\d+ 场离线结算。(?:我方伤害取下限。)?阴阳师普攻 \d+ 级。开场操作。(?:入场前把第([1-5])位式神设为自动(普攻|妖术)。)?(手动开场，首动普攻首领后切自动。)?(红标首领。)?(?:绿标第([1-5])位式神。)?全分支待验证。$/.exec(notes);
+ const match=/^资源 0\.[\d.]+，\d+ 场离线结算。(?:我方伤害取下限。)?阴阳师普攻 \d+ 级。开场操作。(?:入场前把第([1-5])位式神设为自动(普攻|妖术)。|第([1-5])位自动(普攻|妖术)。)?(?:(手动开场，首动普攻首领后切自动。)|第([1-5])位手动技能([1-9]\d*)(直接释放|点首领|点自身|点第([1-5])位)后切自动。)?(红标首领。)?(?:绿标第([1-5])位式神。)?全分支待验证。$/.exec(notes);
  if(!match)return null;
- const [,slot,mode,opening,red,green]=match;
- const tactics={...(opening?{manualOpening:true}:{}),...(red?{redBoss:true}:{}),...(green?{greenSlot:Number(green)}:{}),
+ const [,legacySlot,legacyMode,compactSlot,compactMode,basic,actor,skillId,targetLabel,targetSlot,red,green]=match;
+ const slot=legacySlot??compactSlot,mode=legacyMode??compactMode;
+ const target={直接释放:'simple',点首领:'boss',点自身:'self'}[targetLabel]??Number(targetSlot);
+ if(actor&&!Number.isSafeInteger(Number(skillId)))return null;
+ const opening=basic?true:actor?{actorSlot:Number(actor),skillId:Number(skillId),target}:null;
+ const tactics={...(opening?{manualOpening:opening}:{}),...(red?{redBoss:true}:{}),...(green?{greenSlot:Number(green)}:{}),
   ...(slot?{autoMode:{slot:Number(slot),mode:mode==='普攻'?'basic':'spell'}}:{})};
  return Object.keys(tactics).length?tactics:null;
 }

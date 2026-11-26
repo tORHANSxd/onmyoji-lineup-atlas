@@ -502,12 +502,20 @@ async function main(){
      huntingCalls.get(key).push(options.seed);
      if(!startingRoster)startingRoster=rosterKey(plan);
      const alternate=rosterKey(plan)!==startingRoster;
+     const opening=plan.tactics?.manualOpening;
+     const actorSlot=plan.members.findIndex(({hero})=>{
+      const id=data.gameConfig.heroes[hero.heroId].skills[2];
+      return hero.skinfo.some(([skillId,level])=>skillId===id&&game.skill(data.gameConfig,id,level,hero.awake)?.passive===false);
+     })+1;
+     const manualChoices=opening===true&&alternate&&actorSlot?{actorSlot,skills:[{
+      skillId:data.gameConfig.heroes[plan.members[actorSlot-1].hero.heroId].skills[2],targets:['self'],
+     }]}:undefined;
      if(plan.tactics)tacticalCalls.push({key,alternate,tactics:plan.tactics,seed:options.seed});
      const firstCandidate=key===huntingCalls.keys().next().value;
      const failed=firstCandidate&&options.seed===2;
      const damage=firstCandidate?(failed?500000:options.seed===0?3000000:5000000):
-      plan.tactics?.manualOpening?(alternate?4500000:2500000):2000000;
-     return {...sample,...options,outcome:failed?'loss':'win',waveCount:1,wavesCleared:0,guildHunt:{damage,tactics:plan.tactics}};
+      opening?.skillId?5000000:opening===true?(alternate?4500000:2500000):2000000;
+     return {...sample,...options,outcome:failed?'loss':'win',waveCount:1,wavesCleared:0,guildHunt:{damage,tactics:plan.tactics,manualChoices}};
     };
     await ui(`window.qaGuildEncounter=(id,query)=>{
      qaEncounterInput("guild",query);
@@ -518,17 +526,17 @@ async function main(){
     await ui(stock+'.click()');
     await until(status+'.textContent.includes("按平均伤害排序")',20000);
     assert.deepEqual(huntingCalls.values().next().value,[0,1,2,3,7,42]);
-    const winningCall=tacticalCalls.find(call=>call.alternate&&call.tactics.manualOpening);
+    const winningCall=tacticalCalls.find(call=>call.alternate&&call.tactics.manualOpening?.target==='self');
     assert.ok(winningCall);
     assert.deepEqual(huntingCalls.get(winningCall.key),[0,1,2,3,7,42]);
     assert.deepEqual(new Set(tacticalCalls.filter(call=>call.seed===0&&call.tactics.autoMode).map(call=>call.tactics.autoMode.mode)),new Set(['spell','basic']));
-    assert.match(await ui(reports+'.firstElementChild.textContent'),/平均伤害 4,500,000.*首动普攻首领后切自动。红标首领。绿标/s);
+    assert.match(await ui(reports+'.firstElementChild.textContent'),/平均伤害 5,000,000.*首动用第 3 技能「.+?」，点自身后切自动。红标首领。绿标/s);
     assert.match(await ui(reports+'.textContent'),/5 \/ 6 场有效结算.*平均伤害 3,916,667.*单场最高 5,000,000.*最低 500,000.*个人结算失败 · 未清场/s);
     assert.match(await ui(reports+'.textContent'),/未进入六场复评/);
     await ui('document.querySelector("[data-pve-code]").click()');
     const tacticalCode=await ui('$("stock-candidate-code").value');
     assert.match(tacticalCode,/^#TA#/);
-    assert.match(await ui('document.querySelector(".rune-code-preview").textContent'),/首动普攻首领后切自动。红标首领。/);
+    assert.match(await ui('document.querySelector(".rune-code-preview").textContent'),/首动用第 3 技能「.+?」，点自身后切自动。红标首领。/);
     const {readScoreInstructions}=require('../app/rune-candidate.js');
     const decoded=require('../desktop/ta-codec.cjs').decodeLineupData(tacticalCode);
     assert.deepEqual(readScoreInstructions(decoded.desc),winningCall.tactics);

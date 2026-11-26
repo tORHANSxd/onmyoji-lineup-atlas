@@ -38,7 +38,11 @@ function validTactics(plan,battleMode){
  if(![2000,306].includes(battleMode)||!tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
  return Object.entries(tactics).every(([key,value])=>{
   const slot=number=>positive(number)&&number<=plan.members.length;
-  if(key==='redBoss'||key==='manualOpening')return value===true;
+  if(key==='redBoss')return value===true;
+  if(key==='manualOpening')return value===true||
+   (value&&typeof value==='object'&&Object.keys(value).length===3&&slot(value.actorSlot)&&positive(value.skillId)&&
+    (['simple','boss','self'].includes(value.target)||slot(value.target))&&
+    plan.members[value.actorSlot-1]?.hero?.skinfo?.some(skill=>skill[0]===value.skillId));
   if(key==='greenSlot')return slot(value);
   return key==='autoMode'&&value&&Object.keys(value).length===2&&slot(value.slot)&&
    ['basic','spell'].includes(value.mode)&&plan.members[value.slot-1]?.aiSkill===0;
@@ -66,10 +70,24 @@ function validUnderworld(report,rounds){
       position>(row.units[j-1]?.[0]??0)&&positive(id)&&positive(level)&&level<=40));
 }
 
-function validScoringTactics(data,tactics,bossId){
+function validScoringTactics(data,plan,bossId){
+ const {tactics}=plan,opening=tactics?.manualOpening;
  const action=data?.manualAction;
- return sameTactics(data?.tactics,tactics)&&(tactics?.manualOpening?
-  positive(action?.heroId)&&positive(action?.skillId)&&action.targetId===bossId:action===undefined);
+ const choices=data?.manualChoices;
+ if(!sameTactics(data?.tactics,tactics))return false;
+ if(!opening)return action===undefined&&choices===undefined;
+ if(!positive(action?.heroId)||!positive(action?.skillId)||!positive(action?.targetId))return false;
+ const heroId=slot=>Number(plan.members[slot-1]?.hero?.heroId);
+ if(opening===true)return action.targetId===bossId&&(choices===undefined||
+  (positive(choices.actorSlot)&&heroId(choices.actorSlot)===action.heroId&&Array.isArray(choices.skills)&&
+   choices.skills.every(skill=>positive(skill?.skillId)&&skill.skillId!==action.skillId&&Array.isArray(skill.targets)&&
+    new Set(skill.targets).size===skill.targets.length&&skill.targets.every(target=>['simple','boss','self','ally'].includes(target)))&&
+   new Set(choices.skills.map(skill=>skill.skillId)).size===choices.skills.length));
+ if(choices!==undefined||action.actorSlot!==opening.actorSlot||action.heroId!==heroId(opening.actorSlot)||
+    action.skillId!==opening.skillId||(action.targetSlot!==null&&action.targetId!==heroId(action.targetSlot)))return false;
+ if(opening.target==='simple')return true;
+ if(opening.target==='boss')return action.targetSlot===null&&action.targetId===bossId;
+ return action.targetSlot===(opening.target==='self'?opening.actorSlot:opening.target);
 }
 
 function validRegion(region,battleMode){
@@ -107,7 +125,7 @@ function validRegionalReport(report,region){
    Number.isSafeInteger(actual.metrics.rounds)&&actual.metrics.rounds>=0:actual.metrics===null);
 }
 
-function validRetreat(report,panel,{raidRound,guildMembers,windowSeconds},tactics){
+function validRetreat(report,panel,{raidRound,guildMembers,windowSeconds},plan){
  const data=report.guildRetreat;
  const reasons={win:['boss-defeated'],loss:['window-expired','team-defeated'],unknown:[null]};
  return report.sceneId===40010&&report.waveCount===1&&report.wavesCleared===Number(report.outcome==='win')&&
@@ -116,7 +134,7 @@ function validRetreat(report,panel,{raidRound,guildMembers,windowSeconds},tactic
   reasons[report.outcome]?.includes(data.reason)&&(data.reason!=='window-expired'||data.combatSeconds===windowSeconds)&&
   Number.isSafeInteger(data.damage)&&data.damage>=0&&Number.isSafeInteger(data.localDamage)&&data.localDamage>=0&&
   Array.isArray(data.phases)&&data.phases.every(value=>typeof value==='string'&&value.length>0)&&
-  validScoringTactics(data,tactics,panel.id)&&Object.entries(panel).every(([key,value])=>data.opening?.[key]===value);
+  validScoringTactics(data,plan,panel.id)&&Object.entries(panel).every(([key,value])=>data.opening?.[key]===value);
 }
 
 function launch(python,args,cwd,signal){
@@ -129,14 +147,14 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics,rounds,retreat,region}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region}){
  const engine=engines[battleMode],awake=battleMode===29?awakeOpenings.floors[stageId]:null;
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const yuling=battleMode===267?yulingOpenings.floors[stageId]:null;
  const hunt=battleMode===2000?guildHuntOpenings.floors[stageId]:null;
  const huntReport=report?.guildHunt;
  const invalidHunt=hunt&&(!huntReport||huntReport.deadlineSeconds!==240||huntReport.phaseRandomSeed!==seed||!Number.isSafeInteger(huntReport.damage)||
-  huntReport.damage<0||!validScoringTactics(huntReport,tactics,hunt.enemy.id)||
+  huntReport.damage<0||!validScoringTactics(huntReport,rounds[0],hunt.enemy.id)||
   !Object.entries(hunt.enemy).every(([key,value])=>huntReport.opening?.[key]===value));
  const retreatOpening=retreat&&guildRetreatOpenings.difficulties[stageId][retreat.raidRound-1][groupId];
  const invalidYuling=yuling&&(!Array.isArray(report?.opening)||report.opening.length!==yuling.enemies.length||
@@ -155,7 +173,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
     (yuling&&(report.sceneId!==yuling.sceneId||report.waveCount!==1||report.formationsVerified!==1||invalidYuling))||
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
-    (retreatOpening&&!validRetreat(report,retreatOpening,retreat,tactics))||
+    (retreatOpening&&!validRetreat(report,retreatOpening,retreat,rounds[0]))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
@@ -246,7 +264,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics:plan.tactics,rounds,
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');

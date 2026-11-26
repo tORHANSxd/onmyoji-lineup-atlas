@@ -67,9 +67,19 @@ def hunt_tactics(plan, mode):
     if (mode not in (GUILD_HUNT_MODE, RETREAT_MODE) or type(tactics) is not dict or not tactics
             or tactics.keys() - {"redBoss", "greenSlot", "manualOpening", "autoMode"}):
         raise ValueError("Unsupported Guild Hunting tactics")
-    for key in ("redBoss", "manualOpening"):
-        if key in tactics and tactics[key] is not True:
-            raise ValueError("Invalid Guild Hunting opening instruction")
+    if "redBoss" in tactics and tactics["redBoss"] is not True:
+        raise ValueError("Invalid Guild Hunting enemy mark")
+    opening = tactics.get("manualOpening", True)
+    if opening is not True:
+        if (type(opening) is not dict or opening.keys() != {"actorSlot", "skillId", "target"}
+                or type(opening["actorSlot"]) is not int or not 1 <= opening["actorSlot"] <= len(plan["members"])
+                or type(opening["skillId"]) is not int or opening["skillId"] <= 0
+                or not (opening["target"] in ("simple", "boss", "self") or
+                        type(opening["target"]) is int and 1 <= opening["target"] <= len(plan["members"]))):
+            raise ValueError("Invalid Guild Hunting manual skill instruction")
+        hero = plan["members"][opening["actorSlot"] - 1]["hero"]
+        if not any(skill_id == opening["skillId"] for skill_id, _ in hero["skinfo"]):
+            raise ValueError("The manual opening skill is not in the selected Shikigami's loadout")
     if "greenSlot" in tactics and (type(tactics["greenSlot"]) is not int or not 1 <= tactics["greenSlot"] <= 5):
         raise ValueError("Invalid Guild Hunting ally mark slot")
     if "autoMode" in tactics:
@@ -92,6 +102,7 @@ class HuntOpening:
         self.entities = {}
         self.applied = {}
         self.manual_action = None
+        self.manual_choices = None
 
     def select(self, alias, entity):
         self.entities[alias] = entity
@@ -113,23 +124,12 @@ class HuntOpening:
                      and unit.lifeState == const.CombatState.ALIVE), None)
         if not boss:
             return
-        if self.tactics.get("manualOpening"):
+        if opening := self.tactics.get("manualOpening"):
             turn = engine.turnMgr
             entity = turn.GetCurrEntity()
             if entity is None or entity.ownerController is not controller or not turn.isInLockState(const.LockSubState.SelectingSkill):
                 return
-            skill = entity.SkillMgrComp.findNormalSkill()
-            if skill is None or controller.isAuto:
-                raise RuntimeError("The original engine did not offer a manual opening basic attack")
-            engine.op_setSelectSkillId(controller, skill.skillId)
-            engine.op_useSkill(controller, boss.uid, skill.skillId)
-            if turn.lockSkillId != skill.skillId or turn.isInLockState(const.LockSubState.SelectingSkill):
-                raise RuntimeError("The original engine did not accept the manual opening basic attack")
-            engine.op_setAuto(controller, True)
-            if not controller.isAuto:
-                raise RuntimeError("The original engine did not return the controller to automatic play")
-            self.applied["manualOpening"] = True
-            self.manual_action = {"heroId": entity.protoid, "skillId": skill.skillId, "targetId": boss.protoid}
+            self.cast_opening(opening, turn, entity, boss)
         if self.tactics.get("redBoss"):
             self.mark(const.EnemyFlag, boss)
             self.applied["redBoss"] = True
@@ -138,7 +138,99 @@ class HuntOpening:
             self.mark(const.FriendFlag, self.entities[f"member-{slot}"])
             self.applied["greenSlot"] = slot
 
+    def member_slot(self, entity):
+        return next((slot for slot in range(1, 6) if self.entities.get(f"member-{slot}") is entity), None)
+
+    def opening_targets(self, skill):
+        range_ = skill.selectRange
+        ranges = self.const.SkillSelectRange
+        if range_ in self.const.SIMPLE_SELECT_TYPE:
+            return ["simple"]
+        if range_ == ranges.RANGE_SELF:
+            return ["self"]
+        if range_ in (ranges.RANGE_ENEMY_SOLO, ranges.RANGE_ENEMY_COL, ranges.RANGE_ENEMY_EXPANDS,
+                      ranges.RANGE_ENEMY_FORWARD_ROW, ranges.RANGE_ENEMY_BACK_ROW):
+            return ["boss"]
+        if range_ in (ranges.RANGE_FRIEND_SOLO, ranges.RANGE_FRIEND_SOLO_OR_ONLY_SELF):
+            return ["ally"]
+        if range_ in (ranges.RANGE_FRIEND_SELF_SOLO, ranges.RANGE_FRIEND_SELF_SOLO_EXCLUDE_YYS):
+            return ["ally", "self"]
+        if range_ == ranges.RANGE_ALL_SOLO:
+            return ["boss", "ally"]
+        if range_ == ranges.RANGE_ALL_SELF_SOLO:
+            return ["boss", "ally", "self"]
+        return []
+
+    def cast_opening(self, opening, turn, entity, boss):
+        engine, controller, const = self.engine, self.controller, self.const
+        mgr = entity.SkillMgrComp
+        slot = self.member_slot(entity)
+        normal = mgr.findNormalSkill()
+        available = mgr.getDisplaySkills(True, True)
+        if controller.isAuto:
+            raise RuntimeError("The original engine did not enter manual play")
+        if opening is True:
+            if normal is None:
+                raise RuntimeError("The original engine did not offer a manual opening basic attack")
+            skill_id, target = normal.skillId, boss
+            if slot is not None:
+                self.manual_choices = {
+                    "actorSlot": slot,
+                    "skills": [{"skillId": id_, "targets": self.opening_targets(mgr.getSkillById(id_))}
+                               for id_ in available if id_ != skill_id],
+                }
+        else:
+            skill_id, requested = opening["skillId"], opening["target"]
+            if opening["actorSlot"] != slot or skill_id not in available:
+                raise RuntimeError("The requested Shikigami and skill were not available on the first manual turn")
+            if requested == "simple":
+                target = None
+            elif requested == "boss":
+                target = boss
+            elif requested == "self":
+                target = entity
+            else:
+                target = self.entities[f"member-{requested}"]
+
+        # Observe the target after the original UI action validates and resolves it.
+        cast = mgr.castSkill
+        accepted = []
+
+        def observe(id_, *args, **kwargs):
+            if id_ == skill_id and kwargs.get("fromID") == entity.uid:
+                accepted.append(engine.getEntity(kwargs["targetID"]))
+            return cast(id_, *args, **kwargs)
+
+        mgr.castSkill = observe
+        try:
+            if target is None:
+                engine.op_simpleUseSkill(controller, skill_id)
+            else:
+                engine.op_setSelectSkillId(controller, skill_id)
+                engine.op_useSkill(controller, target.uid, skill_id)
+        finally:
+            mgr.castSkill = cast
+        if (turn.lockSkillId != skill_id or turn.isInLockState(const.LockSubState.SelectingSkill)
+                or len(accepted) != 1 or accepted[0] is None
+                or (target is not None and accepted[0] is not target)):
+            raise RuntimeError("The original engine did not accept the manual opening skill and target")
+        engine.op_setAuto(controller, True)
+        if not controller.isAuto:
+            raise RuntimeError("The original engine did not return the controller to automatic play")
+        self.applied["manualOpening"] = opening
+        self.manual_action = {"heroId": entity.protoid, "skillId": skill_id, "targetId": accepted[0].protoid}
+        if opening is not True:
+            self.manual_action.update(actorSlot=slot, targetSlot=self.member_slot(accepted[0]))
+
     def mark(self, flag, entity):
         self.engine.op_setPriorityTarget(self.controller, flag, entity.uid)
         if self.engine.getCampData(self.controller.ctrlCamp).priorityTargetUid.get(flag) != entity.uid:
             raise RuntimeError("The original engine did not accept the requested target mark")
+
+    def report(self):
+        result = {"tactics": self.applied}
+        if self.manual_action:
+            result["manualAction"] = self.manual_action
+        if self.manual_choices:
+            result["manualChoices"] = self.manual_choices
+        return result

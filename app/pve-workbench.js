@@ -305,7 +305,7 @@
  function showScoreInstructions(row,plan,game){
   const names=plan.members.map(({hero})=>game.heroes[hero.heroId]?.name||`式神 ${hero.heroId}`);
   const {tactics}=plan;
-  const opening=AtlasRuneCandidate.scoreInstructions(tactics).replace(/第([1-5])位式神/g,(_,slot)=>`${names[slot-1]}（式神第 ${slot} 位）`);
+  const opening=AtlasRuneCandidate.scoreInstructions(tactics,plan,game).replace(/第([1-5])位式神/g,(_,slot)=>`${names[slot-1]}（式神第 ${slot} 位）`);
   const skillModes=[{hero:plan.onmyoji,aiSkill:plan.onmyoji.aiSkill},...plan.members].flatMap(({hero,aiSkill},index)=>{
    if(!aiSkill)return [];
    const choice=scoreChoices(game,hero).find(option=>option.value===aiSkill);

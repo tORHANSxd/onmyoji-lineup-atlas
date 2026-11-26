@@ -385,9 +385,7 @@ def replay(args, runtime, work):
         report["guildRetreat"] = {**raid_window.report(), "guildMembers": args.guild_members,
                                   "raidSHA256": modules.rows["battleengine.raid.raid_controllers.RaidComp_1"]["marshalSHA256"]}
         if instructions:
-            report["guildRetreat"]["tactics"] = instructions.applied
-            if instructions.manual_action:
-                report["guildRetreat"]["manualAction"] = instructions.manual_action
+            report["guildRetreat"].update(instructions.report())
     if args.mode == 266:
         report["formationsVerified"] = len(verified_waves)
     if args.mode == RESOURCE_MODE:
@@ -412,9 +410,7 @@ def replay(args, runtime, work):
         report["guildHunt"] = {"opening": hunt_opening, "damage": damage, "deadlineSeconds": engine.halt_battle_time,
                                "phaseRandomSeed": args.seed}
         if instructions:
-            report["guildHunt"]["tactics"] = instructions.applied
-            if instructions.manual_action:
-                report["guildHunt"]["manualAction"] = instructions.manual_action
+            report["guildHunt"].update(instructions.report())
     if args.minimum_damage:
         report["minimumDamage"] = minimum
     try:

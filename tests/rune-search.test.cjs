@@ -62,6 +62,35 @@ test('计分复评优先保留逐场伤害不同的操作',async()=>{
  assert.ok(result.finalists.some(trial=>trial.item===item));
 });
 
+test('首动按原版可用技能探索指定目标，完整阵容码保留操作',async()=>{
+ const [item]=candidates(C.parseAccount(inventory()),data);
+ const actorSlot=item.plan.members.findIndex(({hero})=>hero.heroId===596)+1;
+ const skillId=5963,requested={actorSlot,skillId,target:'self'};
+ const metadata={actorSlot,skills:[{skillId,targets:['self','ally']}]};
+ const result=await R.rankedDamageSearch([item],data.gameConfig,{active:()=>true,async measure(trial,count){
+  const tactics=trial.item.plan.tactics,opening=tactics?.manualOpening;
+  const damage=opening?.target==='self'?2400:opening?.skillId?2300:opening===true?2100:1000;
+  return [...trial.samples,...baseSampleSeeds.slice(trial.samples.length,count).map(seed=>({
+   battleMode:2000,stageId:61,groupId:61,waveCount:1,seed,completed:true,outcome:'win',guildHunt:{
+    damage,tactics,...(opening===true?{manualChoices:metadata}:{}),
+   },
+  }))];
+ }});
+ const winner=result.finalists[0],{tactics}=winner.item.plan;
+ assert.deepEqual(tactics.manualOpening,requested);
+ assert.equal(winner.samples.length,6);
+ assert.match(R.scoreInstructions(tactics,winner.item.plan,data.gameConfig),/神无月首动用第 3 技能「美梦赐予」，点自身后切自动/);
+ const withMode={...tactics,autoMode:{slot:1,mode:'spell'}};
+ const plan={...winner.item.plan,tactics:withMode};
+ const template=await R.pveTemplate({...winner.item,plan,samples:winner.samples.map(report=>({
+  ...report,guildHunt:{...report.guildHunt,tactics:withMode},
+ }))},data,{battleMode:2000,stageId:61,groupId:61,waveCount:1,codeStageId:10020208,codeLabel:'麒麟狩猎'});
+ const code=T.encodeLineupData(T.validateGameLineup(template,data));
+ assert.deepEqual(R.readScoreInstructions(T.decodeLineupData(code).desc),withMode);
+ assert.equal(teamKey(plan),teamKey({...plan,tactics:{...withMode,manualOpening:{target:'self',skillId,actorSlot}}}));
+ assert.notEqual(teamKey(plan),teamKey({...plan,tactics:{...withMode,manualOpening:{...requested,target:2}}}));
+});
+
 function inventory(){
  const ids=[591,389,596,557,379];
  const heroes=Object.fromEntries(ids.map(id=>{

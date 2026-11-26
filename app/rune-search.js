@@ -182,8 +182,12 @@ function configFor(name,id,openingSpeed,bossSpeed,earlySpeed,set){
 }
 
 function teamKey(plan){
- const tactics=plan.tactics&&Object.keys(plan.tactics).sort().map(key=>[key,key==='autoMode'?
-  [plan.tactics[key].slot,plan.tactics[key].mode]:plan.tactics[key]]);
+ const tactics=plan.tactics&&Object.keys(plan.tactics).sort().map(key=>{
+  const value=plan.tactics[key];
+  if(key==='autoMode')return [key,[value.slot,value.mode]];
+  if(key==='manualOpening'&&value!==true)return [key,[value.actorSlot,value.skillId,value.target]];
+  return [key,value];
+ });
  return JSON.stringify([plan.onmyoji,plan.spirit,plan.members.map(({instanceId,souls,aiSkill})=>
   [instanceId,souls.map(row=>row.id).sort(),aiSkill]),...(tactics?.length?[tactics]:[])]);
 }
