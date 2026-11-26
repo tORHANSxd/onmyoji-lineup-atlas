@@ -204,6 +204,7 @@ function sampleBattleMarkup(samples){
   const ghostKingTower=sample.ghostKingTower;
   const laolao=sample.laolaoChallenge;
   const fusion=sample.laolaoFusion;
+  const dusk=sample.duskWraith;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -272,6 +273,8 @@ function sampleBattleMarkup(samples){
    fusion?`${{'bosses-defeated':'击败合魂首领','team-defeated':'本队落败','window-expired':'达到计分时限','assigned-health-floor':'单首领已到生命下限',
     'incomplete':'结算待确认'}[fusion.reason]} · 本队伤害 ${fusion.damage.toLocaleString('zh-CN')} · `+
     `战斗与结算 ${fusion.combatSeconds.toFixed(2)} 秒 · 计分时长 ${fusion.settings.windowSeconds} 秒`:
+   dusk?`${{'boss-defeated':'击败真身','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[dusk.reason]} · `+
+    `本队伤害 ${dusk.damage.toLocaleString('zh-CN')} · 作战 ${dusk.combatSeconds.toFixed(2)} / ${dusk.settings.windowSeconds} 秒`:
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+
@@ -365,6 +368,10 @@ function sampleBattleMarkup(samples){
    ${fusion.transition?`<li>${fusion.transition.seconds.toFixed(2)} 秒达到 25% 转阶段阈值</li>`:''}</ol>
    <p class="caption">共享余血 · ${fusion.sharedHp.map((hp,i)=>
     `${AtlasDevilFeast.fusion.bossNames[i]} ${Math.round(hp).toLocaleString('zh-CN')}`).join(' · ')}</p></details>`:'';
+  const duskStages=dusk?`<details><summary>查看夜荒魂各阶段</summary><ol>${dusk.phases.map(phase=>
+   `<li>${AtlasFengmoLive.duskWraith.phaseNames[phase.phase-1]} · ${phase.seconds.toFixed(2)} 秒进场 · `+
+    `首领余血 ${(phase.bossHp/dusk.maximumHp).toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}</li>`).join('')}</ol>
+   <p class="caption">侍从击败顺序 ${dusk.eliteDefeatOrder.join(' → ')||'尚未击败侍从'} · 首领剩余生命 ${Math.round(dusk.bossHp).toLocaleString('zh-CN')}</p></details>`:'';
   const towerLife=ghostKingTower?.kind==='boss'?`<div class="caption">敌方余血 · ${esc(ghostKingTower.enemies.map(unit=>
    `${unit.position} 号位 ${unit.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})}`).join(' · '))}
    ${sample.completed&&ghostKingTower.enemies.some(unit=>unit.remainingHp>0)?
@@ -384,7 +391,7 @@ function sampleBattleMarkup(samples){
    return `<li>${esc(name)} · 原版实体 ${unit.level} 级 · 速度 ${unit.speed.toFixed(2)} · `+
     `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}</li>`;
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}</li>`;
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}</li>`;
  }).join('');
 }
 

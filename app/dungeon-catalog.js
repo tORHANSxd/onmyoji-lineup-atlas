@@ -950,6 +950,15 @@
       block.append(details);
     }
     destination.append(block);
+    const source=AtlasFengmoLive,dusk=source.duskWraith;
+    if(scenario.stage!==dusk.stageId||scenario.mode!==dusk.battleMode||route?.scene_engine!==dusk.engine.name)return;
+    const stage=row('pve_stage_data',String(scenario.stage)),code=DATA.gameConfig.stages[dusk.codeStageId];
+    if(stage?.groupid!==dusk.stageId||stage.shishentotal!==dusk.memberCount||formation.resindex!==dusk.sceneId||
+       row('BattleMonstersInfo',25022)?.resindex!==dusk.eliteSceneId||row('BattleMonstersInfo',25026)?.resindex!==dusk.sceneId)return;
+    destination.append(node('p','用已知阵容从满血开始，模拟一支队伍对共享生命的实际伤害。侍从乐律顺序和本地计分时长可填写。模拟期间不手动演奏，联机排名及奖励以游戏实战为准。','caption'));
+    window.AtlasPveWorkbench.mount(destination,{stageId:dusk.stageId,groupId:dusk.stageId,version:source.resourceVersion,
+      battleMode:dusk.battleMode,memberCount:dusk.memberCount,waveCount:1,label:'稀有·夜荒魂',duskWraith:true,
+      codeStageId:code?.actors===1&&code.shikigami===dusk.memberCount?dusk.codeStageId:null,codeLabel:code?.name});
   }
 
   function showTuzhizhuPractice(destination,entry,groups){

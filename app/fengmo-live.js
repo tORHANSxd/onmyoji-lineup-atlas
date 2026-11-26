@@ -41,6 +41,20 @@
  const rotationConstant=10631;
  const rotationSkills=[63402,63601,63404,63602,63405,63603,63406];
  const ref=(table,key,label)=>({table,key,label,found:true});
+ const duskWraith={
+  stageId:25021,battleMode:3017,codeStageId:10020227,sceneId:4002271,eliteSceneId:4002272,
+  memberCount:5,windowLimit:1200,defaultWindow:600,
+  elitePositions:[2,3,4,5,6],eliteIds:[993121,993122,993123,993124,993120],bossId:992119,giftId:993140,
+  phaseNames:['初始形态','五位侍从','首领再现','真身'],
+  engine:{name:'YeHuangHunEngine',route:'dusk-wraith-local-team',
+   sha256:'74c392c2c01b5a79b45db5438a555c0f7d2d60c1aa2b50980c79889320a097ab'},
+  validSettings(settings){
+   const order=settings?.musicOrder,seconds=settings?.windowSeconds;
+   return Object.keys(settings??{}).length===2&&Number.isSafeInteger(seconds)&&seconds>=1&&seconds<=this.windowLimit&&
+    Array.isArray(order)&&order.length===this.elitePositions.length&&new Set(order).size===order.length&&
+    order.every(position=>this.elitePositions.includes(position));
+  },
+ };
 
  function encounters(available){
   return bosses.flatMap(({name,eventId,eventParam,sceneId,normal,extreme})=>[normal,extreme].filter(Boolean).map(route=>{
@@ -59,6 +73,11 @@
     ref(route.ruleTable??'tipsInfoData_cn',route.rule,'客户端玩法说明'),
     ...coinConstants.map(([id,label])=>ref('Constant',id,label)),
    ];
+   if(route.stage===duskWraith.stageId){
+    refs.push(ref('BattleMonstersInfo',25022,'五位侍从编组'),ref('Combinesceneinfo',duskWraith.eliteSceneId,'侍从战斗场景'),
+     ref('monster',993125,'首领再现的小鬼'),ref('BattleMonstersInfo',25026,'真身纸人编组'),
+     ...[3628,3630,3631].map(id=>ref('Constant',id,'共享生命计算参数')));
+   }
    if(hard){
     refs.unshift(ref('event4',eventParam,'对应普通首领奖励配置'));
     refs.push(ref('battle_team_routes',route.team??route.mode,'客户端组队注册'),
@@ -80,5 +99,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith};
 });

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3016,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -141,7 +141,7 @@ async function main(){
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
   const panel='$("client-dungeons-encounter-detail")';
-  const {encounters}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  const {encounters,duskWraith}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
   assert.equal(entries.length,12);
   for(const entry of entries){
    const query=entry.title.replace(' · ',' ');
@@ -151,7 +151,16 @@ async function main(){
    assert.ok(info.includes(entry.title)&&info.includes(`集结模式 ${entry.fengmoLive.rally}`));
    assert.ok(info.includes(`事件 ${entry.fengmoLive.eventId}`));
    assert.ok(info.includes('客户端玩法说明')&&info.includes(String(entry.fengmoLive.stage)));
-   assert.equal(await ui(panel+'.querySelector("[data-pve-stock]")'),null);
+   if(entry.fengmoLive.stage===duskWraith.stageId){
+    assert.match(info,/五位侍从编组.*真身纸人编组/s);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-dusk-window]")?.valueAsNumber'),duskWraith.defaultWindow);
+    const music=panel+'.querySelector("[data-pve-dusk-music]")';
+    assert.equal(await ui(music+'.value'),'2 3 4 5 6');
+    await ui(`(()=>{const input=${music};input.value="2 2 4 5 6";input.dispatchEvent(new Event("input"));})()`);
+    assert.equal(await ui(music+'.getAttribute("aria-invalid")'),'true');
+    await ui(`(()=>{const input=${music};input.value="6，5，4，3，2";input.dispatchEvent(new Event("input"));})()`);
+    assert.equal(await ui(music+'.getAttribute("aria-invalid")'),'false');
+   }else assert.equal(await ui(panel+'.querySelector("[data-pve-stock]")'),null);
   }
   await ui('qaEncounterInput("daily","逢魔实战 稀有·土蜘蛛")');
   await until(panel+'.textContent.includes("按个人伤害比较评级门槛")');
@@ -342,6 +351,7 @@ async function main(){
    known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
+   known('dusk-wraith',10020227,5),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
    known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
@@ -921,6 +931,21 @@ async function main(){
     await ui(fusionWindow+'.scrollIntoView({block:"center",behavior:"instant"})');
     await capture('client-laolao-fusion');
     win.setContentSize(1440,1000);
+   }
+   if(catalog.entries.has('event4')){
+    await encounter('daily','逢魔实战 稀有·夜荒魂');
+    await ui(`(()=>{
+     const set=(selector,value)=>{const input=document.querySelector(selector);input.value=value;input.dispatchEvent(new Event('input'));};
+     set('[data-pve-dusk-window]',17);
+     set('[data-pve-dusk-music]','6，5，4，3，2');
+    })()`);
+    const duskSettings={windowSeconds:17,musicOrder:[6,5,4,3,2]};
+    const duskWraith={settings:duskSettings,reason:'window-expired',damage:289754,combatSeconds:17,maximumHp:9421012,
+     bossHp:9131258,eliteDefeatOrder:[],phases:[{phase:1,seconds:0,bossHp:9421012}]};
+    const details=await run('dusk-wraith',{stageId:25021,groupId:25021,battleMode:3017,duskSettings},
+     {outcome:'loss',wavesCleared:0,duskWraith});
+    assert.match(details,/达到计分时限 · 本队伤害 289,754 · 作战 17\.00 \/ 17 秒/);
+    assert.match(details,/初始形态 · 0\.00 秒进场 · 首领余血 100%/);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');

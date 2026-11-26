@@ -7,6 +7,7 @@
  const ghostKingTower=AtlasDevilFeast.tower;
  const laolao=AtlasDevilFeast.laolao;
  const fusion=AtlasDevilFeast.fusion;
+ const dusk=AtlasFengmoLive.duskWraith;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -193,6 +194,15 @@
     '请核对计分时长和共享生命。总余血高于 25% 时，集结目标必须仍存活。':
     `开场总余血 ${total.toLocaleString('zh-CN',{maximumFractionDigits:3})}% · 从${total<=25?'合魂':'单首领'}阶段开始`;
   }
+  const duskSettings=pane.duskWindow?{windowSeconds:pane.duskWindow.valueAsNumber,
+   musicOrder:pane.duskMusic.value.trim().split(/[\s,，、]+/u).map(Number)}:null;
+  const duskReady=!duskSettings||dusk.validSettings(duskSettings);
+  pane.duskSettings=duskReady?duskSettings:null;
+  if(pane.duskWindow){
+   pane.duskWindow.disabled=pane.duskMusic.disabled=blocked;
+   pane.duskWindow.setAttribute('aria-invalid',String(!pane.duskWindow.validity.valid));
+   pane.duskMusic.setAttribute('aria-invalid',String(!dusk.validSettings({...duskSettings,windowSeconds:1})));
+  }
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   const coins=pane.artifactCoins?.valueAsNumber;
@@ -237,7 +247,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -252,6 +262,7 @@
    !towerReady?'请核对百妖退治的挑战条件。':
    !laolaoReady?'请核对信仰之佑层数。':
    !fusionReady?'请核对合魂共享生命和计分时长。':
+   !duskReady?'时长须为 1 至 1200 秒，乐律顺序须包含 2 至 6 号位且各出现一次。':
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
@@ -345,6 +356,17 @@
     </fieldset>`:''}
     <p class="caption" id="pve-tower-hint" data-pve-tower-hint role="status"></p>
    </details>`:''}
+   ${config.duskWraith?`<fieldset class="pve-reserve"><legend>夜荒魂模拟条件</legend>
+    <div class="actions">
+     <label class="pve-lineup-field">计分时长（秒）
+      <input data-pve-dusk-window type="number" min="1" max="${dusk.windowLimit}" step="1" value="${dusk.defaultWindow}" required>
+     </label>
+     <label class="pve-lineup-field">侍从乐律顺序
+      <input data-pve-dusk-music type="text" value="${dusk.elitePositions.join(' ')}" aria-describedby="pve-dusk-music-hint" required>
+     </label>
+    </div>
+    <p class="caption" id="pve-dusk-music-hint">填写 2 至 6 号位的顺序，用空格分隔。默认顺序用于离线复现。</p>
+   </fieldset>`:''}
    ${config.laolao?`<fieldset class="pve-reserve">
     <legend>${config.laolaoFusion?'姥姥火·合魂挑战条件':'姥姥火挑战条件'}</legend>
     ${config.laolaoFusion?`<div class="actions">
@@ -458,6 +480,7 @@
    towerContinue:part('tower-continue'),towerHpPanel:part('tower-hp-panel'),towerHp:all('tower-hp'),towerHint:part('tower-hint'),
    laolaoFaith:part('laolao-faith'),laolaoFactions:all('laolao-faction'),laolaoHint:part('laolao-hint'),
    fusionGroup:part('fusion-group'),fusionWindow:part('fusion-window'),fusionHp:all('fusion-hp'),fusionHint:part('fusion-hint'),
+   duskWindow:part('dusk-window'),duskMusic:part('dusk-music'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
@@ -474,7 +497,7 @@
    update();
   };
   for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
-   ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,
+   ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
@@ -609,6 +632,7 @@
     ...(run.towerSettings?{towerSettings:run.towerSettings}:{}),
     ...(run.laolaoSettings?{laolaoSettings:run.laolaoSettings}:{}),
     ...(run.fusionSettings?{fusionSettings:run.fusionSettings}:{}),
+    ...(run.duskSettings?{duskSettings:run.duskSettings}:{}),
     ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(mapBossPlayers?{mapBossPlayers}:{}),...(tianfaTeam?{tianfaTeam}:{}),
     ...(qinfeiBoss?{qinfeiBoss}:{}),
@@ -778,7 +802,8 @@
   const inventory=account(),reserve=orochiReserve(selected,inventory);
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
      pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
-     pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings)return;
+     pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
+     pane.duskWindow&&!pane.duskSettings)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
@@ -790,6 +815,7 @@
    yinyangBoss:pane.yinYangSettings?{...pane.yinYangSettings,buffIds:pane.yinYangSettings.buffIds.slice()}:null,
    towerSettings:pane.towerSettings,
    laolaoSettings:pane.fusionWindow?null:pane.laolaoSettings,fusionSettings:pane.fusionSettings,
+   duskSettings:pane.duskSettings,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
    sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins||guard?
