@@ -14,7 +14,9 @@ const replayStages=new Map([
  [dungeonId,sceneId],
 ]);
 const runeFloorIds=[...replayStages.keys()].filter(id=>id!==dungeonId);
-const sceneForDungeon=id=>replayStages.get(id)??null;
+const twoRoundScenes=new Map([[103,hun13SceneId],[2001,10013004],[2002,10013003],[2003,10013002],[2005,10013001]]);
+const hun13FloorIds=[...twoRoundScenes.keys()];
+const sceneForDungeon=id=>replayStages.get(id)??twoRoundScenes.get(id)??null;
 
 function autoSkill(member,game,skills){
  const setting=member.aiSkill??0;
@@ -45,8 +47,8 @@ function inventorySpirit(actor,account,game){
 }
 
 function team(lineup,result,account,game,floor=dungeonId){
- const scene=sceneForDungeon(floor);
- if(scene===null||Number(lineup.gameSceneId)!==scene)throw Error('该阵容码不属于当前复跑副本');
+ const scene=replayStages.get(floor);
+ if(scene===undefined||Number(lineup.gameSceneId)!==scene)throw Error('该阵容码不属于当前复跑副本');
  const plan=selectedTeam(lineup,result,account,game);
  return {plan,conditions:['阴阳师按阵容码培养和携带技能复跑，平安志未提供其实际培养。普攻等级缺失时使用客户端最低等级。']};
 }
@@ -84,9 +86,10 @@ function selectedTeam(lineup,result,account,game,memberCount=5){
  })};
 }
 
-function hun13Pair(lineups){
- if(lineups.length!==2)throw Error('请选择虚无两波使用的阵容码');
- return orderedLineups(lineups,{scene:hun13SceneId,label:'虚无',unit:'波',id:'hun13-pair',title:'虚无双队库存精算'});
+function hun13Pair(lineups,floor=103){
+ const scene=twoRoundScenes.get(floor),label=floor===103?'虚无':'永生之海';
+ if(scene===undefined||lineups.length!==2)throw Error(`请选择${label}${floor===103?'两波':'两场'}使用的阵容码`);
+ return orderedLineups(lineups,{scene,label,unit:floor===103?'波':'队',id:'hun13-pair',title:label+'双队库存精算'});
 }
 
 function underworldLineups(lineups){
@@ -111,9 +114,9 @@ function orderedLineups(lineups,{scene,label,unit,id,title}){
 function hun13Plan({rounds},result,account,game){
  const assignments=result?.assignment;
  if(!Array.isArray(assignments)||assignments.length!==10||new Set(assignments.map(build=>build.heroId)).size!==10)
-  throw Error('虚无双队缺少十个不同的式神实例');
+  throw Error('两场战斗需要十个不同的式神实例');
  const souls=assignments.flatMap(build=>build.soulIds);
- if(new Set(souls).size!==souls.length)throw Error('虚无两波的配装使用了同一件御魂');
+ if(new Set(souls).size!==souls.length)throw Error('两场战斗的配装使用了同一件御魂');
  return orderedPlan(rounds,result,account,game);
 }
 
@@ -141,5 +144,5 @@ function orderedPlan(rounds,result,account,game){
   assignment:assignments.filter(build=>build.index>=wave*5&&build.index<(wave+1)*5)},account,game))};
 }
 
-return {sceneId,resourceVersion,dungeonId,hun13SceneId,runeFloorIds,sceneForDungeon,team,selectedTeam,hun13Pair,hun13Plan,underworldLineups,underworldPlan};
+return {sceneId,resourceVersion,dungeonId,hun13SceneId,runeFloorIds,hun13FloorIds,sceneForDungeon,team,selectedTeam,hun13Pair,hun13Plan,underworldLineups,underworldPlan};
 });

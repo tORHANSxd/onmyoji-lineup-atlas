@@ -7,8 +7,8 @@ const {execFile}=require('node:child_process');
 const {promisify}=require('node:util');
 const {createHash}=require('node:crypto');
 const {readConfig,matchesDamagePolicy}=require('./rune-runner.cjs');
-const {resourceVersion}=require('../app/rune-lineup.js');
-const {engineSHA256}=require('../app/rune-openings.js');
+const {resourceVersion,hun13FloorIds}=require('../app/rune-lineup.js');
+const {floors,engineSHA256,dungeonTableSHA256}=require('../app/rune-openings.js');
 
 const execute=promisify(execFile);
 const digest=value=>createHash('sha256').update(value).digest('hex');
@@ -17,9 +17,14 @@ const nonnegative=value=>Number.isFinite(value)&&value>=0;
 const isHun13Plan=plan=>Array.isArray(plan?.rounds)&&plan.rounds.length===2&&
  plan.rounds.every(row=>row?.onmyoji&&Array.isArray(row.members)&&row.members.length===5);
 
-function verifyReport(report,seed,team,suits){
+function verifyReport(report,dungeonId,seed,team,suits){
  const rounds=report?.rounds;
- if(report?.resourceVersion!==resourceVersion||report.dungeonId!==103||report.route!=='normal-solo-hun13'||
+ const floor=floors[dungeonId],base=floor.baseRoundSeconds;
+ if(report?.resourceVersion!==resourceVersion||report.dungeonId!==dungeonId||report.route!=='normal-solo-hun13'||
+    report.battleMode!==floor.battleMode||report.sceneId!==floor.scene||report.dungeonTableSHA256!==dungeonTableSHA256||
+    !Array.isArray(report.formations)||report.formations.length>floor.waves.length||
+    !report.formations.every((wave,index)=>JSON.stringify(wave)===JSON.stringify(
+     floor.waves[index].map(({position,id,level})=>[position,id,level])))||
     report.seed!==seed||report.fixedStepMs!==20||report.engineSHA256!==engineSHA256.Hun13Engine||
     report.teamSHA256!==digest(team)||report.suitIndexSHA256!==digest(suits)||!hash(report.recordSHA256)||
     !hash(report.nativeSHA256)||!hash(report.scriptIndexSHA256)||
@@ -28,16 +33,18 @@ function verifyReport(report,seed,team,suits){
     !Array.isArray(rounds)||rounds.length>2||!rounds.every((round,index)=>round.wave===index+1&&
      Number.isSafeInteger(round.availableSeconds)&&nonnegative(round.seconds)&&
      (typeof round.cleared==='boolean'||!report.completed&&round.cleared===null)&&
-     (index===1||round.availableSeconds===120)&&(index===1||round.cleared===null||
+     (index===1||round.availableSeconds===base)&&(index===1||round.cleared===null||
       Number.isFinite(round.carriedSeconds)&&Number.isSafeInteger(round.carriedBudgetSeconds)))||
-    (report.completed&&rounds.length!==2)||(rounds.length===2&&rounds[1].availableSeconds!==120+rounds[0].carriedBudgetSeconds)||
+    report.formations.length<rounds.length||
+    (report.completed&&(rounds.length!==2||report.formations.length!==2))||
+    (rounds.length===2&&rounds[1].availableSeconds!==base+rounds[0].carriedBudgetSeconds)||
     report.wavesCleared!==rounds.filter(round=>round.cleared===true).length){
-  throw Error('虚无原版引擎未返回可核验的双波战报');
+  throw Error('原版引擎未返回与关卡和编组一致的双队战报');
  }
  const plan=JSON.parse(team);
- if(!matchesDamagePolicy(report,plan.damageFloor===true))throw Error('虚无原版复跑没有返回所选伤害口径');
+ if(!matchesDamagePolicy(report,plan.damageFloor===true))throw Error('原版复跑没有返回所选伤害口径');
  if(!rounds.every((round,index)=>round.onmyojiId===plan.rounds[index].onmyoji.heroId&&round.spiritId===(plan.rounds[index].spirit?.id??null)))
-  throw Error('虚无战报的阴阳师或契灵与选定配置不一致');
+  throw Error('战报的阴阳师或契灵与选定配置不一致');
  return report;
 }
 
@@ -50,12 +57,12 @@ function createHun13Runner({configPath,scriptRoot,suits}){
    catch{return false;}
   },
   async run(plan,{dungeonId,seed,fixedStep}={}){
-   if(current)throw Error('已有虚无原版复跑正在运行');
-   if(dungeonId!==103||fixedStep!==true||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
+   if(current)throw Error('已有双队原版复跑正在运行');
+   if(!hun13FloorIds.includes(dungeonId)||fixedStep!==true||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
       !isHun13Plan(plan))
-    throw Error('无效的虚无双队复跑请求');
+    throw Error('无效的双队复跑请求');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
-   if(Buffer.byteLength(input)>512*1024)throw Error('虚无双队配装超过复跑大小限制');
+   if(Buffer.byteLength(input)>512*1024)throw Error('双队配装超过复跑大小限制');
    const cancel=new AbortController();
    let release,dir;
    current={cancel,done:new Promise(resolve=>{release=resolve;})};
@@ -68,16 +75,16 @@ function createHun13Runner({configPath,scriptRoot,suits}){
     const deadline=AbortSignal.timeout(175000);
     const env={...process.env,PYTHONHOME:'',PYTHONPATH:'',PYTHONNOUSERSITE:'1',PYTHONHASHSEED:'0',TMP:dir,TEMP:dir};
     try{
-     await execute(config.python,['-X','utf8',entry,'--runtime',path.resolve(configPath),'--seed',String(seed),
+     await execute(config.python,['-X','utf8',entry,'--runtime',path.resolve(configPath),'--dungeon',String(dungeonId),'--seed',String(seed),
       '--team',team,'--suit-index',index,'--output',output],{cwd:dir,windowsHide:true,env,signal:AbortSignal.any([cancel.signal,deadline])});
     }catch(error){
-     if(cancel.signal.aborted)throw Error('虚无复跑已停止');
-     if(deadline.aborted)throw Error('虚无原版复跑超时');
-     throw Error('虚无原版引擎运行异常，请核对本机资料和配装',{cause:error});
+     if(cancel.signal.aborted)throw Error('双队复跑已停止');
+     if(deadline.aborted)throw Error('双队原版复跑超时');
+     throw Error('双队原版引擎运行异常，请核对本机资料和配装',{cause:error});
     }
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return verifyReport(report,seed,input,suitInput);
+    return verifyReport(report,dungeonId,seed,input,suitInput);
    }finally{
     try{if(dir)await fs.rm(dir,{recursive:true,force:true,maxRetries:2});}
     finally{current=null;release();}

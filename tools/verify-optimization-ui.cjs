@@ -4,7 +4,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),assert=require('n
 const {readIndex,readTable,readEncounters,readRecords}=require('../desktop/dungeon-catalog.cjs');
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
 const {createRuneFloorRunner}=require('../desktop/rune-floor-runner.cjs');
-const {runeFloorIds,sceneForDungeon}=require('../app/rune-lineup.js');
+const {runeFloorIds,hun13FloorIds,sceneForDungeon}=require('../app/rune-lineup.js');
 const {createPveStageRunner}=require('../desktop/pve-stage-runner.cjs');
 const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
 const game=require('../app/game-config.js');
@@ -59,7 +59,7 @@ async function main(){
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
  const seedEvidence=(props={})=>({scope:'local-solo-rune',status:'incomplete',total:10000,wins:73,loss:null,
   slowest:{seed:13,engineSeconds:25.5,combatMs:14400},...props});
- local('rune-battle-status',async()=>runeEnabled?{...(await rune?.status()||{available:true,resourceVersion:'0.0.816'}),floors:[...runeFloorIds,102,103]}:{available:false});
+ local('rune-battle-status',async()=>runeEnabled?{...(await rune?.status()||{available:true,resourceVersion:'0.0.816'}),floors:[...runeFloorIds,102,...hun13FloorIds]}:{available:false});
  local('rune-battle-run',(plan,options)=>{
   replayPlan=plan;
   if(options?.dungeonId===101)floorCalls.push(options);
@@ -822,7 +822,7 @@ async function main(){
   assert.match(markup,/常规单人本地入口的 10,000 个种子全部通过.*最慢种子 13.*引擎全程 25\.50 秒.*开战至结算 14\.40 秒/s);
   assert.doesNotMatch(markup,/data-full-seeds-fixture|<progress/);
  });
- await check('虚无按用户指定顺序复跑两套已知阵容，库存不足时给出解释',async()=>{
+ await check('虚无与永生之海按指定顺序复跑两套已知阵容',async()=>{
   const fighters=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&
    new Set(l.members.filter(m=>m.kind==='shikigami').map(m=>m.shikigamiId)).size===5).members.filter(m=>m.kind==='shikigami');
   const heroes={},items=[];
@@ -843,8 +843,10 @@ async function main(){
     ...fighters.map(m=>({...m,borrowed:false,config:{keepCurrent:true},aiSkill:0}))]}));
   const incomplete={...raw,heroes:Object.fromEntries(Object.entries(heroes).filter(([id])=>id.startsWith('h13-1-'))),hero_equips:items.slice(0,30)};
   const available={...raw,heroes,hero_equips:items};
-  async function setup(inventory){
-   await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify(lineups)},accounts:[C.parseAccount(${JSON.stringify(inventory)})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};runeStatus=null;selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-rules-select').value='103';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.clear();${lineups.map(l=>`selectedLineups.add('${l.id}');`).join('')}renderSelection()`);
+  async function setup(inventory,dungeonId=103){
+   const known=dungeonId===103?lineups:lineups.map((row,index)=>({...row,id:'qa-sea-'+index,code:'|TA|qa-sea-'+index,
+    title:'魂海已知阵容 '+(index+1),gameSceneId:sceneForDungeon(dungeonId)}));
+   await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify(known)},accounts:[C.parseAccount(${JSON.stringify(inventory)})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};runeStatus=null;selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-rules-select').value='${dungeonId}';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups=new Set(${JSON.stringify(known.map(row=>row.id))});renderSelection()`);
    await until('!$("dungeon-match-selected").disabled && $("dungeon-match-selected").textContent.includes("两波")');
   }
   let calls=0;
@@ -920,6 +922,32 @@ async function main(){
    await until('!dungeonHun13.activeFullSeedAudit');
    assert.match(await ui('$("dungeon-hun13-samples").textContent'),/种子 3167 未通关/);
    assert.equal(await ui('$("dungeon-hun13-samples").children.length'),1);
+   await setup(available,2005);
+   assert.equal(await ui('$("dungeon-hun13-first-label").textContent'),'海甬道阵容');
+   assert.equal(await ui('$("dungeon-hun13-second-label").textContent'),'安魂冢阵容');
+   assert.match(await ui('$("dungeon-rules-details").textContent'),/原版特殊机制.*击杀鲛人国王/s);
+   const seaSeeds=[];
+   mockBattle=(plan,options)=>{
+    assert.deepEqual(options,{dungeonId:2005,seed:options.seed,fixedStep:true});
+    assert.equal(plan.damageFloor,true);
+    assert.deepEqual(plan.rounds.map(r=>r.onmyoji.heroId),[13,10]);
+    assert.equal(new Set(plan.rounds.flatMap(r=>r.members.map(m=>m.instanceId))).size,10);
+    seaSeeds.push(options.seed);
+    return {seed:options.seed,completed:true,outcome:'win',wavesCleared:2,engineSeconds:85,
+     monsterHealth:[{wave:2,cleared:true,startMs:12000,endMs:42000,
+      monsters:[{id:3310016,position:6,initialHp:30001,lowestHp:0,lastHp:0}]}],rounds:[
+     {wave:1,onmyojiId:13,cleared:true,availableSeconds:120,seconds:31,carriedSeconds:89},
+     {wave:2,onmyojiId:10,cleared:true,availableSeconds:209,seconds:34}]};
+   };
+   await ui('$("dungeon-hun13-first").value="qa-sea-1";$("dungeon-hun13-second").value="qa-sea-0";renderDungeonSelection();$("dungeon-match-selected").click()');
+   await until('dungeonHun13?.dungeonId===2005&&dungeonHun13.phase==="pass"&&!dungeonHun13.running',20000);
+   assert.deepEqual(seaSeeds,[0,1,2,3,7,42,9999]);
+   assert.match(await ui('$("dungeon-hun13-samples").textContent'),/海甬道 魂海已知阵容 2.*安魂冢 魂海已知阵容 1.*对安魂冢 \+89\.00 秒.*时限 209 秒/s);
+   await ui('document.querySelector("#dungeon-hun13-samples details summary").click()');
+   assert.match(await ui('document.querySelector("#dungeon-hun13-samples details[open]").textContent'),/安魂冢.*怪物 3310016 · 6 号位.*开场 30,001/s);
+   assert.equal(await ui('document.querySelector("[data-hun13-full]")'),null);
+   await ui('$("dungeon-hun13-rounds").scrollIntoView({block:"center",behavior:"instant"})');
+   await capture('dungeon-everlasting-sea');
   }finally{mockBattle=null;mockSeeds=null;stopSeeds=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
  });
  if(process.argv.includes('--visual')){

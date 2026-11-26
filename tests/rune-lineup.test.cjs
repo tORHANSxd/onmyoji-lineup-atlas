@@ -37,6 +37,16 @@ test('悲鸣复跑读取对应原码，并拒绝跨副本使用阵容码',()=>{
  assert.throws(()=>team(sorrow,result,account,bundle.gameConfig,103),/当前复跑副本/);
 });
 
+test('永生之海双队只接收同一指定楼层的两个已解析阵容',()=>{
+ const {lineup}=match();
+ const first={...lineup,gameSceneId:10013001,title:'海甬道',requirementsComplete:true};
+ const second={...first,title:'安魂冢'};
+ const pair=hun13Pair([first,second],2005);
+ assert.deepEqual(pair.rounds.map(round=>round.title),['海甬道','安魂冢']);
+ assert.throws(()=>hun13Pair([first,{...second,gameSceneId:10013003}],2005),/第 2 队/);
+ assert.throws(()=>hun13Pair([first,second],2004),/请选择/);
+});
+
 test('魂王复跑拒绝未精算、库存已变化和不完整的契灵配置',()=>{
  const {lineup,account,result}=match();
  assert.throws(()=>team(lineup,{...result,completed:false},account,bundle.gameConfig),/未给出/);

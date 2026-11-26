@@ -1781,6 +1781,284 @@
         "\u5351\u5f25\u547c\u514d\u75ab\u56de\u5408\u540e\u4f24\u5bb3\u3002",
         "\u9020\u6210\u7684\u66b4\u51fb\u4f24\u5bb3\u5927\u5e45\u63d0\u5347"
       ]
+    },
+    "2001": {
+      "scene": 40130,
+      "engine": "Hun13Engine",
+      "battleMode": 580,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 3310005,
+            "position": 1,
+            "level": 40,
+            "hp": 194444.49136,
+            "speed": 128.0,
+            "attack": 803.7000000000002,
+            "defense": 678.858576
+          }
+        ],
+        [
+          {
+            "id": 3310006,
+            "position": 1,
+            "level": 40,
+            "hp": 194444.49136,
+            "speed": 125.0,
+            "attack": 803.7000000000002,
+            "defense": 0
+          },
+          {
+            "id": 3310019,
+            "position": 2,
+            "level": 40,
+            "hp": 3883.7,
+            "speed": 140.0,
+            "attack": 2411.1000000000004,
+            "defense": 352.0
+          },
+          {
+            "id": 3310019,
+            "position": 3,
+            "level": 40,
+            "hp": 3883.7,
+            "speed": 140.0,
+            "attack": 2411.1000000000004,
+            "defense": 352.0
+          },
+          {
+            "id": 3310019,
+            "position": 4,
+            "level": 40,
+            "hp": 3883.7,
+            "speed": 140.0,
+            "attack": 2411.1000000000004,
+            "defense": 352.0
+          }
+        ]
+      ],
+      "baseRoundSeconds": 120,
+      "rules": [
+        "\u300c\u6c38\u751f\u4e4b\u6d77\u300d\u7531\u300c\u6d77\u752c\u9053\u300d\u548c\u300c\u5b89\u9b42\u51a2\u300d\u4e24\u573a\u6218\u6597\u7ec4\u6210\u3001\u6bcf\u573a\u6218\u6597\u9700\u8981\u914d\u7f6e\u4e0d\u540c\u7684\u5f0f\u795e\u51fa\u9635\u5bb9\uff0c\u6bcf\u4e2a\u5f0f\u795e\u4ec5\u80fd\u4e0a\u96351\u6b21\uff08\u9634\u9633\u5e08\u9664\u5916\uff09\u3002",
+        "\u82e5\u9634\u9633\u5e08\u5927\u4eba\u300c\u6d77\u752c\u9053\u300d\u5931\u8d25\uff0c\u5c06\u4f1a\u76f8\u5e94\u51cf\u5c11\u300c\u5b89\u9b42\u51a2\u300d\u7684\u6311\u6218\u65f6\u957f\uff1b\u82e5\u9634\u9633\u5e08\u5927\u4eba\u300c\u6d77\u752c\u9053\u300d\u6210\u529f\uff0c\u5c06\u4f1a\u76f8\u5e94\u589e\u52a0\u300c\u5b89\u9b42\u51a2\u300d\u7684\u6311\u6218\u65f6\u957f\u3002",
+        "\u300c\u5b89\u9b42\u51a2\u300d\u5f53\u51fb\u6740\u9c9b\u4eba\u56fd\u738b\u5373\u89c6\u4e3a\u6218\u6597\u80dc\u5229\u3002",
+        "\u5408\u8ba1\u6311\u6218\u8017\u65f6\u8d8a\u4f4e\u83b7\u5f97\u7684\u5956\u52b1\u8d8a\u597d\u3002"
+      ]
+    },
+    "2002": {
+      "scene": 40130,
+      "engine": "Hun13Engine",
+      "battleMode": 580,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 3310007,
+            "position": 1,
+            "level": 40,
+            "hp": 272222.287904,
+            "speed": 128.0,
+            "attack": 2009.25,
+            "defense": 678.858576
+          }
+        ],
+        [
+          {
+            "id": 3310008,
+            "position": 1,
+            "level": 40,
+            "hp": 272222.287904,
+            "speed": 150.0,
+            "attack": 2009.25,
+            "defense": 0
+          },
+          {
+            "id": 3310020,
+            "position": 2,
+            "level": 40,
+            "hp": 7249.34,
+            "speed": 160.0,
+            "attack": 4018.5,
+            "defense": 352.0
+          },
+          {
+            "id": 3310020,
+            "position": 3,
+            "level": 40,
+            "hp": 7249.34,
+            "speed": 160.0,
+            "attack": 4018.5,
+            "defense": 352.0
+          },
+          {
+            "id": 3310020,
+            "position": 4,
+            "level": 40,
+            "hp": 7249.34,
+            "speed": 160.0,
+            "attack": 4018.5,
+            "defense": 352.0
+          }
+        ]
+      ],
+      "baseRoundSeconds": 120,
+      "rules": [
+        "\u300c\u6c38\u751f\u4e4b\u6d77\u300d\u7531\u300c\u6d77\u752c\u9053\u300d\u548c\u300c\u5b89\u9b42\u51a2\u300d\u4e24\u573a\u6218\u6597\u7ec4\u6210\u3001\u6bcf\u573a\u6218\u6597\u9700\u8981\u914d\u7f6e\u4e0d\u540c\u7684\u5f0f\u795e\u51fa\u9635\u5bb9\uff0c\u6bcf\u4e2a\u5f0f\u795e\u4ec5\u80fd\u4e0a\u96351\u6b21\uff08\u9634\u9633\u5e08\u9664\u5916\uff09\u3002",
+        "\u82e5\u9634\u9633\u5e08\u5927\u4eba\u300c\u6d77\u752c\u9053\u300d\u5931\u8d25\uff0c\u5c06\u4f1a\u76f8\u5e94\u51cf\u5c11\u300c\u5b89\u9b42\u51a2\u300d\u7684\u6311\u6218\u65f6\u957f\uff1b\u82e5\u9634\u9633\u5e08\u5927\u4eba\u300c\u6d77\u752c\u9053\u300d\u6210\u529f\uff0c\u5c06\u4f1a\u76f8\u5e94\u589e\u52a0\u300c\u5b89\u9b42\u51a2\u300d\u7684\u6311\u6218\u65f6\u957f\u3002",
+        "\u300c\u5b89\u9b42\u51a2\u300d\u5f53\u51fb\u6740\u9c9b\u4eba\u56fd\u738b\u5373\u89c6\u4e3a\u6218\u6597\u80dc\u5229\u3002",
+        "\u5408\u8ba1\u6311\u6218\u8017\u65f6\u8d8a\u4f4e\u83b7\u5f97\u7684\u5956\u52b1\u8d8a\u597d\u3002"
+      ]
+    },
+    "2003": {
+      "scene": 40130,
+      "engine": "Hun13Engine",
+      "battleMode": 580,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 3310009,
+            "position": 1,
+            "level": 40,
+            "hp": 388888.98272,
+            "speed": 128.0,
+            "attack": 4219.425,
+            "defense": 678.858576
+          }
+        ],
+        [
+          {
+            "id": 3310010,
+            "position": 1,
+            "level": 40,
+            "hp": 388888.98272,
+            "speed": 220.0,
+            "attack": 4219.425,
+            "defense": 0
+          },
+          {
+            "id": 3310015,
+            "position": 2,
+            "level": 40,
+            "hp": 31066.6,
+            "speed": 240.0,
+            "attack": 2812.95,
+            "defense": 352.0
+          },
+          {
+            "id": 3310015,
+            "position": 3,
+            "level": 40,
+            "hp": 31066.6,
+            "speed": 240.0,
+            "attack": 2812.95,
+            "defense": 352.0
+          },
+          {
+            "id": 3310015,
+            "position": 4,
+            "level": 40,
+            "hp": 31066.6,
+            "speed": 240.0,
+            "attack": 2812.95,
+            "defense": 352.0
+          }
+        ]
+      ],
+      "baseRoundSeconds": 120,
+      "rules": [
+        "\u300c\u6c38\u751f\u4e4b\u6d77\u300d\u7531\u300c\u6d77\u752c\u9053\u300d\u548c\u300c\u5b89\u9b42\u51a2\u300d\u4e24\u573a\u6218\u6597\u7ec4\u6210\u3001\u6bcf\u573a\u6218\u6597\u9700\u8981\u914d\u7f6e\u4e0d\u540c\u7684\u5f0f\u795e\u51fa\u9635\u5bb9\uff0c\u6bcf\u4e2a\u5f0f\u795e\u4ec5\u80fd\u4e0a\u96351\u6b21\uff08\u9634\u9633\u5e08\u9664\u5916\uff09\u3002",
+        "\u82e5\u9634\u9633\u5e08\u5927\u4eba\u300c\u6d77\u752c\u9053\u300d\u5931\u8d25\uff0c\u5c06\u4f1a\u76f8\u5e94\u51cf\u5c11\u300c\u5b89\u9b42\u51a2\u300d\u7684\u6311\u6218\u65f6\u957f\uff1b\u82e5\u9634\u9633\u5e08\u5927\u4eba\u300c\u6d77\u752c\u9053\u300d\u6210\u529f\uff0c\u5c06\u4f1a\u76f8\u5e94\u589e\u52a0\u300c\u5b89\u9b42\u51a2\u300d\u7684\u6311\u6218\u65f6\u957f\u3002",
+        "\u300c\u5b89\u9b42\u51a2\u300d\u5f53\u51fb\u6740\u9c9b\u4eba\u56fd\u738b\u5373\u89c6\u4e3a\u6218\u6597\u80dc\u5229\u3002",
+        "\u5408\u8ba1\u6311\u6218\u8017\u65f6\u8d8a\u4f4e\u83b7\u5f97\u7684\u5956\u52b1\u8d8a\u597d\u3002"
+      ]
+    },
+    "2005": {
+      "scene": 40131,
+      "engine": "Hun13Engine",
+      "battleMode": 580,
+      "allyOrbs": 3,
+      "enemyOrbs": 2,
+      "waves": [
+        [
+          {
+            "id": 3310011,
+            "position": 1,
+            "level": 40,
+            "hp": 600000.57456,
+            "speed": 128.0,
+            "attack": 6027.75,
+            "defense": 678.858576
+          }
+        ],
+        [
+          {
+            "id": 3310012,
+            "position": 1,
+            "level": 40,
+            "hp": 388888.98272,
+            "speed": 125.0,
+            "attack": 6027.75,
+            "defense": 0
+          },
+          {
+            "id": 3310022,
+            "position": 2,
+            "level": 40,
+            "hp": 18000.9264,
+            "speed": 240.0,
+            "attack": 2143.2000000000003,
+            "defense": 352.0
+          },
+          {
+            "id": 3310022,
+            "position": 3,
+            "level": 40,
+            "hp": 18000.9264,
+            "speed": 240.0,
+            "attack": 2143.2000000000003,
+            "defense": 352.0
+          },
+          {
+            "id": 3310022,
+            "position": 4,
+            "level": 40,
+            "hp": 18000.9264,
+            "speed": 240.0,
+            "attack": 2143.2000000000003,
+            "defense": 352.0
+          },
+          {
+            "id": 3310022,
+            "position": 5,
+            "level": 40,
+            "hp": 18000.9264,
+            "speed": 240.0,
+            "attack": 2143.2000000000003,
+            "defense": 352.0
+          },
+          {
+            "id": 3310022,
+            "position": 6,
+            "level": 40,
+            "hp": 18000.9264,
+            "speed": 240.0,
+            "attack": 2143.2000000000003,
+            "defense": 352.0
+          }
+        ]
+      ],
+      "baseRoundSeconds": 120,
+      "rules": [
+        "\u300c\u6c38\u751f\u4e4b\u6d77\u300d\u7531\u300c\u6d77\u752c\u9053\u300d\u548c\u300c\u5b89\u9b42\u51a2\u300d\u4e24\u573a\u6218\u6597\u7ec4\u6210\u3001\u6bcf\u573a\u6218\u6597\u9700\u8981\u914d\u7f6e\u4e0d\u540c\u7684\u5f0f\u795e\u51fa\u9635\u5bb9\uff0c\u6bcf\u4e2a\u5f0f\u795e\u4ec5\u80fd\u4e0a\u96351\u6b21\uff08\u9634\u9633\u5e08\u9664\u5916\uff09\u3002",
+        "\u82e5\u9634\u9633\u5e08\u5927\u4eba\u300c\u6d77\u752c\u9053\u300d\u5931\u8d25\uff0c\u5c06\u4f1a\u76f8\u5e94\u51cf\u5c11\u300c\u5b89\u9b42\u51a2\u300d\u7684\u6311\u6218\u65f6\u957f\uff1b\u82e5\u9634\u9633\u5e08\u5927\u4eba\u300c\u6d77\u752c\u9053\u300d\u6210\u529f\uff0c\u5c06\u4f1a\u76f8\u5e94\u589e\u52a0\u300c\u5b89\u9b42\u51a2\u300d\u7684\u6311\u6218\u65f6\u957f\u3002",
+        "\u300c\u5b89\u9b42\u51a2\u300d\u5f53\u51fb\u6740\u9c9b\u4eba\u56fd\u738b\u5373\u89c6\u4e3a\u6218\u6597\u80dc\u5229\u3002",
+        "\u5408\u8ba1\u6311\u6218\u8017\u65f6\u8d8a\u4f4e\u83b7\u5f97\u7684\u5956\u52b1\u8d8a\u597d\u3002"
+      ]
     }
   }
 };

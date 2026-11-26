@@ -15,18 +15,20 @@ test('魂王的原版开场属性只适用于已核验版本和关卡',()=>{
 test('御魂原版开场按副本、波次和槽位匹配，日轮之陨只使用首波',()=>{
  const {source,dungeons}=require('../data/dungeon-rules.json');
  const {floors,dungeonTableSHA256}=require('../app/rune-openings.js');
- const {runeFloorIds,sceneForDungeon}=require('../app/rune-lineup.js');
+ const {runeFloorIds,hun13FloorIds,sceneForDungeon}=require('../app/rune-lineup.js');
  const version=source.resourceVersion;
  assert.equal(dungeonTableSHA256,source.tables.dungeon_rune.marshalSHA256);
- assert.equal(Object.keys(floors).length,20);
+ assert.equal(Object.keys(floors).length,24);
  assert.deepEqual(runeFloorIds,[1,2,3,4,5,6,7,8,9,10,11,12,13,101,1001,1002,1003,1004]);
+ assert.deepEqual(hun13FloorIds,[103,2001,2002,2003,2005]);
  for(const [id,floor] of Object.entries(floors)){
   const raw=dungeons.find(row=>row.id===Number(id));
   assert.equal(floor.scene,raw.scene);
   assert.deepEqual([floor.allyOrbs,floor.enemyOrbs],[3,2]);
-  assert.equal(floor.waves.length,raw.id===103?2:raw.id>=1001?1:3);
-  if(runeFloorIds.includes(raw.id)){
-   assert.equal(floor.battleMode,27);
+  const twoRounds=hun13FloorIds.includes(raw.id);
+  assert.equal(floor.waves.length,twoRounds?2:raw.id>=1001?1:3);
+  if(twoRounds||runeFloorIds.includes(raw.id)){
+   assert.equal(floor.battleMode,twoRounds?580:27);
    assert.equal(sceneForDungeon(raw.id),raw.gameSceneId);
    assert.deepEqual([D.stages[raw.gameSceneId].actors,D.stages[raw.gameSceneId].shikigami],[1,5]);
   }
@@ -42,6 +44,9 @@ test('御魂原版开场按副本、波次和槽位匹配，日轮之陨只使�
  assert.equal(G.runeOpeningStage(version,103).battleMode,580);
  assert.equal(G.runeOpeningStage(version,103).baseRoundSeconds,120);
  assert.equal(G.runeOpeningStage(version,103,'changed-table'),null);
+ assert.equal(G.runeOpeningStage(version,2004),null);
+ assert.equal(floors[2005].baseRoundSeconds,120);
+ assert.match(floors[2005].rules.join('\n'),/海甬道.*安魂冢.*击杀鲛人国王/s);
  assert.deepEqual(floors[13].ticket,{id:900041,count:1,name:'痴念之卷'});
  assert.match(floors[13].rules.join('\n'),/三个嗔面.*攻击提高100%/s);
  assert.match(floors[1003].rules.join('\n'),/己方暴击伤害提高300%.*鬼火减2/s);

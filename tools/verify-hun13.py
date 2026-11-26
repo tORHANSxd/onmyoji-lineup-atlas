@@ -1,4 +1,4 @@
-"""Replay solo normal 御魂虚无 against the shipped two-round engine."""
+"""Replay selected teams in the original two-round 虚无 and 永生之海 engine."""
 
 import argparse
 import faulthandler
@@ -73,7 +73,8 @@ def replay(runtime, work, args):
     host.oracle.api = host_api
     from battleengine.BattleCommon import BattleAvatar
     from battleengine.BattleController import LocalBattleController
-    from battleengine.engine.Hun13Engine import Hun13Engine, const
+    from battleengine.BattleRecorder import BattleRecorderRune
+    from battleengine.engine.Hun13Engine import DATA_RUNE_FB, Hun13Engine, const
     from DynamicConfigData import DATA_HERO
 
     if any(hero["heroId"] not in DATA_HERO.data for hero in heroes.values()):
@@ -101,7 +102,11 @@ def replay(runtime, work, args):
     avatar.init_from_dict(source)
     avatar.inventory.update(inventory)
     actors = {alias: avatar.heroes[alias] for alias in {row["actorAlias"] for row in rounds}}
-    engine = Hun13Engine({"dungeon_id": 103, "mode": "normal", "is_solo": True})
+    stage = DATA_RUNE_FB.data[args.dungeon]
+    if stage["type"] != (1 if args.dungeon == 103 else 4):
+        raise ValueError("The selected floor is not an ordinary two-round dungeon")
+    formations = []
+    engine = Hun13Engine({"dungeon_id": args.dungeon, "mode": "normal", "is_solo": True})
     engine.battleMode = const.BattleMode.MODE_HUN_13
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
     engine.seed = args.seed
@@ -125,6 +130,7 @@ def replay(runtime, work, args):
     settle_round = engine.onMaybeBattleEnded
     finish_battle = engine.doBattleEnded
     create_entity = engine.onEntityCreated
+    spawn_monsters, create_monster = engine._createNextRoundMons, engine.createMonsterEntity
     history, selected = {}, set()
     entity_models = {}
     winner = None
@@ -183,14 +189,41 @@ def replay(runtime, work, args):
             if entity_models.setdefault(uid, filename) != filename:
                 entity_models[uid] = None
 
+    def verify_enemy_round():
+        wave = engine.finishedWaveCount
+        if wave != len(formations) or wave not in (0, 1):
+            raise RuntimeError("Unexpected enemy formation order")
+        actual = []
+
+        def record_monster(camp, owner, placement):
+            entity = create_monster(camp, owner, placement)
+            actual.append([placement.Index, entity.protoid, placement.level])
+            return entity
+
+        engine.createMonsterEntity = record_monster
+        try:
+            result = spawn_monsters()
+        finally:
+            engine.createMonsterEntity = create_monster
+        expected = [[pos, unit[0], unit[1]] for pos, unit in enumerate(stage["monsterWaves"][wave], 1) if unit]
+        if actual != expected:
+            raise RuntimeError(f"The original engine created a different formation for round {wave + 1}")
+        formations.append(actual)
+        return result
+
     engine.createYYSEntity = select_inventory_at_summon
     engine.startBattle = observe_round_start
     engine.onMaybeBattleEnded = observe_round_end
     engine.doBattleEnded = observe_battle_end
     engine.onEntityCreated = observe_entity
+    engine._createNextRoundMons = verify_enemy_round
     engine.init()
-    if engine.seed != args.seed or engine.monsterWaveCount != 2 or engine.get_totaltime() != 120:
+    if (engine.dungeon_id != args.dungeon or not engine.is_solo or engine.mode != "normal"
+            or engine.combineSceneInfoId != stage["scene"] or engine.seed != args.seed
+            or engine.monsterWaveCount != 2 or engine.get_totaltime() != 120):
         raise RuntimeError("Unexpected native normal solo configuration")
+    recorder = engine.battleRecorder or BattleRecorderRune(engine, controller)
+    engine.battleRecorder = recorder
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
 
@@ -226,12 +259,14 @@ def replay(runtime, work, args):
         engine.op_setAuto(controller, True)
         engine.op_selectHeroOk(controller)
 
-    record = "".join(engine.battleRecorder.data_list).encode("utf-8")
+    record = "".join(recorder.data_list).encode("utf-8")
     completed = engine.battleState == const.BattleState.BS_OVER and winner in (const.CampFlag.CAMP1, const.CampFlag.CAMP2)
     for report in history.values():
         if "start" in report:
             report.update(cleared=None, seconds=round(engine.now_time() - report.pop("start"), 6))
-    result = {**evidence, "dungeonId": 103, "route": "normal-solo-hun13", "seed": engine.seed, "fixedStepMs": 20,
+    result = {**evidence, "dungeonId": engine.dungeon_id, "route": "normal-solo-hun13", "seed": engine.seed, "fixedStepMs": 20,
+              "battleMode": engine.battleMode, "sceneId": engine.combineSceneInfoId, "formations": formations,
+              "dungeonTableSHA256": modules.rows["com.data.cdata.dungeon_rune"]["marshalSHA256"],
               "engineSHA256": modules.rows["battleengine.engine.Hun13Engine"]["marshalSHA256"],
               "teamSHA256": sha256(plan_bytes), "suitIndexSHA256": sha256(suit_bytes), "recordSHA256": sha256(record),
               "completed": completed, "outcome": "win" if winner == const.CampFlag.CAMP1 else "loss" if completed else "unknown",
@@ -265,6 +300,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
+    parser.add_argument("--dungeon", type=int, default=103, choices=(103, 2001, 2002, 2003, 2005))
     parser.add_argument("--seed", required=True, type=int)
     args = parser.parse_args()
     if not 0 <= args.seed < 10000:
