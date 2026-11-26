@@ -41,6 +41,21 @@
  const rotationConstant=10631;
  const rotationSkills=[63402,63601,63404,63602,63405,63603,63406];
  const ref=(table,key,label)=>({table,key,label,found:true});
+ const mirage={
+  stageId:25015,battleMode:3013,codeStageId:10020218,sceneId:40021,boss:9991106,general:9991107,paper:9991112,
+  memberCount:5,windowLimit:1200,defaultWindow:600,defaultGeneralSeconds:10,maxGeneralSeconds:120,
+  positions:[2,3,4,5,6],defaultTruePositions:[2,3],burstSeconds:80,
+  phases:{normal:'初始形态',elite:'蜃气楼大将',house:'秘宝小纸人',mirror:'海市蜃楼',burst:'蜃气勘破',crab:'蜃气楼上浮'},
+  engine:{name:'ShenQiLouEngine',route:'mirage-local-team',
+   sha256:'518b9c64884f989659ed828c66a397989958fc4e067e3c540799c5b87074f3dc'},
+  validSettings(settings){
+   const {windowSeconds,generalSeconds,truePositions}=settings??{};
+   return Object.keys(settings??{}).length===3&&Number.isSafeInteger(windowSeconds)&&windowSeconds>=1&&windowSeconds<=this.windowLimit&&
+    Number.isSafeInteger(generalSeconds)&&generalSeconds>=0&&generalSeconds<=this.maxGeneralSeconds&&
+    Array.isArray(truePositions)&&truePositions.length===2&&truePositions[0]!==truePositions[1]&&
+    Array.from(truePositions).every(position=>this.positions.includes(position));
+  },
+ };
  const songstress={
   stageId:25016,battleMode:3015,codeStageId:10020217,sceneId:40065,
   memberCount:6,windowLimit:1200,defaultWindow:600,
@@ -81,6 +96,11 @@
     ref(route.ruleTable??'tipsInfoData_cn',route.rule,'客户端玩法说明'),
     ...coinConstants.map(([id,label])=>ref('Constant',id,label)),
    ];
+   if(route.stage===mirage.stageId){
+    refs.push(...[[1100,'大将召唤编组'],[1200,'秘宝小纸人编组'],[1300,'镜像共享生命模板']].map(([id,label])=>ref('dizhennian_stage',{$tuple:[id,1]},label)),
+     ...[[4011,'镜像属性倍率'],[4012,'镜像属性修正'],[4013,'蜃气勘破时长'],[4021,'缺少镜像模板时的大将']].map(([id,label])=>ref('Constant',id,label)),
+     ...[[750,'蜃气勘破效果'],[758,'海市蜃楼'],[759,'召唤及镜像流程']].map(([id,label])=>ref('skill',{$tuple:[id,1,-1]},label)));
+   }
    if(route.stage===songstress.stageId){
     refs.push(...songstress.blackMaids.map(id=>ref('monster',id,'第二阶段黑衣侍女')),
      ...[[774,'黑衣侍女余血惩罚'],[779,'原版阶段控制'],[783,'白衣侍女击败增益']].map(([id,label])=>ref('skill',{$tuple:[id,1,-1]},label)),
@@ -112,5 +132,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage};
 });

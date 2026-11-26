@@ -68,10 +68,11 @@ def hunt_tactics(plan, mode):
     if "tactics" not in plan:
         return {}
     from fengmo_dusk_stage import DUSK_MODE
+    from fengmo_mirage_stage import MIRAGE_MODE
     from fengmo_songstress_stage import SONG_MODE
 
     tactics = plan["tactics"]
-    if (mode not in (GUILD_HUNT_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, DUSK_MODE, SONG_MODE,
+    if (mode not in (GUILD_HUNT_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE,
                      QILING_GROUP_MODE, QINFEI_BOSS_MODE, *SOLO_SCORE_MODES)
             or type(tactics) is not dict or not tactics
             or tactics.keys() - {"redBoss", "greenSlot", "manualOpening", "autoMode"}):

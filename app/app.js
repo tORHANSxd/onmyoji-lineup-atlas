@@ -206,6 +206,7 @@ function sampleBattleMarkup(samples){
   const fusion=sample.laolaoFusion;
   const dusk=sample.duskWraith;
   const song=sample.songstress;
+  const mirage=sample.mirage;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -279,6 +280,8 @@ function sampleBattleMarkup(samples){
    song?`${{'singer-rescued':'已救出歌伎','singer-defeated':'歌伎被击败','team-defeated':'本队落败','window-expired':'达到计分时限',
     'incomplete':'结算待确认'}[song.reason]} · 本队伤害 ${song.damage.toLocaleString('zh-CN')} · `+
     `作战 ${song.combatSeconds.toFixed(2)} / ${song.windowSeconds} 秒`:
+   mirage?`${{'boss-defeated':'击败蜃气楼','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[mirage.reason]} · `+
+    `本队伤害 ${mirage.damage.toLocaleString('zh-CN')} · 作战 ${mirage.combatSeconds.toFixed(2)} / ${mirage.settings.windowSeconds} 秒`:
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+
@@ -381,6 +384,13 @@ function sampleBattleMarkup(samples){
     `歌伎共享余血 ${(phase.singerHp/song.singerMaximum).toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}</li>`).join('')}</ol>
    <p class="caption">击败白衣侍女 ${song.whiteMaidsDefeated} 位 · 触发余血惩罚 ${song.punishments} 次${song.remainingMaidsAtRescue===null?'':` · 救援时尚存黑衣侍女 ${song.remainingMaidsAtRescue} 位`}</p>
    <p class="caption">歌伎剩余生命 ${Math.round(song.singerHp).toLocaleString('zh-CN')} · 持伞人剩余生命 ${Math.round(song.umbrellaHp).toLocaleString('zh-CN')}</p></details>`:'';
+  const mirageStages=mirage?`<details><summary>查看蜃气楼各阶段</summary><ol>${mirage.phases.map(phase=>{
+   const mirrors=phase.phase==='mirror'?phase.opening.map(({position,id,trueMirror})=>
+    `${position} 号位 ${DATA.gameConfig.heroes[id]?.name??(id===AtlasFengmoLive.mirage.general?'蜃气楼大将':id)}${trueMirror?'（真镜像）':''}`).join('、'):'';
+   return `<li>${AtlasFengmoLive.mirage.phases[phase.phase]} · ${phase.seconds.toFixed(2)} 秒进场 · `+
+    `首领余血 ${(phase.bossHp/mirage.maximumHp).toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}`+
+    (mirrors?`<div class="caption">${esc(mirrors)}</div>`:'')+'</li>';
+  }).join('')}</ol><p class="caption">原表虚弱时长 ${mirage.burstSeconds} 秒 · 首领剩余生命 ${Math.round(mirage.bossHp).toLocaleString('zh-CN')}</p></details>`:'';
   const towerLife=ghostKingTower?.kind==='boss'?`<div class="caption">敌方余血 · ${esc(ghostKingTower.enemies.map(unit=>
    `${unit.position} 号位 ${unit.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})}`).join(' · '))}
    ${sample.completed&&ghostKingTower.enemies.some(unit=>unit.remainingHp>0)?
@@ -400,7 +410,7 @@ function sampleBattleMarkup(samples){
    return `<li>${esc(name)} · 原版实体 ${unit.level} 级 · 速度 ${unit.speed.toFixed(2)} · `+
     `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}</li>`;
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}</li>`;
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}</li>`;
  }).join('');
 }
 

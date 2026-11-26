@@ -950,8 +950,17 @@
       block.append(details);
     }
     destination.append(block);
-    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song}=source;
+    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage}=source;
     const stage=row('pve_stage_data',String(scenario.stage));
+    if(scenario.stage===mirage.stageId&&scenario.mode===mirage.battleMode&&route?.scene_engine===mirage.engine.name&&
+        stage?.groupid===mirage.stageId&&stage.shishentotal===mirage.memberCount&&formation.resindex===mirage.sceneId){
+      const code=DATA.gameConfig.stages[mirage.codeStageId];
+      destination.append(node('p','单队从满血开战。原版引擎召唤大将和纸人，并按本队式神生成镜像。大将入场时间和真镜像位置是本地模拟条件。','caption'));
+      window.AtlasPveWorkbench?.mount(destination,{stageId:mirage.stageId,groupId:mirage.stageId,version:source.resourceVersion,
+        battleMode:mirage.battleMode,memberCount:mirage.memberCount,waveCount:1,label:'稀有·蜃气楼',mirage:true,
+        codeStageId:code?.actors===1&&code.shikigami===mirage.memberCount?mirage.codeStageId:null,codeLabel:code?.name});
+      return;
+    }
     if(scenario.stage===song.stageId&&scenario.mode===song.battleMode&&route?.scene_engine===song.engine.name&&
         stage?.groupid===song.stageId&&stage.shishentotal===song.memberCount&&formation.resindex===song.sceneId){
       const code=DATA.gameConfig.stages[song.codeStageId];

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3015,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3013,3015,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -141,7 +141,7 @@ async function main(){
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
   const panel='$("client-dungeons-encounter-detail")';
-  const {encounters,duskWraith,songstress}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  const {encounters,duskWraith,songstress,mirage}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
   assert.equal(entries.length,12);
   for(const entry of entries){
    const query=entry.title.replace(' · ',' ');
@@ -163,6 +163,10 @@ async function main(){
    }else if(entry.fengmoLive.stage===songstress.stageId){
     assert.match(info,/六位式神和一位阴阳师.*第二阶段黑衣侍女.*白衣侍女击败增益/s);
     assert.equal(await ui(panel+'.querySelector("[data-pve-song-window]")?.valueAsNumber'),songstress.defaultWindow);
+   }else if(entry.fengmoLive.stage===mirage.stageId){
+    assert.match(info,/原版引擎召唤大将和纸人.*大将召唤编组.*蜃气勘破时长/s);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-mirage-general]")?.valueAsNumber'),mirage.defaultGeneralSeconds);
+    assert.deepEqual(await ui('[...'+panel+'.querySelectorAll("[data-pve-mirage-position]")].map(el=>Number(el.value))'),mirage.defaultTruePositions);
    }else assert.equal(await ui(panel+'.querySelector("[data-pve-stock]")'),null);
   }
   await ui('qaEncounterInput("daily","逢魔实战 稀有·土蜘蛛")');
@@ -354,7 +358,7 @@ async function main(){
    known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
-   known('dusk-wraith',10020227,5),known('songstress',10020217,6,10,notes),
+   known('dusk-wraith',10020227,5),known('songstress',10020217,6,10,notes),known('mirage',10020218,5,10,notes),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
    known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
@@ -964,6 +968,24 @@ async function main(){
      {songstress},tactical,10,6);
     assert.match(songReport,/已救出歌伎 · 本队伤害 44,497,047.*黑衣侍女 · 282\.52 秒进场/s);
     assert.match(songReport,/余血惩罚 2 次 · 救援时尚存黑衣侍女 0 位.*持伞人剩余生命 0/s);
+    await encounter('daily','逢魔实战 稀有·蜃气楼');
+    await choose('mirage');
+    const positions='[...document.querySelectorAll("[data-pve-mirage-position]")]';
+    await ui(`(()=>{const second=${positions}[1];second.value='2';second.dispatchEvent(new Event('change'));})()`);
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.deepEqual(await ui(positions+'.map(el=>el.getAttribute("aria-invalid"))'),['true','true']);
+    await ui(`(()=>{
+     for(const [input,value] of [...${positions},document.querySelector('[data-pve-mirage-general]')].map((input,i)=>[input,[5,6,0][i]])){
+      input.value=value;input.dispatchEvent(new Event(input instanceof HTMLSelectElement?'change':'input'));
+     }
+    })()`);
+    const mirageSettings={windowSeconds:600,generalSeconds:0,truePositions:[5,6]};
+    const mirage={settings:mirageSettings,reason:'boss-defeated',damage:12938001,combatSeconds:223.86,maximumHp:7913650,bossHp:0,burstSeconds:80,
+     phases:[{phase:'normal',seconds:0,bossHp:7913650},{phase:'mirror',seconds:58.24,bossHp:7077053,
+      opening:[{id:ids[3],position:5,trueMirror:true},{id:ids[4],position:6,trueMirror:true}]},
+      {phase:'burst',seconds:89.88,bossHp:7077053}]};
+    const mirageReport=await run('mirage',{stageId:25015,groupId:25015,battleMode:3013,mirageSettings},{mirage},tactical);
+    assert.match(mirageReport,/击败蜃气楼 · 本队伤害 12,938,001.*海市蜃楼 · 58\.24 秒进场.*5 号位 .*（真镜像）.*6 号位 .*（真镜像）.*原表虚弱时长 80 秒/s);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');
