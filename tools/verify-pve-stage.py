@@ -181,7 +181,7 @@ def replay(args, runtime, work):
     elif args.mode == 266:
         from battleengine.engine.ChallengeFbEngine import const
         from DynamicConfigData import DATA_HERO
-        from secret_stage import placements, secret_solo, secret_stage
+        from secret_stage import SecretProtectionReplay, placements, secret_protection, secret_solo, secret_stage
 
         engine, stage, waves = secret_stage(args.stage)
         if not secret_solo(stage) or len(fighters) != 5:
@@ -373,7 +373,11 @@ def replay(args, runtime, work):
     score_replay = SoloScoreReplay(engine, group, const) if activity_score else None
     spider_replay = TsuchigumoPractice(engine, stage, group, const) if spider else None
     verified_waves = set()
+    secret_protection_replay = None
     if args.mode == 266:
+        protection = secret_protection(stage)
+        if protection:
+            secret_protection_replay = SecretProtectionReplay(engine, const, protection)
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
 
         def verify_spawn():
@@ -621,6 +625,8 @@ def replay(args, runtime, work):
             report["guildRetreat"].update(instructions.report())
     if args.mode == 266:
         report["formationsVerified"] = len(verified_waves)
+        if secret_protection_replay:
+            report["secretProtection"] = secret_protection_replay.report(completed)
     if args.mode == RESOURCE_MODE:
         key, result = resource.report(report["outcome"])
         report[key] = result

@@ -194,6 +194,7 @@ function sampleBattleMarkup(samples){
   const yanwu=sample.fengmoYanwu;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
+  const protectedUnits=sample.secretProtection?.settlement;
   const journey=sample.journeyHard;
   const journeyBonus=journey?Object.entries({attack:'攻击',defense:'防御',hp:'生命',speed:'速度',crit:'暴击',critDamage:'暴击伤害'})
    .flatMap(([key,label])=>journey.blessingBonus[key]?[`${label} +${key==='speed'?journey.blessingBonus[key]:
@@ -228,6 +229,8 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · 个人伤害 ${tianfa.damage.toLocaleString('zh-CN')} · `+
     `战斗${sample.completed?'与结算':''} ${tianfa.combatSeconds.toFixed(2)} 秒`:
+   protectedUnits?`${describeBattle(sample)} · 鲤鱼精${protectedUnits.supportAlive?'存活':'阵亡'} · `+
+    `河童${protectedUnits.targetAlive?'存活':'阵亡'} · 敌方剩余 ${protectedUnits.enemiesAlive} 位`:
    journey?`${!sample.completed?'结算待确认':journey.timedOut?'原版判定超时':describeBattle(sample,false)} · `+
     `时限 ${journey.deadlineSeconds} 秒 · 战斗与结算 ${journey.combatSeconds.toFixed(2)} 秒 · 祝福 ${journey.blessingCount} 层`+
     (journeyBonus.length?` · 开场 ${journeyBonus.join('、')}`:''):

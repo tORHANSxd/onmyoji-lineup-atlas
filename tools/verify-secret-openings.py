@@ -15,7 +15,7 @@ from tempfile import TemporaryDirectory
 
 def extract(runtime, work, part, workers):
     from rune_floor_host import prepare_runtime
-    from secret_stage import DynamicFormation, placements, secret_solo, secret_stage
+    from secret_stage import DynamicFormation, placements, secret_protection, secret_solo, secret_stage
 
     modules, host, source = prepare_runtime(runtime, work)
     from battleengine.BattleCommon import BattleAvatar
@@ -82,6 +82,11 @@ def extract(runtime, work, part, workers):
                          "codeStageId": codes[0] if len(codes) == 1 else None,
                          "allyOrbs": engine.campData1.shareGuiHuo, "enemyOrbs": engine.campData2.initGuihuo,
                          "waves": waves}
+        if protection := secret_protection(config):
+            support, target = protection
+            if len(waves) != 1 or sum(unit["id"] == target for unit in waves[0]) != 1:
+                raise RuntimeError(f"Unexpected original protection target for Secret Zone floor {floor}")
+            floors[floor]["protection"] = {"supportId": support, "targetId": target}
 
     if not floors or host.oracle.unsupported:
         raise RuntimeError(f"Native Secret Zone opening verification incomplete: {host.oracle.unsupported}")

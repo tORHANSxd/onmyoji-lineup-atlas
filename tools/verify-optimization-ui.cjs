@@ -322,6 +322,7 @@ async function main(){
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),
+   known('liyu',10733004,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
    known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
   const trial=known('six-realms',110151,6);
@@ -581,6 +582,14 @@ async function main(){
    await ui('qaSecretEncounter(18,"红叶的羁绊 捌 痴迷")');
    await until(panel+'.textContent.includes("游戏内走组队入口")');
    assert.equal(await ui(start+'===null'),true);
+   await ui('qaSecretEncounter(358,"溯问鲤踪 捌 鲤影")');
+   await until(start+'!==null');
+   assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-liyu']);
+   assert.match(await ui(panel+'.textContent'),/单人组队挑战.*查看鲤鱼精配置.*查看河童配置/s);
+   assert.match(await run('liyu',{stageId:358,groupId:358,battleMode:266},{
+    secretProtection:{support:{id:31708001,position:101,level:40,star:6,hp:15723},targetId:31708209,
+     settlement:{supportAlive:true,targetAlive:true,enemiesAlive:1}}}),
+    /鲤鱼精存活 · 河童存活 · 敌方剩余 1 位/);
    if(cases.some(entry=>entry.kind==='经验妖怪')){
     await encounter('daily','经验妖怪 新服首次');
     assert.match(await run('exp',{stageId:2111,groupId:2111,battleMode:528},{wavesCleared:0,experience:{kills:30,requiredKills:30,timedOut:false}}),/原版胜利 · 击杀 30 \/ 30/);

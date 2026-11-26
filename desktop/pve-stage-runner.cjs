@@ -349,6 +349,17 @@ function validTianfaReport(report,stage){
   data.opening.every(unit=>unit.level===40&&['hp','speed','attack','defense','critRate'].every(key=>Number.isFinite(unit[key])&&unit[key]>=0));
 }
 
+function validSecretProtection(report,expected){
+ const data=report.secretProtection;
+ if(!expected)return data===undefined;
+ if(data?.targetId!==expected.targetId||data.support?.id!==expected.supportId||data.support.position!==101||
+    data.support.level!==40||data.support.star!==6||!Number.isFinite(data.support.hp)||data.support.hp<=0)return false;
+ const settlement=data.settlement;
+ return report.completed?settlement&&typeof settlement.supportAlive==='boolean'&&typeof settlement.targetAlive==='boolean'&&
+  Number.isSafeInteger(settlement.enemiesAlive)&&settlement.enemiesAlive>=Number(settlement.targetAlive)&&
+  (report.outcome!=='win'||report.wavesCleared===report.waveCount):settlement===null;
+}
+
 function validJourneyReport(report,route,settings){
  const data=report.journeyHard;
  return data&&report.sceneId===journeyHard.sceneId&&report.waveCount===1&&data.challengeId===route.challengeId&&
@@ -451,7 +462,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
-      report.formationsVerified>report.waveCount))||
+      report.formationsVerified>report.waveCount||!validSecretProtection(report,secret.protection)))||
     (resource&&!validResource(report,resource))||report.seed!==seed||report.fixedStepMs!==20||report.teamSHA256!==sha256(input)||report.suitIndexSHA256!==sha256(suitInput)||
     !matchesDamagePolicy(report,damageFloor)||
     !validHash(report.nativeSHA256)||!validHash(report.scriptIndexSHA256)||!validHash(report.recordSHA256)||

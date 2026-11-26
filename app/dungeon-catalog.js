@@ -418,14 +418,15 @@
     }
     if(table==='dungeon_challenge_series'&&matchesOpeningSource(window.AtlasSecretOpenings)){
       if(row.type===20)block.append(node('p','原版召唤裁判，选技时限为 45 秒。','caption'));
-      if(row.type===35&&row.floor_num>=8){
-        const support=[31708001,31709001,31710001,31711001][row.floor_num-8];
-        if(support){
-          const link=node('button','查看助战单位配置','secondary');
-          link.type='button';
-          link.onclick=()=>openRecord('monster',support);
-          block.append(node('p',`开场在我方 101 号位召唤 40 级六星助战单位（${support}）。助战单位阵亡判负。敌方仅剩一个编号末三位为 209 的存活怪物时，独立结束条件允许判胜。`,'caption'),link);
-        }
+      const protection=AtlasSecretOpenings.floors[row.id]?.protection;
+      if(protection){
+        const support=node('button','查看鲤鱼精配置','secondary');
+        support.type='button';
+        support.onclick=()=>openRecord('monster',protection.supportId);
+        const target=node('button','查看河童配置','secondary');
+        target.type='button';
+        target.onclick=()=>openRecord('monster',protection.targetId);
+        block.append(node('p','开场在我方 101 号位召唤 40 级六星鲤鱼精。鲤鱼精或敌方河童阵亡时可判负，敌方仅剩存活河童时可判胜。','caption'),support,target);
       }
     }
     if (table === 'normal_battle_config') {
@@ -1187,13 +1188,14 @@
     const secret=secretOpening(entry,groups[0]);
     if(secret){
       const config=groups[0].row,codeScene=DATA.gameConfig.stages[secret.codeStageId];
-      const entryLabel=config.advanced?'竞速配置':config.need_team?'游戏内走组队入口':'游戏内走单人入口';
+      const entryLabel=config.advanced?'竞速配置':secret.protection?'游戏内走单人组队挑战':
+        config.need_team?'游戏内走组队入口':'游戏内走单人入口';
       destination.append(node('p',[`${secret.waves.length} 波`,`我方开场 ${secret.allyOrbs} 火`,
         `敌方开场 ${secret.enemyOrbs} 火`,`需阴阳师 ${config.level_limit} 级`,`消耗 ${config.strength} 体力`,entryLabel].join(' · '),'caption'));
       if(!secret.solo&&!config.advanced&&!config.need_team)
         destination.append(node('p','该层的独立机制仍待离线复跑核验。','caption'));
       if(secret.solo)window.AtlasPveWorkbench?.mount(destination,{stageId:Number(entry.key),groupId:Number(entry.key),memberCount:5,
-        battleMode:266,waveCount:secret.waves.length,label:'秘闻普通单人',version:state.index.resourceVersion,
+        battleMode:266,waveCount:secret.waves.length,label:secret.protection?'溯问鲤踪 · 保护挑战':'秘闻普通单人',version:state.index.resourceVersion,
         codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?secret.codeStageId:null,codeLabel:codeScene?.name,
         openingSpeed:Math.max(...secret.waves.flat().map(unit=>unit.speed))});
     }
