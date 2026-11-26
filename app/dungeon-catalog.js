@@ -1156,6 +1156,46 @@
     render();
   }
 
+  function showMapBoss(destination,entry,groups){
+    const source=window.AtlasMapBoss,isMap=entry.table==='map_boss';
+    if(!matchesOpeningSource(source)||!isMap&&entry.table!=='pve_stage_data')return false;
+    const row=groups[0].row;
+    const ids=isMap?row?.gk_list?.map(([id])=>id)??[]:[Number(entry.key)];
+    const stages=ids.filter(id=>{
+      const route=source.stages[id],mapId=isMap?Number(entry.key):null;
+      if(!route||mapId!==null&&!route.entries.includes(mapId))return false;
+      const stage=isMap?groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===id)?.row:row;
+      const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===id);
+      return stage?.groupid===id&&stage.shishentotal===5&&formation?.row?.resindex===route.sceneId&&
+        formation.waves.length===1&&formation.waves[0].length===route.enemies.length&&
+        formation.waves[0].every(({position,id,level},i)=>position===i+1&&id===route.enemies[i]&&level===Math.min(40,route.level));
+    });
+    if(!stages.length)return false;
+    const controls=node('div','','actions'),workbench=node('div'),slots=node('p','','caption');
+    const select=(name,marker,options)=>{
+      const label=node('label',name,'pve-lineup-field'),control=document.createElement('select');
+      control.dataset[marker]='';
+      control.replaceChildren(...options.map(([value,text])=>new Option(text,String(value))));
+      label.append(control);controls.append(label);
+      return control;
+    };
+    const stage=select('关卡等级档','mapBossStage',stages.map(id=>[id,`${source.stages[id].level} 级档 · ${id}`]));
+    const players=select('参战人数','mapBossPlayers',[[2,'两人组队'],[3,'三人组队']]);
+    destination.append(controls,node('p','离线模拟把本账号的一位阴阳师和五位式神按原版规则分给队长与队友。按阵容码顺序站在 2 至 6 号位。','caption'),slots,workbench);
+    const render=()=>{
+      const stageId=Number(stage.value),mapBossPlayers=Number(players.value),route=source.stages[stageId];
+      const assignments=source.positions[mapBossPlayers].map((indices,i)=>
+        `${i?'队友 '+i:'队长'} ${indices.join('、')} 号位`);
+      slots.textContent=`敌方 ${Math.min(route.level,40)} 级 · ${assignments.join(' · ')}`;
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:stageId,memberCount:5,battleMode:source.battleMode,
+        mapBossPlayers,waveCount:1,label:`${route.label} · ${route.level} 级档`,version:source.resourceVersion});
+    };
+    stage.addEventListener('change',render);players.addEventListener('change',render);
+    render();
+    return true;
+  }
+
   function mountCreviceWindow(block,stageId,row,formation){
     const source=window.AtlasGuildCrevice,route=source.routes[stageId];
     if(!matchesOpeningSource(source)||row?.groupid!==route.groupId||row?.shishentotal!==5||
@@ -1372,10 +1412,11 @@
         label:'真·八岐大蛇原版单人十层',version:state.index.resourceVersion,codeStageId:orochi.codeStageId,codeLabel:codeScene.name,
       });
     }
-    if(entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
+    const mapBossMounted=showMapBoss(destination,entry,groups);
+    if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!mapBossMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -1402,6 +1443,7 @@
         destination.append(node('p','此编组由契灵教程、集结或集结后的收服入口使用，入场条件取自对应原版流程。','caption'));
       else if (regional) destination.append(node('p','此编组供地域鬼王入口使用。离线演练还需要该玩法下发的实际参数。','caption'));
       else if (shilian) destination.append(node('p','此编组由六道之门专用引擎使用。请从关联入口核对试炼式神及途中规则。','caption'));
+      else if (window.AtlasMapBoss?.stages[stageId]) destination.append(node('p','地图首领组队复跑需要匹配的客户端关卡与编组资料。','caption'));
       else if (entry.refs.some(ref=>ref.table==='map_boss')) destination.append(node('p','对应玩法的入场与结算条件见关联的地图首领入口。','caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&

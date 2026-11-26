@@ -198,6 +198,7 @@ function sampleBattleMarkup(samples){
   const secretActor=sample.secretActor;
   const mirror=sample.secretMirror;
   const journey=sample.journeyHard;
+  const mapBoss=sample.mapBoss;
   const journeyBonus=journey?Object.entries({attack:'攻击',defense:'防御',hp:'生命',speed:'速度',crit:'暴击',critDamage:'暴击伤害'})
    .flatMap(([key,label])=>journey.blessingBonus[key]?[`${label} +${key==='speed'?journey.blessingBonus[key]:
     journey.blessingBonus[key].toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}`]:[]):[];
@@ -236,6 +237,10 @@ function sampleBattleMarkup(samples){
    protectedUnits?`${describeBattle(sample)} · 鲤鱼精${protectedUnits.supportAlive?'存活':'阵亡'} · `+
     `河童${protectedUnits.targetAlive?'存活':'阵亡'} · 敌方剩余 ${protectedUnits.enemiesAlive} 位`:
    secretActor?`${describeBattle(sample)} · 指定角色 ${secretActor.name} · ${secretActor.level} 级 · ${secretActor.star} 星`:
+   mapBoss?`${describeBattle(sample,false)} · ${mapBoss.players} 人组队 · ${mapBoss.level} 级档`+
+    (mapBoss.rewardInputs?` · ${mapBoss.kind==='yearBeast'?'虚弱阶段':'首领特殊阶段'}伤害比例 `+
+      mapBoss.rewardInputs.phaseDamageRatio.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})+
+      (mapBoss.rewardInputs.paperManCount?` · 小纸人 ${mapBoss.rewardInputs.paperManCount}`:''):''):
    journey?`${!sample.completed?'结算待确认':journey.timedOut?'原版判定超时':describeBattle(sample,false)} · `+
     `时限 ${journey.deadlineSeconds} 秒 · 战斗与结算 ${journey.combatSeconds.toFixed(2)} 秒 · 祝福 ${journey.blessingCount} 层`+
     (journeyBonus.length?` · 开场 ${journeyBonus.join('、')}`:''):

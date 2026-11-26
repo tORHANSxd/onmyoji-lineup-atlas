@@ -1,0 +1,128 @@
+"""Replay the versioned Stone Boss and Year Beast battles with local teammates."""
+
+MODE = 3000
+ENGINE = "battleengine.engine.WorldBossEngine"
+SOURCE_HASHES = {
+    ENGINE: "d11c14d3eb97e361bee50a58ac8666a56f3332b484e851a8dde36a80c7fe53b4",
+    "com.data.cdata.map_boss": "d88b6c83b76e7daa399684185869702a2e4e94f179dc58f0c9cb8b718f8e2a2f",
+}
+KINDS = {
+    69: ("stone", "is_Shi_Ju", 44, 23),
+    73: ("angryStone", "is_Angry_Shi_Ju", 40055, 9991101),
+    70: ("yearBeast", "is_Nian_Shou", 51, 30),
+    74: ("yearBeast", "is_Nian_Shou", 51, 30),
+    75: ("yearBeast", "is_Nian_Shou", 51, 30),
+}
+POSITIONS = {2: ((5, 6), (2, 3, 4)), 3: ((3,), (2, 5), (4, 6))}
+
+
+def entry_for_stage(entries, stage_id):
+    for entry_id, (kind, flag, scene, boss) in KINDS.items():
+        for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
+            if stage == stage_id:
+                return kind, flag, scene, boss, level
+    return None
+
+
+class MapBossReplay:
+    def __init__(self, modules, stage_id, players):
+        from battleengine.engine.WorldBossEngine import DATA_PVE_STAGE_DATA, BattleMonstersInfo, WorldBossEngine, const
+        from com.data.cdata import map_boss
+
+        if any(modules.rows[name]["marshalSHA256"] != digest for name, digest in SOURCE_HASHES.items()):
+            raise ValueError("The map boss engine or stage table has changed")
+        entry = entry_for_stage(map_boss.data, stage_id)
+        if entry is None or players not in POSITIONS:
+            raise ValueError("Map boss replay requires a verified stage and two or three teammates")
+        self.kind, flag, scene, self.boss_id, self.level = entry
+        stage = DATA_PVE_STAGE_DATA.data[str(stage_id)]
+        self.group_id = stage["groupid"]
+        formation = BattleMonstersInfo.data[self.group_id]
+        if self.group_id != stage_id or stage.get("shishentotal") != 5 or formation["resindex"] != scene:
+            raise RuntimeError("Original map boss stage and formation disagree")
+        waves = formation["MonstersInfos"]
+        if len(waves) != 1 or waves[0][0][:2] != [1, self.boss_id]:
+            raise RuntimeError("Original map boss has an unexpected starting enemy")
+        self.expected = [(pos, proto, level) for pos, proto, level, *_ in waves[0]]
+        self.positions = POSITIONS[players]
+        self.const = const
+        self.engine = WorldBossEngine({"pve_data_flag": str(stage_id), flag: True})
+        self.engine.battleMode = const.BattleMode.MODE_WORLD_BOSS
+        if self.engine.battleMode != MODE or self.engine.combineSceneInfoId != scene:
+            raise RuntimeError("The original map boss initialized another scene")
+        self.engine.onCalcRewards = self.observe_rewards
+        self.reward_inputs = {}
+        self.opening = None
+        self.observe_opening()
+
+    def assign_players(self, player, fighters):
+        members = list(fighters)
+        teams = [{members[pos - 2]: fighters[members[pos - 2]] for pos in slots} for slots in self.positions]
+        return [{**player, "id": 1, "heroes": {**teams[0], "selected-onmyoji": player["heroes"]["selected-onmyoji"]}},
+                *({"id": i, "yysid": 0, "heroes": team} for i, team in enumerate(teams[1:], 2))]
+
+    def verify_players(self, controllers):
+        actual = [(ctrl.ctrlPlayer.hasYYS, tuple(ctrl.ctrlPlayer.ssPosIndexList)) for ctrl in controllers]
+        if actual != [(i == 0, positions) for i, positions in enumerate(self.positions)]:
+            raise RuntimeError("The original map boss selected different team positions")
+
+    def verify_selection(self, controllers):
+        selected = {"selected-onmyoji": (controllers[0], 1)}
+        for controller, positions in zip(controllers, self.positions):
+            selected.update((uid, (controller, position))
+                            for uid, position in zip(controller.ctrlPlayer.defaultHeros, positions))
+        actual = {}
+        for entity in self.engine.heroEntities.values():
+            uid = entity.HeroComp.heroData.heroUid
+            if uid in selected:
+                actual[uid] = entity.ownerController, entity.posIndex
+        if actual != selected:
+            raise RuntimeError("The original map boss placed the selected lineup differently")
+
+    def observe_opening(self):
+        spawn, create = self.engine._createNextRoundMons, self.engine.createMonsterEntity
+
+        def start_wave():
+            if self.opening is not None:
+                return spawn()
+            observed = []
+
+            def create_enemy(camp, owner, placement):
+                entity = create(camp, owner, placement)
+                observed.append((placement.Index, entity.protoid, placement.level))
+                return entity
+
+            self.engine.createMonsterEntity = create_enemy
+            try:
+                result = spawn()
+            finally:
+                self.engine.createMonsterEntity = create
+            if observed != self.expected:
+                raise RuntimeError("The original map boss generated a different opening formation")
+            self.opening = observed
+            return result
+
+        self.engine._createNextRoundMons = start_wave
+
+    def observe_rewards(self, ratio, *args):
+        if self.kind == "angryStone":
+            count, player_id = args
+        elif self.kind == "yearBeast":
+            player_id, count = args
+        else:
+            player_id, = args
+            count = 0
+        self.reward_inputs[player_id] = (ratio, count)
+        return {}
+
+    def report(self, outcome):
+        if self.opening is None:
+            raise RuntimeError("The original map boss did not create enemies")
+        rewards = None
+        if outcome == "win":
+            if set(self.reward_inputs) != set(range(1, len(self.positions) + 1)) or len(set(self.reward_inputs.values())) != 1:
+                raise RuntimeError("The original map boss did not settle identical reward inputs for every teammate")
+            ratio, paper_men = next(iter(self.reward_inputs.values()))
+            rewards = {"phaseDamageRatio": ratio, "paperManCount": paper_men}
+        return {"kind": self.kind, "level": self.level, "bossId": self.boss_id, "players": len(self.positions),
+                "positions": self.positions, "opening": self.opening, "rewardInputs": rewards}

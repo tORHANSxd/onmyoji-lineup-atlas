@@ -18,6 +18,7 @@ const fengmoYanwu=require('../app/fengmo-yanwu.js');
 const activityScore=require('../app/general-soul-trial.js');
 const tianfa=require('../app/tianfa.js');
 const journeyHard=require('../app/journey-hard.js');
+const mapBoss=require('../app/map-boss.js');
 const fengmoLive=require('../app/fengmo-live.js');
 const tuzhizhuPractice=require('../app/tuzhizhu-practice.js');
 const resourceEncounters=require('../app/resource-encounters.js');
@@ -49,6 +50,7 @@ const engines={
   [battleMode,{name:engine,route,sha256:engineSHA256}])),
  [tianfa.battleMode]:{name:tianfa.engine,route:tianfa.route,sha256:tianfa.engineSHA256},
  [journeyHard.battleMode]:{name:'JSNormalEngine',route:'journey-hard-solo',sha256:journeyHard.engineSHA256},
+ [mapBoss.battleMode]:{name:'WorldBossEngine',route:'map-boss-local-team',sha256:mapBoss.engineSHA256},
  ...Object.fromEntries(Object.entries(tuzhizhuPractice.modes).map(([id,mode])=>
   [id,{name:mode.engine,route:'tuzhizhu-practice-solo',sha256:mode.sha256}])),
  [firstExperience.battleMode]:null,
@@ -497,7 +499,18 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow}){
+function validMapBossReport(report,route,players){
+ const data=report.mapBoss,rewards=data?.rewardInputs;
+ const level=Math.min(route.level,40),opening=route.enemies.map((id,index)=>[index+1,id,level]);
+ return report.sceneId===route.sceneId&&report.waveCount===1&&report.formationsVerified===1&&
+  data?.kind===route.kind&&data.level===route.level&&data.players===players&&data.bossId===route.enemies[0]&&
+  sameTactics(data.positions,mapBoss.positions[players])&&sameTactics(data.opening,opening)&&
+  (report.outcome==='win'?report.wavesCleared===1&&Number.isFinite(rewards?.phaseDamageRatio)&&rewards.phaseDamageRatio>=0&&
+   Number.isSafeInteger(rewards.paperManCount)&&rewards.paperManCount>=0&&
+   rewards.paperManCount<=({stone:0,angryStone:4,yearBeast:5}[route.kind]):rewards===null);
+}
+
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const engine=sixRealmsRoute?{name:sixRealmsRoute.engine,sha256:sixRealmsRoute.sha256,
   route:`six-realms-${sixRealmsState?'configured':'full-health'}-${sixRealmsEvent?'encounter':'trial'}`}:
@@ -534,6 +547,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (activityScore.modes[battleMode]&&!validActivityScore(report,rounds[0],activityScore.modes[battleMode]))||
     (battleMode===tianfa.battleMode&&!validTianfaReport(report,tianfa.stages[stageId]))||
     (journeyRoute&&!validJourneyReport(report,journeyRoute,journeySettings))||
+    (mapBossRoute&&!validMapBossReport(report,mapBossRoute,mapBossPlayers))||
     (spider&&!validTuzhizhuPractice(report,spider,stageId,rounds[0]))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
     (battleMode===orochi.battleMode&&!validOrochiReport(report,rounds[0]))||
@@ -578,21 +592,22 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice,ghost]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice,ghost,mapBossAvailable]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
      has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),
      has('fengmo_yanwu_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py'),
-     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py'),has('tianfa_stage.py'),has('guild_crevice_stage.py'),has('superghost_stage.py')]);
+     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py'),has('tianfa_stage.py'),has('guild_crevice_stage.py'),has('superghost_stage.py'),has('map_boss_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
      ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
      ...(generalSoul?Object.keys(activityScore.modes).map(Number):[]),...(journey?[journeyHard.battleMode]:[]),...(tianfaAvailable?[tianfa.battleMode]:[]),
-     ...(crevice?[guildCrevice.battleMode]:[]),...(ghost?[superGhost.battleMode,superGhost.historicalBattleMode]:[])]};
+     ...(crevice?[guildCrevice.battleMode]:[]),...(ghost?[superGhost.battleMode,superGhost.historicalBattleMode]:[]),
+     ...(mapBossAvailable?[mapBoss.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -686,6 +701,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       plan.members.length!==5||!positive(creviceWindow)||creviceWindow>guildCrevice.deadlineSeconds)||
       creviceWindow!==undefined&&!creviceRoute)throw Error('狭间暗域需要正确的关卡、编组、计分时长和五位自有式神');
    if(battleMode===3&&guildCrevice.routes[stageId])throw Error('狭间暗域需要该玩法的原版入口');
+   if(battleMode===3&&mapBoss.stages[stageId])throw Error('石距和年兽需要地图首领的原版组队入口');
+   const mapBossRoute=battleMode===mapBoss.battleMode?mapBoss.stages[stageId]:null;
+   if(battleMode===mapBoss.battleMode&&(!mapBossRoute||mapBoss.resourceVersion!==resourceVersion||groupId!==stageId||
+      plan.members.length!==5||![2,3].includes(mapBossPlayers))||
+      mapBossPlayers!==undefined&&!mapBossRoute)throw Error('地图首领需要正确的关卡、五位式神和两人或三人组队');
    const ghostRoute=battleMode===superGhost.battleMode?superGhost.routes[stageId]:null;
    if(battleMode===superGhost.battleMode&&(superGhost.resourceVersion!==resourceVersion||!ghostRoute||groupId!==stageId||
       plan.members.length!==5||!validGhostSettings(ghostSettings,ghostRoute))||
@@ -726,12 +746,13 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(creviceRoute)args.push('--crevice-window',String(creviceWindow));
     if(ghostRoute)args.push('--ghost-settings',JSON.stringify(ghostSettings));
     if(historicalGhostRoute)args.push('--historical-ghost-window',String(historicalGhostWindow));
+    if(mapBossRoute)args.push('--map-boss-players',String(mapBossPlayers));
     const code=await launch(config.python,args,dir,AbortSignal.any([cancel.signal,deadline]));
     cancel.signal.throwIfAborted();
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');

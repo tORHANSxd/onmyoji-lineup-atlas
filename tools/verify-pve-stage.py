@@ -21,6 +21,7 @@ def replay(args, runtime, work):
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
+    from map_boss_stage import MODE as MAP_BOSS_MODE, MapBossReplay, entry_for_stage
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
@@ -53,6 +54,7 @@ def replay(args, runtime, work):
     activity_score = SOLO_SCORE_MODES.get(args.mode)
     tianfa = args.mode == TIANFA_MODE
     journey_hard = args.mode == JOURNEY_HARD_MODE
+    map_boss_replay = None
     spider = args.mode in PRACTICE_MODES
     shilian = args.mode in SHILIAN_MODES
     secret_actor_config = None
@@ -190,6 +192,14 @@ def replay(args, runtime, work):
         journey = JourneyHardReplay(args.stage, args.journey_blessings, args.journey_deadline)
         engine, group, const = journey.engine, journey.group, journey.const
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif args.mode == MAP_BOSS_MODE:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Map boss replay needs five selected shikigami")
+        map_boss_replay = MapBossReplay(modules, args.stage, args.map_boss_players)
+        engine, const = map_boss_replay.engine, map_boss_replay.const
+        group_id, wave_count = map_boss_replay.group_id, 1
     elif spider:
         from DynamicConfigData import DATA_HERO
 
@@ -273,6 +283,8 @@ def replay(args, runtime, work):
             raise ValueError("Experience and coin encounters require their dedicated entry")
         if any(args.stage == floor[0] for floor in map_boss.data[OROCHI_STAGE]["gk_list"]):
             raise ValueError("True Orochi floors require the original continuous dungeon engine")
+        if entry_for_stage(map_boss.data, args.stage):
+            raise ValueError("Map boss stages require their original cooperative engine")
         if (args.stage in dict(challenge_stages()) or args.stage in dict(exploration_stages())
                 or args.stage == 800021 or 810001 <= args.stage <= 810009):
             raise ValueError("Hunling stages require their dedicated original engine and scenario")
@@ -308,10 +320,13 @@ def replay(args, runtime, work):
             raise ValueError("The spirit configuration does not match the runtime")
         player["hunling_info"] = {spirit["uid"]: spirit}
         player["yys_hunling"] = {str(actor["heroId"]): spirit["uid"]}
+    map_boss_team = map_boss_replay.assign_players(player, fighters) if map_boss_replay else None
     avatar = BattleAvatar()
-    avatar.init_from_dict(player)
+    avatar.init_from_dict(map_boss_team[0] if map_boss_team else player)
     avatar.inventory.update(inventory)
     avatar.defaultHeros = rounds[0]["members"][:] if relay else list(fighters)[:6] if orochi else list(fighters)
+    if map_boss_team:
+        avatar.defaultHeros = [uid for uid in map_boss_team[0]["heroes"] if uid in fighters]
 
     if retreat:
         route = "guild-retreat-personal-window"
@@ -341,6 +356,8 @@ def replay(args, runtime, work):
         route = "tianfa-solo"
     elif journey_hard:
         route = "journey-hard-solo"
+    elif map_boss_replay:
+        route = "map-boss-local-team"
     elif spider:
         route = "tuzhizhu-practice-solo"
     elif args.mode == 29:
@@ -379,6 +396,18 @@ def replay(args, runtime, work):
     controller.sceneLoaded = True
     engine.addBattlePlayer(avatar)
     engine.controllers.append(controller)
+    controllers = [controller]
+    for teammate in map_boss_team[1:] if map_boss_team else ():
+        partner = BattleAvatar()
+        partner.init_from_dict(teammate)
+        partner.inventory.update(inventory)
+        partner.defaultHeros = list(teammate["heroes"])
+        partner_controller = LocalBattleController(const.CampFlag.CAMP1, partner)
+        partner_controller.battleEngine = engine
+        partner_controller.sceneLoaded = True
+        engine.addBattlePlayer(partner)
+        engine.controllers.append(partner_controller)
+        controllers.append(partner_controller)
     engine.op_init_flag = True
     underworld = UnderworldReplay(engine, controller, const, rounds, heroes, player["yys_hunling"]) if relay else None
     orochi_replay = OrochiReplay(engine, controller, const, orochi_floors, fighters, actors, choices, player["yys_hunling"]) if orochi else None
@@ -460,6 +489,8 @@ def replay(args, runtime, work):
         engine._createNextRoundMons = verify_spawn
     engine._time, engine.delta_time = 1000.0, .020
     engine.init()
+    if map_boss_replay:
+        map_boss_replay.verify_players(controllers)
     if retreat:
         formation_matches = (engine.combineSceneInfoId == 40010 and engine.currBossProtoId == raid.boss["protoId"]
                              and engine.finishedWaveCount == args.raid_round - 1 and engine.raid_id == 1
@@ -506,9 +537,11 @@ def replay(args, runtime, work):
     engine.battleRecorder = recorder
     moon_trial = MoonTrial(engine, controller, group, choices) if args.mode == SHILIAN_EXAM_MODE and dao == 1 else None
     if not relay:
-        engine.op_init(controller, actor_id, avatar.defaultHeros[:], [])
+        for player_index, current in enumerate(controllers):
+            engine.op_init(current, actor_id if player_index == 0 else 0, current.ctrlPlayer.defaultHeros[:], [])
     engine.battleState = const.BattleState.BS_LOADING
-    engine.op_sceneLoaded(controller)
+    for current in controllers:
+        engine.op_sceneLoaded(current)
 
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else OROCHI_REPLAY_SECONDS if orochi
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
@@ -595,7 +628,8 @@ def replay(args, runtime, work):
             secret_actor_report = check_secret_actor(engine, controller, secret_actor_config)
         pending = dict(choices)
         for entity in engine.heroEntities.values():
-            if entity.ownerController is not controller:
+            owner = entity.ownerController
+            if owner not in controllers:
                 continue
             hero = entity.HeroComp.heroData
             alias = hero.heroUid
@@ -605,8 +639,8 @@ def replay(args, runtime, work):
             if spider_replay:
                 spider_replay.check_selected(entity)
             if setting:
-                engine.op_setAutoSkill(controller, entity.uid, setting)
-                if controller.autoSkill.get(entity.uid) != setting:
+                engine.op_setAutoSkill(owner, entity.uid, setting)
+                if owner.autoSkill.get(entity.uid) != setting:
                     raise RuntimeError("The original engine did not apply the selected automatic skill")
             if instructions:
                 instructions.select(alias, entity)
@@ -619,9 +653,12 @@ def replay(args, runtime, work):
                 equipped_spirit = {"id": attached.id, "star": attached.star, "level": attached.lv}
         if pending:
             raise RuntimeError("The original engine did not create every selected character")
-        engine.op_setAuto(controller, not tactics.get("manualOpening"))
-        engine.op_selectHeroOk(controller)
-        selection_checked = controller.selectHeroOk
+        if map_boss_replay:
+            map_boss_replay.verify_selection(controllers)
+        for current in controllers:
+            engine.op_setAuto(current, not tactics.get("manualOpening"))
+            engine.op_selectHeroOk(current)
+        selection_checked = all(current.selectHeroOk for current in controllers)
     if not selection_checked:
         raise RuntimeError("The original engine did not accept the selected roster")
     if instructions and instructions.applied != tactics:
@@ -700,6 +737,9 @@ def replay(args, runtime, work):
             report[activity_score.report_key].update(instructions.report())
     if journey_hard:
         report["journeyHard"] = journey.report()
+    if map_boss_replay:
+        report["mapBoss"] = map_boss_replay.report(report["outcome"])
+        report["formationsVerified"] = 1
     if tianfa:
         report["tianfa"] = tianfa_replay.report(completed)
     if spider_replay:
@@ -760,6 +800,7 @@ def replay(args, runtime, work):
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from map_boss_stage import MODE as MAP_BOSS_MODE, POSITIONS as MAP_BOSS_POSITIONS
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
     from general_soul_stage import SOLO_SCORE_MODES
     from guild_crevice_stage import CREVICE_MODE, CREVICE_TIME
@@ -782,7 +823,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, MAP_BOSS_MODE, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--map-boss-players", type=int, choices=MAP_BOSS_POSITIONS)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -808,6 +850,8 @@ def main():
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
+    if (args.mode == MAP_BOSS_MODE) != (args.map_boss_players is not None):
+        parser.error("Map boss replay requires the number of players")
     if args.mode == TIANFA_MODE and args.stage not in TIANFA_STAGES:
         parser.error("The Tianfa solo entrance supports only the three configured difficulties")
     if args.mode == RETREAT_MODE and (args.boss is None or not 0 <= args.guild_members <= 50 or not 1 <= args.window_seconds <= 1800):

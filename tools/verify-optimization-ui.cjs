@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3004,3005,3008,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3004,3005,3008,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -259,10 +259,11 @@ async function main(){
   await until(detail+'.textContent.includes("愤怒的石距玩法原文")');
   assert.match(await ui(detail+'.textContent'),/愤怒暴走.*招福达摩.*WorldBossEngine.*配置等级 10.*25300.*配置等级 50.*25308/s);
   assert.equal(await ui(detail+'.querySelectorAll(".dungeon-encounter-waves ul").length'),9);
+  assert.equal(await ui('document.querySelector("[data-map-boss-stage]").options.length'),9);
   await ui(`[...${detail}.querySelectorAll('section')].find(el=>el.firstChild.textContent.includes('配置等级 50')).querySelector('button:last-child').click()`);
-  await until(detail+'.textContent.includes("对应玩法的入场与结算条件")');
+  await until('document.querySelector("[data-map-boss-stage]")?.value==="25308"');
   assert.match(await ui(detail+'.textContent'),/25308.*地图首领入口.*73/s);
-  assert.doesNotMatch(await ui(detail+'.textContent'),/模拟已知阵容/);
+  assert.match(await ui(detail+'.textContent'),/模拟已知阵容/);
   await ui('qaEncounterInput("daily","年兽 地图首领入口 14608")');
   await until(detail+'.textContent.includes("年兽玩法原文")');
   assert.match(await ui(detail+'.textContent'),/虚弱.*配置等级 50.*14608/s);
@@ -597,6 +598,15 @@ async function main(){
        deadlineSeconds:180,combatSeconds:33.34,bossDefeated:false,
        enemies:[{position:1,startingHp:4999999,remainingHp:4712790}]}}),
       /单场最高 287,209.*达到计分窗口.*首领伤害 287,209.*首领仍存活/s);
+   }
+   if(cases.some(entry=>entry.table==='map_boss'&&entry.key===73)){
+    await encounter('daily','愤怒的石距 地图首领入口 25308');
+    const rank='document.querySelector("[data-map-boss-stage]")',players='document.querySelector("[data-map-boss-players]")';
+    await ui(`${rank}.value="25308";${rank}.dispatchEvent(new Event("change"));${players}.value="3";${players}.dispatchEvent(new Event("change"))`);
+    assert.match(await ui(panel+'.textContent'),/敌方 40 级 · 队长 3 号位 · 队友 1 2、5 号位 · 队友 2 4、6 号位/);
+    assert.match(await run('superghost-five',{stageId:25308,groupId:25308,battleMode:3000,mapBossPlayers:3},
+      {mapBoss:{kind:'angryStone',players:3,level:50,rewardInputs:{phaseDamageRatio:0.4,paperManCount:3}}}),
+      /3 人组队 · 50 级档 · 首领特殊阶段伤害比例 40% · 小纸人 3/);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');
