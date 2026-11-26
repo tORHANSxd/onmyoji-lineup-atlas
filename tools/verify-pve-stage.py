@@ -22,6 +22,7 @@ def replay(args, runtime, work):
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE, FengmoYanwuReplay, fengmo_yanwu_stage
     from general_soul_stage import SCORE_STAGES, SOLO_SCORE_MODES, SoloScoreReplay, solo_score_stage
     from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, CREVICE_WALL_SECONDS, CreviceReplay
+    from guild_forest_stage import FOREST_MODE, FOREST_STAGES, ForestReplay, forest_stage
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RaidDamageWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
@@ -68,6 +69,7 @@ def replay(args, runtime, work):
     yanwu = args.mode == FENGMO_YANWU_MODE
     activity_score = SOLO_SCORE_MODES.get(args.mode)
     dojo_area = args.mode == DOJO_AREA_MODE
+    forest = args.mode == FOREST_MODE
     tianfa = args.mode == TIANFA_MODE
     journey_hard = args.mode == JOURNEY_HARD_MODE
     map_boss_replay = None
@@ -196,6 +198,13 @@ def replay(args, runtime, work):
         if len(fighters) != member_count:
             raise ValueError("The selected roster does not match the original solo Fengmo Yanwu route")
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif forest:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Forest of Secrets requires five owned shikigami")
+        engine, group, const, forest_event = forest_stage(modules, args.stage, args.forest_event)
+        group_id, wave_count = group["ID"], 1
     elif dojo_area:
         from DynamicConfigData import DATA_HERO
 
@@ -317,6 +326,8 @@ def replay(args, runtime, work):
             raise ValueError(f"Unknown native PvE stage {stage_id}")
         if is_dojo_area_stage(args.stage):
             raise ValueError("Eight-Hundred Tanuki requires its original scoring engine")
+        if args.stage in FOREST_STAGES:
+            raise ValueError("Forest of Secrets requires its original scoring engine and event")
         if args.stage in SCORE_STAGES:
             raise ValueError("This activity requires its dedicated original score battle engine")
         if args.stage in (*TIANFA_STAGES, TIANFA_LOBBY_STAGE):
@@ -399,6 +410,8 @@ def replay(args, runtime, work):
         route = "fengmo-yanwu-solo"
     elif dojo_area:
         route = "dojo-area-solo-score"
+    elif forest:
+        route = "guild-forest-single-team"
     elif activity_score:
         route = activity_score.route
     elif tianfa:
@@ -505,6 +518,7 @@ def replay(args, runtime, work):
     score_replay = SoloScoreReplay(engine, group, const) if activity_score else None
     dojo_area_replay = (DojoAreaReplay(engine, group, const, dojo_play, args.dojo_area[0], args.dojo_area[2], dojo_deadline)
                         if dojo_area else None)
+    forest_replay = ForestReplay(engine, group, const, forest_event) if forest else None
     spider_replay = TsuchigumoPractice(engine, stage, group, const) if spider else None
     verified_waves = set()
     secret_protection_replay = None
@@ -570,7 +584,7 @@ def replay(args, runtime, work):
         if args.mode == REGION_HARD_MODE:
             formation_matches = (formation_matches and engine.startLevel == args.region["star"]
                                  and engine.condition == args.region["modifierIds"])
-    elif yanwu or dojo_area or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
+    elif yanwu or dojo_area or forest or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -654,6 +668,8 @@ def replay(args, runtime, work):
             score_replay.update()
         if dojo_area_replay:
             dojo_area_replay.update()
+        if forest_replay:
+            forest_replay.update()
         if tianfa:
             tianfa_replay.update()
         if spider_replay:
@@ -809,6 +825,9 @@ def replay(args, runtime, work):
     if dojo_area_replay:
         report["dojoArea"] = dojo_area_replay.report(completed)
         report["formationsVerified"] = 1
+    if forest_replay:
+        report["guildForest"] = forest_replay.report(completed)
+        report["formationsVerified"] = 1
     if journey_hard:
         report["journeyHard"] = journey.report()
     if map_boss_replay:
@@ -893,6 +912,7 @@ def main():
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
     from general_soul_stage import SOLO_SCORE_MODES
     from guild_crevice_stage import CREVICE_MODE, CREVICE_TIME
+    from guild_forest_stage import FOREST_MODE, FOREST_STAGES
     from superghost_stage import HISTORICAL_GHOST_MODE, SUPERGHOST_MODE, valid_ghost_settings
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
@@ -915,8 +935,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--dojo-area", type=int, nargs=3, metavar=("YEAR", "PLAY", "REGION_STATE"))
+    parser.add_argument("--forest-event", type=int)
     parser.add_argument("--map-boss-players", type=int, choices=(1, 2, 3))
     parser.add_argument("--qinfei-food-next", type=int, nargs="+")
     parser.add_argument("--qinfei-profile", type=int, nargs=2, metavar=("RAID", "DIFFICULTY"))
@@ -947,6 +968,11 @@ def main():
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
+    if args.mode == FOREST_MODE:
+        if args.stage not in FOREST_STAGES or args.forest_event is None or args.forest_event <= 0:
+            parser.error("Forest of Secrets requires a stage and event")
+    elif args.forest_event is not None:
+        parser.error("--forest-event requires the original Forest of Secrets mode")
     if args.mode == DOJO_AREA_MODE:
         year, play, region = args.dojo_area or (0, 0, 0)
         if year not in DOJO_AREA_ACTIVITY or play <= 0 or region not in ((0, 3) if year == 2026 else (0,)):

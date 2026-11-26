@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -791,6 +791,22 @@ async function main(){
     assert.match(await ui(panel+'.textContent'),/原表时限 120 秒/);
     assert.match(await run('superghost-five',{stageId:468300,groupId:468300,pveDeadlineSeconds:120},
       {waveCount:1,wavesCleared:1,pveDeadline:{timedOut:false,deadlineSeconds:120,combatSeconds:19}}),/原表时限 120 秒/);
+   }
+   if(cases.some(entry=>entry.table==='guild_fake_god_event'&&entry.key===1018&&entry.kind==='青森之秘事件')){
+    await encounter('guild','青森之秘 普通怪 小怪18 1018');
+    assert.match(await ui(panel+'.textContent'),/普通怪 · 崇山 1 级 · 体力 6 · 敌方满血 · 单队计分/);
+    assert.match(await ui(panel+'.textContent'),/三种地形及特攻效果/);
+    const forest={eventId:1018,encounterType:1,terrainSkill:61155,terrainLevel:1,sceneId:42135};
+    assert.match(await run('superghost-five',{stageId:500327,groupId:500327,battleMode:813,forest},
+      {outcome:'loss',waveCount:1,wavesCleared:0,guildForest:{timedOut:true,damage:8988588,combatSeconds:183.12}}),
+      /达到原版时限 · 个人伤害 8,988,588/);
+    await ui('qaEncounterInput("guild","青森之秘 地图 6 地格 48")');
+    await until(panel+'.textContent.includes("地格事件")');
+    await ui(`(()=>{const ref=[...document.querySelectorAll('#client-dungeons-encounter-detail .encounter-source')]
+     .find(node=>node.querySelector('h4')?.textContent.includes('地格事件'));
+     [...ref.querySelectorAll('button')].find(button=>button.textContent==='查看关联关卡').click();})()`);
+    await until(start+'!==null');
+    assert.match(await ui(panel+'.textContent'),/青森之秘 · 事件 2548/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='11112'&&entry.refs.some(ref=>!ref.found))){
     await ui('qaEncounterInput("battle","结界入侵 11112")');

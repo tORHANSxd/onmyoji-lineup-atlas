@@ -4,6 +4,7 @@ from collections import Counter
 from functools import cache
 from dojo_area_stage import DOJO_AREA_TEAM
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
+from guild_forest_stage import FOREST_MODE, FOREST_STAGES, FOREST_TEAM
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
 from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS, LBS_HISTORY_ENTRIES,
                             LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MEITUAN_SKILLS, MEITUAN_STAGES,
@@ -60,7 +61,9 @@ ROOTS = {
     "qinfei_fight_buff": ("guild", "寝肥合战每日规则"),
     "dojo_2024_qinfei_battle_match": ("guild", "寝肥合战历史赛程"),
     "guild_monster": ("guild", "阴阳寮麒麟"),
-    "guild_fake_god_event": ("guild", "阴阳寮活动"),
+    "guild_fake_god_event": ("guild", "青森之秘事件"),
+    "guild_fake_god_map": ("guild", "青森之秘地格"),
+    "guild_fake_god_route": ("guild", "青森之秘路线"),
     "act_team_battle": ("event", "活动组队战斗"),
     "activity_lbs_intro": ("event", "现世妖约活动详情"),
     "activity_offline_lbs_mass": ("event", "现世妖约活动地点"),
@@ -149,6 +152,7 @@ FOLLOWED_TABLES = {"pve_stage_data", "BattleMonstersInfo", "Combinesceneinfo", "
                    "normal_battle_tips", "battle_team_routes", "raid_info", "boss_info",
                    "dojo2025_bbbl_block_play", "dojo2026_bbbl_block_play"}
 DOJO_AREA_TYPES = {1: "普通战斗", 2: "精英挑战", 3: "神社战斗", 4: "首领战", 5: "租借处", 6: "传送门"}
+FOREST_EVENT_TYPES = {1: "普通怪", 2: "精英", 3: "首领", 4: "巢穴", 5: "宝箱", 6: "派遣", 7: "净化", 8: "起点"}
 BATTLE_ID_FIELDS = ("battle_id", "battleId", "pve_stage_id", "pve_id")
 RULE_TEXT_FIELDS = {"tip": "关卡提示", "fbtips": "副本规则", "attack_tip": "战斗提示",
                     "rule": "玩法规则", "boss_rule": "首领机制", "notice": "机制说明", "fb1_defs": "竞速规则"}
@@ -218,6 +222,15 @@ def encounter_index(source, load_rows):
             dojo_area_by_stage.setdefault(numeric_key(play.get("battle_ids")), []).append((plays, play_key))
         for round_key, period in table(f"dojo{year}_bbbl_map_count").values():
             dojo_area_activities[period.get("activity_id")] = (year, round_key)
+    forest_by_stage = {}
+    for key, row in sorted(table("guild_fake_god_event").values()):
+        stage = numeric_key(row.get("battle_id"))
+        if stage and int(stage) in FOREST_STAGES:
+            signature = (row["type"], tuple(row["buff_info"]))
+            forest_by_stage.setdefault(stage, {}).setdefault(signature, key)
+    forest_map_cells = {}
+    for key, row in sorted(table("guild_fake_god_map").values()):
+        forest_map_cells.setdefault(row["map_id"], []).append(key)
 
     def rule_reference(key, label):
         dest = legacy_tips if key not in rules and key in tips else rule_table
@@ -466,6 +479,40 @@ def encounter_index(source, load_rows):
             year, round_key = dojo_area_activities[row["id"]]
             if ref := relation(f"dojo{year}_bbbl_map_count", round_key, "分组、开放及结算时间", False):
                 links.append(ref)
+        if name == "guild_fake_god_map":
+            if ref := relation("guild_fake_god_event", row.get("event_id"), "地格事件", True):
+                links.append(ref)
+        if name == "guild_fake_god_route":
+            links.extend(ref for key in forest_map_cells.get(row["use_map"], ())
+                         if (ref := relation("guild_fake_god_map", key, "路线地格", True)))
+        if name == "guild_fake_god_event":
+            if row.get("battle_id"):
+                links.extend(ref for dest, target, label in (
+                    ("pve_stage_data", row["battle_id"], "事件专用关卡"),
+                    ("battle_team_routes", FOREST_TEAM, "单队战斗入口"),
+                    ("battle_mode_routes", FOREST_MODE, "原版青森引擎"),
+                ) if (ref := relation(dest, target, label, False)))
+                if "qingsen_changdi" in rules:
+                    links.append(rule_reference("qingsen_changdi", "三种地形及特攻效果"))
+            for index, event in enumerate(row.get("battles", ()), 1):
+                if ref := relation(name, event, f"第 {index} 支可选敌阵", True):
+                    links.append(ref)
+            for skill, level in row.get("skill", ()):
+                if ref := relation("skill", level_one_skill(skill), f"敌方技能 {skill} · {level} 级", False):
+                    links.append(ref)
+            if ref := relation("activity", 7076, "原版开放期", False):
+                links.append(ref)
+            if row.get("plot") in rules:
+                links.append(rule_reference(row["plot"], "事件原文"))
+        if name == "activity" and row.get("id") == 7076:
+            for key, _ in sorted(table("guild_fake_god_route").values()):
+                if ref := relation("guild_fake_god_route", key, "活动路线", False):
+                    links.append(ref)
+            for rule, label in (("qingsen_dituxuanze", "地图、事件与协作规则"),
+                                ("qingsen_changdi", "三种地形及特攻效果"),
+                                ("qingsen_shangdian", "青森之叶与兑换规则")):
+                if rule in rules:
+                    links.append(rule_reference(rule, label))
         if name == "storyChapter":
             entrance = relation("mapnpc", row.get("id"), "地图探索入口", False)
             if entrance:
@@ -531,6 +578,11 @@ def encounter_index(source, load_rows):
             stage_id = numeric_key(row.get("id"))
             links.extend(ref for dest, key in dojo_area_by_stage.get(stage_id, ())
                          if (ref := relation(dest, key, "八百八狸地格玩法", False)))
+            if stage_id in forest_by_stage:
+                links.extend(ref for key in forest_by_stage[stage_id].values()
+                             if (ref := relation("guild_fake_god_event", key, "青森战斗配置", False)))
+                if ref := relation("battle_team_routes", FOREST_TEAM, "单队战斗入口", False):
+                    links.append(ref)
             qinfei_stage = int(stage_id or 0)
             if qinfei_stage in QINFEI_FOOD_STAGES:
                 food = QINFEI_FOODS[(qinfei_stage - QINFEI_FOOD_STAGES.start) % len(QINFEI_FOODS)]
@@ -975,9 +1027,10 @@ def encounter_index(source, load_rows):
                 and numeric_key(key) not in table("normal_battle_config")
             qinfei_activity = table_name == "activity" and key in qinfei_activities
             dojo_area_activity = table_name == "activity" and key in dojo_area_activities
+            forest_activity = table_name == "activity" and key == 7076
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not linked_battles and not row.get("monsterWaves")
-                    and not qinfei_activity and not qinfei_boss and not dojo_area_activity):
+                    and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -988,6 +1041,16 @@ def encounter_index(source, load_rows):
                 entry_family, entry_kind = "guild", "寝肥合战"
             if dojo_area_activity:
                 entry_family, entry_kind = "event", "八百八狸场次"
+            if forest_activity:
+                entry_family, entry_kind = "guild", "青森之秘活动"
+            if table_name == "guild_fake_god_event":
+                label = FOREST_EVENT_TYPES.get(row.get("type"), "事件")
+                title = f"青森之秘 · {label} · {title.strip()} · {key}"
+            if table_name == "guild_fake_god_map":
+                _, event = table("guild_fake_god_event").get(numeric_key(row.get("event_id")), (None, {}))
+                title = f"青森之秘 · 地图 {row['map_id']} · 地格 {row['key']} · {name(event)}"
+            if table_name == "guild_fake_god_route":
+                title = f"青森之秘 · 路线 {key} · 地图 {row['use_map']}"
             if table_name.startswith(("dojo2025_bbbl_", "dojo2026_bbbl_")):
                 prefix, suffix = table_name.split("_bbbl_", 1)
                 year = prefix.removeprefix("dojo")
@@ -1076,6 +1139,9 @@ def encounter_index(source, load_rows):
                 stage_id = int(numeric_key(key) or 0)
                 if numeric_key(key) in dojo_area_by_stage:
                     entry_family, entry_kind = "event", "八百八狸战斗"
+                elif stage_id in FOREST_STAGES:
+                    entry_family, entry_kind = "guild", "青森之秘战斗"
+                    title = f"青森之秘 · {title}"
                 elif stage_id in NIAN_STAGES:
                     entry_family, entry_kind = "event", "现世年兽"
                     title = f"{entry_kind} · {NIAN_STAGES[stage_id]} 级档"

@@ -30,6 +30,9 @@
     boss_troops: '首领机关编组',
     active_time: '玩法开放时间表',
     guild_dinner_monster: '阴阳寮宴会首领',
+    guild_fake_god_event: '青森之秘事件',
+    guild_fake_god_map: '青森之秘地格',
+    guild_fake_god_route: '青森之秘路线',
     act_team_battle: '活动组队战斗',
     activity_lbs_intro: '现世妖约活动详情',
     activity_offline_lbs_mass: '现世妖约活动地点',
@@ -1362,6 +1365,52 @@
     return true;
   }
 
+  function showGuildForest(destination,entry,groups){
+    const source=window.AtlasGuildForest,main=groups[0].row;
+    const eventEntry=entry.table==='guild_fake_god_event';
+    const stageId=eventEntry?main?.battle_id:Number(entry.key);
+    if((!eventEntry&&entry.table!=='pve_stage_data')||!source.isStage(stageId))return false;
+    const registration=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===source.teamType)?.row;
+    if(!matchesOpeningSource(source)||registration?.battleMode!==source.battleMode||
+       registration.route_sha256!==source.routeSHA256){
+      destination.append(node('p','请从青森之秘事件打开对应的地形及原版战斗配置。','caption'));
+      return true;
+    }
+    const stage=groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===stageId)?.row;
+    const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===stage?.groupid);
+    if(stage?.shishentotal!==5||stage.battleTime!==source.deadlineSeconds||formation?.waves?.length!==1)return true;
+    const choices=groups.flatMap(({ref,row})=>{
+      if(ref.table!=='guild_fake_god_event'||row?.battle_id!==stageId||eventEntry&&!ref.primary||
+         !source.types[row.type])return [];
+      const [,effect,terrainLevel]=row.buff_info;
+      const terrainSkill=source.terrainSkills[effect];
+      return terrainSkill?[{eventId:row.id,encounterType:row.type,terrainSkill,terrainLevel,
+        sceneId:formation.row.resindex,cost:row.cost}]:[];
+    });
+    if(!choices.length)return true;
+    const note=node('p','','caption'),workbench=node('div');
+    const labelFor=choice=>`${source.types[choice.encounterType]} · ${source.terrainNames[choice.terrainSkill]} ${choice.terrainLevel} 级`;
+    const select=choices.length>1?document.createElement('select'):null;
+    if(select){
+      const field=node('label','战斗配置','pve-lineup-field');
+      select.replaceChildren(...choices.map((choice,index)=>new Option(`${labelFor(choice)} · ${choice.eventId}`,String(index))));
+      field.append(select);
+      destination.append(field);
+    }
+    destination.append(note,workbench);
+    const render=()=>{
+      const {cost,...forest}=choices[Number(select?.value??0)];
+      note.textContent=`${labelFor(forest)} · 体力 ${cost} · 敌方满血 · 单队计分`;
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:stage.groupid,memberCount:5,waveCount:1,
+        battleMode:source.battleMode,version:source.resourceVersion,forest,scoreWindowSeconds:source.deadlineSeconds,
+        label:`青森之秘 · 事件 ${forest.eventId}`});
+    };
+    select?.addEventListener('change',render);
+    render();
+    return true;
+  }
+
   function mountCreviceWindow(block,stageId,row,formation){
     const source=window.AtlasGuildCrevice,route=source.routes[stageId];
     if(!matchesOpeningSource(source)||row?.groupid!==route.groupId||row?.shishentotal!==5||
@@ -1580,11 +1629,12 @@
     }
     const mapBossMounted=showMapBoss(destination,entry,groups);
     const dojoAreaMounted=showDojoArea(destination,entry,groups);
+    const forestMounted=showGuildForest(destination,entry,groups);
     showQinfeiBoss(destination,entry,groups);
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!mapBossMounted&&!dojoAreaMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
