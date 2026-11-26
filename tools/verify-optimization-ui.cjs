@@ -62,7 +62,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001,3004]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001,3004,3023]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
@@ -213,6 +213,7 @@ async function main(){
   const area=await ui(detail+'.textContent');
   assert.match(area,/国王湖.*每日条件及其实际参数由服务器下发.*静态战斗候选（权重 1）.*300092.*普通特殊条件候选（权重 0.2） · 10003.*限定%s回合.*参数池 1\[61,70\]/s);
   assert.match(area,/LBSWorldBossEngine.*LBSWorldBossXEngine.*地域鬼王普通阵容码目录.*10020215.*地域鬼王极难阵容码目录.*10020216/s);
+  assert.match(area,/挑战评分计算规则.*回合数.*总血量/s);
   await ui(`[...${detail}.querySelectorAll('section')].find(el=>el.firstChild.textContent.includes('静态战斗候选')).querySelector('button:last-child').click()`);
   await until(detail+'.textContent.includes("离线演练还需要该玩法下发的实际参数")');
   assert.doesNotMatch(await ui(detail+'.textContent'),/用库存离线复跑/);
@@ -348,6 +349,31 @@ async function main(){
     await ui('document.querySelector("[data-pve-code]").click()');
     assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
     assert.match(await ui('$("detail-heading").textContent'),/国王湖 · 普通 40 级 · 条件 70001/);
+    await ui('$("detail-dialog").close()');
+    const hardCalls=[];
+    const hardRegion={areaId:10092,star:10,modifierIds:[61712,61711]};
+    mockPve=(_plan,options)=>{
+     assert.deepEqual(options,{stageId:300092,groupId:300092,battleMode:3023,seed:options.seed,damageFloor:true,region:hardRegion});
+     hardCalls.push(options.seed);
+     return {...sample,...options,waveCount:3,wavesCleared:3,regionalBoss:{...hardRegion,eligible:true,
+      appliedModifiers:[61711,61712],metrics:{receivedDamage:9000,rounds:9}}};
+    };
+    await ui('document.querySelector(".regional-modes button:last-child").click()');
+    await until('!!document.querySelector(".regional-modifiers")');
+    const starField='document.querySelector(".regional-modifiers").previousElementSibling.querySelector("select")';
+    assert.match(await ui(starField+'.selectedOptions[0].textContent'),/1 星 · 敌方 64 级/);
+    assert.equal(await ui('document.querySelector(".regional-modifiers input[value=\'61711\']").closest("label").hidden'),true);
+    await ui(`{const star=${starField};star.value="10";star.dispatchEvent(new Event("change"));
+     for(const id of [61712,61711])[...document.querySelectorAll(".regional-modifiers input")].find(box=>Number(box.value)===id).click();}`);
+    await ui(stock+'.click()');
+    await until(status+'.textContent.includes("全随机分支待验证")',20000);
+    assert.deepEqual(hardCalls.slice(0,6),[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.textContent'),/9 回合 · 我方承伤 9,000 · 已观测词条 2 \/ 2/);
+    await ui('document.querySelector(".regional-modifiers").scrollIntoView({block:"start",behavior:"instant"})');
+    await capture('client-regional-boss-hard-replay');
+    await ui('document.querySelector("[data-pve-code]").click()');
+    assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
+    assert.match(await ui('$("detail-heading").textContent'),/国王湖 · 极难 10 星 · 决胜之心、蛇魔侵蚀/);
     await ui('$("detail-dialog").close()');
    }
    const awakeCalls=[];

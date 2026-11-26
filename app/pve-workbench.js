@@ -399,11 +399,14 @@
    const timing=hunting?null:AtlasRuneCandidate.commonSampleTiming(passed);
    const huntScores=new Map(hunting?passed.map(row=>[row,AtlasRuneCandidate.damageResult(row.samples)]):[]);
    const waveScores=new Map(relay?passed.map(row=>[row,AtlasRuneCandidate.waveResult(row.samples)]):[]);
+   const regionScores=new Map(next.pane.region?passed.map(row=>[row,AtlasRuneCandidate.regionalResult(row.samples)]):[]);
+   const dominated=new Set([...regionScores].filter(([row,score])=>[...regionScores].some(([other,otherScore])=>
+    other!==row&&AtlasRuneCandidate.regionalDominates(otherScore,score))).map(([row])=>row));
    passed.sort(relay?(a,b)=>{
     const first=waveScores.get(a),second=waveScores.get(b);
     return second.min-first.min||second.average-first.average||second.max-first.max||timing.get(a).seconds-timing.get(b).seconds;
    }:hunting?(a,b)=>AtlasRuneCandidate.compareDamage(huntScores.get(a),huntScores.get(b)):
-    (a,b)=>timing.get(a).seconds-timing.get(b).seconds);
+    (a,b)=>Number(dominated.has(a))-Number(dominated.has(b))||timing.get(a).seconds-timing.get(b).seconds);
    for(const row of passed){
     const waves=waveScores.get(row);
     if(waves){
@@ -421,6 +424,13 @@
     }
     const time=timing.get(row);
     const timeLabel=`最慢种子 ${time.seed} · ${time.combat?'开战至结算':'引擎全程'} ${time.seconds.toFixed(2)} 秒`;
+    const region=regionScores.get(row);
+    if(region){
+     const range=(min,max)=>min===max?damageText(min):`${damageText(min)}–${damageText(max)}`;
+     row.state.textContent=`${seeds.length} 场全胜 · ${range(...region.rounds)} 回合 · 承伤 ${range(...region.damage.map(Math.round))} · ${timeLabel}`+
+      (dominated.has(row)?' · 有备选在回合数与承伤两项上占优':'');
+     continue;
+    }
     row.state.textContent=`通过 ${seeds.length} 个采样种子 · ${timeLabel}`;
    }
    next.pane.results.prepend(...passed.map(row=>row.el));
@@ -428,6 +438,7 @@
    if(!useStock)next.originalsComplete=next.rows.every(row=>['loss','infeasible','scored'].includes(row.verdict));
    next.notice=passed.length?(relay?`${passed.length} 套接力已完成共同采样，按最低清波数排序。全随机分支待验证。`:
     hunting?`${passed.length} 套完成共同采样，按平均伤害排序。全随机分支待验证。`:
+    next.pane.region?`${passed.length} 套通过采样，优先显示回合数与承伤未被其他阵容同时超越的备选。全随机分支待验证。`:
     `${passed.length} 套通过采样，已按最慢样本用时排序。全随机分支待验证。`):
     useStock?(next.rows.length?'这一批库存备选未通过全部采样。':'当前库存不足以生成可复跑的新备选。'):
     next.originalsComplete?'勾选原码均未通过，可从库存寻找备选。':

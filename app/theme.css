@@ -146,6 +146,13 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .encounter-source{border:1px solid var(--line);padding:12px;margin-top:10px;border-radius:6px;min-width:0}
 .encounter-source h4{margin:0 0 8px}
 .encounter-source>button{margin-top:8px}
+.regional-modes [aria-pressed=true]{border-color:var(--accent);background:#f0e5ca}
+.regional-modifiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:8px;margin:12px 0;padding:10px;border:1px solid var(--line);border-radius:6px}
+.regional-modifiers legend{padding:0 6px;font-size:13px}
+#client-dungeons .regional-modifiers label{grid-template-columns:18px minmax(0,1fr);align-items:start;gap:8px;padding:8px;background:#f7f1e5;border-radius:4px}
+#client-dungeons .regional-modifiers label[hidden]{display:none}
+#client-dungeons .regional-modifiers input{width:auto;margin:2px 0 0}
+.regional-modifiers small{display:block;margin:3px 0 0;font-weight:400}
 .encounter-rule-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.65}
 .dungeon-encounter-waves{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:10px}
 .dungeon-encounter-waves section{padding:10px;background:#f2ede1;border-radius:5px}

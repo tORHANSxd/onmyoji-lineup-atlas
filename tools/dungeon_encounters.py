@@ -288,6 +288,8 @@ def encounter_index(source, load_rows):
             if isinstance(key, str) and key:
                 links.append(rule_reference(key, label))
         if name == "lbs_world_boss_area":
+            if "diyuguiwang_TIPS" in rules or "diyuguiwang_TIPS" in tips:
+                links.append(rule_reference("diyuguiwang_TIPS", "地域鬼王玩法与评分规则"))
             for choice in row.get("weighted_battles", ()):
                 if isinstance(choice, list) and len(choice) == 2:
                     label = "静态战斗候选"
@@ -324,6 +326,9 @@ def encounter_index(source, load_rows):
                 if ref:
                     links.append(ref)
         if name == "battle_mode_routes" and row.get("mode_symbol") == "MODE_LBS_WORLD_BOSSX":
+            ref = relation("Constant", 10414, "每星增加等级", False)
+            if ref:
+                links.append(ref)
             links.extend(region_modifiers())
         if name == "guild_crevice_area":
             for key in str(row.get("monster_id", "")).replace("|", ",").split(","):

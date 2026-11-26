@@ -505,6 +505,73 @@
     5: ['自动回复鬼火减少量'], 7: ['指定阴阳师'], 8: ['最少上阵数', '指定式神'], 9: ['式神属性编号'],
   };
 
+  async function showHardRegionalBoss(target, stageField, mountScenario) {
+    const route = stage.byKey.get(entryKey({table:'battle_mode_routes',key:3023}));
+    const modifierRefs = route?.refs.filter(ref => ref.table==='skill' && ref.found) || [];
+    if (!modifierRefs.length) {
+      target.replaceChildren(node('p','当前目录缺少极难词条的原表关联。','caption'));
+      return;
+    }
+    const [skills, [stepRow]] = await Promise.all([
+      api.records('skill', modifierRefs.map(ref => ref.key)), api.records('Constant',[10414]),
+    ]);
+    if (!target.isConnected) return;
+    const step = stepRow?.value?.[0];
+    if (!Number.isSafeInteger(step) || step<1 || skills.some(skill => !skill?.skill_name)) {
+      target.replaceChildren(node('p','当前目录无法核对极难等级与词条。','caption'));
+      return;
+    }
+    const star = node('select'), picker = node('fieldset','', 'regional-modifiers'), workbench = node('div');
+    for (let value=1; value<=10; value++) star.add(option(`${value} 星 · 敌方 ${60+value*step} 级`,value));
+    const chosen = [];
+    const rows = modifierRefs.map((ref, index) => {
+      const skill = skills[index], id = ref.key.$tuple[0];
+      const label = node('label'), box = node('input');
+      box.type='checkbox';
+      box.value=String(id);
+      const name = node('span',skill.skill_name);
+      name.append(node('small',skill.combatDesc||skill.desc||'','caption'));
+      label.append(box,name);
+      picker.append(label);
+      return {id,label,box,name:skill.skill_name,reward:ref.label==='极难奖励词条'};
+    });
+    const legend = node('legend','词条');
+    picker.prepend(legend);
+    const controls = node('div','','dungeon-controls'), starLabel = node('label','挑战星级');
+    starLabel.append(star);
+    controls.append(starLabel);
+    const stageInput = stageField.cloneNode(true);
+    if (stageInput.options.length>1) {
+      const label = node('label','战斗候选');
+      label.append(stageInput);
+      controls.append(label);
+    }
+    target.replaceChildren(controls,picker,node('p','按勾选顺序应用词条。实机挑战和词条使用受账号解锁进度限制。','caption'),workbench);
+    const render = () => {
+      const value = Number(star.value);
+      for (const {id,reward,box,label} of rows) {
+        const available = !reward || value===10, index = chosen.indexOf(id);
+        if (!available && index>=0) chosen.splice(index,1);
+        const selected = chosen.includes(id);
+        label.hidden = !available;
+        box.checked = selected;
+        box.disabled = !available || !selected && chosen.length>=10;
+      }
+      legend.textContent = `词条（${chosen.length} / 10）`;
+      const names = chosen.map(id => rows.find(row=>row.id===id).name);
+      mountScenario(workbench,stageInput.value,{star:value,modifierIds:[...chosen]},3023,
+        `极难 ${value} 星${names.length?' · '+names.join('、'):''}`,null,chosen.includes(61707)?20:0);
+    };
+    for (const {id,box} of rows) box.addEventListener('change',()=>{
+      if (box.checked) chosen.push(id);
+      else chosen.splice(chosen.indexOf(id),1);
+      render();
+    });
+    star.addEventListener('change',render);
+    stageInput.addEventListener('change',render);
+    render();
+  }
+
   function showRegionalBoss(destination, entry, groups, monsters) {
     if (entry.table !== 'lbs_world_boss_area' || state.index.resourceVersion !== AtlasRuneLineup.resourceVersion) return;
     const stages = groups.filter(group => group.ref.table === 'pve_stage_data' && group.row?.shishentotal === 5);
@@ -518,6 +585,13 @@
     }));
     if (!stages.length || !conditions.size) return;
     const panel = node('section', '', 'encounter-source');
+    const tabs = node('div','','actions regional-modes'), host = node('div'), ordinary = node('section');
+    tabs.setAttribute('role','group');
+    tabs.setAttribute('aria-label','地域鬼王难度');
+    const regularTab = node('button','普通','secondary'), hardTab = node('button','极难','secondary');
+    regularTab.type = hardTab.type = 'button';
+    tabs.append(regularTab,hardTab);
+    panel.append(tabs,host);
     const controls = node('div', '', 'dungeon-controls'), params = node('div', '', 'dungeon-controls');
     const workbench = node('div');
     const wrap = (caption, control) => {
@@ -534,35 +608,39 @@
     const stageLabel = wrap('战斗候选', stageField);
     if (stages.length > 1) controls.append(stageLabel);
     controls.append(wrap('难度等级', level), wrap('普通特殊条件', condition));
-    panel.append(node('h4', '普通地域鬼王离线演练'),
+    ordinary.append(node('h4', '普通地域鬼王离线演练'),
       node('p', '按游戏内显示选择等级和条件，或试算下列静态候选。战报显示清波、回合数和我方承伤。排行榜积分由游戏服务器计算。', 'caption'),
       controls, params, workbench);
     destination.append(panel);
+    const mountScenario = (target, stageKey, setup, battleMode, label, actorId, speedBonus=0) => {
+      const selected = stages.find(group => String(group.ref.key) === stageKey);
+      const groupId = selected?.row.groupid;
+      const formation = groups.find(group => group.ref.table === 'BattleMonstersInfo' && group.ref.key === groupId);
+      if (!formation?.waves.length) return;
+      const scenario = `${groups[0].row.area_name} · ${label}`;
+      const baseSpeed = Math.max(0, ...formation.waves.flatMap(wave => wave.map(unit => Number(monsters.get(unit.id)?.baseSpeed)||0)));
+      const codeId = battleMode===3023 ? 10020216 : 10020215;
+      const code = groups.find(group => group.ref.table === 'team_assist_stage' && group.ref.key === codeId)?.row;
+      target.replaceChildren();
+      window.AtlasPveWorkbench?.mount(target, {
+        stageId:Number(selected.ref.key), groupId, memberCount:5, battleMode, waveCount:formation.waves.length,
+        openingSpeed:baseSpeed + (formation.row.spd_alter||0) + speedBonus, label:scenario, region:{areaId:Number(entry.key),...setup},
+        actorId, codeStageId:code?.ss_num===5&&code?.yys_num===1?code.id:null, codeLabel:scenario, version:state.index.resourceVersion,
+      });
+    };
     const render = () => {
       const rule = conditions.get(condition.value);
       const fields = [...params.querySelectorAll('input,select')];
-      const selected = stages.find(group => String(group.ref.key) === stageField.value);
-      const groupId = selected.row.groupid;
-      const formation = groups.find(group => group.ref.table === 'BattleMonstersInfo' && group.ref.key === groupId);
-      if (!formation?.waves.length || [level, ...fields].some(field => !field.checkValidity())) {
+      if ([level, ...fields].some(field => !field.checkValidity())) {
         window.AtlasPveWorkbench?.unmount();
         workbench.replaceChildren(node('p', '请填写相符的等级和特殊条件参数。', 'caption'));
         return;
       }
-      const region = {areaId:Number(entry.key), level:level.valueAsNumber, ruleId:Number(condition.value),
+      const region = {level:level.valueAsNumber, ruleId:Number(condition.value),
         params:fields.map(field => Number(field.value)/Number(field.dataset.scale||1))};
-      const areaName = groups[0].row.area_name;
       const text = fields.map(field => field.selectedOptions?.[0]?.textContent ?? field.value+(field.dataset.scale?'%':''));
-      const scenario = `${areaName} · 普通 ${region.level} 级 · 条件 ${region.ruleId}（${text.join('、')}）`;
-      const baseSpeed = Math.max(0, ...formation.waves.flatMap(wave => wave.map(unit => Number(monsters.get(unit.id)?.baseSpeed)||0)));
-      const code = groups.find(group => group.ref.table === 'team_assist_stage' && group.ref.key === 10020215)?.row;
-      workbench.replaceChildren();
-      window.AtlasPveWorkbench?.mount(workbench, {
-        stageId:Number(selected.ref.key), groupId, memberCount:5, battleMode:3004, waveCount:formation.waves.length,
-        openingSpeed:baseSpeed + (formation.row.spd_alter||0), label:scenario, region,
-        actorId:rule.type===7?region.params[0]:null, codeStageId:code?.ss_num===5&&code?.yys_num===1?code.id:null,
-        codeLabel:scenario, version:state.index.resourceVersion,
-      });
+      const scenario = `普通 ${region.level} 级 · 条件 ${region.ruleId}（${text.join('、')}）`;
+      mountScenario(workbench,stageField.value,region,3004,scenario,rule.type===7?region.params[0]:null);
     };
     const updateRule = () => {
       const rule = conditions.get(condition.value);
@@ -590,7 +668,26 @@
     condition.addEventListener('change',updateRule);
     stageField.addEventListener('change',render);
     level.addEventListener('input',render);
-    updateRule();
+    const switchMode = hard => {
+      if (hard === (hardTab.getAttribute('aria-pressed')==='true') && host.firstChild) return;
+      window.AtlasPveWorkbench?.unmount();
+      regularTab.setAttribute('aria-pressed',String(!hard));
+      hardTab.setAttribute('aria-pressed',String(hard));
+      if (!hard) {
+        host.replaceChildren(ordinary);
+        updateRule();
+        return;
+      }
+      const hardPanel = node('section');
+      hardPanel.append(node('p','正在读取极难等级与词条…','caption'));
+      host.replaceChildren(hardPanel);
+      void showHardRegionalBoss(hardPanel,stageField,mountScenario).catch(()=>{
+        if(hardPanel.isConnected) hardPanel.replaceChildren(node('p','极难词条读取失败。','caption'));
+      });
+    };
+    regularTab.onclick=()=>switchMode(false);
+    hardTab.onclick=()=>switchMode(true);
+    switchMode(false);
   }
 
   function showUnderworld(destination,entry,config){

@@ -24,11 +24,13 @@ const engines={
  2000:{name:'GuildHuntingBattleEngine',route:'guild-hunting-local-owned',sha256:guildHuntOpenings.engineSHA256},
  2001:{name:'GuildLieFengEngine',route:'underworld-gate-local-solo',sha256:'5ee939050f18dc8de1960d88ce5181f5735fb89477c3736e1f32ac696426d625'},
  3004:{name:'LBSWorldBossEngine',route:'regional-boss-ordinary-scenario',sha256:'d7430531c4dd85fa2c3fc14b2c55677ee7d030e4703e8806887a3d55a0821174'},
+ 3023:{name:'LBSWorldBossXEngine',route:'regional-boss-hard-scenario',sha256:'a4268deb478a53610e6ef6e23e833f3bf18d2be826f7cd703aaca7e1a54df38f'},
  [firstExperience.battleMode]:{name:'NewExpEngine',route:'resource-first-new-server-exp',sha256:resourceEncounters.engineSHA256},
 };
 const positive=value=>Number.isSafeInteger(value)&&value>0;
 const sha256=value=>createHash('sha256').update(value).digest('hex');
 const validHash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
+const regionModes=[3004,3023];
 
 function validTactics(plan,battleMode){
  if(!Object.hasOwn(plan,'tactics'))return true;
@@ -70,19 +72,35 @@ function validScoringTactics(data,tactics,bossId){
   positive(action?.heroId)&&positive(action?.skillId)&&action.targetId===bossId:action===undefined);
 }
 
-function validRegion(region){
- return region&&Object.keys(region).length===4&&positive(region.areaId)&&positive(region.ruleId)&&
+function validRegion(region,battleMode){
+ if(!region||!positive(region.areaId))return false;
+ if(battleMode===3023){
+  const {star,modifierIds}=region;
+  return Object.keys(region).length===3&&positive(star)&&star<=10&&Array.isArray(modifierIds)&&modifierIds.length<=10&&
+   new Set(modifierIds).size===modifierIds.length&&modifierIds.every(skill=>
+    Number.isSafeInteger(skill)&&skill>=61701&&skill<=(star===10?61712:61710));
+ }
+ return Object.keys(region).length===4&&positive(region.ruleId)&&
   positive(region.level)&&region.level<=60&&Array.isArray(region.params)&&region.params.length>=1&&
   region.params.length<=2&&region.params.every(value=>Number.isFinite(value)&&value>=0);
 }
 
 function validRegionalReport(report,region){
  const actual=report.regionalBoss;
+ const hard=report.battleMode===3023;
+ const level=hard?60+4*region.star:region.level;
  return actual&&sameTactics(region,Object.fromEntries(Object.keys(region).map(key=>[key,actual[key]])))&&
+  (!hard||(actual.effectiveLevel===level&&Array.isArray(actual.appliedModifiers)&&
+   new Set(actual.appliedModifiers).size===actual.appliedModifiers.length&&
+   actual.appliedModifiers.every(skill=>region.modifierIds.includes(skill))&&Array.isArray(actual.snakeSpawns)&&
+   [true,false,null].includes(actual.paperDollAlive)&&(actual.paperDollAlive===null||region.modifierIds.includes(61703))&&
+   actual.snakeSpawns.every(unit=>unit.id===1192078&&unit.level===40&&[5,6].includes(unit.position)&&
+    positive(unit.wave)&&unit.wave<=report.waveCount)&&
+   actual.appliedModifiers.includes(61711)===!!actual.snakeSpawns.length))&&
   [true,false,null].includes(actual.eligible)&&Array.isArray(actual.formations)&&
   actual.formations.length>=report.wavesCleared&&actual.formations.length<=report.waveCount&&
   actual.formations.every(wave=>Array.isArray(wave)&&wave.length&&wave.every(unit=>
-   positive(unit.position)&&positive(unit.id)&&unit.level===region.level&&Number.isFinite(unit.hp)&&
+   positive(unit.position)&&positive(unit.id)&&unit.level===level&&Number.isFinite(unit.hp)&&
    unit.hp>0&&Number.isFinite(unit.speed)&&unit.speed>0))&&
   (report.completed?actual.eligible===true&&typeof actual.metrics==='object'&&
    Number.isFinite(actual.metrics?.receivedDamage)&&actual.metrics.receivedDamage>=0&&
@@ -139,7 +157,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
     (retreatOpening&&!validRetreat(report,retreatOpening,retreat,tactics))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
-    (battleMode===3004&&!validRegionalReport(report,region))||
+    (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
       report.formationsVerified>report.waveCount))||
@@ -166,7 +184,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     const [awake,secret,yuling,resource,hunt,underworld,retreat,regional]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
      has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
-     ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?[3004]:[])]};
+     ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -201,8 +219,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('麒麟狩猎复跑需要已核验的战斗和五位自有式神');
    if(battleMode===2001&&(stageId!==groupId||![101,102,103].includes(stageId)))
     throw Error('阴界之门复跑需要已核验的单人入口');
-   if(battleMode===3004&&(!validRegion(region)||plan.members.length!==5))
-    throw Error('地域鬼王复跑需要地点、难度、当日特殊条件和五位自有式神');
+   if(regionModes.includes(battleMode)&&(!validRegion(region,battleMode)||plan.members.length!==5))
+    throw Error('地域鬼王复跑需要地点、难度、合法的特殊条件和五位自有式神');
    if(battleMode===firstExperience.battleMode&&(resourceEncounters.resourceVersion!==resourceVersion||
       stageId!==firstExperience.stageId||groupId!==firstExperience.groupId||plan.members.length!==firstExperience.memberCount))
     throw Error('此入口只适用于新服首次经验妖怪的五式神配装');
@@ -222,14 +240,14 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(damageFloor)args.push('--minimum-damage');
     if(battleMode===306)args.push('--boss',String(groupId),'--raid-round',String(retreat.raidRound),
      '--guild-members',String(retreat.guildMembers),'--window-seconds',String(retreat.windowSeconds));
-    if(battleMode===3004)args.push('--region',JSON.stringify(region));
+    if(regionModes.includes(battleMode))args.push('--region',JSON.stringify(region));
     const code=await launch(config.python,args,dir,AbortSignal.any([cancel.signal,deadline]));
     cancel.signal.throwIfAborted();
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
     return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,tactics:plan.tactics,rounds,
-     retreat:battleMode===306?retreat:null,region:battleMode===3004?region:null});
+     retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');
     if(deadline.aborted)throw Error('副本原版复跑超时');

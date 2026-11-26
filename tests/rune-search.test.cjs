@@ -8,6 +8,20 @@ const T=require('../desktop/ta-codec.cjs');
 const {candidates,pveCandidates,teamKey,sampleSeeds,baseSampleSeeds,hun13Candidates,hun13Key,hun13SampleSeeds}=require('../app/rune-search.js');
 const data=require('../data/bundle.json');
 
+test('地域鬼王只在共同种子回合与承伤均占优时判定更佳',()=>{
+ const score=(seed,rounds,receivedDamage)=>({seed,completed:true,outcome:'win',regionalBoss:{metrics:{rounds,receivedDamage}}});
+ const strong=R.regionalResult([score(0,4,500),score(1,5,600)]);
+ const weak=R.regionalResult([score(0,5,500),score(1,5,700)]);
+ const tradeoff=R.regionalResult([score(0,3,650),score(1,4,700)]);
+ const otherSeed=R.regionalResult([score(2,5,500),score(1,5,700)]);
+ assert.ok(R.regionalDominates(strong,weak));
+ assert.equal(R.regionalDominates(weak,strong),false);
+ assert.equal(R.regionalDominates(strong,tradeoff),false);
+ assert.equal(R.regionalDominates(tradeoff,strong),false);
+ assert.equal(R.regionalDominates(strong,otherSeed),false);
+ assert.equal(R.regionalResult([{...score(0,4,500),outcome:'loss'}]),null);
+});
+
 function inventory(){
  const ids=[591,389,596,557,379];
  const heroes=Object.fromEntries(ids.map(id=>{

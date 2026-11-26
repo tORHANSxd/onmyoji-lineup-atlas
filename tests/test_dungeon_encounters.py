@@ -18,13 +18,14 @@ class EncounterIndexTests(unittest.TestCase):
                                             "special_attacks": [[[10003, 0.2], [30004, 0.4], [30004, 0.4]]]}]],
             "lbs_world_boss_init": [[7, {"dist_name": "欧洲"}]],
             "lbs_world_boss_type": [[10003, {"desc": "限定%s回合"}], [30004, {"desc": "稀有度限制"}]],
+            "tipsInfoData_cn": [["diyuguiwang_TIPS", "地域鬼王评分说明"]],
             "pve_stage_data": [["300092", {"id": "300092", "groupid": 300092}]],
             "BattleMonstersInfo": [[300092, {"resindex": 11032}]],
             "Combinesceneinfo": [[11032, {}]],
             "monster": [[3092276, {"name": "首领"}]],
             "battle_mode_routes": [[3004, {"mode_symbol": "MODE_LBS_WORLD_BOSS", "scene_engine": "LBSWorldBossEngine"}],
                                    [3023, {"mode_symbol": "MODE_LBS_WORLD_BOSSX", "scene_engine": "LBSWorldBossXEngine"}]],
-            "Constant": [[10409, {"value": [61701.0]}], [10418, {"value": [61711.0]}]],
+            "Constant": [[10409, {"value": [61701.0]}], [10418, {"value": [61711.0]}], [10414, {"value": [4]}]],
             "skill": [[base_skill, {}], [reward_skill, {}], [{"$tuple": [61711, 2, 2]}, {}]],
             "team_assist_stage": [[10020215, {}], [10020216, {}]],
         }
@@ -33,13 +34,14 @@ class EncounterIndexTests(unittest.TestCase):
         entries = {(entry["table"], entry["key"]): entry for entry in index["entries"]}
         area = entries["lbs_world_boss_area", 10092]
         self.assertEqual([ref["key"] for ref in area["refs"]],
-                         [7, "300092", 3092276, 10003, 30004, 3004, 3023, 10020215, 10020216, 300092, 11032])
-        self.assertEqual(area["refs"][3]["label"], "普通特殊条件候选（权重 0.2）")
-        self.assertEqual(area["refs"][4]["label"], "普通特殊条件候选（权重 0.4 + 0.4）")
+                         [7, "diyuguiwang_TIPS", "300092", 3092276, 10003, 30004, 3004, 3023,
+                          10020215, 10020216, 300092, 11032])
+        self.assertEqual(area["refs"][4]["label"], "普通特殊条件候选（权重 0.2）")
+        self.assertEqual(area["refs"][5]["label"], "普通特殊条件候选（权重 0.4 + 0.4）")
         stage_refs = entries["pve_stage_data", "300092"]["refs"]
         self.assertTrue(any(ref["table"] == "lbs_world_boss_area" and ref["key"] == 10092 for ref in stage_refs))
         modifiers = entries["battle_mode_routes", 3023]["refs"]
-        self.assertEqual([ref["key"] for ref in modifiers], [10409, base_skill, 10418, reward_skill])
+        self.assertEqual([ref["key"] for ref in modifiers], [10414, 10409, base_skill, 10418, reward_skill])
         self.assertEqual(index["unresolvedReferences"], 0)
 
     def test_guild_retreat_difficulty_follows_the_composite_raid_key(self):

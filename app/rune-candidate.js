@@ -117,6 +117,21 @@ function waveResult(samples){
  return {min:Math.min(...waves),max:Math.max(...waves),average:waves.reduce((total,value)=>total+value,0)/waves.length};
 }
 
+function regionalResult(samples){
+ const metrics=samples.map(report=>({seed:report.seed,...report.regionalBoss?.metrics}));
+ if(!metrics.length||samples.some(report=>!report.completed||report.outcome!=='win')||
+  metrics.some(row=>!Number.isSafeInteger(row.rounds)||row.rounds<0||!Number.isFinite(row.receivedDamage)||row.receivedDamage<0))return null;
+ const rounds=metrics.map(row=>row.rounds), damage=metrics.map(row=>row.receivedDamage);
+ return {metrics,rounds:[Math.min(...rounds),Math.max(...rounds)],damage:[Math.min(...damage),Math.max(...damage)]};
+}
+
+function regionalDominates(a,b){
+ if(!a||!b||a.metrics.length!==b.metrics.length)return false;
+ return a.metrics.every((row,index)=>row.seed===b.metrics[index].seed&&
+  row.rounds<=b.metrics[index].rounds&&row.receivedDamage<=b.metrics[index].receivedDamage)&&
+  a.metrics.some((row,index)=>row.rounds<b.metrics[index].rounds||row.receivedDamage<b.metrics[index].receivedDamage);
+}
+
 async function underworldTemplates(row,data,{stageId,groupId,codeStageId,codeLabel}){
  const seeds=S.baseSampleSeeds;
  if(row.samples.length!==seeds.length||!waveResult(row.samples)||!row.samples.every((report,i)=>
@@ -151,9 +166,12 @@ async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeSt
  const seeds=S.baseSampleSeeds;
  const instructions=scoreInstructions(row.plan.tactics);
  const matchesRegion=report=>{
-  if(battleMode!==3004)return true;
+  if(![3004,3023].includes(battleMode))return true;
   const actual=report.regionalBoss;
-  return region&&actual?.eligible===true&&region.areaId===actual.areaId&&region.level===actual.level&&
+  if(!region||actual?.eligible!==true||region.areaId!==actual.areaId)return false;
+  if(battleMode===3023)return region.star===actual.star&&actual.modifierIds?.length===region.modifierIds.length&&
+   region.modifierIds.every((value,index)=>value===actual.modifierIds[index]&&actual.appliedModifiers?.includes(value));
+  return region.level===actual.level&&
    region.ruleId===actual.ruleId&&actual.params?.length===region.params.length&&
    region.params.every((value,index)=>value===actual.params[index]);
  };
@@ -238,5 +256,6 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageMode,damageResult,compareDamage,waveResult,underworldTemplates,scoreInstructions,readScoreInstructions,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
+return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageMode,damageResult,compareDamage,waveResult,
+ regionalResult,regionalDominates,underworldTemplates,scoreInstructions,readScoreInstructions,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
 });
