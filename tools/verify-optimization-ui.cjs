@@ -5,7 +5,7 @@ const {readIndex,readTable,readEncounters,readRecords}=require('../desktop/dunge
 const {createRuneRunner}=require('../desktop/rune-runner.cjs');
 const {createRuneFloorRunner}=require('../desktop/rune-floor-runner.cjs');
 const {createPveStageRunner}=require('../desktop/pve-stage-runner.cjs');
-const {sampleSeeds:commonSeeds,teamKey}=require('../app/rune-search.js');
+const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
 const game=require('../app/game-config.js');
 const {Background}=require('../desktop/background.cjs');
 const {applyLatestHeroes}=require('../desktop/latest-heroes.cjs');
@@ -26,28 +26,18 @@ async function capture(name){await win.webContents.capturePage(undefined,{stayHi
 async function main(){
  await app.whenReady();await fs.mkdir(profile,{recursive:true});
  const data=applyLatestHeroes(JSON.parse(await fs.readFile(path.join(root,'data/bundle.json'),'utf8')));data.officialUpdate={autoUpdate:false};stored=blank();
- const background=new Background(),shareCalls=[],batchShareCalls=[];
- let mockBatchShare=null,clipboardText='';
+ const background=new Background();
  const local=(name,fn)=>{ipcMain.handle(name,(_e,...args)=>fn(...args));if(name==='export-json')ipcMain.handle('export-json-text',(_e,p)=>fn({name:p.name,data:JSON.parse(p.text)}));if(['load-data','load-state'].includes(name))ipcMain.handle(name+'-json',async(_e,...args)=>JSON.stringify(await fn(...args)));if(['save-state','save-parsed-state'].includes(name))ipcMain.handle(name+'-json',(_e,text)=>fn(JSON.parse(text)));};
  local('save-state-fields-json',async text=>{if(holdSave)await new Promise(resolve=>heldSaves.push(resolve));if(failSave)throw Error('synthetic disk full');if(!stored)return {needsSnapshot:true};stored={...JSON.parse(text),lineups:stored.lineups};return {saved:true};});
  local('parse-json',text=>JSON.parse(text));local('save-parsed-delta',()=>({needsSnapshot:true}));
  let status={authenticated:false,busy:false,stage:'idle',servers:[],selected_avatar:'',remembered_accounts:[]};
- const getTestLogin=()=>status,setTestLogin=next=>{status=next;win.webContents.send('ta-status-changed',status);};
  local('load-data',()=>data);local('load-state',()=>{if(failLoad)throw Error('synthetic corrupt database');return stored;});
  for(const channel of ['save-state','save-parsed-state'])local(channel,async s=>{if(holdSave)await new Promise(resolve=>heldSaves.push(resolve));if(failSave)throw Error('synthetic disk full');stored=structuredClone(s);return {saved:true};});
  local('export-json',payload=>{if(failExport)throw Error('synthetic read-only target');exported=structuredClone(payload.data);return true;});
  local('ta-status',()=>status);local('ta-action',(_action,p)=>{status={...status,risk_accepted:p?.accepted};return status;});local('ta-logout',()=>status);
- local('copy-code',code=>{clipboardText=code;return {copied:true};});local('import-files',()=>[]);
+ local('copy-code',()=>({copied:true}));local('import-files',()=>[]);
  local('build-lineup',input=>background.run('build',{input,catalog:data}));
- local('ta-share',async (code,epoch)=>{
-  if(epoch!==undefined){
-   if(epoch!==status.share_epoch||!status.authenticated)throw Error('synthetic changed role');
-   batchShareCalls.push({code,epoch});
-   const reply=await mockBatchShare(code);
-   if(epoch!==status.share_epoch||!status.authenticated)throw Error('synthetic changed role');
-   return reply;
-  }
-  shareCalls.push(code);
+ local('ta-share',async code=>{
   return {code:await background.run('verify-share',{code,response:{err:0,share_key:'qa-stock-share',lineup_data:code}})};
  });
  for(const channel of ['official-status','official-auto','official-refresh','official-cancel'])local(channel,()=>({autoUpdate:false}));
@@ -65,7 +55,7 @@ async function main(){
  local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001,3004,3023,5550,5551,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
- let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
+ let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
  const seedEvidence=(props={})=>({scope:'local-solo-rune',status:'incomplete',total:10000,wins:73,loss:null,
   slowest:{seed:13,engineSeconds:25.5,combatMs:14400},...props});
  local('rune-battle-status',async()=>runeEnabled?{...(await rune?.status()||{available:true,resourceVersion:'0.0.816'}),floors:[101,102,103]}:{available:false});
@@ -75,11 +65,7 @@ async function main(){
   const runner=options?.dungeonId===101?runeFloor:rune;
   return mockBattle?.(plan,options)||runner?.run(plan,options)||{seed:options?.seed??0,engineSeconds:13,completed:true,outcome:'win',wavesCleared:3,bouts:6,overlapMs:873,unresolvedActions:0,spirit:plan.spirit&&{id:plan.spirit.id,star:plan.spirit.star,level:plan.spirit.lv}};
  });
- local('rune-battle-verify-random',(plan,seed,id)=>{
-  const progress=update=>win.webContents.send('rune-battle-random-progress',id,update);
-  return mockRandom?mockRandom(plan,seed,progress):rune?.verifyRandom(plan,seed,progress);
- });
- local('rune-battle-seed-evidence',(plan,dungeonId)=>savedEvidence?.(plan,dungeonId)??null);
+ local('rune-battle-seed-evidence',()=>null);
  local('rune-battle-verify-seeds',(plan,id,dungeonId)=>mockSeeds(plan,update=>win.webContents.send('rune-battle-seeds-progress',id,update),dungeonId));
  local('rune-battle-stop',()=>stopSeeds?stopSeeds():stopRandom?stopRandom():runeFloor?.stop()||rune?.stop());
  win=new BrowserWindow({width:1440,height:1000,show:false,webPreferences:{preload:path.join(root,'desktop/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,backgroundThrottling:false}});
@@ -108,8 +94,8 @@ async function main(){
     await until(detail+'.textContent.includes("第 70 波 · 40 级 · 随机组 300050")');
     await ui('qaOpenUnderworld("第 1 波 · 10 级")');
     await until(detail+'.textContent.includes("天邪鬼绿 · 10 级 · 2 号位")');
-    assert.equal(await ui(detail+'.querySelector("select").options.length'),207);
-    await ui(`{const menu=${detail}.querySelector('select');menu.value='1';menu.dispatchEvent(new Event('change'));}`);
+    assert.equal(await ui(detail+'.querySelector("select:not([data-pve-lineup])").options.length'),207);
+    await ui(`{const menu=${detail}.querySelector('select:not([data-pve-lineup])');menu.value='1';menu.dispatchEvent(new Event('change'));}`);
     await until(detail+'.textContent.includes("唐纸伞妖 · 10 级 · 2 号位")');
     await ui('qaOpenUnderworld("第 70 波 · 40 级")');
     await until(detail+'.textContent.includes("清姬【裂缝BOSS】 · 40 级 · 1 号位")');
@@ -275,7 +261,7 @@ async function main(){
   await ui('$("client-dungeons").open=false');
  });
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
- if(catalog?.index.encounters)await check('通用 PvE 优先复跑勾选原码，觉醒和秘闻按原版开场测试库存与阵容码',async()=>{
+ if(catalog?.index.encounters)await check('已知阵容按副本匹配、使用原版入口并保留逐场战报',async()=>{
   const ids=[591,389,596,554,379,557],heroes={},items=[];
   for(const id of ids){
    const prototype=data.gameConfig.heroes[id],prefix='pve-'+id;
@@ -287,443 +273,150 @@ async function main(){
     mainAttrType:['attack_flat','speed','defense_flat','attack_rate','hp_flat','crit_rate'][i],
     mainAttrValue:[486,57,104,.55,2052,.55][i],subAttributes:[{type:'crit_rate',value:.1}]}));
   }
-  const fighters=ids.slice(0,3).map((id,index)=>({index:index+1,kind:'shikigami',name:data.gameConfig.heroes[id].name,
+  const fighters=ids.map((id,index)=>({index:index+1,kind:'shikigami',name:data.gameConfig.heroes[id].name,
    shikigamiId:String(id),level:40,star:6,awakening:1,skills:heroes['pve-'+id].skinfo.map(([id,level])=>({id,level})),
    aiSkill:0,config:{keepCurrent:true}}));
-  const selected=[10,13].map((id,i)=>({id:'qa-pve-'+id,title:'复跑原码 '+i,code:'|TA|qa-pve-'+id,
-   gameSceneId:1001001,requirementsComplete:true,decodeState:'decoded-local',members:[
-    {index:0,kind:'onmyoji',name:data.gameConfig.heroes[id].name,onmyojiId:String(id),level:60,star:2,awakening:0,aiSkill:0,
-     skills:(i?[1304,1302]:[1008,1011]).map(id=>({id,level:5}))},...fighters]}));
+  function known(id,gameSceneId,count,onmyoji=10,notes=''){
+   return {id:'qa-known-'+id,title:'已知阵容 '+id,code:'|TA|qa-known-'+id,notes,
+    gameSceneId,requirementsComplete:true,decodeState:'decoded-local',members:[
+     {index:0,kind:'onmyoji',name:data.gameConfig.heroes[onmyoji].name,onmyojiId:String(onmyoji),level:60,star:2,awakening:0,aiSkill:0,
+      skills:(onmyoji===13?[1304,1302]:[1008,1011]).map(id=>({id,level:5}))},...fighters.slice(0,count)]};
+  }
+  const notes='资源 0.0.816，6 场离线结算。我方伤害取下限。阴阳师普攻 1 级。开场操作。入场前把第1位式神设为自动普攻。手动开场，首动普攻首领后切自动。红标首领。绿标第3位式神。全分支待验证。';
+  const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
+  const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
+   known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
+   known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('spider',10020221,5),
+   known('region',10020215,5,13),known('region-hard',10020216,5)];
   const boot=await ui('JSON.stringify(STATE)');
-  const calls=[],sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
+  const cases=JSON.parse(await readEncounters(catalog)).entries;
+  const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
    animationPlayback:{combatElapsedMs:6910,combatOverlapMs:1100,interruptedClips:0,unresolved:0}};
-  let mode='loss';
-  mockPve=(plan,options)=>{
-   const {stageId,groupId,seed}=options;
-   assert.equal(stageId,31811);assert.equal(groupId,31811);
-   assert.equal(plan.members.length,3);
-   assert.equal(new Set(plan.members.map(row=>row.instanceId)).size,3);
-   const souls=plan.members.flatMap(row=>row.souls.map(q=>q.id));
-   assert.equal(new Set(souls).size,souls.length);
-   assert.ok(souls.every(id=>items.some(q=>q.id===id)));
-   calls.push({actor:plan.onmyoji.heroId,seed});
-   if(mode==='hold')return new Promise(resolve=>{stopPve=()=>resolve({...sample,seed});});
-   return mode==='loss'?{...sample,seed,outcome:'loss',wavesCleared:0}:{...sample,seed};
-  };
+  const panel='$("client-dungeons-encounter-detail")';
+  const options='document.querySelector("[data-pve-lineup]")';
+  const start='document.querySelector("[data-pve-start]")';
   const reports='document.querySelector("[data-pve-results]")';
   const status='document.querySelector("[data-pve-status]")';
-  const stock='document.querySelector("[data-pve-stock]")';
+  const noSearch=()=>ui('!document.querySelector("[data-pve-stock],#dungeon-search-stock,[data-pve-auto-share],#dungeon-auto-share")');
+  async function choose(id){
+   await until(options+'?.querySelector("option[value=qa-known-'+id+']")!=null');
+   await ui(options+'.value='+JSON.stringify('qa-known-'+id)+';'+options+'.dispatchEvent(new Event("change"))');
+   await until(start+'?.disabled===false');
+  }
+  async function encounter(family,query){
+   await ui('qaEncounterInput('+JSON.stringify(family)+','+JSON.stringify(query)+')');
+   await until(start+'!==null');
+  }
+  async function run(id,expected,response={},tactics,actor=10,count=5,live=false){
+   const calls=[],verified=[];
+   mockPve=async (plan,options)=>{
+    assert.deepEqual(options,{...expected,seed:options.seed,damageFloor:true});
+    if(expected.battleMode===2001){
+     assert.equal(plan.rounds.length,1);plan=plan.rounds[0];
+    }
+    assert.equal(plan.onmyoji.heroId,actor);
+    assert.deepEqual(plan.members.map(member=>member.hero.heroId),ids.slice(0,count));
+    assert.deepEqual(plan.tactics,tactics);
+    const souls=plan.members.flatMap(row=>row.souls.map(q=>q.id));
+    assert.equal(new Set(souls).size,6*count);
+    calls.push(options.seed);
+    if(!live)return {...sample,...options,...response};
+    const report=await pve.run(plan,options);
+    assert.equal(report.stageId,expected.stageId);
+    assert.equal(report.completed,true);
+    verified.push({seed:report.seed,outcome:report.outcome,engineSeconds:report.engineSeconds});
+    return report;
+   };
+   await choose(id);
+   assert.equal(await noSearch(),true);
+   await ui(start+'.click()');
+   await until(status+'.textContent.includes("全随机分支待验证")'+(live?'||'+status+'.textContent.includes("未通过本次采样")':''),live?110000:20000);
+   assert.deepEqual(calls,[0,1,2,3,7,42].slice(0,live?verified.length:6));
+   if(live){
+    assert.ok(verified.length);
+    console.log('31811 selected lineup native results',JSON.stringify(verified));
+   }
+   return ui(reports+'.textContent');
+  }
   try{
-   await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify(selected)},accounts:[C.parseAccount(${JSON.stringify({...raw,heroes,hero_equips:items})})]};
-    STATE.activeAccount=STATE.accounts[0].id;selectView('library');$('client-dungeons').open=true;
-    $('client-dungeons-mode-encounters').click();qaEncounterInput('battle','31811');
-    selectedLineups=new Set(['qa-pve-13','qa-pve-10']);renderSelection();`);
-   await until('!!document.querySelector("[data-pve-start]:not([disabled])")');
-   assert.equal(await ui(stock+'.hidden'),true);
-   await ui('document.querySelector("[data-pve-start]").click()');
-   await until('!!document.querySelector("[data-pve-stock]:not([hidden]):not([disabled])")',15000);
-   assert.deepEqual(calls,[{actor:13,seed:0},{actor:10,seed:0}]);
-   assert.match(await ui(reports+'.textContent'),/复跑原码 1.*种子 0 未通关.*复跑原码 0.*种子 0 未通关/s);
-   mode='win';await ui(stock+'.click()');
-   await until(status+'.textContent.includes("全随机分支待验证")',18000);
-   assert.match(await ui(reports+'.textContent'),/通过 6 个采样种子.*开战至结算 6\.91 秒/s);
-   assert.match(await ui(reports+'.textContent'),/复跑原码 1.*种子 0 未通关.*复跑原码 0.*种子 0 未通关/s);
-   assert.deepEqual(calls.slice(2,8).map(row=>row.seed),[0,1,2,3,7,42]);
-   await ui(reports+'.querySelector("details").open=true;'+status+'.scrollIntoView({block:"start",behavior:"instant"})');
-   await capture('pve-stock-samples');
-   win.setContentSize(720,960);
-   try{assert.equal(await ui(reports+'.scrollWidth<='+reports+'.clientWidth+2'),true);}
-   finally{win.setContentSize(1440,1000);}
-   mode='hold';
-   await ui('document.querySelector("[data-pve-start]").focus();document.querySelector("[data-pve-start]").click()');
-   await until(status+'.textContent.includes("种子 0")',12000);
-   assert.equal(await ui('document.activeElement.matches("[data-pve-stop]")'),true);
+   await ui('stopMatch();STATE={...STATE,lineups:'+JSON.stringify(squads)+',accounts:[C.parseAccount('+
+    JSON.stringify({...raw,heroes,hero_equips:items})+')]};STATE.activeAccount=STATE.accounts[0].id;selectView("library");'+
+    '$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click();selectedLineups.clear();renderSelection()');
+   await encounter('battle','31811');
+   assert.equal(await ui(start+'.disabled'),true);
+   assert.match(await run('story',{stageId:31811,groupId:31811},{},undefined,10,3,!!pve),/已知阵容 story.*(通过 6 个采样种子|种子 \d+ 未通关)/s);
+   let held=false;
+   mockPve=(_plan,{seed})=>new Promise(resolve=>{held=true;stopPve=()=>resolve({...sample,seed});});
+   await ui(start+'.focus();'+start+'.click()');
+   await until('document.activeElement.matches("[data-pve-stop]") && '+status+'.textContent.includes("种子 0")',18000);
+   assert.equal(held,true);
    await ui('document.activeElement.click()');
-   await until(status+'.textContent.includes("复跑已停止")');
-   assert.equal(await ui('document.activeElement.matches("[data-pve-start]")'),true);
-   assert.doesNotMatch(await ui(reports+'.textContent'),/本次复跑通关/);
+   await until(status+'.textContent.includes("复跑已停止")&&document.activeElement.matches("[data-pve-start]")');
+   const libraryOrder=[];
+   mockPve=(plan,{seed})=>{libraryOrder.push(plan.onmyoji.heroId);return {...sample,seed,outcome:'loss',wavesCleared:0};};
+   await ui(options+'.value="";selectedLineups=new Set(["qa-known-story-other","qa-known-story","qa-known-awake"]);renderSelection();'+start+'.click()');
+   await until(status+'.textContent.includes("未通过本次采样")');
+   assert.deepEqual(libraryOrder,[13,10]);
+   await ui('selectedLineups.clear();renderSelection()');
    await ui('qaEncounterInput("battle","30101 剧情：晴明单挑犬神")');
-   await until('$("client-dungeons-encounter-detail").textContent.includes("剧情：晴明单挑犬神")');
-   assert.equal(await ui('document.querySelector("[data-pve-start]")===null'),true);
-   if(catalog.entries.has('lbs_world_boss_area')){
-    const regionalCalls=[];
-    const region={areaId:10092,level:40,ruleId:70001,params:[13]};
-    mockPve=(plan,options)=>{
-     assert.deepEqual(options,{stageId:300092,groupId:300092,battleMode:3004,seed:options.seed,damageFloor:true,region});
-     assert.equal(plan.onmyoji.heroId,13);
-     assert.equal(plan.members.length,5);
-     regionalCalls.push(options.seed);
-     return {...sample,...options,waveCount:3,wavesCleared:3,regionalBoss:{...region,eligible:true,
-      metrics:{receivedDamage:1010,rounds:12}}};
-    };
-    await ui('selectedLineups.clear();renderSelection();qaEncounterInput("daily","地域鬼王 国王湖")');
-    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-    const regionalForm='[...$("client-dungeons-encounter-detail").querySelectorAll("section")].find(el=>el.firstChild.textContent==="普通地域鬼王离线演练")';
-    await ui(`{const form=${regionalForm},[level]=form.querySelectorAll("input[type=number]"),rule=form.querySelector("select");
-     level.value="61";level.dispatchEvent(new Event("input"));}`);
-    assert.match(await ui(regionalForm+'.textContent'),/请填写相符的等级和特殊条件参数/);
-    await ui(`{const form=${regionalForm},level=form.querySelector("input[type=number]"),rule=form.querySelector("select");
-     level.value="40";rule.value="70001";rule.dispatchEvent(new Event("change"));
-     const param=form.querySelectorAll("select")[1];param.value="13";param.dispatchEvent(new Event("change"));}`);
-    assert.match(await ui(regionalForm+'.textContent'),/源博雅/);
-    await ui(stock+'.click()');
-    await until(status+'.textContent.includes("全随机分支待验证")',20000);
-    assert.deepEqual(regionalCalls.slice(0,6),[0,1,2,3,7,42]);
-    assert.match(await ui(reports+'.textContent'),/12 回合 · 我方承伤 1,010/);
-    await ui(regionalForm+'.scrollIntoView({block:"start",behavior:"instant"})');
-    await capture('client-regional-boss-replay');
-    await ui('document.querySelector("[data-pve-code]").click()');
-    assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
-    assert.match(await ui('$("detail-heading").textContent'),/国王湖 · 普通 40 级 · 条件 70001/);
-    await ui('$("detail-dialog").close()');
-    const hardCalls=[];
-    const hardRegion={areaId:10092,star:10,modifierIds:[61712,61711]};
-    mockPve=(_plan,options)=>{
-     assert.deepEqual(options,{stageId:300092,groupId:300092,battleMode:3023,seed:options.seed,damageFloor:true,region:hardRegion});
-     hardCalls.push(options.seed);
-     return {...sample,...options,waveCount:3,wavesCleared:3,regionalBoss:{...hardRegion,eligible:true,
-      appliedModifiers:[61711,61712],metrics:{receivedDamage:9000,rounds:9}}};
-    };
-    await ui('document.querySelector(".regional-modes button:last-child").click()');
-    await until('!!document.querySelector(".regional-modifiers")');
-    const starField='document.querySelector(".regional-modifiers").previousElementSibling.querySelector("select")';
-    assert.match(await ui(starField+'.selectedOptions[0].textContent'),/1 星 · 敌方 64 级/);
-    assert.equal(await ui('document.querySelector(".regional-modifiers input[value=\'61711\']").closest("label").hidden'),true);
-    await ui(`{const star=${starField};star.value="10";star.dispatchEvent(new Event("change"));
-     for(const id of [61712,61711])[...document.querySelectorAll(".regional-modifiers input")].find(box=>Number(box.value)===id).click();}`);
-    await ui(stock+'.click()');
-    await until(status+'.textContent.includes("全随机分支待验证")',20000);
-    assert.deepEqual(hardCalls.slice(0,6),[0,1,2,3,7,42]);
-    assert.match(await ui(reports+'.textContent'),/9 回合 · 我方承伤 9,000 · 已观测词条 2 \/ 2/);
-    await ui('document.querySelector(".regional-modifiers").scrollIntoView({block:"start",behavior:"instant"})');
-    await capture('client-regional-boss-hard-replay');
-    await ui('document.querySelector("[data-pve-code]").click()');
-    assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
-    assert.match(await ui('$("detail-heading").textContent'),/国王湖 · 极难 10 星 · 决胜之心、蛇魔侵蚀/);
-    await ui('$("detail-dialog").close()');
+   await until(panel+'.textContent.includes("剧情：晴明单挑犬神")');
+   assert.equal(await ui(start+'===null'),true);
+   await encounter('daily','天雷鼓 拾层');
+   assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-awake']);
+   assert.match(await run('awake',{stageId:40,groupId:4,battleMode:29}),/已知阵容 awake/);
+   assert.match(await ui(panel+'.textContent'),/雷麒麟 · 40 级 · 1 号位 · 开场速度 160.*原版开场 · 生命 58,445\.17/s);
+   await ui('window.qaSecretEncounter=(id,query)=>{qaEncounterInput("daily",query);[...$("client-dungeons-encounter-list").children].find(b=>b.querySelector("small").textContent.split(" · ")[1]===String(id)).click();};qaSecretEncounter(11,"红叶的羁绊 壹 邂逅")');
+   await until(start+'!==null');
+   assert.match(await run('secret',{stageId:11,groupId:11,battleMode:266},{waveCount:3,wavesCleared:3}),/已知阵容 secret/);
+   await ui('qaSecretEncounter(18,"红叶的羁绊 捌 痴迷")');
+   await until(panel+'.textContent.includes("游戏内走组队入口")');
+   assert.equal(await ui(start+'===null'),true);
+   if(cases.some(entry=>entry.kind==='经验妖怪')){
+    await encounter('daily','经验妖怪 新服首次');
+    assert.match(await run('exp',{stageId:2111,groupId:2111,battleMode:528},{wavesCleared:0,experience:{kills:30,requiredKills:30,timedOut:false}}),/原版胜利 · 击杀 30 \/ 30/);
+    await encounter('daily','金币妖怪 编组 2009');
+    assert.match(await run('exp',{stageId:2009,groupId:2009,battleMode:528},{wavesCleared:0,coins:{bossHpFraction:0,timedOut:false,previewCoins:31220,minimumPreviewCoins:29643}}),/金币预览 31,220.*基础金币取下限 29,643/);
    }
-   const awakeCalls=[];
-   mockPve=(plan,options)=>{
-    assert.deepEqual(options,{stageId:40,groupId:4,battleMode:29,seed:options.seed,damageFloor:true});
-    assert.equal(plan.members.length,5);
-    assert.equal(new Set(plan.members.map(row=>row.instanceId)).size,5);
-    awakeCalls.push(options.seed);
-    return {...sample,...options};
-   };
-   await ui('selectedLineups.clear();renderSelection();qaEncounterInput("daily","天雷鼓 拾层")');
-   await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-   const awake=await ui('$("client-dungeons-encounter-detail").textContent');
-   assert.match(awake,/天雷鼓 · 拾层.*我方鬼火 2 · 敌方鬼火 4 · 阴阳师等级要求 30.*第十层.*觉醒普通单人编组/s);
-   assert.match(awake,/雷麒麟 · 40 级 · 1 号位 · 开场速度 160.*原版开场 · 生命 58,445\.17 · 攻击 6,483\.18 · 防御 711\.04 · 暴击 60%/s);
-   assert.match(awake,/雷麒麟小怪 · 40 级 · 6 号位 · 开场速度 155/s);
-   await ui('[...document.querySelectorAll(".dungeon-encounter-waves summary")].find(el=>el.textContent.includes("雷麒麟 · 40 级")).click()');
-   await until('$("client-dungeons-encounter-detail").textContent.includes("10%的概率眩晕目标")');
-   await ui(stock+'.click()');
-   await until(status+'.textContent.includes("全随机分支待验证")',20000);
-   assert.deepEqual(awakeCalls.slice(0,6),[0,1,2,3,7,42]);
-   await ui('const opening=$("client-dungeons-encounter-detail");opening.scrollIntoView({block:"start",behavior:"instant"});');
-   await capture('client-awake-solo');
-   await ui('document.querySelector("[data-pve-code]").click()');
-   assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
-   assert.equal(await ui('!!document.querySelector(".rune-code-preview img")'),true);
-   assert.match(await ui('$("detail-heading").textContent'),/雷麒麟·拾层/);
-   await ui('$("stock-candidate-save").click()');
-   await until('$("stock-candidate-status").textContent.includes("已保存到阵容库")');
-   const saved=stored.lineups.find(lineup=>lineup.title.startsWith('雷麒麟·拾层'));
-   assert.equal(Number(saved?.gameSceneId),10023001);
-   assert.equal(saved.members.filter(member=>member.kind==='shikigami').length,5);
-   await ui('$("close-dialog").click()');
-   await ui(`window.qaSecretEncounter=(id,query)=>{
-    qaEncounterInput("daily",query);
-    [...document.querySelectorAll("#client-dungeons-encounter-list button")].find(button=>
-     button.querySelector("small").textContent.split(" · ")[1]===String(id)).click();
-   };qaSecretEncounter(18,"红叶的羁绊 捌 痴迷")`);
-   await until('$("client-dungeons-encounter-detail").textContent.includes("游戏内走组队入口")');
-   assert.equal(await ui('document.querySelector("[data-pve-stock]")===null'),true);
-   const secretCalls=[];
-   mockPve=(plan,options)=>{
-    assert.deepEqual(options,{stageId:11,groupId:11,battleMode:266,seed:options.seed,damageFloor:true});
-    assert.equal(plan.members.length,5);
-    secretCalls.push(options.seed);
-    return {...sample,...options,waveCount:3,wavesCleared:3};
-   };
-   await ui('qaSecretEncounter(11,"红叶的羁绊 壹 邂逅")');
-   await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-   assert.match(await ui('$("client-dungeons-encounter-list").textContent'),/1011 · 竞速.*11 · 单人/s);
-   const secret=await ui('$("client-dungeons-encounter-detail").textContent');
-   assert.match(secret,/红叶的羁绊 · 壹·邂逅.*3 波.*需阴阳师 20 级.*消耗 3 体力.*游戏内走单人入口.*秘闻普通单人/s);
-   assert.match(secret,/第 1 波.*开场速度.*原版开场.*第 2 波.*原版开场.*第 3 波/s);
-   await ui(stock+'.click()');
-   await until(status+'.textContent.includes("全随机分支待验证")',20000);
-   assert.deepEqual(secretCalls.slice(0,6),[0,1,2,3,7,42]);
-   await ui('document.querySelector("[data-pve-code]").click()');
-   assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
-   assert.match(await ui('$("detail-heading").textContent'),/红叶的羁绊·壹层/);
-   await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
-   await capture('client-secret-solo');
-   await ui('qaSecretEncounter(118,"海怪的温柔 捌 惴惴")');
-   await until('$("client-dungeons-encounter-detail").textContent.includes("复制我方 6 号位")');
-   const copy=await ui('$("client-dungeons-encounter-detail").textContent');
-   assert.match(copy,/复制位读取我方同号位的式神及御魂技能.*第 3 波.*复制我方 2 号位.*复制我方 6 号位/s);
-   await ui('qaSecretEncounter(358,"溯问鲤踪 捌 鲤影")');
-   await until('$("client-dungeons-encounter-detail").textContent.includes("助战单位阵亡判负")');
-   assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/101 号位.*31708001.*末三位为 209/s);
-   await ui('qaSecretEncounter(1071,"1071 开心的山兔")');
-   await until('$("client-dungeons-encounter-detail").textContent.includes("竞速配置")');
-   assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/7 号位 · 开场速度 -9.*8 号位 · 开场速度 -9/s);
-   if(JSON.parse(await readEncounters(catalog)).entries.some(entry=>entry.kind==='经验妖怪')){
-    const experienceCalls=[];
-    mockPve=(plan,options)=>{
-     assert.deepEqual(options,{stageId:2111,groupId:2111,battleMode:528,seed:options.seed,damageFloor:true});
-     assert.equal(plan.members.length,5);
-     experienceCalls.push(options.seed);
-     return {...sample,...options,waveCount:1,wavesCleared:0,
-      experience:{kills:30,requiredKills:30,timedOut:false,deadlineSeconds:150}};
-    };
-    await ui('qaEncounterInput("daily","经验妖怪 新服首次")');
-    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-    assert.equal(await ui('$("client-dungeons-encounter-list").querySelector("small").textContent'),'经验妖怪 · 2111');
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/击杀 30 只.*击杀后补位.*引擎时限 150 秒.*开场速度 88/s);
-    await ui(stock+'.click()');
-    await until(status+'.textContent.includes("全随机分支待验证")',20000);
-    assert.deepEqual(experienceCalls.slice(0,6),[0,1,2,3,7,42]);
-    assert.match(await ui(reports+'.textContent'),/原版胜利 · 击杀 30 \/ 30/);
-    assert.equal(await ui('document.querySelector("[data-pve-code]")===null'),true);
-    await ui('$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
-    await capture('client-resource-first-experience');
-    await ui('qaEncounterInput("daily","经验妖怪 编组 2109")');
-    await until('$("client-dungeons-encounter-detail").textContent.includes("原版补怪池包含 23 种模板")');
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/击杀 30 只.*开场速度 98/s);
-    const coinCalls=[];
-    mockPve=(plan,options)=>{
-     assert.deepEqual(options,{stageId:2009,groupId:2009,battleMode:528,seed:options.seed,damageFloor:true});
-     assert.equal(plan.members.length,5);
-     coinCalls.push(options.seed);
-     return {...sample,...options,waveCount:1,wavesCleared:0,
-      coins:{bossHpFraction:0,timedOut:false,deadlineSeconds:150,previewCoins:31220,minimumPreviewCoins:29643}};
-    };
-    await ui('qaEncounterInput("daily","金币妖怪 编组 2009")');
-    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/金币预览随首领剩余生命变化.*开场速度 98/s);
-    await ui(stock+'.click()');
-    await until(status+'.textContent.includes("全随机分支待验证")',20000);
-    assert.deepEqual(coinCalls.slice(0,6),[0,1,2,3,7,42]);
-    assert.match(await ui(reports+'.textContent'),/击破首领.*金币预览 31,220.*基础金币取下限 29,643/);
-    await capture('client-resource-coin');
+   await encounter('daily','暗·神龙 叁层');
+   assert.match(await run('yuling',{stageId:3,groupId:3,battleMode:267}),/已知阵容 yuling/);
+   if(catalog.entries.has('gve_battleinfo')){
+    await ui('window.qaGuildEncounter=(id,query)=>{qaEncounterInput("guild",query);[...$("client-dungeons-encounter-list").children].find(b=>b.querySelector("small").textContent.split(" · ")[1]===String(id)).click();};qaGuildEncounter(61,"麒麟狩猎 火麒麟")');
+    await until(start+'!==null');
+    assert.match(await run('hunt',{stageId:61,groupId:61,battleMode:2000},{guildHunt:{damage:5000000,tactics:tactical}},tactical),/单场最高 5,000,000.*首动普攻首领.*红标首领/s);
+    assert.match(await ui(panel+'.textContent'),/原版计分窗口 240 秒/);
    }
-   const yulingCalls=[];
-   mockPve=(plan,options)=>{
-    assert.deepEqual(options,{stageId:3,groupId:3,battleMode:267,seed:options.seed,damageFloor:true});
-    assert.equal(plan.members.length,5);
-    yulingCalls.push(options.seed);
-    return {...sample,...options,waveCount:1,wavesCleared:1,formationsVerified:1};
-   };
-   await ui('qaEncounterInput("daily","暗·神龙 叁层")');
-   await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-   const guardian=await ui('$("client-dungeons-encounter-detail").textContent');
-   assert.match(guardian,/开场 3 火.*消耗 1 张御灵境之钥.*阴阳师 40 级 · 御灵 40 级.*只有第一只参与行动.*御灵单人配装/s);
-   assert.match(guardian,/暗·神龙 · 40 级 · 1 号位 · 开场速度 170.*生命 517,762/s);
-   await ui('[...document.querySelectorAll(".dungeon-encounter-waves summary")].find(el=>el.textContent.includes("暗·神龙 · 40 级")).click()');
-   await until('$("client-dungeons-encounter-detail").textContent.includes("多段攻击不重复触发")');
-   await ui(stock+'.click()');
-   await until(status+'.textContent.includes("全随机分支待验证")',20000);
-   assert.deepEqual(yulingCalls.slice(0,6),[0,1,2,3,7,42]);
-   await ui('document.querySelector("[data-pve-code]").click()');
-   assert.match(await ui('$("stock-candidate-code").value'),/^#TA#/);
-   assert.match(await ui('$("detail-heading").textContent'),/神龙·叁层/);
-   await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
-   await capture('client-yuling-solo');
-   if(JSON.parse(await readEncounters(catalog)).entries.some(entry=>entry.table==='gve_battleinfo')){
-    const huntingCalls=new Map(),tacticalCalls=[],rosterKey=plan=>plan.members.map(member=>member.hero.heroId).sort((a,b)=>a-b).join(',');
-    let startingRoster;
-    mockPve=(plan,options)=>{
-     assert.deepEqual(options,{stageId:61,groupId:61,battleMode:2000,seed:options.seed,damageFloor:true});
-     assert.equal(plan.members.length,5);
-     const key=teamKey(plan);
-     if(!huntingCalls.has(key))huntingCalls.set(key,[]);
-     huntingCalls.get(key).push(options.seed);
-     if(!startingRoster)startingRoster=rosterKey(plan);
-     const alternate=rosterKey(plan)!==startingRoster;
-     const opening=plan.tactics?.manualOpening;
-     const actorSlot=plan.members.findIndex(({hero})=>{
-      const id=data.gameConfig.heroes[hero.heroId].skills[2];
-      return hero.skinfo.some(([skillId,level])=>skillId===id&&game.skill(data.gameConfig,id,level,hero.awake)?.passive===false);
-     })+1;
-     const manualChoices=opening===true&&alternate&&actorSlot?{actorSlot,skills:[{
-      skillId:data.gameConfig.heroes[plan.members[actorSlot-1].hero.heroId].skills[2],targets:['self'],
-     }]}:undefined;
-     if(plan.tactics)tacticalCalls.push({key,alternate,tactics:plan.tactics,seed:options.seed});
-     const firstCandidate=key===huntingCalls.keys().next().value;
-     const failed=firstCandidate&&options.seed===2;
-     const damage=firstCandidate?(failed?500000:options.seed===0?3000000:5000000):
-      opening?.skillId?5000000:opening===true?(alternate?4500000:2500000):2000000;
-     return {...sample,...options,outcome:failed?'loss':'win',waveCount:1,wavesCleared:0,guildHunt:{damage,tactics:plan.tactics,manualChoices}};
-    };
-    await ui(`window.qaGuildEncounter=(id,query)=>{
-     qaEncounterInput("guild",query);
-     [...$("client-dungeons-encounter-list").querySelectorAll("button")].find(el=>el.querySelector("small").textContent.endsWith(" · "+id)).click();
-    };qaGuildEncounter(61,"麒麟狩猎 火麒麟")`);
-    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/挑战时限 240 秒.*30 秒和 150 秒触发分裂.*90 秒触发属性召唤/s);
-    await ui(stock+'.click()');
-    await until(status+'.textContent.includes("按窗口内的单场最高伤害排序")',20000);
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/原版计分窗口 240 秒/);
-    assert.deepEqual(huntingCalls.values().next().value,[0,1,2,3,7,42]);
-    const winningCall=tacticalCalls.find(call=>call.alternate&&call.tactics.manualOpening?.target==='self');
-    assert.ok(winningCall);
-    assert.deepEqual(huntingCalls.get(winningCall.key),[0,1,2,3,7,42]);
-    assert.deepEqual(new Set(tacticalCalls.filter(call=>call.seed===0&&call.tactics.autoMode).map(call=>call.tactics.autoMode.mode)),new Set(['spell','basic']));
-    assert.match(await ui(reports+'.firstElementChild.textContent'),/平均伤害 5,000,000.*首动用第 3 技能「.+?」，点自身后切自动。红标首领。绿标/s);
-    assert.match(await ui(reports+'.textContent'),/5 \/ 6 场有效结算.*平均伤害 3,916,667.*单场最高 5,000,000.*最低 500,000.*个人结算失败 · 未清场/s);
-    assert.match(await ui(reports+'.textContent'),/未进入六场复评/);
-    await ui('document.querySelector("[data-pve-code]").click()');
-    const tacticalCode=await ui('$("stock-candidate-code").value');
-    assert.match(tacticalCode,/^#TA#/);
-    assert.match(await ui('document.querySelector(".rune-code-preview").textContent'),/首动用第 3 技能「.+?」，点自身后切自动。红标首领。/);
-    const {readScoreInstructions}=require('../app/rune-candidate.js');
-    const decoded=require('../desktop/ta-codec.cjs').decodeLineupData(tacticalCode);
-    assert.deepEqual(readScoreInstructions(decoded.desc),winningCall.tactics);
-    assert.match(await ui('$("detail-heading").textContent'),/狩猎战·火麒麟/);
-    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
-    await capture('client-guild-hunting');
-    const underworldCalls=[];
-    mockPve=(plan,options)=>{
-     assert.deepEqual(options,{stageId:101,groupId:101,battleMode:2001,seed:options.seed,damageFloor:true});
-     assert.ok(plan.rounds.length>=1&&plan.rounds.length<=4);
-     const instances=plan.rounds.flatMap(round=>round.members.map(member=>member.instanceId));
-     assert.equal(new Set(instances).size,instances.length);
-     underworldCalls.push(options.seed);
-     return {...sample,...options,waveCount:70,wavesCleared:options.seed===0?48:54,
-      underworld:{teams:[{team:1,startWave:1,onmyojiId:10}],leftAfterLastTeam:true}};
-    };
+   if(cases.some(entry=>entry.table==='gve_battleinfo'&&entry.title==='阴界之门 · 入口 101')){
     await ui('qaGuildEncounter(101,"阴界之门")');
-    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-    await ui(stock+'.click()');
-    await until(status+'.textContent.includes("按最低清波数排序")',20000);
-    assert.deepEqual(underworldCalls.slice(0,6),[0,1,2,3,7,42]);
-    assert.match(await ui(reports+'.firstElementChild.textContent'),/最低 48 波 · 平均 53.0 波 · 最高 54 波.*第 1 队在第 1 波上场/s);
-    await ui('document.querySelector("[data-pve-code]").click()');
-    assert.equal(require('../desktop/ta-codec.cjs').decodeLineupData(await ui('$("stock-candidate-code").value')).select_stage_id,19005);
-    await ui('$("stock-candidate-save").click()');
-    await until('$("stock-candidate-status").textContent.includes("已保存到阵容库")');
-    const savedRelay=stored.lineups.find(lineup=>Number(lineup.gameSceneId)===19005);
-    await ui(`$('close-dialog').click();selectedLineups.add(${JSON.stringify(savedRelay.id)});AtlasPveWorkbench.refresh();`);
-    await until('!!document.querySelector("[data-pve-start]:not([disabled]):not([hidden])")');
-    await ui('document.querySelector("[data-pve-start]").click()');
-    await until(status+'.textContent.includes("按最低清波数排序")',20000);
-    assert.deepEqual(underworldCalls.slice(-6),[0,1,2,3,7,42]);
-    await ui('selectedLineups.clear();');
-    await ui('qaEncounterInput("guild","贪婪的铁鼠")');
-    await until('$("client-dungeons-encounter-detail").textContent.includes("查看机关编组 122")');
-    await ui('[...$("client-dungeons-encounter-detail").querySelectorAll("button")].find(el=>el.textContent==="查看机关编组 122").click()');
-    await until('$("client-dungeons-encounter-detail").textContent.includes("我方 · 40 级 · 100 号位")');
+    await until(start+'!==null');
+    assert.match(await run('underworld',{stageId:101,groupId:101,battleMode:2001},{waveCount:70,wavesCleared:54,
+     underworld:{teams:[{team:1,startWave:1,onmyojiId:10}],leftAfterLastTeam:true}}),/最低 54 波.*第 1 队在第 1 波上场/s);
+   }
+   if(catalog.entries.has('raid_info')){
     await ui('qaGuildEncounter(1,"首领退治 难度")');
-    await until('$("client-dungeons-encounter-detail").textContent.includes("各轮攻击调整")');
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/开启消耗阴阳寮勋章350.*退治首领池和阶段属性/s);
-    const retreatCalls=[];
-    mockPve=(plan,options)=>{
-     assert.deepEqual(options,{stageId:1,groupId:103,battleMode:306,seed:options.seed,damageFloor:true,
-      retreat:{raidRound:3,guildMembers:5,windowSeconds:97}});
-     retreatCalls.push(options.seed);
-     return {...sample,...options,outcome:'loss',waveCount:1,wavesCleared:0,guildRetreat:{
-      damage:plan.tactics?.redBoss?350000:300000,reason:'window-expired',windowSeconds:97,combatSeconds:97,phases:['limao'],tactics:plan.tactics}};
-    };
-    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-    await ui(`(() => {const input=$('client-dungeons-encounter-detail').querySelector('input[list="retreat-score-windows"]');
-      input.value='0';input.dispatchEvent(new Event('change'));})()`);
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/计分窗口请输入 1 至 1,800 秒的整数/);
-    assert.equal(await ui('document.querySelector("[data-pve-stock]")===null'),true);
-    await ui(`(() => {const area=$('client-dungeons-encounter-detail');
-      const fields=area.querySelectorAll('select');
-      ['103','3'].forEach((value,i)=>{fields[i].value=value;fields[i].dispatchEvent(new Event('change'));});
-      const [window,members]=area.querySelectorAll('input[type=number]');
-      window.value='97';window.dispatchEvent(new Event('change'));members.value='5';members.dispatchEvent(new Event('change'));
-    })()`);
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/贪婪的铁鼠.*生命14,600,832.*个人伤害/s);
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/自定计分窗口 97 秒/);
-    await ui(stock+'.click()');
-    await until(status+'.textContent.includes("按窗口内的单场最高伤害排序")',20000);
-    assert.deepEqual(retreatCalls.slice(0,2),[0,1]);
-    assert.match(await ui(reports+'.firstElementChild.textContent'),/6 \/ 6 场有效结算.*平均伤害 350,000.*达到计分窗口.*97\.00 \/ 97 秒.*1 次阶段切换/s);
-    assert.doesNotMatch(await ui(reports+'.textContent'),/麒麟/);
-    await ui('document.querySelector("[data-pve-code]").click()');
-    const retreatCode=await ui('$("stock-candidate-code").value');
-    assert.equal(require('../desktop/ta-codec.cjs').decodeLineupData(retreatCode).select_stage_id,10020205);
-    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
-    await capture('client-guild-retreat-damage');
-    await ui('document.querySelector("[data-pve-batch]:not([hidden])").click()');
-    assert.ok(await ui('document.querySelectorAll("[data-batch-pick]").length')>=2);
-    assert.equal(await ui('document.querySelector("[data-batch-upload]").disabled'),true);
-    await ui('$("close-dialog").click()');
-    const offline=getTestLogin(),beforeAuto=batchShareCalls.length;
-    setTestLogin({...offline,authenticated:true,risk_accepted:true,query_ready:true,share_epoch:21,
-     selected_server:'99',selected_avatar:'batch-retreat',servers:[{id:'99',name:'批量测试区',category:'测试',available:true,roles:[]}]});
-    mockBatchShare=async code=>({code:await background.run('verify-share',{code,response:{err:0,share_key:`qa-auto-retreat-${batchShareCalls.length}`,lineup_data:code}})});
-    try{
-     await until('!document.querySelector("[data-pve-auto-share]").disabled');
-     await ui('document.querySelector("[data-pve-auto-share]").checked=true;'+stock+'.click()');
-     await until(status+'.textContent.includes("本次就绪")',20000);
-     const requests=batchShareCalls.slice(beforeAuto);
-     assert.ok(requests.length>=2&&requests.every(row=>row.epoch===21));
-     assert.equal(new Set(requests.map(row=>row.code)).size,requests.length);
-     assert.equal(await ui('document.querySelector("[data-pve-auto-share]").checked'),false);
-     assert.equal(stored.lineups.some(lineup=>requests.some(row=>row.code===lineup.code)),false);
-    }finally{mockBatchShare=null;setTestLogin(offline);}
+    await until(start+'!==null');
+    await ui('(()=>{const [boss,round]='+panel+'.querySelectorAll("select");boss.value="103";boss.dispatchEvent(new Event("change"));round.value="3";round.dispatchEvent(new Event("change"));const [length,members]='+panel+'.querySelectorAll("input[type=number]");length.value="0";length.dispatchEvent(new Event("change"));})()');
+    assert.match(await ui(panel+'.textContent'),/计分窗口请输入 1 至 1,800 秒/);
+    assert.equal(await ui(start+'===null'),true);
+    await ui('(()=>{const [length,members]='+panel+'.querySelectorAll("input[type=number]");length.value="97";length.dispatchEvent(new Event("change"));members.value="5";members.dispatchEvent(new Event("change"));})()');
+    const retreat={raidRound:3,guildMembers:5,windowSeconds:97};
+    assert.match(await run('retreat',{stageId:1,groupId:103,battleMode:306,retreat},{outcome:'loss',wavesCleared:0,
+     guildRetreat:{damage:350000,reason:'window-expired',combatSeconds:97,windowSeconds:97,phases:['limao'],tactics:tactical}},tactical),/达到计分窗口.*97\.00 \/ 97 秒/);
    }
-   if(catalog.index.tables.some(table=>table.name==='act_team_battle')){
-    const seenYanwu=new Set();
-    mockPve=(plan,options)=>{
-     assert.deepEqual(options,{battleMode:8238,stageId:325006,groupId:325006,seed:options.seed,damageFloor:true});
-     assert.equal(plan.members.length,6);
-     assert.equal(new Set(plan.members.map(member=>member.instanceId)).size,6);
-     seenYanwu.add(options.seed);
-     return {...sample,...options,outcome:'loss',wavesCleared:0,fengmoYanwu:{
-      damage:plan.tactics?.greenSlot?750000:730000,timedOut:true,combatSeconds:301.2,tactics:plan.tactics,
-     }};
-    };
-    await ui('qaEncounterInput("event","逢魔演武 鬼灵歌伎")');
-    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/逢魔演武·鬼灵歌伎.*计分时限 300 秒.*自有式神 6 位/s);
-    await ui(stock+'.click()');
-    await until(status+'.textContent.includes("按窗口内的单场最高伤害排序")',25000);
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/原版计分窗口 300 秒/);
-    assert.deepEqual([...seenYanwu],[0,1,2,3,7,42]);
-    assert.match(await ui(reports+'.firstElementChild.textContent'),/6 \/ 6 场有效结算.*含未清场样本.*达到计分时限.*个人伤害 750,000/s);
-    await ui('document.querySelector("[data-pve-code]").click()');
-    const code=require('../desktop/ta-codec.cjs').decodeLineupData(await ui('$("stock-candidate-code").value'));
-    assert.equal(code.select_stage_id,100978);
-    assert.equal(code.hconf.length,7);
-    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
-    await capture('client-fengmo-yanwu-damage');
+   if(cases.some(entry=>String(entry.key)==='325006')){
+    await encounter('event','逢魔演武 鬼灵歌伎');
+    assert.match(await run('yanwu',{stageId:325006,groupId:325006,battleMode:8238},{outcome:'loss',wavesCleared:0,
+     fengmoYanwu:{damage:750000,timedOut:true,combatSeconds:300}},undefined,10,6),/达到计分时限.*750,000/);
    }
-   if(catalog.index.tables.some(table=>table.name==='MZB_fengmo')){
-    const spiderSeeds=[];
-    mockPve=(plan,options)=>{
-     assert.deepEqual(options,{battleMode:5551,stageId:2,groupId:125017,seed:options.seed,damageFloor:true});
-     assert.equal(plan.members.length,5);
-     spiderSeeds.push(options.seed);
-     return {...sample,...options,tuzhizhuPractice:{trait:63402,partsRemaining:[],combatSeconds:12.6,
-      cocoonsSpawned:3,cocoonsDefeated:2,timedOut:false}};
-    };
-    await ui('qaEncounterInput("daily","逢魔木桩 巧劲")');
-    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
-    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/极·土蜘蛛 · 巧劲.*击破本体、钳、背、脚.*词条 巧劲/s);
-    await ui(stock+'.click()');
-    await until(status+'.textContent.includes("按最慢样本用时排序")',25000);
-    assert.deepEqual(spiderSeeds.slice(0,6),[0,1,2,3,7,42]);
-    assert.match(await ui(reports+'.firstElementChild.textContent'),/击破 4 \/ 4 个关键部位.*击破白茧 2 \/ 3/s);
-    assert.match(await ui('sampleBattleMarkup([{seed:0,completed:false,outcome:"unknown",tuzhizhuPractice:{partsRemaining:[1250171],combatSeconds:1804.18}}])'),
-     /本机复跑达到运行时限，结算待核对.*击破 3 \/ 4 个关键部位/);
-    await ui('document.querySelector("[data-pve-code]").click()');
-    const code=require('../desktop/ta-codec.cjs').decodeLineupData(await ui('$("stock-candidate-code").value'));
-    assert.equal(code.select_stage_id,10020221);
-    assert.match(code.title,/巧劲/);
-    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
-    await capture('client-tuzhizhu-practice');
+   if(catalog.entries.has('MZB_fengmo')){
+    await encounter('daily','逢魔木桩 巧劲');
+    assert.match(await run('spider',{stageId:2,groupId:125017,battleMode:5551},
+     {tuzhizhuPractice:{partsRemaining:[],combatSeconds:12.6,cocoonsSpawned:3,cocoonsDefeated:2}}),/击破 4 \/ 4 个关键部位.*击破白茧 2 \/ 3/);
    }
+   await ui(status+'.scrollIntoView({block:"start",behavior:"instant"})');
+   await capture('known-lineup-replay');
   }finally{
    mockPve=null;stopPve=null;
-   await ui(`stopMatch();STATE=${boot};selectedLineups.clear();$('client-dungeons').open=false;renderSelection();`);
+   await ui('stopMatch();STATE='+boot+';selectedLineups.clear();$("client-dungeons").open=false;renderSelection();');
   }
  });
  const file=json=>'[{name:"synthetic.json",size:1024,text:async()=>'+JSON.stringify(JSON.stringify(json))+'}]';
@@ -1001,7 +694,7 @@ async function main(){
     await until(`dungeonBattle?.rows[0]?.verdict===${JSON.stringify(verdict)}&&!dungeonBattle.running`);
     const all=verdict==='pass';
     assert.deepEqual(seeds,all?commonSeeds:[0,1]);
-    assert.equal(await ui('$("dungeon-search-stock").hidden'),verdict!=='loss');
+    assert.equal(await ui('$("dungeon-search-stock")'),null);
     const status=await ui('$("dungeon-battle-results").textContent');
     assert.match(status,/种子 0.*本次复跑通关/s);
     if(all)assert.match(status,/已通过 9 个采样种子.*种子 8929.*种子 2016.*种子 7698/s);
@@ -1064,13 +757,13 @@ async function main(){
      assert.match(await ui('$("dungeon-battle-results").textContent'),/已停止补测.*1\/19/);
      nextOutcome='unknown';await startExtra();
      await until('dungeonBattle.rows[0].seedAudit.verdict==="unknown"');
-     assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
+     assert.equal(await ui('$("dungeon-search-stock")'),null);
      nextOutcome='loss';await startExtra();
-     await until('!$("dungeon-search-stock").hidden');
+     await until('!dungeonBattle.activeSeedAudit&&dungeonBattle.rows[0].seedAudit?.verdict==="loss"');
      assert.match(await ui('$("dungeon-battle-results").textContent'),/补测种子 5 未通关.*种子 4.*种子 5.*本次复跑失败/s);
      assert.deepEqual(seeds.slice(commonSeeds.length),[4,5,5,5]);
      await ui('$("dungeon-match-selected").click()');
-     await until('!$("dungeon-search-stock").hidden');
+     await until('!dungeonBattle.running&&dungeonBattle.rows[0].state==="finished"');
      assert.match(await ui('$("dungeon-battle-results").textContent'),/补测种子 5 未通关/);
     }
    }
@@ -1082,7 +775,7 @@ async function main(){
   await until('dungeonBattle?.dungeonId===101&&dungeonBattle.rows[0].state==="finished"&&!dungeonBattle.running',110000);
   assert.match(await ui('$("dungeon-battle-results").textContent'),/悲鸣复跑验收.*本次复跑(通关|失败).*当前版本的常规单人本地入口/s);
   assert.equal(await ui('!!document.querySelector("[data-battle-full]")'),await ui('dungeonBattle.rows[0].verdict==="pass"'));
-  assert.equal(await ui('$("dungeon-search-stock").hidden'),await ui('dungeonBattle.rows[0].verdict!=="loss"'));
+  assert.equal(await ui('$("dungeon-search-stock")'),null);
   assert.ok(floorCalls.length);
   assert.deepEqual(floorCalls,commonSeeds.slice(0,Math.min(floorCalls.length,6)).map(seed=>({dungeonId:101,seed,fixedStep:true})));
   assert.deepEqual(replayPlan.spirit,spirit);
@@ -1092,206 +785,13 @@ async function main(){
   assert.equal(await ui('$("dungeon-battle-results").hidden'),true);
   await ui('stopMatch();$("clear-filters").click();$("dungeon-workbench").open=false');
  });
- await check('勾选原码无解后才开放备选，分开显示各个种子的战报',async()=>{
-  const source=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&!l.members[0].qiling&&l.members[0].onmyojiId==='11');
-  const lineup={...source,id:'qa-stock-search',code:'|TA|qa-stock-search'};
-  const ids=[591,389,596,557,379,372,554];
-  const heroes=Object.fromEntries(ids.map(id=>['stock-'+id,{heroId:id,level:40,star:6,awake:1,equips:[],
-   skinfo:data.gameConfig.heroes[id].skills.map(s=>[s,1])}]));
-  const stats=[['attack_flat',486],['speed',57],['defense_flat',104],['attack_rate',.55],['hp_flat',2052],['crit_rate',.55]];
-  const hero_equips=['海月火玉','破势','火灵','元兴寺','心眼','狂骨'].flatMap((setId,i)=>stats.map(([mainAttrType,mainAttrValue],j)=>({
-   id:`stock-${i}-${j}`,slot:j+1,quality:6,level:15,setId,mainAttrType,mainAttrValue,subAttributes:[{type:'crit_rate',value:.1}]
-  })));
-  const calls=[];let winner,lateLoser;
-  mockBattle=(plan,options)=>{
-   const ids=JSON.stringify(plan.members.map(m=>[m.instanceId,m.souls.map(q=>q.id)]));
-   winner??=ids;
-   if(ids!==winner)lateLoser??=ids;
-   calls.push({ids,options});
-   const win=winner===ids||lateLoser===ids&&options.seed!==8929;
-   return {seed:options.seed,engineSeconds:options.seed>42?35:13+options.seed,completed:true,outcome:win?'win':'loss',
-    wavesCleared:win?3:1,bouts:6,overlapMs:873,unresolvedActions:0,
-    animationPlayback:{combatElapsedMs:options.seed===7698?18234:11234,combatOverlapMs:1250,overlapMs:3000,interruptedClips:5,unresolved:2},
-    randomObservations:{observed:75,other:12,alternatives:9},monsterHealth:[
-     {wave:2,cleared:win,startMs:1300,endMs:4000,monsters:[{id:4741297,initialHp:198501,lowestHp:5000,lastHp:win?0:120000,regainedHp:135000,zeroToAlive:0}]}
-    ]};
-  };
-  try{
-   await ui(`stopMatch();DATA={...DATA,lineups:[]};STATE={...${JSON.stringify(blank())},lineups:[${JSON.stringify(lineup)}],accounts:[C.parseAccount(${JSON.stringify({...raw,heroes,hero_equips})})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-stock-search');renderSelection();`);
-   assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
-   await ui('$("dungeon-match-selected").click()');
-   await until('!$("dungeon-search-stock").hidden');
-   assert.equal(calls.length,0);
-   assert.match(await ui('$("dungeon-match-status").textContent'),/勾选的阵容均已证明库存无解/);
-   await ui('$("dungeon-search-stock").click()');
-   await until('dungeonStock&&!dungeonStock.running',20000);
-   const expectedCalls=commonSeeds.map(seed=>({seed,fixedStep:true}));
-   assert.deepEqual(calls.filter(x=>x.ids===winner).map(x=>x.options),expectedCalls);
-   assert.deepEqual(calls.filter(x=>x.ids===lateLoser).map(x=>x.options),expectedCalls.slice(0,7),'种子 8929 落败后停在该队');
-   const top=await ui('document.querySelector(".dungeon-stock-card").textContent');
-   assert.match(top,/种子 0.*本次复跑通关.*种子 42.*本次复跑通关/s);
-   assert.match(top,/共同种子中最慢 · 种子 7698 · 开战至结算 18\.23 秒/);
-   assert.match(top,/引擎开战至结算 11\.23 秒.*交战动作重叠估算 1\.25 秒（5 段提前结束，2 项待核对）.*引擎全程 13\.00 秒/s);
-   assert.match(await ui('$("dungeon-stock-list").textContent'),/本次复跑失败/);
-   assert.match(await ui('$("dungeon-stock-list").textContent'),/种子 8929 未通关/);
-   assert.equal(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=samples]").open'),false);
-   assert.match(await ui('$("dungeon-stock-results").textContent'),/所有随机分支仍待验证/);
-   await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=gear] summary").click()');
-   assert.match(await ui('document.querySelector(".dungeon-stock-card details[open]").textContent'),/速度.*暴击.*×/s);
-   await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health] summary").click()');
-   assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=health][open]").textContent'),/敌方进场至清场 2\.70 秒.*日和坊.*最低 5,000.*生命回升 135,000/s);
-   await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random] summary").click()');
-   assert.match(await ui('document.querySelector(".dungeon-stock-card [data-stock-section$=random][open]").textContent'),/可达随机分支仍待验证.*75 次概率判断.*9 次可以翻转.*12 次其他随机调用/s);
-   const result={seed:0,eligible:9,sites:3,planned:2,baseline:{bouts:8,engineSeconds:20},trials:[
-    {index:4,method:'randomAttack',line:84,wave:1,comparison:'lt',threshold:.5,before:true,completed:true,outcome:'win',wavesCleared:3,bouts:6,engineSeconds:18},
-    {index:9,method:'randomBuff',line:19,wave:3,comparison:'lt',threshold:.4,before:false,completed:true,outcome:'loss',wavesCleared:2,bouts:9,engineSeconds:24},
-   ]};
-   const startAudit=()=>ui('document.querySelector("[data-stock-audit]").click()');
-   mockRandom=(_plan,seed,progress)=>{
-    assert.equal(seed,0);progress({...result,trials:result.trials.slice(0,1)});
-    return new Promise((_resolve,reject)=>{stopRandom=()=>reject(Error('已停止'));});
-   };
-   await startAudit();
-   await until('document.querySelector("[data-stock-section$=random][open]").textContent.includes("正在测试 1/2")');
-   assert.equal(await ui('document.querySelector("[data-stock-audit]").disabled'),true);
-   await ui('$("dungeon-stop-battle").click()');
-   await until('!dungeonStopPending&&!document.querySelector("[data-stock-audit]").disabled');
-   assert.match(await ui('document.querySelector("[data-stock-section$=random][open]").textContent'),/已停止 1\/2.*减少 2 回合.*快 2\.00 秒/s);
-   assert.equal(await ui('document.activeElement.dataset.stockAudit'),'0');
-   mockRandom=(_plan,seed,progress)=>{
-    assert.equal(seed,0);progress({...result,trials:[]});
-    return {...result,planned:3,trials:[...result.trials,
-     {...result.trials[0],index:11,indices:[4,11],wave:2,bouts:10,engineSeconds:22}]};
-   };
-   await startAudit();
-   await until('document.querySelector("[data-stock-section$=random][open]").textContent.includes("已结束 3/3")');
-   const results=await ui('document.querySelector("[data-stock-section$=random][open]").textContent');
-   assert.match(results,/2 次通关，1 次未通关.*第 9 次 · 未通关 · 2 波/s);
-   assert.match(results,/第 1、2、3 波已有判断完成测试/);
-   assert.match(results,/联合测试 4 → 11 · 通关 · 3 波 · 10 回合 · 22\.00 秒/);
-   await ui('document.querySelector("[data-stock-section$=random][open]").scrollIntoView({block:"start",behavior:"instant"})');
-   await capture('dungeon-stock-random-trials');
-   stopRandom=null;mockRandom=null;
-   await ui('$("dungeon-stock-results").scrollIntoView({block:"start"})');await capture('dungeon-stock-search');
-   win.setContentSize(720,960);
-   try{assert.equal(await ui('$("dungeon-stock-results").scrollWidth<=$("dungeon-stock-results").clientWidth+2'),true);}
-   finally{win.setContentSize(1440,1000);}
-   assert.equal(await ui('document.querySelectorAll("[data-stock-preview]").length'),1);
-   await ui('document.querySelector("[data-stock-preview]").click()');
-   await until('document.querySelector(".rune-code-preview img")?.naturalWidth>0');
-   assert.equal(await ui('!!$("stock-candidate-upload")'),false);
-   const code=await ui('$("stock-candidate-code").value');assert.match(code,/^#TA#/);
-   assert.equal(shareCalls.length,0);
-   await capture('dungeon-candidate-code');
-   await ui('$("stock-candidate-save").click()');
-   await until('$("stock-candidate-status").textContent.includes("已保存")');
-   const saved=stored.lineups.find(l=>l.code===code);assert.equal(saved.runeReceipts.length,1);
-   assert.deepEqual(saved.runeReceipts[0].samples.map(r=>r.seed),commonSeeds);
-   await ui('$("detail-dialog").close()');
-   const offline=status;
-   status={...status,authenticated:true,risk_accepted:true,query_ready:true,selected_server:String(raw.player.serverId),selected_avatar:'synthetic',
-    servers:[{id:String(raw.player.serverId),name:'测试区改名',category:'测试',available:true,roles:[{avatar_id:'synthetic',name:'测试角色'}]}]};
-   win.webContents.send('ta-status-changed',status);
-   try{
-    await until('TALogin.status().selected_avatar==="synthetic"&&account().server==="测试区改名"');
-    await ui('reloadOfficial()');
-    await ui('document.querySelector("[data-stock-preview]").click()');
-    await ui('$("stock-candidate-upload").click()');
-    try{
-     await until('$("stock-candidate-short").textContent==="|TA|qa-stock-share"&&!$("stock-candidate-short").hidden');
-     await until('STATE.lineups.some(l=>l.shortCode==="|TA|qa-stock-share")');
-    }catch(error){throw Error(error.message+' · '+await ui('$("stock-candidate-status")?.textContent'));}
-    assert.deepEqual(shareCalls,[code]);
-    assert.equal(stored.lineups.find(l=>l.id===saved.id).shortCode,'|TA|qa-stock-share');
-   }finally{status=offline;win.webContents.send('ta-status-changed',status);}
-   await ui(`$("detail-dialog").close();showLineup(lineups().find(l=>l.id===${JSON.stringify(saved.id)}));$("export-lineup").click()`);
-   await until('!$("dialog-feedback").hidden');
-   assert.equal(Object.hasOwn(exported,'runeReceipts'),false);
-   const observedLoss=seedEvidence({status:'seed-loss',loss:{seed:3167,wavesCleared:2}});
-   mockSeeds=async plan=>{
-    assert.equal(JSON.stringify(plan.members.map(m=>[m.instanceId,m.souls.map(q=>q.id)])),winner);
-    return observedLoss;
-   };
-   await ui('$("detail-dialog").close();document.querySelector("[data-stock-full]").click()');
-   await until('$("dungeon-stock-list").textContent.includes("种子 3167 未通关")');
-   assert.equal(await ui('document.querySelectorAll("[data-stock-preview]").length'),0);
-   assert.match(await ui('$("dungeon-stock-status").textContent'),/0 队已通过 9 个共同种子/);
-   savedEvidence=()=>observedLoss;
-   await win.loadFile(path.join(root,'app/index.html'));
-   await until('!!DATA && $("loading").hidden');
-   await ui(`$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add(${JSON.stringify(saved.id)});renderSelection()`);
-   await until('!$("dungeon-match-selected").disabled&&$("dungeon-match-selected").textContent.includes("复跑")');
-   await ui('$("dungeon-match-selected").click()');
-   await until('dungeonBattle?.rows[0]?.state==="finished"',10000);
-   assert.match(await ui('$("dungeon-battle-results").textContent'),/按已保存配装.*本次复跑通关/s);
-   assert.match(await ui('$("dungeon-battle-results").textContent'),/全种子验收.*种子 3167 未通关.*通过 2 波/s);
-   assert.equal(await ui('$("dungeon-search-stock").hidden'),false);
-   assert.equal(calls.at(-1).ids,winner);
-   assert.deepEqual(replayPlan.onmyoji.skinfo,[[1003,5],[1008,5],[1011,5]]);
-   savedEvidence=null;
-   const sorrow={...lineup,id:'qa-sorrow-stock',gameSceneId:1001002,code:'|TA|qa-sorrow-stock'};
-   const sorrowSamples=[];let winningPlan;
-   mockBattle=(plan,options)=>{
-    assert.equal(options.dungeonId,101);
-    const key=JSON.stringify(plan);
-    winningPlan??=key;
-    if(key===winningPlan)sorrowSamples.push(options.seed);
-    const win=key===winningPlan;
-    return {seed:options.seed,engineSeconds:22,completed:true,outcome:win?'win':'loss',wavesCleared:win?3:2,bouts:7,
-     monsterHealth:[{wave:1,cleared:true,startMs:400,endMs:3500,monsters:[]}]};
-   };
-   await ui(`stopMatch();STATE={...STATE,lineups:[...STATE.lineups,${JSON.stringify(sorrow)}]};$('dungeon-rules-select').value='101';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add('qa-sorrow-stock');renderSelection()`);
-   assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
-   await ui('$("dungeon-match-selected").click()');
-   await until('!$("dungeon-search-stock").hidden');
-   assert.equal(sorrowSamples.length,0);
-   await ui('$("dungeon-search-stock").click()');
-   await until('dungeonStock?.dungeonId===101&&!dungeonStock.running',20000);
-   assert.deepEqual(sorrowSamples,commonSeeds.slice(0,6));
-   const auditRow=seedEvidence({wins:74,stopped:true,slowest:{seed:13,engineSeconds:22,combatMs:null}});
-   mockSeeds=(plan,progress,dungeonId)=>{
-    assert.equal(dungeonId,101);assert.equal(JSON.stringify(plan),winningPlan);
-    progress({...auditRow,stopped:false,wins:73});
-    return new Promise(resolve=>{stopSeeds=()=>{stopSeeds=null;resolve(auditRow);};});
-   };
-   await ui('document.querySelector("[data-stock-full]").click()');
-   await until('!!document.querySelector(".dungeon-full-seeds progress[value=\\"73\\"]")');
-   await ui('$("dungeon-stop-battle").click()');
-   await until('$("dungeon-stock-list").textContent.includes("已暂停全种子验收") && !dungeonStock.activeFullSeedAudit');
-   await ui('document.querySelector("[data-stock-preview]").click()');
-   await until('document.querySelector(".rune-code-preview img")?.naturalWidth>0');
-   assert.match(await ui('$("detail-dialog").textContent'),/魂土.*离线采样通过/s);
-   const sorrowCode=await ui('$("stock-candidate-code").value');
-   await ui('$("stock-candidate-save").click()');
-   await until('$("stock-candidate-status").textContent.includes("已保存")');
-   const savedSorrow=stored.lineups.find(l=>l.code===sorrowCode);
-   assert.equal(savedSorrow.gameSceneId,1001002);
-   assert.equal(savedSorrow.runeReceipts[0].dungeonId,101);
-   savedEvidence=(plan,dungeonId)=>dungeonId===101&&JSON.stringify(plan)===winningPlan?auditRow:null;
-   await ui('$("detail-dialog").close()');
-   await win.loadFile(path.join(root,'app/index.html'));
-   await until('!!DATA && $("loading").hidden');
-   await ui(`$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-rules-select').value='101';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.add(${JSON.stringify(savedSorrow.id)});renderSelection()`);
-   await until('!$("dungeon-match-selected").disabled&&$("dungeon-match-selected").textContent.includes("复跑")');
-   await ui('$("dungeon-match-selected").click()');
-   await until('dungeonBattle?.rows[0]?.state==="finished"&&!dungeonBattle.running');
-   assert.equal(JSON.stringify(replayPlan),winningPlan);
-   assert.match(await ui('$("dungeon-battle-results").textContent'),/按已保存配装.*已通过 6 个采样种子/s);
-   assert.match(await ui('$("dungeon-battle-results").textContent'),/已保存全种子验收进度.*74 \/ 10,000 已通过/s);
-   await ui('document.querySelector("[data-battle-wave-report]").click()');
-   await until('!dungeonBattle.activeSeedAudit');
-   assert.equal(floorCalls.at(-1).seed,13);
-   assert.match(await ui('$("dungeon-battle-results").textContent'),/种子 13.*第 1 波.*3\.10 秒/s);
-   await capture('dungeon-soul-11-saved-candidate');
-  }finally{mockBattle=null;mockRandom=null;stopRandom=null;stopSeeds=null;mockSeeds=null;savedEvidence=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
- });
  await check('全种子通过结果显示单人本地范围和最慢一场',async()=>{
   const complete=JSON.stringify(seedEvidence({status:'all-local-seeds-passed',wins:10000}));
   const markup=await ui(`fullSeedAuditMarkup({samples:AtlasRuneSearch.sampleSeeds.map(seed=>({seed,completed:true,outcome:'win',wavesCleared:3,engineSeconds:13})),fullSeedAudit:{progress:${complete}}},'data-full-seeds-fixture',false,null,{id:102})`);
   assert.match(markup,/常规单人本地入口的 10,000 个种子全部通过.*最慢种子 13.*引擎全程 25\.50 秒.*开战至结算 14\.40 秒/s);
   assert.doesNotMatch(markup,/data-full-seeds-fixture|<progress/);
  });
- await check('虚无先复跑勾选原码，失败后从库存生成、保存并核对两波备选码',async()=>{
+ await check('虚无按用户指定顺序复跑两套已知阵容，库存不足时给出解释',async()=>{
   const fighters=data.lineups.find(l=>l.gameSceneId===1001001&&l.members.length===6&&
    new Set(l.members.filter(m=>m.kind==='shikigami').map(m=>m.shikigamiId)).size===5).members.filter(m=>m.kind==='shikigami');
   const heroes={},items=[];
@@ -1311,11 +811,7 @@ async function main(){
      skills:(wave?[1304,1302]:[1008,1011]).map(id=>({id,level:5})),aiSkill:0},
     ...fighters.map(m=>({...m,borrowed:false,config:{keepCurrent:true},aiSkill:0}))]}));
   const incomplete={...raw,heroes:Object.fromEntries(Object.entries(heroes).filter(([id])=>id.startsWith('h13-1-'))),hero_equips:items.slice(0,30)};
-  for(const id of [591,389,596,557,379])for(let copy=0;copy<2;copy++){
-   const skinfo=data.gameConfig.heroes[id].skills.map(skill=>[skill,game.levels(data.gameConfig,skill,1).at(-1).level]);
-   heroes[`h13-stock-${id}-${copy}`]={heroId:id,level:40,star:6,awake:1,skinfo,equips:[]};
-  }
-  const available={...raw,heroes,hero_equips:[...items,...items.slice(0,18).map(q=>({...q,id:q.id+'-extra',setId:'海月火玉'}))]};
+  const available={...raw,heroes,hero_equips:items};
   async function setup(inventory){
    await ui(`stopMatch();STATE={...STATE,lineups:${JSON.stringify(lineups)},accounts:[C.parseAccount(${JSON.stringify(inventory)})]};STATE.activeAccount=STATE.accounts[0].id;matchResults={};runeStatus=null;selectView('library');$('dungeon-workbench').open=true;renderDungeonRules();$('dungeon-rules-select').value='103';renderDungeonRules();$('dungeon-show-lineups').click();selectedLineups.clear();${lineups.map(l=>`selectedLineups.add('${l.id}');`).join('')}renderSelection()`);
    await until('!$("dungeon-match-selected").disabled && $("dungeon-match-selected").textContent.includes("两波")');
@@ -1324,7 +820,7 @@ async function main(){
   runeEnabled=true;
   mockBattle=(plan,options)=>{
    calls++;
-   const ids=calls<3?[13,10]:[10,13];
+   const ids=[13,10];
    assert.deepEqual(options,{dungeonId:103,seed:calls===2?1:0,fixedStep:true});
    assert.deepEqual(plan.rounds.map(r=>r.onmyoji.heroId),ids);
    assert.equal(new Set(plan.rounds.flatMap(r=>r.members.map(m=>m.instanceId))).size,10);
@@ -1340,54 +836,28 @@ async function main(){
    assert.match(await ui('$("dungeon-hun13-samples").textContent'),/无法同时配装/);
    assert.equal(calls,0);
    await setup(available);
-   assert.equal(await ui('$("dungeon-search-stock").hidden'),true);
+   assert.equal(await ui('$("dungeon-search-stock")'),null);
    await ui('$("dungeon-hun13-first").value="qa-hun13-2";$("dungeon-hun13-second").value="qa-hun13-1";renderDungeonSelection();$("dungeon-match-selected").click()');
    await until('dungeonHun13&&!dungeonHun13.running',20000);
-   assert.equal(calls,3);
-   assert.match(await ui('$("dungeon-hun13-status").textContent'),/第 1 波 虚无第一队.*第 2 波 虚无第二队.*未通过全部采样/);
+   assert.equal(calls,2);
+   assert.match(await ui('$("dungeon-hun13-status").textContent'),/第 1 波 虚无第二队.*第 2 波 虚无第一队.*未通过全部采样/);
    assert.match(await ui('$("dungeon-hun13-samples").textContent'),/原版结算胜利，有波次未清场.*源博雅.*晴明.*时限 48 秒/s);
-   assert.equal(await ui('$("dungeon-search-stock").hidden'),false);
+   assert.equal(await ui('$("dungeon-search-stock")'),null);
    await ui('$("dungeon-hun13-rounds").scrollIntoView({block:"center",behavior:"instant"})');
    await capture('dungeon-hun13-pair');
    win.setContentSize(720,960);
    try{assert.equal(await ui('$("dungeon-hun13-rounds").scrollWidth<=$("dungeon-hun13-rounds").clientWidth+2'),true);}
    finally{win.setContentSize(1440,1000);}
-   let firstPlan;
+   assert.equal(await ui('$("dungeon-hun13-samples").children.length'),1);
+   const firstPlan=await ui('JSON.stringify(dungeonHun13.current.plan)');
    mockBattle=(plan,options)=>{
-    const signature=JSON.stringify(plan);firstPlan??=signature;
-    const win=signature===firstPlan;
-    assert.equal(new Set(plan.rounds.flatMap(round=>round.members.map(m=>m.instanceId))).size,10);
-    assert.equal(new Set(plan.rounds.flatMap(round=>round.members.flatMap(m=>m.souls.map(q=>q.id)))).size,60);
-    return {seed:options.seed,completed:true,outcome:win?'win':'loss',wavesCleared:win?2:0,engineSeconds:90,
-     rounds:[{wave:1,onmyojiId:10,cleared:win,availableSeconds:120,seconds:25,carriedSeconds:95},
-      {wave:2,onmyojiId:10,cleared:win,availableSeconds:215,seconds:45}],
-     animationPlayback:{combatElapsedMs:80000,combatOverlapMs:24139}};
+    assert.equal(JSON.stringify(plan),firstPlan);
+    return {seed:options.seed,completed:true,outcome:'win',wavesCleared:1,engineSeconds:90,rounds:[
+     {wave:1,onmyojiId:13,cleared:false,availableSeconds:120,seconds:25,carriedSeconds:-30},
+     {wave:2,onmyojiId:10,cleared:true,availableSeconds:90,seconds:45}],animationPlayback:{combatElapsedMs:80000}};
    };
-   await ui('$("dungeon-search-stock").click()');
-   await until('dungeonHun13?.kind==="stock"&&!dungeonHun13.running',50000);
-   assert.match(await ui('$("dungeon-hun13-status").textContent'),/1 组通过 7 个采样种子/);
-   await ui('document.querySelector("[data-hun13-code]").click()');
-   await until('document.querySelectorAll(".rune-code-preview img").length===2 && [...document.querySelectorAll(".rune-code-preview img")].every(img=>img.naturalWidth>0)');
-   const pair=await ui('[0,1].map(index=>$("hun13-code-"+index).value)');
-   assert.ok(pair[0]!==pair[1]&&pair.every(code=>code.startsWith('#TA#')));
-   await ui('$("hun13-code-save").click()');await until('$("hun13-code-feedback").textContent.includes("已保存")');
-   assert.equal(stored.lineups.filter(l=>pair.includes(l.code)&&l.gameSceneId===1001000).length,2);
-   await capture('dungeon-hun13-stock-codes');
-   await ui('$("detail-dialog").close()');
-   const offline=status,priorShares=shareCalls.length;
-   status={...status,authenticated:true,risk_accepted:true,query_ready:true,selected_server:String(raw.player.serverId),selected_avatar:'synthetic',
-    servers:[{id:String(raw.player.serverId),name:'虚无测试区',category:'测试',available:true,roles:[{avatar_id:'synthetic',name:'测试角色'}]}]};
-   win.webContents.send('ta-status-changed',status);
-   try{
-    await until('TALogin.status().selected_avatar==="synthetic"&&account().server==="虚无测试区"');
-    await ui('reloadOfficial()');
-    await ui('document.querySelector("[data-hun13-code]").click()');
-    await ui('$("hun13-code-share").click()');
-    await until('$("hun13-code-feedback").textContent.includes("短码已生成")');
-    assert.deepEqual(shareCalls.slice(priorShares),pair);
-    assert.equal(stored.lineups.filter(l=>pair.includes(l.code)&&l.shortCode).length,2);
-    await ui('$("detail-dialog").close()');
-   }finally{status=offline;win.webContents.send('ta-status-changed',status);}
+   await ui('$("dungeon-match-selected").click()');
+   await until('dungeonHun13?.phase==="pass"&&!dungeonHun13.running',20000);
    const scope='normal-solo-hun13',recordSHA256='a'.repeat(64);
    const slowest={seed:13,engineSeconds:90,combatMs:80000,wavesCleared:1,recordSHA256};
    const progress=seedEvidence({scope,bothWavesWins:0,slowest});
@@ -1400,7 +870,7 @@ async function main(){
    await startFull();
    await until('document.querySelector("#dungeon-hun13-result progress")?.value===73');
    assert.equal(await ui('$("dungeon-stop-battle").textContent'),'暂停全种子验收');
-   assert.equal(await ui('document.querySelector("[data-hun13-code]").disabled'),true);
+   assert.equal(await ui('$("dungeon-match-selected").disabled'),true);
    await ui('$("dungeon-stop-battle").click()');
    await until('!dungeonHun13.activeFullSeedAudit&&!dungeonStopPending');
    assert.match(await ui('$("dungeon-hun13-samples").textContent'),/已暂停全种子验收.*74 \/ 10,000 已通过.*两波均清场 0 场/s);
@@ -1418,96 +888,8 @@ async function main(){
    await startFull();
    await until('!dungeonHun13.activeFullSeedAudit');
    assert.match(await ui('$("dungeon-hun13-samples").textContent'),/种子 3167 未通关/);
-   assert.equal(await ui('document.querySelector("[data-hun13-code]")===null'),true);
-   assert.equal(stored.lineups.filter(l=>pair.includes(l.code)).length,2);
+   assert.equal(await ui('$("dungeon-hun13-samples").children.length'),1);
   }finally{mockBattle=null;mockSeeds=null;stopSeeds=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
- });
- await check('批量阵容码仅保存所选，逐条上传，保留成功项并阻止跨角色续传',async()=>{
-  const priorStore=stored,priorState=await ui('JSON.stringify(STATE)'),offline=status;
-  const requests=[0,1,2,3,4].map(i=>({title:`批量验收 ${i+1}`,desc:'模拟批次',select_stage_id:1001001,
-   hconf:[10,591,389,596,557,379].map(id=>game.defaultMember(data.gameConfig,id))}));
-  const outputs=await Promise.all(requests.map(input=>background.run('build',{input,catalog:data})));
-  const codes=outputs.map(output=>output.code);
-  const rows='[data-candidate-batch] textarea';
-  const part=name=>`document.querySelector('[data-batch-${name}]')`;
-  const picks='[...document.querySelectorAll("[data-batch-pick]")]';
-  const choose=async (...indices)=>ui(`${picks}.forEach((box,i)=>{box.checked=${JSON.stringify(indices)}.includes(i);box.dispatchEvent(new Event('change'));})`);
-  const reply=async (code,index)=>({code:await background.run('verify-share',{code,response:{err:0,share_key:`qa-batch-${index}`,lineup_data:code}})});
-  const before=batchShareCalls.length;
-  let release;
-  try{
-   await ui(`window.qaBatchOutputs=${JSON.stringify(outputs.map(({code,payload})=>({code,payload})))}.map(output=>({...output,lineup:C.adaptTA(output.payload,DATA)}));
-    AtlasCandidateBatch.open([...qaBatchOutputs,qaBatchOutputs[0]].map(output=>({output,valid:()=>true})));`);
-   assert.deepEqual(await ui(`[...document.querySelectorAll(${JSON.stringify(rows)})].map(el=>el.value)`),codes);
-   assert.equal(await ui(part('upload')+'.disabled'),true);
-   assert.equal(await ui(part('pick-all')+'.checked'),true);
-   await ui(part('pick-all')+'.click()');
-   assert.equal(await ui(part('save')+'.disabled'),true);
-   await choose(0,2);
-   assert.equal(await ui(part('pick-all')+'.indeterminate'),true);
-   await ui(part('copy')+'.click()');
-   await until(part('copy')+'.dataset.copyState==="success"');
-   assert.equal(clipboardText,[codes[0],codes[2]].join('\n'));
-   await ui(part('save')+'.click()');
-   await until(part('status')+'.textContent.includes("已保存 2 条")');
-   assert.deepEqual(stored.lineups.filter(l=>codes.includes(l.code)).map(l=>l.code),[codes[0],codes[2]]);
-   assert.equal(batchShareCalls.length,before);
-   status={...status,authenticated:true,risk_accepted:true,query_ready:true,share_epoch:41,
-    selected_server:'99',selected_avatar:'batch-role',servers:[{id:'99',name:'批量测试区',category:'测试',available:true,roles:[{avatar_id:'batch-role',name:'测试角色'}]}]};
-   win.webContents.send('ta-status-changed',status);
-   let failOnce=true;
-   mockBatchShare=async code=>{
-    const i=codes.indexOf(code);
-    if(i===1&&failOnce){failOnce=false;throw Error('synthetic share rejected');}
-    return reply(code,i);
-   };
-   await choose(0,1,2);
-   await until('!'+part('upload')+'.disabled');
-   await ui(part('upload')+'.click()');
-   await until(part('status')+'.textContent.includes("本次就绪 2 条，1 条失败")');
-   assert.deepEqual(batchShareCalls.slice(before),codes.slice(0,3).map(code=>({code,epoch:41})));
-   assert.equal(stored.lineups.find(l=>l.code===codes[0]).shortCode,'|TA|qa-batch-0');
-   assert.equal(stored.lineups.find(l=>l.code===codes[2]).shortCode,'|TA|qa-batch-2');
-   assert.equal(stored.lineups.some(l=>l.code===codes[1]),false);
-   await ui(part('upload')+'.click()');
-   await until(part('status')+'.textContent.includes("本次就绪 1 条")');
-   assert.deepEqual(batchShareCalls.slice(before+3),[{code:codes[1],epoch:41}]);
-   assert.equal(stored.lineups.some(l=>l.code===codes[1]),false);
-
-   await choose(3,4);
-   mockBatchShare=code=>new Promise(resolve=>{release=async()=>resolve(await reply(code,codes.indexOf(code)));});
-   await ui(part('upload')+'.click()');
-   for(let i=0;!release&&i<200;i++)await sleep(10);
-   assert.equal(typeof release,'function');
-   status={...status,share_epoch:42};win.webContents.send('ta-status-changed',status);
-   await release();release=null;
-   await until(part('status')+'.textContent.includes("登录角色发生变化，上传已停止")');
-   assert.deepEqual(batchShareCalls.slice(before+4),[{code:codes[3],epoch:41}]);
-   await ui(part('upload')+'.click()');
-   for(let i=0;!release&&i<200;i++)await sleep(10);
-   assert.equal(typeof release,'function');
-   await ui(part('stop')+'.click()');
-   await release();release=null;
-   await until(part('status')+'.textContent.includes("已停止后续上传")');
-   assert.deepEqual(batchShareCalls.slice(before+5),[{code:codes[3],epoch:42}]);
-   mockBatchShare=code=>reply(code,codes.indexOf(code));
-   await ui(part('upload')+'.click()');
-   await until(part('status')+'.textContent.includes("本次就绪 1 条")');
-   assert.deepEqual(batchShareCalls.slice(before+5),codes.slice(3).map(code=>({code,epoch:42})));
-   await choose(1,4);
-   await ui(part('copy-short')+'.click()');
-   await until(part('copy-short')+'.dataset.copyState==="success"');
-   assert.equal(clipboardText,'|TA|qa-batch-1\n|TA|qa-batch-4');
-   win.setContentSize(720,960);
-   try{assert.equal(await ui('$("detail-dialog").scrollWidth<=$("detail-dialog").clientWidth+2'),true);}
-   finally{win.setContentSize(1440,1000);}
-   await capture('candidate-codes-batch');
-  }finally{
-   if(release)await release();
-   mockBatchShare=null;status=offline;win.webContents.send('ta-status-changed',status);
-   await ui(`$('detail-dialog').close();STATE=${priorState};fillFilters();renderManage();`);
-   stored=priorStore;
-  }
  });
  if(process.argv.includes('--visual')){
   await ui('STATE='+JSON.stringify(blank())+';backupUndo=null;document.getElementById("undo-restore").hidden=true;document.getElementById("toast").classList.remove("show");document.getElementById("code-input").value="";updateCode();updateAccountSelect();fillFilters();selectView("library")');

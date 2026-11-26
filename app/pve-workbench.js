@@ -6,47 +6,53 @@
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
- function checkedLineups(){
-  const available=new Map(lineups().map(lineup=>[lineup.id,lineup]));
-  return [...selectedLineups].map(id=>available.get(id)).filter(Boolean);
+ function replayableLineup(lineup,config){
+  if((config.codeStageId!=null&&Number(lineup.gameSceneId)!==config.codeStageId)||
+     !C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup))return false;
+  const members=lineup.members.filter(member=>member.occupied!==false);
+  return members.length===config.memberCount+1&&members.filter(member=>member.kind==='onmyoji').length===1&&
+   members.filter(member=>member.kind==='shikigami').length===config.memberCount;
  }
 
- function matchesCurrentSelection(selected){
-  return usesDungeonInventory(job)&&job.selected.length===selected.length&&
-   job.selected.every((lineup,index)=>lineup===selected[index]);
+ function knownLineups(){
+  return lineups().filter(lineup=>replayableLineup(lineup,pane));
  }
 
- const exhausted=selected=>job?.originalsComplete&&matchesCurrentSelection(selected);
+ function selectedForReplay(available){
+  const byId=new Map(available.map(lineup=>[lineup.id,lineup]));
+  return (pane.lineup.value?[pane.lineup.value]:[...selectedLineups]).map(id=>byId.get(id)).filter(Boolean);
+ }
+
  const busy=()=>!!(job?.running||stopping);
  const active=run=>job===run&&pane===run.pane&&!run.cancelled&&DATA===run.data&&usesDungeonInventory(run);
  const ready=()=>runtime?.available&&runtime.resourceVersion===pane.version&&
   (runtime.battleModes??[3]).includes(pane.battleMode??3);
- const batchCodes=()=>job?.pane===pane&&usesDungeonInventory(job)?(job.codeRows??[...job.previous,...job.rows])
-  .flatMap(row=>row.codes).filter(entry=>entry.valid()):[];
-
  function update(){
   if(!pane)return;
-  const selected=checkedLineups(),hasAccount=!!account(),blocked=runeBusy();
+  const available=knownLineups(),hasAccount=!!account(),blocked=runeBusy();
   const supported=ready();
   const running=job?.running===true;
-  pane.start.hidden=!selected.length;
-  pane.start.disabled=!supported||!hasAccount||blocked;
-  pane.stock.hidden=selected.length>0&&!exhausted(selected);
-  pane.stock.disabled=!supported||!hasAccount||blocked;
-  window.AtlasCandidateBatch.configure(pane.autoShare,{available:!pane.stock.hidden,disabled:pane.stock.disabled});
+  const options=JSON.stringify(available.map(({id,title})=>[id,title]));
+  if(pane.options!==options){
+   const previous=pane.lineup.value;
+   const placeholder=new Option('使用阵容库已勾选项','');
+   pane.lineup.replaceChildren(placeholder,...available.map(({title,id})=>new Option(title,id)));
+   if(available.some(({id})=>id===previous))pane.lineup.value=previous;
+   pane.options=options;
+  }
+  const selected=selectedForReplay(available);
+  pane.lineup.disabled=blocked||!available.length;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
-  const codes=batchCodes();
-  pane.batch.hidden=new Set(codes.map(entry=>entry.output.code)).size<2;
-  pane.batch.disabled=blocked;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
   pane.hint.textContent=running?(job.cancelled?'正在停止复跑…':job.message):
    !supported?(runtime?.reason||(runtime?.available?'本机运行时不支持此版本或战斗模式。':'正在核对本机复跑资料…')):
    !hasAccount?'先导入并选择库存账号。':
    blocked?'已有原版复跑或正在停止，请等待其结束。':
-   job?.notice?job.notice+(job.shareNotice?' '+job.shareNotice:''):
-   selected.length?`已勾选 ${selected.length} 套阵容，将按勾选顺序${isWaveMode(pane.battleMode)?'每 4 套组成一次接力':'核对'}。`:
-   '可直接从库存寻找备选，也可先在阵容库勾选原码。';
+   job?.notice?job.notice:
+   selected.length?`已选 ${selected.length} 套已知阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
+   available.length?'从下拉列表选择，或先在阵容库勾选对应阵容。':'阵容库暂无可用于此副本的完整阵容。请先解析或手动制作阵容码。';
  }
 
  function refreshRuntime(){
@@ -60,7 +66,6 @@
    job.restoreFocus ||= document.activeElement===job.pane.stop;
    job.cancelled=true;
    job.stopWorker?.();
-   job.stopSearch?.();
    if(job.native&&!stopping)stopping=api.stopPve().catch(()=>{}).finally(()=>{
     stopping=null;update();if(DATA)renderDungeonSelection();
    });
@@ -77,25 +82,25 @@
   cancel(true);
   const section=document.createElement('section');
   section.className='encounter-source';
-  section.innerHTML=`<h4>用库存离线复跑</h4>
+  section.innerHTML=`<h4>模拟已知阵容</h4>
    <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子${config.scoreWindowSeconds?
     ` · ${config.retreat?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
    <p class="caption" data-pve-status role="status"></p>
    <div class="actions">
-    <button class="secondary" type="button" data-pve-start>复跑勾选原码</button>
-    <button class="secondary" type="button" data-pve-stock>从库存寻找备选</button>
+    <label class="pve-lineup-field">已知阵容 <select data-pve-lineup></select></label>
+    <button class="secondary" type="button" data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
-    <button class="secondary" type="button" data-pve-batch hidden>管理本批阵容码</button>
-    <label class="candidate-auto-share" hidden><input type="checkbox" data-pve-auto-share> 本次自找完成后，用当前登录角色上传短码</label>
    </div>
    <ol class="dungeon-battle-list" data-pve-results></ol>`;
   const part=name=>section.querySelector(`[data-pve-${name}]`);
-  pane={...config,start:part('start'),stock:part('stock'),stop:part('stop'),batch:part('batch'),autoShare:part('auto-share'),
+  pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
    hint:part('status'),results:part('results')};
-  pane.start.onclick=()=>void run(false);
-  pane.stock.onclick=()=>void run(true);
+  pane.start.onclick=()=>void run();
+  pane.lineup.onchange=()=>{
+   if(job&&!busy())job.notice=null;
+   update();
+  };
   pane.stop.onclick=()=>cancel();
-  pane.batch.onclick=()=>window.AtlasCandidateBatch.open(batchCodes());
   target.append(section);
   refreshRuntime();
   update();
@@ -111,23 +116,21 @@
   el.innerHTML=`<strong>${esc(title)}</strong><span data-state></span>
    <details hidden><summary>查看采样战报</summary><ul class="dungeon-stock-samples"></ul></details>`;
   const row={el,state:el.querySelector('[data-state]'),details:el.querySelector('details'),
-   report:el.querySelector('ul'),samples:[],codes:[],verdict:'unknown',index:run.rows.length+1};
+   report:el.querySelector('ul'),samples:[],verdict:'unknown',index:run.rows.length+1};
   run.rows.push(row);
   run.pane.results.append(el);
   return row;
  }
 
- async function replay(run,row,plan,damageFloor=false,sampleCount=seeds.length){
+ async function replay(run,row,plan){
   const {stageId,groupId,battleMode,retreat,region}=run.pane,scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
-  const teamKey=relay?AtlasRuneSearch.relayKey(plan):AtlasRuneSearch.teamKey(plan);
-  for(const seed of seeds.slice(row.samples.length,sampleCount)){
+  for(const seed of seeds){
    if(!active(run))return;
-   run.message=scoring?`正在${sampleCount===seeds.length?'复评':'初筛'}第 ${row.index} 套 · 已完成 ${row.samples.length} / ${sampleCount} 场 · 种子 ${seed}`:
-    `正在复跑第 ${row.index} 套 · 种子 ${seed}`;
+   run.message=`正在复跑第 ${row.index} 套 · 种子 ${seed}`;
    update();
    let report;
    run.native=true;
-   try{report=await api.runPve(plan,{stageId,groupId,seed,...(battleMode?{battleMode}:{}),...(damageFloor?{damageFloor:true}:{}),
+   try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:true,...(battleMode?{battleMode}:{}),
     ...(retreat?{retreat}:{}),...(region?{region}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
@@ -149,14 +152,12 @@
    const experience=report.experience;
    if(report.regionalBoss?.eligible===false){
     row.verdict='infeasible';
-    run.alternatives.push(teamKey);
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
    const ranOut=(experience??report.coins)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
-    run.alternatives.push(teamKey);
     row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
     return;
    }
@@ -166,33 +167,12 @@
     return;
    }
   }
-  if(sampleCount<seeds.length){
-   row.verdict='screened';
-   return;
-  }
   row.verdict=(scoring&&AtlasRuneCandidate.damageResult(row.samples)?.credited!==seeds.length||
    relay&&AtlasRuneCandidate.waveResult(row.samples)?.min!==70)?'scored':'pass';
-  run.alternatives.push(teamKey);
  }
 
  async function original(run,lineup){
   const row=addRow(run,lineup.title);
-  if(!C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup)){
-   row.state.textContent='先解析并补齐原码要求';
-   return;
-  }
-  if(run.pane.retreat&&Number(lineup.gameSceneId)!==run.pane.codeStageId){
-   row.verdict='infeasible';
-   row.state.textContent='阵容码对应的首领与当前演练不同';
-   return;
-  }
-  const members=lineup.members.filter(member=>member.occupied!==false);
-  if(members.length!==run.pveMemberCount+1||members.filter(member=>member.kind==='onmyoji').length!==1||
-     members.filter(member=>member.kind==='shikigami').length!==run.pveMemberCount){
-   row.verdict='infeasible';
-   row.state.textContent=`此关需要 1 位阴阳师和 ${run.pveMemberCount} 位式神`;
-   return;
-  }
   try{
    row.state.textContent='正在精算库存…';
    run.message=`正在精算第 ${run.rows.length} / ${run.selected.length} 套原码`;
@@ -213,7 +193,7 @@
    }
    const scoring=isDamageMode(run.pane.battleMode);
    const tactics=scoring&&Number(lineup.gameSceneId)===run.pane.codeStageId&&AtlasRuneCandidate.readScoreInstructions(lineup.notes);
-   await replay(run,row,tactics?{...plan,tactics}:plan,scoring||!!run.pane.region);
+   await replay(run,row,tactics?{...plan,tactics}:plan);
   }catch(error){
    if(active(run))row.state.textContent=runeError(error);
   }
@@ -233,67 +213,9 @@
    }
    const plan=AtlasRuneLineup.underworldPlan(pair,result,run.account,run.data.gameConfig);
    row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码配置复跑。原版禁用规则按本次提供的阴阳师计算。</p>');
-   await replay(run,row,plan,true);
+   await replay(run,row,plan);
   }catch(error){
    if(active(run))row.state.textContent=runeError(error);
-  }
- }
-
- function offerCode(run,row,output,team){
-  const action=document.createElement('button');
-  action.type='button';
-  action.className='secondary';
-  action.dataset.pveCode='';
-  action.textContent=team?`查看第 ${team} 队阵容码`:'查看阵容码';
-  const valid=()=>pane===run.pane&&usesDungeonInventory(run)&&
-   !!(job?.rows.includes(row)||job?.previous.includes(row));
-  row.codes.push({output,valid});
-  const save=({create})=>saveCandidateCodes([output],{create,valid:()=>!create||valid()});
-  action.onclick=()=>{
-   const evidence=team?'该队已在离线接力中上阵 · 全随机分支待验证':
-    isDamageMode(run.pane.battleMode)?'个人伤害结算通过采样 · 全随机分支待验证':'离线采样通过 · 全随机分支待验证';
-   if(valid())openCandidateCode(output.lineup.title,evidence,output,{
-    valid,save,savedMessage:'阵容码已保存到阵容库。',savedDetail:row.el.querySelector('[data-score-tactics]')?.textContent,
-   });
-  };
-  row.el.append(action);
- }
-
- function addCandidate(run,item){
-  const names=item.heroIds.map(id=>run.data.gameConfig.heroes[id]?.name||`式神 ${id}`);
-  const row=addRow(run,`${item.title} · ${names.join('、')}`);
-  if(item.rounds){
-   const names=item.rounds.map(round=>run.data.gameConfig.heroes[round.plan.onmyoji.heroId]?.name).join(' → ');
-   row.details.insertAdjacentHTML('beforeend',`<p class="caption">阴阳师按 60 级及满技能计算，出场顺序为 ${esc(names)}。我方伤害浮动取下限。</p>`);
-  }else if(run.pane.actorId){
-   const name=run.data.gameConfig.heroes[run.pane.actorId]?.name||'指定阴阳师';
-   row.details.insertAdjacentHTML('beforeend',`<p class="caption">备选使用 60 级${esc(name)}和满级技能。我方伤害浮动取下限。</p>`);
-  }else row.details.insertAdjacentHTML('beforeend','<p class="caption">备选使用 60 级晴明、满级言灵·星和言灵·守。我方伤害浮动取下限。</p>');
-  return {item,row};
- }
-
- async function replayCandidate(run,{item,row},count){
-  try{await replay(run,row,item.plan,true,count);}
-  catch(error){if(active(run))row.state.textContent=runeError(error);}
- }
-
- async function makeCandidateCode(run,{item,row}){
-  const relay=isWaveMode(run.pane.battleMode),candidate={...item,samples:row.samples};
-  if(!active(run)||!(row.verdict==='pass'||relay&&row.verdict==='scored')||!run.pane.codeStageId)return;
-  try{
-   const drafts=relay?await AtlasRuneCandidate.underworldTemplates(candidate,run.data,run.pane):
-    [{request:await AtlasRuneCandidate.pveTemplate(candidate,run.data,run.pane)}];
-   for(const {request,team} of drafts){
-    if(!active(run))return;
-    const output=await window.atlas.buildLineup(request);
-    if(!active(run))return;
-    if(output.payload?.code!==output.code)throw Error('阵容码与本地解析结果不一致');
-    const lineup=C.adaptTA(output.payload,run.data);
-    if(Number(lineup.gameSceneId)!==run.pane.codeStageId)throw Error('生成的阵容码未对应本层');
-    offerCode(run,row,{...output,lineup},team);
-   }
-  }catch(error){
-   if(active(run))row.details.insertAdjacentHTML('beforeend',`<p class="caption">${esc(runeError(error))}</p>`);
   }
  }
 
@@ -317,61 +239,19 @@
   row.details.insertAdjacentHTML('beforebegin',`<p class="caption" data-score-tactics>${esc(opening||'开场直接自动。')}${esc(skillModes.length?skillModes.join('，')+'。':'')}</p>`);
  }
 
- async function scoreStock(run,candidates){
-  const cards=new Map();
-  const {trials,finalists}=await AtlasRuneCandidate.rankedDamageSearch(candidates,run.data.gameConfig,{
-   active:()=>active(run),alternatives:run.alternatives,
-   async measure(trial,count){
-    if(!cards.has(trial))cards.set(trial,addCandidate(run,trial.item));
-    const candidate=cards.get(trial);
-    candidate.row.verdict='unknown';
-    await replayCandidate(run,candidate,count);
-    return candidate.row.samples;
-   },
-  });
-  if(!active(run))return;
-  for(const trial of trials.filter(trial=>trial.score&&!finalists.includes(trial))){
-   const {row}=cards.get(trial);
-   row.state.textContent=`初筛 ${trial.samples.length} 场 · 单场最高 ${damageText(trial.score.max)} · 未进入六场复评`;
-   run.alternatives.push(trial.key);
-  }
-  for(const trial of finalists)await makeCandidateCode(run,cards.get(trial));
- }
-
- async function stockCandidates(run){
-  run.message='正在从已导出的库存生成配装…';
-  update();
-  const candidates=await generateDungeonStock(run);
-  if(!active(run))return;
-  if(isDamageMode(run.pane.battleMode))return scoreStock(run,candidates);
-  for(const item of candidates){
-   if(!active(run))return;
-   const candidate=addCandidate(run,item);
-   await replayCandidate(run,candidate);
-   await makeCandidateCode(run,candidate);
-  }
- }
-
- async function run(useStock){
+ async function run(){
   if(!pane||runeBusy()||!account()||!ready())return;
-  const selected=checkedLineups();
-  if(useStock&&selected.length&&!exhausted(selected))return;
-  if(!useStock&&!selected.length)return;
-  const shareEpoch=useStock?window.AtlasCandidateBatch.takeIntent(pane.autoShare):null;
-  const focus=document.activeElement===pane.start||document.activeElement===pane.stock;
-  const reuse=useStock&&matchesCurrentSelection(selected);
-  const previous=reuse?[...job.previous,...job.rows].filter(row=>row.verdict!=='unknown'):[];
-  const alternatives=reuse?[...new Set(job.alternatives)]:[];
-  const next=job={pane,data:DATA,account:account(),selected,alternatives,previous,rows:[],running:true,cancelled:false,
-   originalsComplete:useStock&&exhausted(selected),pveMemberCount:pane.memberCount,
-   pveOpeningSpeed:pane.openingSpeed,pveBattleMode:pane.battleMode,pveActorId:pane.actorId,message:'正在准备库存…'};
-  pane.results.replaceChildren(...previous.map(row=>row.el));
+  const selected=selectedForReplay(knownLineups());
+  if(!selected.length)return;
+  const focus=document.activeElement===pane.start;
+  const next=job={pane,data:DATA,account:account(),selected,rows:[],running:true,cancelled:false,
+   pveMemberCount:pane.memberCount,message:'正在准备库存…'};
+  pane.results.replaceChildren();
   update();
   if(focus)pane.stop.focus();
   renderDungeonSelection();
   try{
-   if(useStock)await stockCandidates(next);
-   else if(isWaveMode(next.pane.battleMode)){
+   if(isWaveMode(next.pane.battleMode)){
     for(let i=0;i<selected.length&&active(next);i+=4)await originalRelay(next,selected.slice(i,i+4));
    }else for(const lineup of selected){
     if(!active(next))return;
@@ -379,7 +259,7 @@
    }
    if(!active(next))return;
    const hunting=isDamageMode(next.pane.battleMode),relay=isWaveMode(next.pane.battleMode);
-   const passed=[...next.previous,...next.rows].filter(row=>row.verdict==='pass'||(hunting||relay)&&row.verdict==='scored');
+   const passed=next.rows.filter(row=>row.verdict==='pass'||(hunting||relay)&&row.verdict==='scored');
    const timing=hunting?null:AtlasRuneCandidate.commonSampleTiming(passed);
    const huntScores=new Map(hunting?passed.map(row=>[row,AtlasRuneCandidate.damageResult(row.samples)]):[]);
    const waveScores=new Map(relay?passed.map(row=>[row,AtlasRuneCandidate.waveResult(row.samples)]):[]);
@@ -418,15 +298,11 @@
     row.state.textContent=`通过 ${seeds.length} 个采样种子 · ${timeLabel}`;
    }
    next.pane.results.prepend(...passed.map(row=>row.el));
-   next.codeRows=passed;
-   if(!useStock)next.originalsComplete=next.rows.every(row=>['loss','infeasible','scored'].includes(row.verdict));
    next.notice=passed.length?(relay?`${passed.length} 套接力已完成共同采样，按最低清波数排序。全随机分支待验证。`:
     hunting?`${passed.length} 套完成共同采样，按窗口内的单场最高伤害排序。全随机分支待验证。`:
-    next.pane.region?`${passed.length} 套通过采样，优先显示回合数与承伤未被其他阵容同时超越的备选。全随机分支待验证。`:
+    next.pane.region?`${passed.length} 套通过采样，优先显示回合数与承伤未被其他阵容同时超越的阵容。全随机分支待验证。`:
     `${passed.length} 套通过采样，已按最慢样本用时排序。全随机分支待验证。`):
-    useStock?(next.rows.length?'这一批库存备选未通过全部采样。':'当前库存不足以生成可复跑的新备选。'):
-    next.originalsComplete?'勾选原码均未通过，可从库存寻找备选。':
-    '勾选原码中有待核对的条件，请处理后重试。';
+    next.rows.some(row=>row.verdict==='unknown')?'部分阵容的库存或结算有待核对，请查看战报。':'所选阵容未通过本次采样。';
   }catch(error){if(active(next))next.notice=runeError(error);}
   finally{
    next.running=false;
@@ -436,12 +312,10 @@
     update();
     if(restore){
      await stopping;
-     const button=useStock?next.pane.stock:next.pane.start;
+     const button=next.pane.start;
      if(job===next&&!button.hidden&&!button.disabled)button.focus();
     }
-    if(active(next))void window.AtlasCandidateBatch.automatic(batchCodes(),shareEpoch,()=>active(next),text=>{
-     next.shareNotice=text;update();
-    });
+
    }
    renderDungeonSelection();
   }
