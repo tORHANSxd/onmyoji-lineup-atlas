@@ -50,7 +50,9 @@ const engines={
   [battleMode,{name:engine,route,sha256:engineSHA256}])),
  [tianfa.battleMode]:{name:tianfa.engine,route:tianfa.route,sha256:tianfa.engineSHA256},
  [journeyHard.battleMode]:{name:'JSNormalEngine',route:'journey-hard-solo',sha256:journeyHard.engineSHA256},
- ...Object.fromEntries(mapBoss.battleModes.map(mode=>[mode,{name:'WorldBossEngine',route:'map-boss-local-team',sha256:mapBoss.engineSHA256}])),
+ ...Object.fromEntries(mapBoss.battleModes.map(mode=>[mode,mode===mapBoss.lbsMode?
+  {name:'LBSBossEngine',route:'map-boss-local-team',sha256:mapBoss.lbsEngineSHA256}:
+  {name:'WorldBossEngine',route:'map-boss-local-team',sha256:mapBoss.engineSHA256}])),
  ...Object.fromEntries(Object.entries(tuzhizhuPractice.modes).map(([id,mode])=>
   [id,{name:mode.engine,route:'tuzhizhu-practice-solo',sha256:mode.sha256}])),
  [firstExperience.battleMode]:null,
@@ -502,8 +504,8 @@ function launch(python,args,cwd,signal){
 function validMapBossReport(report,route,players){
  const data=report.mapBoss,rewards=data?.rewardInputs;
  if(report.sceneId!==route.sceneId||report.waveCount!==route.waves.length||data?.kind!==route.kind||
-    data.level!==route.level||data.players!==players||!sameTactics(data.positions,mapBoss.positions[players]))return false;
- if(route.battleMode===mapBoss.sealMode){
+    data.level!==route.level||data.players!==players||!sameTactics(data.positions,mapBoss.partyPositions(route.battleMode,players)))return false;
+ if(route.waves.length>1){
   const count=data.waves?.length;
   return Array.isArray(data.waves)&&count>=1&&count<=route.waves.length&&report.formationsVerified===count&&
    report.wavesCleared<=count&&(report.outcome!=='win'||report.wavesCleared===route.waves.length)&&
@@ -709,9 +711,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===3&&mapBoss.stages[stageId])throw Error('该关卡需要地图首领的原版组队入口');
    const mapBossMode=mapBoss.battleModes.includes(battleMode);
    const mapBossRoute=mapBossMode?mapBoss.stages[stageId]:null;
+   const mapBossPositions=mapBossMode?mapBoss.partyPositions(battleMode,mapBossPlayers):null;
    if(mapBossMode&&(mapBossRoute?.battleMode!==battleMode||mapBoss.resourceVersion!==resourceVersion||groupId!==stageId||
-      plan.members.length!==5||![2,3].includes(mapBossPlayers))||
-      mapBossPlayers!==undefined&&!mapBossRoute)throw Error('地图首领需要正确的关卡、五位式神和两人或三人组队');
+      !mapBossPositions||plan.members.length!==mapBossPositions.flat().length)||
+      mapBossPlayers!==undefined&&!mapBossRoute)throw Error('地图首领需要正确的关卡、参战人数和阵容');
    const ghostRoute=battleMode===superGhost.battleMode?superGhost.routes[stageId]:null;
    if(battleMode===superGhost.battleMode&&(superGhost.resourceVersion!==resourceVersion||!ghostRoute||groupId!==stageId||
       plan.members.length!==5||!validGhostSettings(ghostSettings,ghostRoute))||

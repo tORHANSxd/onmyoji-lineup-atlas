@@ -478,7 +478,7 @@
   }
 
   function encounterKind(entry) {
-    return entry.fengmoLive||['阴界之门入口','妖气封印'].includes(entry.kind)||
+    return entry.fengmoLive||['阴界之门入口','妖气封印','现世鬼王'].includes(entry.kind)||
       entry.table==='pve_stage_data'&&['daily','guild'].includes(entry.family)?entry.kind:titles[entry.table]||entry.kind;
   }
 
@@ -1184,16 +1184,20 @@
       return control;
     };
     const stage=select('关卡等级档','mapBossStage',stages.map(id=>[id,`${source.stages[id].level} 级档 · ${id}`]));
-    const players=select('参战人数','mapBossPlayers',[[2,'两人组队'],[3,'三人组队']]);
-    destination.append(controls,node('p','离线模拟把本账号的一位阴阳师和五位式神按原版规则分给队长与队友。按阵容码顺序站在 2 至 6 号位。','caption'),slots,workbench);
+    const canSimulateAlone=source.stages[stages[0]].battleMode===source.lbsMode;
+    const players=select('参战人数','mapBossPlayers',[
+      ...(canSimulateAlone?[[1,'单人演练']]:[]),[2,'两人组队'],[3,'三人组队'],
+    ]);
+    destination.append(controls,node('p','阴阳师和式神来自当前账号。式神按阵容顺序填入原版战斗站位。','caption'),slots,workbench);
     const render=()=>{
       const stageId=Number(stage.value),mapBossPlayers=Number(players.value),route=source.stages[stageId];
-      const assignments=source.positions[mapBossPlayers].map((indices,i)=>
-        `${i?'队友 '+i:'队长'} ${indices.join('、')} 号位`);
-      const enemies=route.battleMode===source.sealMode?`敌方 ${route.waves.length} 波`:`敌方 ${Math.min(route.level,40)} 级`;
+      const positions=source.partyPositions(route.battleMode,mapBossPlayers);
+      const assignments=positions.map((indices,i)=>
+        `${i?'队友 '+i:mapBossPlayers===1?'式神':'队长'} ${indices.join('、')} 号位`);
+      const enemies=route.waves.length>1?`敌方 ${route.waves.length} 波`:`敌方 ${Math.min(route.level,40)} 级`;
       slots.textContent=`${enemies} · ${assignments.join(' · ')}`;
       workbench.replaceChildren();
-      window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:stageId,memberCount:5,battleMode:route.battleMode,
+      window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:stageId,memberCount:positions.flat().length,battleMode:route.battleMode,
         mapBossPlayers,waveCount:route.waves.length,label:`${route.label} · ${route.level} 级档`,version:source.resourceVersion});
     };
     stage.addEventListener('change',render);players.addEventListener('change',render);

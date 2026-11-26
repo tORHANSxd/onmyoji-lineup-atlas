@@ -6,7 +6,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from dungeon_encounters import encounter_index
 from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
-from map_boss_stage import MODE, SEAL_MODE, entry_for_stage
+from map_boss_stage import LBS_MODE, MODE, SEAL_MODE, entry_for_stage, party_positions
 
 
 class EncounterIndexTests(unittest.TestCase):
@@ -171,6 +171,29 @@ class EncounterIndexTests(unittest.TestCase):
         self.assertEqual(entry_for_stage(entries, 1600, SEAL_MODE), ("seal", None, 39, None, 10))
         self.assertIsNone(entry_for_stage(entries, 2000))
         self.assertIsNone(entry_for_stage(entries, 1600, MODE))
+
+    def test_ordinary_lbs_boss_keeps_activity_entry_and_solo_positions_distinct(self):
+        bosses = {
+            25: {"id": 25, "name": "桃花妖", "type": 2, "gk_list": [[10600, 10]]},
+            1001: {"id": 1001, "name": "桃花妖", "type": 4, "gk_list": [[10600, 10], [10601, 15]]},
+        }
+        tables = {
+            "map_boss": list(bosses.items()),
+            "battle_mode_routes": [[LBS_MODE, {"mode_symbol": "MODE_LBS_BOSS", "scene_engine": "LBSBossEngine"}]],
+            "pve_stage_data": [["10600", {"id": "10600", "groupid": 10600}]],
+            "BattleMonstersInfo": [[10600, {"resindex": 39}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "daily", "fields": []} for name in tables]
+        catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {entry["key"]: entry for entry in catalog["entries"] if entry["table"] == "map_boss"}
+        self.assertEqual(entries[25]["title"], "现世鬼王 · 桃花妖")
+        self.assertIn(LBS_MODE, [ref["key"] for ref in entries[25]["refs"] if ref["table"] == "battle_mode_routes"])
+        self.assertEqual(entries[1001]["kind"], "地图首领入口")
+        self.assertFalse(any(ref["table"] == "battle_mode_routes" for ref in entries[1001]["refs"]))
+        self.assertEqual(entry_for_stage(bosses, 10600, LBS_MODE), ("lbs", None, 39, None, 10))
+        self.assertIsNone(entry_for_stage(bosses, 10601, LBS_MODE))
+        self.assertEqual(party_positions(LBS_MODE, 1), ((2, 3, 4),))
+        self.assertIsNone(party_positions(MODE, 1))
 
     def test_regional_boss_preserves_weighted_rules_and_level_one_modifier_variants(self):
         base_skill = {"$tuple": [61701, 1, -1]}

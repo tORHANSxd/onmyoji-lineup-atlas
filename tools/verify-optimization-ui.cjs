@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,855,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3004,3005,3008,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,855,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3001,3004,3005,3008,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -621,6 +621,24 @@ async function main(){
     await encounter('battle','1608');
     await until(rank+'?.value==="1608"');
     assert.equal(await ui(rank+'.options.length'),1);
+   }
+   if(cases.some(entry=>entry.table==='map_boss'&&entry.key===19&&entry.kind==='现世鬼王')){
+    await encounter('daily','现世鬼王 座敷童子 10008');
+    const rank='document.querySelector("[data-map-boss-stage]")',party='document.querySelector("[data-map-boss-players]")';
+    assert.equal(await ui(rank+'.options.length'),9);
+    assert.match(await ui(panel+'.textContent'),/敌方 3 波 · 式神 2、3、4 号位.*LBSBossEngine/s);
+    await ui(`${rank}.value="10008";${rank}.dispatchEvent(new Event("change"))`);
+    assert.match(await run('story',{stageId:10008,groupId:10008,battleMode:3001,mapBossPlayers:1},
+      {waveCount:3,wavesCleared:3,formationsVerified:3,mapBoss:{kind:'lbs',players:1,level:50}},undefined,10,3),
+      /通过 3 波.*单人演练 · 50 级档/);
+    await ui(`${party}.value="2";${party}.dispatchEvent(new Event("change"))`);
+    assert.match(await ui(panel+'.textContent'),/队长 5、6 号位 · 队友 1 2、3、4 号位/);
+    assert.match(await run('superghost-five',{stageId:10008,groupId:10008,battleMode:3001,mapBossPlayers:2},
+      {waveCount:3,wavesCleared:3,formationsVerified:3,mapBoss:{kind:'lbs',players:2,level:50}}),
+      /通过 3 波.*2 人组队 · 50 级档/);
+    await ui('qaEncounterInput("daily","地图首领入口 桃花妖 1001")');
+    await until(panel+'.textContent.includes("此入口的原版复跑待接入")');
+    assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');

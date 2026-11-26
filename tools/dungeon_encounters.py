@@ -4,7 +4,7 @@ from collections import Counter
 from functools import cache
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
-from map_boss_stage import SEAL_MODE, is_fragment_entry
+from map_boss_stage import LBS_MODE, SEAL_MODE, is_fragment_entry
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 
 
@@ -432,6 +432,9 @@ def encounter_index(source, load_rows):
                         links.append(rule_reference(tip, "式神碎片副本玩法原文"))
                 if route := relation("battle_mode_routes", SEAL_MODE, "妖气封印战斗引擎", False):
                     links.append(route)
+            elif row.get("type") == 2:
+                if route := relation("battle_mode_routes", LBS_MODE, "现世鬼王战斗引擎", False):
+                    links.append(route)
             links.extend(relation("pve_stage_data", stage_id, label, True)
                          for stage_id, label in map_boss_stages.get(row.get("id"), {}).items())
         if name == "BattleMonstersInfo":
@@ -712,6 +715,9 @@ def encounter_index(source, load_rows):
                 entry_kind = "妖气封印"
                 period = " · 历史活动" if row.get("begin_time") and row.get("end_time") else ""
                 title = f"{entry_kind} · {title}{period}"
+            elif table_name == "map_boss" and row.get("type") == 2:
+                entry_kind = "现世鬼王"
+                title = f"{entry_kind} · {title}"
             if table_name == "MZB_fengmo":
                 trait_id = row.get("skill_id")
                 _, trait = table("skill").get(reference_key(level_one_skill(trait_id)), (None, {}))
