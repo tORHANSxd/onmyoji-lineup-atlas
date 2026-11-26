@@ -11,7 +11,8 @@
      (config.codeStageIds?.length&&!config.codeStageIds.includes(Number(lineup.gameSceneId)))||
      !C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup))return false;
   const members=lineup.members.filter(member=>member.occupied!==false);
-  return members.length===config.memberCount+1&&members.filter(member=>member.kind==='onmyoji').length===1&&
+  const actors=members.filter(member=>member.kind==='onmyoji').length;
+  return members.length===config.memberCount+actors&&(config.replacementActor?actors<=1:actors===1)&&
    members.filter(member=>member.kind==='shikigami').length===config.memberCount&&
    (!config.trialEligible||members.some(member=>config.trialEligible.includes(Number(member.shikigamiId))));
  }
@@ -474,9 +475,12 @@
     row.state.textContent=row.verdict==='infeasible'?'库存精算已证明原码约束无解':'库存精算仍有条件待核对';
     return;
    }
-   if(!run.pane.trialEligible)
+   if(run.pane.replacementActor)
+    row.details.insertAdjacentHTML('beforeend','<p class="caption">原版在阴阳师位使用关卡指定角色。式神培养、御魂和自动技能按所选阵容复跑。</p>');
+   else if(!run.pane.trialEligible)
     row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码培养和技能复跑。普攻等级缺失时使用客户端最低等级。</p>');
-   const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount);
+   const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount,
+    {useStageActor:!!run.pane.replacementActor});
    let trialSlot;
    if(run.pane.trialEligible){
     const eligible=plan.members.map(({hero},i)=>run.pane.trialEligible.includes(Number(hero.heroId))?i+1:0).filter(Boolean);

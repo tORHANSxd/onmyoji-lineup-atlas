@@ -494,6 +494,7 @@
     if(entry.table!=='dungeon_challenge_series'||!matchesOpeningSource(source))return null;
     const opening=source.floors[entry.key],waves=group.waves.filter(wave=>wave.length>0);
     if(!opening||opening.sceneId!==group.row?.scene||waves.length!==opening.waves.length||
+       (opening.replacement?.templateId??0)!==(group.row.yys_replacement_id??0)||
        !opening.waves.every((wave,i)=>wave.length===waves[i].length&&wave.every((unit,j)=>
          ['id','position','level'].every(key=>unit[key]===waves[i][j][key]))))return null;
     group.waves=opening.waves.map(wave=>wave.map(unit=>unit.id===-1?{...unit,copy:true}:{...unit,opening:unit}));
@@ -1192,12 +1193,17 @@
         config.need_team?'游戏内走组队入口':'游戏内走单人入口';
       destination.append(node('p',[`${secret.waves.length} 波`,`我方开场 ${secret.allyOrbs} 火`,
         `敌方开场 ${secret.enemyOrbs} 火`,`需阴阳师 ${config.level_limit} 级`,`消耗 ${config.strength} 体力`,entryLabel].join(' · '),'caption'));
+      if(secret.replacement){
+        const {name,level,star}=secret.replacement;
+        destination.append(node('p',`阴阳师位由关卡指定 · ${name} · ${level} 级 · ${star} 星`,'caption'));
+      }
       if(!secret.solo&&!config.advanced)
         destination.append(node('p','该层的独立机制仍待离线复跑核验。','caption'));
       if(secret.solo)window.AtlasPveWorkbench?.mount(destination,{stageId:Number(entry.key),groupId:Number(entry.key),memberCount:5,
         battleMode:266,waveCount:secret.waves.length,label:secret.protection?'溯问鲤踪 · 保护挑战':
           config.need_team?'秘闻单人组队挑战':'秘闻普通单人',version:state.index.resourceVersion,
         codeStageId:codeScene?.actors===1&&codeScene.shikigami===5?secret.codeStageId:null,codeLabel:codeScene?.name,
+        replacementActor:secret.replacement,
         openingSpeed:Math.max(...secret.waves.flat().filter(unit=>unit.id>0).map(unit=>unit.speed))});
     }
     if(entry.table==='dungeon_challenge_series'&&matchesOpeningSource(window.AtlasSecretOpenings)&&

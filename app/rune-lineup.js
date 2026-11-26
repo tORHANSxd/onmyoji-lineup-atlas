@@ -68,15 +68,16 @@ function selectedOnmyoji(actor,account,game){
  return {onmyoji,...(spirit?{spirit}:{})};
 }
 
-function selectedTeam(lineup,result,account,game,memberCount=5){
+function selectedTeam(lineup,result,account,game,memberCount=5,{useStageActor=false}={}){
  if(!result?.ready||!result.completed||result.proof?.state!=='optimal'||!Array.isArray(result.assignment)){
   throw Error('精算未给出已核对的库存配装');
  }
  const occupied=lineup.members.filter(member=>member.occupied!==false);
  const actors=occupied.filter(member=>member.kind==='onmyoji');
  const members=occupied.filter(member=>member.kind==='shikigami').sort((a,b)=>a.index-b.index);
- if(actors.length!==1||members.length!==memberCount||result.assignment.length!==members.length)throw Error('阵容码缺少战斗所需的完整阵容');
- const profile=selectedOnmyoji(actors[0],account,game);
+ if((useStageActor?actors.length>1:actors.length!==1)||members.length!==memberCount||
+    result.assignment.length!==members.length)throw Error('阵容码缺少战斗所需的完整阵容');
+ const profile=useStageActor?{}:selectedOnmyoji(actors[0],account,game);
  const builds=new Map(result.assignment.map(build=>[build.index,build]));
  return {...profile,members:members.map(member=>{
   const build=builds.get(member.index),hero=account.heroes[build?.heroId];

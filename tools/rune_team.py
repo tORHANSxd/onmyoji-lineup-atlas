@@ -63,16 +63,17 @@ def equip_data(row, suit_ids):
     )
 
 
-def selected_team(plan, suits, member_limit=5):
+def selected_team(plan, suits, member_limit=5, *, select_actor=True):
     suit_ids = {value: int(key) for key, value in suits.items()}
     if "涅槃火" in suit_ids:
         suit_ids["涅槃之火"] = suit_ids["涅槃火"]
-    actor = hero_data(plan["onmyoji"], onmyoji=True)
+    actor = hero_data(plan["onmyoji"], onmyoji=True) if select_actor else None
     members = plan["members"]
     if not isinstance(members, list) or not 1 <= len(members) <= member_limit:
         raise ValueError(f"Select one to {member_limit} shikigami")
     fighters, equips, auto_skills = {}, {}, {}
-    auto_skills["selected-onmyoji"] = auto_setting(plan["onmyoji"])
+    if select_actor:
+        auto_skills["selected-onmyoji"] = auto_setting(plan["onmyoji"])
     seen_heroes, seen_souls = set(), set()
     for member_index, member in enumerate(members, 1):
         instance_id = member["instanceId"]

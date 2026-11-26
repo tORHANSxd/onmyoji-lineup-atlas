@@ -477,7 +477,8 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
-      report.formationsVerified>report.waveCount||!validSecretProtection(report,secret.protection)||!validSecretMirror(report,secret)))||
+      report.formationsVerified>report.waveCount||!validSecretProtection(report,secret.protection)||!validSecretMirror(report,secret)||
+      (secret.replacement?!sameTactics(report.secretActor,{...secret.replacement,position:1}):report.secretActor!==undefined)))||
     (resource&&!validResource(report,resource))||report.seed!==seed||report.fixedStepMs!==20||report.teamSHA256!==sha256(input)||report.suitIndexSHA256!==sha256(suitInput)||
     !matchesDamagePolicy(report,damageFloor)||
     !validHash(report.nativeSHA256)||!validHash(report.scriptIndexSHA256)||!validHash(report.recordSHA256)||
@@ -525,9 +526,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
    const maxMembers=[fengmoYanwu.battleMode,orochi.battleMode,tianfa.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
+   const stageActor=battleMode===266&&secretOpenings.floors[stageId]?.replacement;
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
       typeof damageFloor!=='boolean'||!Array.isArray(rounds)||rounds.length<1||rounds.length>4||rounds.some(row=>
-       !row?.onmyoji||!Array.isArray(row.members)||row.members.length<minMembers||row.members.length>maxMembers||!validTactics(row,battleMode))||
+       !row||(!stageActor&&!row.onmyoji)||!Array.isArray(row.members)||row.members.length<minMembers||row.members.length>maxMembers||!validTactics(row,battleMode))||
       !validTactics(plan,battleMode))
     throw Error('无效的关卡、种子或配装');
    if(battleMode===29&&(awakeOpenings.resourceVersion!==resourceVersion||

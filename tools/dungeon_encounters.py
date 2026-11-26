@@ -384,6 +384,9 @@ def encounter_index(source, load_rows):
             scene = relation("Combinesceneinfo", row.get("resindex", 11032), "通用 PvE 默认场景", True)
             if scene:
                 links.append(scene)
+        if name == "dungeon_challenge_series" and (replacement := row.get("yys_replacement_id")):
+            links.extend(ref for dest, label in (("yys_replacement", "关卡指定出战角色"), ("hero", "指定角色技能模板"))
+                         if (ref := relation(dest, replacement, label, False)))
         if name == "journey_hardbattle":
             links.append(rule_reference("defence_hard_battle", "京畿净化首领挑战规则"))
         if name == "xinghen_battle":

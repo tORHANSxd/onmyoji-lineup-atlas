@@ -2,6 +2,7 @@
 
 
 LIYUJING_TYPE = 35
+REPLACEMENT_TYPES = {25, 27}
 MIRROR_FLOOR = 118
 MIRROR_WAVE = 3
 PROTECTION_FLOORS = {
@@ -43,9 +44,10 @@ def secret_stage(floor):
 def secret_solo(config):
     # The ordinary panel dispatches need_team=1 through attack_team_copy,
     # the client's single-player team challenge. Special mechanics are separate.
-    special_rules = {19, 20, 27, 31, 32, 34, 36, 37, 39}
-    return (config["advanced"] == 0 and config["need_team"] in (0, 1) and not config["yys_replacement_id"]
-            and config["type"] not in special_rules)
+    special_rules = {19, 20, 31, 32, 34, 36, 37, 39}
+    replacement = bool(config["yys_replacement_id"])
+    return (config["advanced"] == 0 and config["need_team"] in (0, 1) and config["type"] not in special_rules
+            and replacement == (config["type"] in REPLACEMENT_TYPES))
 
 
 def secret_protection(config):
@@ -54,6 +56,45 @@ def secret_protection(config):
 
 def placements(formation):
     return [(position, unit[1], unit[0]) for position, unit in enumerate(formation, 1) if unit]
+
+
+def secret_replacement(engine):
+    from DynamicConfigData import DATA_HERO
+
+    row = engine.getYYSReplacementData()
+    if not row:
+        raise ValueError("The original Secret Zone is missing its configured replacement")
+    hero = DATA_HERO.data[row["id"]]
+    skills = sorted([[skill, level] for skill, level in zip(hero["skill"], hero["skillLv"]) if skill and level])
+    if not skills:
+        raise ValueError("The original Secret Zone replacement has no skill configuration")
+    return {"templateId": row["id"], "heroId": row["heroId"], "name": hero["name"],
+            "level": row["level"], "star": row["star"], "awakening": row["awake"],
+            "autoActor": bool(row["isAI"]), "skills": skills}
+
+
+def secret_selection_placeholder():
+    from DynamicConfigData import DATA_HERO
+
+    # The original selector fills position one before replacing it with the stage actor.
+    hero = DATA_HERO.data[10]
+    skills = [[skill, level] for skill, level in zip(hero["skill"], hero["skillLv"]) if skill and level]
+    return {"heroId": 10, "level": 1, "star": 2, "awake": 0, "equips": [], "skinfo": skills,
+            "selectSkills": [skill for skill, _ in skills]}
+
+
+def check_secret_actor(engine, controller, config):
+    unit = engine.getEntity(engine.yysReplacementUid) if engine.yysReplacementUid else None
+    if (not unit or unit.ownerController is not controller or unit.posIndex != 1
+            or unit.HeroComp.heroData.heroUid == "selected-onmyoji" or any(unit.HeroComp.heroData.equips)):
+        raise RuntimeError("The original Secret Zone did not use its configured actor")
+    attr = unit.AttrComp
+    skills = sorted([[item.skillId, item.skillLevel] for item in unit.SkillMgrComp.skillCompList])
+    report = {**config, "position": unit.posIndex, "heroId": unit.protoid, "level": attr.level, "star": attr.star,
+              "awakening": unit.HeroComp.heroData.awake, "autoActor": bool(unit.isAutoUseSkill), "skills": skills}
+    if any(report[key] != config[key] for key in ("heroId", "level", "star", "awakening", "autoActor", "skills")):
+        raise RuntimeError("The original Secret Zone used a different configured actor")
+    return report
 
 
 def mirror_fallback():

@@ -50,6 +50,8 @@ def replay(args, runtime, work):
     journey_hard = args.mode == JOURNEY_HARD_MODE
     spider = args.mode in PRACTICE_MODES
     shilian = args.mode in SHILIAN_MODES
+    secret_actor_config = None
+    secret_actor_report = None
     shilian_event = ({"id": args.shilian_event_id, "difficulty": args.shilian_difficulty, "moves": args.shilian_moves}
                      if args.mode == SHILIAN_EVENT_MODE else None)
     if relay:
@@ -59,8 +61,10 @@ def replay(args, runtime, work):
         actor = actors["selected-onmyoji"][0]
         heroes = {**fighters, **{alias: profile for alias, (profile, _) in actors.items()}}
     else:
-        actor, fighters, inventory, choices = selected_team(plan, suits, member_limit=6 if yanwu or shilian or tianfa else 5)
-        heroes = {**fighters, "selected-onmyoji": actor}
+        actor, fighters, inventory, choices = selected_team(
+            plan, suits, member_limit=6 if yanwu or shilian or tianfa else 5,
+            select_actor=args.mode != 266 or "onmyoji" in plan)
+        heroes = {**fighters, "selected-onmyoji": actor} if actor else dict(fighters)
         if shilian:
             choices.pop("selected-onmyoji")
     tactics = hunt_tactics(plan, args.mode)
@@ -181,12 +185,19 @@ def replay(args, runtime, work):
     elif args.mode == 266:
         from battleengine.engine.ChallengeFbEngine import const
         from DynamicConfigData import DATA_HERO
-        from secret_stage import (MIRROR_FLOOR, SecretMirrorReplay, SecretProtectionReplay,
-                                  placements, secret_protection, secret_solo, secret_stage)
+        from secret_stage import (MIRROR_FLOOR, SecretMirrorReplay, SecretProtectionReplay, check_secret_actor,
+                                  placements, secret_protection, secret_replacement, secret_selection_placeholder,
+                                  secret_solo, secret_stage)
 
         engine, stage, waves = secret_stage(args.stage)
         if not secret_solo(stage) or len(fighters) != 5:
             raise ValueError("This Secret Zone floor does not use the verified five-shikigami solo route")
+        if stage["yys_replacement_id"]:
+            secret_actor_config = secret_replacement(engine)
+            actor = heroes["selected-onmyoji"] = secret_selection_placeholder()
+            choices.pop("selected-onmyoji", None)
+        elif actor is None:
+            raise ValueError("This Secret Zone floor requires an onmyoji in the selected lineup")
         group_id, wave_count = args.stage, len(waves)
     elif args.mode == RESOURCE_MODE:
         from battleengine.engine.NewExpEngine import const
@@ -259,7 +270,7 @@ def replay(args, runtime, work):
     player = preset_player(heroes, actors, actor_id) if relay or orochi else {"heroes": heroes, "yysid": actor_id}
     if shilian and args.shilian_state and args.shilian_state.get("guard"):
         player["behind_spirit_info"] = guard_battle_input(args.shilian_state["guard"])
-    spirit = None if relay or orochi or shilian else plan.get("spirit")
+    spirit = None if relay or orochi or shilian or secret_actor_config else plan.get("spirit")
     if spirit is not None:
         from AttrCalc import HunlingAttrCalc
         from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
@@ -525,6 +536,8 @@ def replay(args, runtime, work):
             trial_hero = verify_opening(engine, group, args.shilian_trial_slot)
             if shilian_event:
                 event_bonus = engine.get_monster_add_all_attr_rate()
+        if secret_actor_config:
+            secret_actor_report = check_secret_actor(engine, controller, secret_actor_config)
         pending = dict(choices)
         for entity in engine.heroEntities.values():
             if entity.ownerController is not controller:
@@ -634,6 +647,8 @@ def replay(args, runtime, work):
             report["guildRetreat"].update(instructions.report())
     if args.mode == 266:
         report["formationsVerified"] = len(verified_waves)
+        if secret_actor_config:
+            report["secretActor"] = secret_actor_report
         if secret_protection_replay:
             report["secretProtection"] = secret_protection_replay.report(completed)
         if secret_mirror_replay:

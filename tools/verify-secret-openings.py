@@ -16,7 +16,7 @@ from tempfile import TemporaryDirectory
 def extract(runtime, work, part, workers):
     from rune_floor_host import prepare_runtime
     from secret_stage import (DynamicFormation, MIRROR_FLOOR, MIRROR_WAVE, mirror_fallback,
-                              placements, secret_protection, secret_solo, secret_stage)
+                              placements, secret_protection, secret_replacement, secret_solo, secret_stage)
 
     modules, host, source = prepare_runtime(runtime, work)
     from battleengine.BattleCommon import BattleAvatar
@@ -91,6 +91,8 @@ def extract(runtime, work, part, workers):
                          "waves": waves}
         if fallback is not None:
             floors[floor]["mirror"] = {"wave": MIRROR_WAVE, "fallbackId": fallback}
+        if config["yys_replacement_id"]:
+            floors[floor]["replacement"] = secret_replacement(engine)
         if protection := secret_protection(config):
             support, target = protection
             if len(waves) != 1 or sum(unit["id"] == target for unit in waves[0]) != 1:
@@ -99,7 +101,7 @@ def extract(runtime, work, part, workers):
 
     if not floors or host.oracle.unsupported:
         raise RuntimeError(f"Native Secret Zone opening verification incomplete: {host.oracle.unsupported}")
-    tables = ("dungeon_challenge_series", "team_assist_stage")
+    tables = ("dungeon_challenge_series", "team_assist_stage", "yys_replacement", "hero")
     return {**source, "engineSHA256": modules.rows["battleengine.engine.ChallengeFbEngine"]["marshalSHA256"],
             "tableSHA256": {name: modules.rows[f"com.data.cdata.{name}"]["marshalSHA256"] for name in tables},
             "totalFloors": len(entries), "skipped": skipped, "floors": floors}

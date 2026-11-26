@@ -6,6 +6,7 @@ const {createRuneRunner}=require('../desktop/rune-runner.cjs');
 const {createRuneFloorRunner}=require('../desktop/rune-floor-runner.cjs');
 const {runeFloorIds,hun13FloorIds,sceneForDungeon}=require('../app/rune-lineup.js');
 const {createPveStageRunner}=require('../desktop/pve-stage-runner.cjs');
+const secretOpenings=require('../app/secret-openings.js');
 const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
 const game=require('../app/game-config.js');
 const {Background}=require('../desktop/background.cjs');
@@ -329,7 +330,11 @@ async function main(){
   trial.members[6]=fighter(217,5);
   const moon=known('moon-trial',110150,6);
   moon.members[6]=fighter(219,5);
-  squads.push(trial,moon,known('six-realms-ineligible',110151,6));
+  const stageActorOnly=known('stage-actor-only',10723011,5);
+  stageActorOnly.members.shift();
+  const stageActorWithSlot=known('stage-actor-slot',10725011,5);
+  stageActorWithSlot.members[0].skills=[];
+  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot);
   const boot=await ui('JSON.stringify(STATE)');
   const cases=JSON.parse(await readEncounters(catalog)).entries;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -356,7 +361,7 @@ async function main(){
     if(expected.battleMode===2001){
      assert.equal(plan.rounds.length,1);plan=plan.rounds[0];
     }
-    assert.equal(plan.onmyoji.heroId,actor);
+    assert.equal(plan.onmyoji?.heroId??null,actor);
     assert.deepEqual(plan.members.map(member=>member.hero.heroId),ids.slice(0,count));
     assert.deepEqual(plan.tactics,tactics);
     const souls=plan.members.flatMap(row=>row.souls.map(q=>q.id));
@@ -591,6 +596,15 @@ async function main(){
    assert.match(await run('secret-mirror',{stageId:118,groupId:118,battleMode:266},{waveCount:3,wavesCleared:3,
     secretMirror:{wave:3,units:ids.slice(0,5).map((hero,i)=>({position:i+2,level:40,sourceId:hero,monsterId:hero,
      copied:true,soulSkills:[[20019,1]]}))}}),/第 3 波 · 镜像阵容.*御魂技能 20019（1 级）/s);
+   for(const [stage,query,lineup] of [[241,'骁武浪升 壹 入海','stage-actor-only'],[261,'逐路之争 壹 庆典','stage-actor-slot']]){
+    await ui('qaSecretEncounter('+stage+','+JSON.stringify(query)+')');
+    await until(start+'!==null');
+    assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-'+lineup]);
+    assert.match(await ui(panel+'.textContent'),/阴阳师位由关卡指定.*指定角色技能模板/s);
+    assert.match(await run(lineup,{stageId:stage,groupId:stage,battleMode:266},{
+     secretActor:{...secretOpenings.floors[stage].replacement,position:1}},undefined,null),
+    /指定角色.* [34]\d 级 · 6 星/);
+   }
    await ui('qaSecretEncounter(191,"呱士无双 壹 立直")');
    await until(panel+'.textContent.includes("该层的独立机制仍待离线复跑核验")');
    assert.equal(await ui(start+'===null'),true);
