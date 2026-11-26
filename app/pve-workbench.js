@@ -122,6 +122,13 @@
   const captureReady=!capture||new Set(capture.cards).size===3;
   const moves=pane.eventMoves?.valueAsNumber;
   const eventReady=!pane.eventMoves||Number.isSafeInteger(moves)&&moves>=0;
+  const training=pane.urdtgTraining?{skillLevel:Number(pane.trainingSkill.value),masks:pane.trainingMasks.valueAsNumber}:null;
+  const trainingReady=!training||AtlasUrDtgExplore.validConditions(training);
+  pane.trainingSettings=trainingReady?training:null;
+  if(training){
+   pane.trainingSkill.disabled=pane.trainingMasks.disabled=blocked;
+   pane.trainingMasks.setAttribute('aria-invalid',String(!trainingReady));
+  }
   const journeyHard=pane.journeyDeadline?{
    deadlineSeconds:pane.journeyDeadline.valueAsNumber,blessingCount:pane.journeyBlessings.valueAsNumber,
   }:null;
@@ -327,7 +334,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!trainingReady||!stateReady||!coinsReady||!journeyReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -338,6 +345,7 @@
    selected.length&&reserve&&!reserve.ready?reserve.hint:
    !captureReady?'请选择三个不同的出战式神位置。':
    !eventReady?'前行步数应为大于或等于 0 的整数。':
+   !trainingReady?`天狗面具须为 0 至 ${AtlasUrDtgExplore.maxMasks} 的整数。`:
    !journeyReady?'请填写正整数战斗时限和非负整数祝福层数。':
    !towerReady?'请核对百妖退治的挑战条件。':
    !laolaoReady?'请核对信仰之佑层数。':
@@ -412,6 +420,13 @@
     <label class="pve-lineup-field">祝福层数 <input data-pve-journey-blessings type="number" value="0" min="0" step="1" required></label>
     <label class="pve-lineup-field">战斗时限（秒） <input data-pve-journey-deadline type="number" min="1" step="1" required></label>
    </div>`:''}
+   ${config.urdtgTraining?`<fieldset class="pve-reserve"><legend>赛事训练条件</legend><div class="actions">
+    <label class="pve-lineup-field">万风钧落等级 <select data-pve-training-skill>
+     <option value="1">1 级</option><option value="2">2 级</option><option value="3">3 级</option>
+    </select></label>
+    <label class="pve-lineup-field">天狗面具数量 <input data-pve-training-masks type="number"
+     min="0" max="${AtlasUrDtgExplore.maxMasks}" value="0" step="1" required></label>
+   </div></fieldset>`:''}
    ${config.yinyangBuffOptions?`<fieldset class="pve-reserve">
     <legend>秘境挑战条件</legend>
     <div class="actions">
@@ -685,6 +700,7 @@
   const part=name=>section.querySelector(`[data-pve-${name}]`);
   const all=name=>[...section.querySelectorAll(`[data-pve-${name}]`)];
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
+   trainingSkill:part('training-skill'),trainingMasks:part('training-masks'),
    journeyDeadline:part('journey-deadline'),journeyBlessings:part('journey-blessings'),
    yinYangDrums:part('yinyang-drums'),yinYangDeadline:part('yinyang-deadline'),yinYangBuffChoice:part('yinyang-buff'),
    addYinYangBuff:part('add-yinyang-buff'),yinYangBuffList:part('yinyang-buff-list'),yinYangBuffIds:[],
@@ -715,7 +731,7 @@
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
+  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,pane.mirageTrait,
    pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.longcheTrait,
@@ -723,7 +739,7 @@
    if(job&&!busy())job.notice=null;
    update();
   };
-  for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
+  for(const field of [pane.eventMoves,pane.trainingMasks,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.mirageWindow,pane.mirageGeneral,pane.mirageWeekly,
    pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,pane.catfishWeekly,
@@ -878,6 +894,7 @@
     ...(pveDeadlineSeconds?{pveDeadlineSeconds}:{}),
     ...(storyRoomId?{storyRoomId}:{}),
     ...(friendChallenge?{friendChallenge}:{}),
+    ...(run.trainingSettings?{urdtgTraining:run.trainingSettings}:{}),
     ...(dojoArea?{dojoArea}:{}),
     ...(forest?{forest}:{}),
     ...(tenBonuses?.length?{tenBonuses}:{}),
@@ -1044,7 +1061,7 @@
   const selected=selectedForReplay(knownLineups());
   const inventory=account(),reserve=orochiReserve(selected,inventory);
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
-     pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
+     pane.urdtgTraining&&!pane.trainingSettings||pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
      pane.duskWindow&&!pane.duskSettings||pane.songWindow&&!pane.songWindowSeconds||pane.mirageWindow&&!pane.mirageSettings||
      pane.catfishWindow&&!pane.catfishSettings||pane.skeletonWindow&&!pane.skeletonSettings&&!pane.skeletonXSettings||pane.longcheWindow&&!pane.longcheSettings||
@@ -1057,6 +1074,7 @@
   }:null;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    journeyHard:pane.journeySettings,
+   trainingSettings:pane.trainingSettings,
    yinyangBoss:pane.yinYangSettings?{...pane.yinYangSettings,buffIds:pane.yinYangSettings.buffIds.slice()}:null,
    towerSettings:pane.towerSettings,
    laolaoSettings:pane.fusionWindow?null:pane.laolaoSettings,fusionSettings:pane.fusionSettings,

@@ -21,7 +21,8 @@ from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_
 from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EXPLORATION_STAGES,
                                    TEN_TOWER_STAGES, is_ten_anniversary_stage)
 from ten_anniversary_boss import TEN_BOSS_ACT, TEN_BOSS_MODE, TEN_BOSS_STAGE, TEN_BOSS_TEAM
-from urdtg_explore import URDTG_ACTIVITY, URDTG_EXPLORE_MODE, URDTG_MASK_SKILL, URDTG_STAGES
+from urdtg_explore import (URDTG_ACTIVITY, URDTG_EXPLORE_MODE, URDTG_MASK_SKILL, URDTG_STAGES, URDTG_TRAIN_ACTIVITY,
+                           URDTG_TRAIN_CODE, URDTG_TRAIN_MODE, URDTG_TRAIN_STAGE, URDTG_TRAIN_TEAM)
 
 
 TOWER_EVENT_SOURCES = {
@@ -640,6 +641,9 @@ def encounter_index(source, load_rows):
                 links.extend(ref for dest, key, label in (("activity", URDTG_ACTIVITY, "围场赛事开放期"),
                     ("battle_team_routes", URDTG_EXPLORE_MODE, "活动探索入口"))
                     if (ref := relation(dest, key, label, False)))
+            if row.get("id") == 3:
+                if ref := relation("pve_stage_data", URDTG_TRAIN_STAGE, "赛事训练战斗关卡", False):
+                    links.append(ref)
         if name == "urdtg_event":
             links.extend(ref for dest, key, label in (("urdtg_event", row.get("pre_id"), "前置活动事件"),
                 ("urdtg_event_type", row.get("type"), "事件类型"), ("reward", row.get("reward_id"), "活动事件奖励"))
@@ -783,6 +787,23 @@ def encounter_index(source, load_rows):
                 links.append(relation("pve_stage_data", row.get("fightId"), "姥姥火·合魂敌方关卡", True))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
+            if stage_id == str(URDTG_TRAIN_STAGE):
+                links.extend(ref for dest, key, label in (
+                    ("battle_team_routes", URDTG_TRAIN_TEAM, "赛事训练原版组队入口"),
+                    ("normal_battle_config", URDTG_TRAIN_MODE, "赛事训练战斗时限"),
+                    ("activity", URDTG_TRAIN_ACTIVITY, "赛事训练开放期"),
+                    ("team_assist_stage", URDTG_TRAIN_CODE, "赛事训练阵容码"),
+                    ("normal_battle_develop_skill", URDTG_MASK_SKILL, "天狗面具战斗技能"),
+                    ("urdtg_const", 301, "每日增益掉落场数"),
+                    ("urdtg_const", 303, "赛事训练关卡编号"),
+                    ("urdtg_const", 304, "每日挑战上限"),
+                    ("urdtg_const", 305, "体力消耗"),
+                    ("urdtg_const", 308, "天狗面具数量上限"),
+                    ("urdtg_const", 312, "天狗面具适用式神"),
+                    ("reward", 12230001, "每日前五场奖励"),
+                    ("reward", 12230010, "常规场次奖励"),
+                ) if (ref := relation(dest, key, label, False)))
+                links.append(rule_reference("ur_datiangou_battle_tips", "赛事训练与天狗面具规则"))
             if stage_id in urdtg_by_stage:
                 links.extend(ref for dest, key, label in (
                     ("urdtg_dungeon_battle", urdtg_by_stage[stage_id], "围场赛事战斗配置"),
@@ -1489,7 +1510,10 @@ def encounter_index(source, load_rows):
                 title = f"{entry_kind} · 新服首次" if numeric_key(key) == "2111" else f"{entry_kind} · 编组 {row['groupid']}"
             if table_name == "pve_stage_data":
                 stage_id = int(numeric_key(key) or 0)
-                if stage_id in URDTG_STAGES:
+                if stage_id == URDTG_TRAIN_STAGE:
+                    entry_family, entry_kind = "event", "赛事训练"
+                    title = "飞羽凌云 · 赛事训练 · 达摩"
+                elif stage_id in URDTG_STAGES:
                     entry_family, entry_kind = "event", "围场赛事"
                     _, battle = table("urdtg_dungeon_battle").get(numeric_key(urdtg_by_stage.get(str(stage_id))), (None, {}))
                     title = " · ".join(filter(None, (entry_kind, name(battle), str(stage_id))))

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -439,9 +439,11 @@ async function main(){
   jinyujiStageActor.members.shift();
   const tenBossStageActor=known('ten-boss',100999,5);
   tenBossStageActor.members.shift();
+  const trainingStageActor=known('urdtg-training',101014,5);
+  trainingStageActor.members.shift();
   const tenExplore=known('ten-explore',101000,5);
   tenExplore.members=tenExplore.members.filter(member=>[591,379].includes(Number(member.shikigamiId)));
-  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor,tenBossStageActor,tenExplore);
+  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor,tenBossStageActor,trainingStageActor,tenExplore);
   const boot=await ui('JSON.stringify(STATE)');
   const cases=encounterCases;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -1325,6 +1327,20 @@ async function main(){
     await until('document.querySelector("[data-explore-status]").textContent.includes("6 / 6 个采样种子通关")',30000);
     assert.deepEqual(seen,[0,1,2,3,7,42]);
     assert.match(await ui('document.querySelector("[data-explore-results]").textContent'),/万风钧落 2 级 · 天狗面具 125 个 · 2 位招募式神.*天狗面具增伤生效/s);
+   }
+   if(cases.some(entry=>entry.table==='urdtg_ui'&&entry.key===3&&entry.refs.some(ref=>ref.table==='pve_stage_data'))){
+    await encounter('event','飞羽凌云玩法 赛事训练');
+    const skill='document.querySelector("[data-pve-training-skill]")',masks='document.querySelector("[data-pve-training-masks]")';
+    assert.match(await ui(panel+'.textContent'),/大天狗·高天铁羽替换阴阳师.*赛事训练阵容码.*101014/s);
+    assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-urdtg-training']);
+    await choose('urdtg-training');
+    await ui(masks+'.value="501";'+masks+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(skill+'.value="2";'+skill+'.dispatchEvent(new Event("change"));'+masks+'.value="125";'+masks+'.dispatchEvent(new Event("input"))');
+    const urdtgTraining={skillLevel:2,masks:125,maskRecipients:[80611],timedOut:false,combatSeconds:73.4,
+      party:[{id:80611,position:1,level:40,speed:128,attack:7800,hp:17343.2}]};
+    assert.match(await run('urdtg-training',{stageId:510014,groupId:510014,battleMode:6092,urdtgTraining:{skillLevel:2,masks:125}},
+      {urdtgTraining},undefined,null),/万风钧落 2 级 · 天狗面具 125 个 · 1 位生效.*指定出战角色/s);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='11112'&&entry.refs.some(ref=>!ref.found))){
     await ui('qaEncounterInput("battle","结界入侵 11112")');

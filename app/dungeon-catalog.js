@@ -1756,6 +1756,23 @@
     return true;
   }
 
+  function showUrDtgTraining(destination,entry,groups){
+    const source=window.AtlasUrDtgExplore,route=source.training;
+    const stage=groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===route.stageId)?.row;
+    if((entry.table!=='pve_stage_data'||Number(entry.key)!==route.stageId)&&
+       (entry.table!=='urdtg_ui'||entry.key!==3))return false;
+    const registration=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===route.teamType)?.row;
+    const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===route.stageId);
+    if(!matchesOpeningSource(source)||registration?.battleMode!==route.battleMode||registration.route_sha256!==route.routeSHA256||
+       stage?.groupid!==route.stageId||stage.battleTime!==source.deadlineSeconds||
+       formation?.row?.resindex!==route.sceneId||formation.waves.length!==1)return true;
+    destination.append(node('p',`战斗时限 ${source.deadlineSeconds} 秒。大天狗·高天铁羽替换阴阳师，五位式神沿用阵容码要求和账号库存。`,'caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:route.stageId,groupId:route.stageId,memberCount:5,waveCount:1,
+      battleMode:route.battleMode,version:source.resourceVersion,codeStageId:route.codeStageId,
+      replacementActor:true,urdtgTraining:true,label:'飞羽凌云 · 赛事训练'});
+    return true;
+  }
+
   function showTenAnniversary(destination,entry,groups){
     if(!['pve_stage_data','ten_anni_2026_event','ten_anni_2026_dungeon_battle'].includes(entry.table))return false;
     const source=window.AtlasTenAnniversary,primary=groups[0].row;
@@ -2132,7 +2149,7 @@
     const dojoAreaMounted=showDojoArea(destination,entry,groups);
     const forestMounted=showGuildForest(destination,entry,groups);
     const tenMounted=showTenAnniversary(destination,entry,groups);
-    const urdtgMounted=showUrDtgExplore(destination,entry,groups);
+    const urdtgMounted=showUrDtgTraining(destination,entry,groups)||showUrDtgExplore(destination,entry,groups);
     showTenAnniversaryBoss(destination,entry,groups);
     showQinfeiBoss(destination,entry,groups);
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){

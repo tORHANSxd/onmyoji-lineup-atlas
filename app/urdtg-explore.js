@@ -16,13 +16,24 @@
    pve_stage_data:'7d376d64c733f53882acc6e88291a4607b6c290828981fbad7adc3dcf7ad36b0',
    BattleMonstersInfo:'8747286d03333c0073d5d2d72e3cec1e89a25f043efb920ee4fcaa8b55b29111',
   },
+  training:{
+   activityId:12232,battleMode:6092,teamType:6087,stageId:510014,codeStageId:101014,sceneId:43017,
+   formation:[51014217,51014200,51014201,51014203,51014205,51014206],
+   routeSHA256:'2aa31019f3119edf9feddace9fd2f45bf14e0553dd53df87db97c895d5370f5c',
+   engine:{name:'UrDTGTrainBattleEngine',route:'urdtg-training',
+    sha256:'2e755a908a69c6aed5b356f9d870472c3ecd6b28b38ac7470e96fb02396f348c'},
+  },
   isStage:id=>Number.isSafeInteger(id)&&(id>=12140016&&id<=12140033||id>=12140036&&id<=12140038),
   validPlan(plan){
    const {actorLevel,skillLevel,masks,members}=plan??{};
-   return actorLevel===40&&Number.isSafeInteger(skillLevel)&&skillLevel>=1&&skillLevel<=3&&
-    Number.isSafeInteger(masks)&&masks>=0&&masks<=500&&Array.isArray(members)&&members.length>=1&&members.length<=5&&
+   return actorLevel===40&&route.validConditions({skillLevel,masks})&&Array.isArray(members)&&members.length>=1&&members.length<=5&&
     members.every(row=>Array.isArray(row)&&row.length===2&&recruitIds.includes(row[0])&&row[1]===40)&&
     new Set(members.map(([id])=>id)).size===members.length;
+  },
+  validConditions(settings){
+   const {skillLevel,masks}=settings??{};
+   return Number.isSafeInteger(skillLevel)&&skillLevel>=1&&skillLevel<=3&&
+    Number.isSafeInteger(masks)&&masks>=0&&masks<=route.maxMasks;
   },
  };
  if(typeof module==='object'&&module.exports)module.exports=route;

@@ -245,7 +245,9 @@ function sampleBattleMarkup(samples){
   const tenBoss=sample.tenAnniversaryBoss;
   const tenExplore=sample.tenAnniversaryExplore;
   const urdtg=sample.urdtgExplore;
-  const recruited=tenExplore??urdtg;
+  const training=sample.urdtgTraining;
+  const activityPartyData=tenExplore??urdtg??training;
+  const trainingRecipients=training?.maskRecipients.map(id=>id===80611?'大天狗·高天铁羽':DATA.gameConfig.heroes[id]?.name??String(id))??[];
   const damageWindow=sample.guildCrevice??ghost??historicalGhost;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
@@ -359,6 +361,8 @@ function sampleBattleMarkup(samples){
     `${tenExplore.party.length-1} 位招募式神 · 战斗与结算 ${tenExplore.combatSeconds.toFixed(2)} 秒`:
    urdtg?`${urdtg.timedOut?'原版判定超时':describeBattle(sample,false)} · 万风钧落 ${urdtg.skillLevel} 级 · `+
     `天狗面具 ${urdtg.masks} 个 · ${urdtg.party.length-1} 位招募式神 · 战斗与结算 ${urdtg.combatSeconds.toFixed(2)} 秒`:
+   training?`${training.timedOut?'原版判定超时':describeBattle(sample,false)} · 万风钧落 ${training.skillLevel} 级 · `+
+    `天狗面具 ${training.masks} 个 · ${training.maskRecipients.length} 位生效 · 战斗与结算 ${training.combatSeconds.toFixed(2)} 秒`:
    damageWindow?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':
     historicalGhost&&historicalGhost.windowSeconds<historicalGhost.deadlineSeconds?'达到计分窗口':'原版时限结束',
     'window-expired':'达到计分窗口'}[damageWindow.reason]||'结算待核对'} · `+
@@ -515,11 +519,13 @@ function sampleBattleMarkup(samples){
    return `<li>第 ${phase.phase} 层 · ${phase.seconds.toFixed(2)} 秒进场 · 敌方 ${phase.enemies.length} 位`+
     (names.length?` · 助战 ${esc(names.join('、'))}`:'')+'</li>';
   }).join('')}</ol></details>`:'';
-  const activityParty=recruited?`<details><summary>查看原版活动队伍</summary><ol>${recruited.party.map(unit=>{
-   const name=unit.position===1?(urdtg?'大天狗·高天铁羽':'石长姬'):DATA.gameConfig.heroes[unit.id]?.name??unit.id;
+  const activityParty=activityPartyData?`<details><summary>${training?'查看指定出战角色':'查看原版活动队伍'}</summary>`+
+   (trainingRecipients.length?`<p class="caption">面具增伤生效 · ${esc(trainingRecipients.join('、'))}</p>`:'')+
+   `<ol>${activityPartyData.party.map(unit=>{
+   const name=unit.position===1?(tenExplore?'石长姬':'大天狗·高天铁羽'):DATA.gameConfig.heroes[unit.id]?.name??unit.id;
    return `<li>${esc(name)} · 原版实体 ${unit.level} 级 · 速度 ${unit.speed.toFixed(2)} · `+
     `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}`+
-    (urdtg?.maskRecipients.includes(unit.id)?' · 天狗面具增伤生效':'')+'</li>';
+    (activityPartyData.maskRecipients?.includes(unit.id)?' · 天狗面具增伤生效':'')+'</li>';
   }).join('')}</ol></details>`:'';
   return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}${spiderNormalStages}</li>`;
  }).join('');

@@ -6,6 +6,11 @@ from ten_anniversary_explore import exploration_uid
 
 URDTG_ACTIVITY = 12231
 URDTG_EXPLORE_MODE = 6089
+URDTG_TRAIN_ACTIVITY = 12232
+URDTG_TRAIN_MODE = 6092
+URDTG_TRAIN_TEAM = 6087
+URDTG_TRAIN_STAGE = 510014
+URDTG_TRAIN_CODE = 101014
 URDTG_ACTOR = 80611
 URDTG_LIMIT = 180
 URDTG_MASK_SKILL = 61142
@@ -21,23 +26,53 @@ URDTG_SOURCES = {
     "com.data.cdata.urdtg_const": "eb7b817c48e4fbbe577a1c23f87dae84eeb250746ca6bd5df6f12a9ec65d13f7",
     "battleengine.skill.SkillComp_59341": "af97e17c06f5244e4ff4e7be4af68aba3b85cf50c6455b69f1ea254b64571bfd",
 }
+URDTG_TRAIN_ENGINE = "battleengine.engine.UrDTGTrainBattleEngine"
+URDTG_TRAIN_SOURCES = {
+    URDTG_TRAIN_ENGINE: "2e755a908a69c6aed5b356f9d870472c3ecd6b28b38ac7470e96fb02396f348c",
+    "module.team_types.team_type_ur_dtg_train": "2aa31019f3119edf9feddace9fd2f45bf14e0553dd53df87db97c895d5370f5c",
+    **{name: digest for name, digest in URDTG_SOURCES.items() if not name.endswith(
+        ("urdtg_dungeon_battle", "URDTGExploreBattleScene"))},
+}
+
+
+def urdtg_opening(modules, expected_sources, mode, stage_id, activity, engine_type, actor_level, skill_level, masks):
+    from DynamicConfigData import (BattleMonstersInfo, DATA_NORMAL_BATTLE_CONFIG, DATA_NORMAL_BATTLE_YYS_REPLACE,
+                                   DATA_PVE_STAGE_DATA, DATA_URDTG_CONST, DATA_URDTG_HERO)
+
+    if any(modules.rows[name]["marshalSHA256"] != digest for name, digest in expected_sources.items()):
+        raise ValueError("The original tournament engine or tables changed")
+    profiles = DATA_URDTG_HERO.data
+    maximum = DATA_URDTG_CONST.data[308]["value"][0]
+    if (type(actor_level) is not int or actor_level != profiles[URDTG_ACTOR]["init_lv"]
+            or type(skill_level) is not int or not 1 <= skill_level <= 3
+            or type(masks) is not int or not 0 <= masks <= maximum):
+        raise ValueError("Invalid tournament actor, ultimate level or mask count")
+    stage = DATA_PVE_STAGE_DATA.data.get(str(stage_id))
+    config = DATA_NORMAL_BATTLE_CONFIG.data[mode]
+    if (not stage or stage["groupid"] != stage_id or stage["shishentotal"] != 5
+            or stage.get("battleTime") != URDTG_LIMIT or config["halt_time"] != URDTG_LIMIT or config["group_battle"]
+            or DATA_NORMAL_BATTLE_YYS_REPLACE.data[config["replace_yys_id"]]["yys_id"] != URDTG_ACTOR):
+        raise ValueError("Unknown original tournament battle")
+    group = BattleMonstersInfo.data[stage_id]
+    if len(group["MonstersInfos"]) != 1:
+        raise RuntimeError("The original tournament formation changed")
+    return group, profiles, {"pve_data_flag": str(stage_id), "teamUid": f"offline-urdtg-{engine_type}",
+                             "act_id": activity, "replace_yys_level": actor_level, "replace_yys_skill_level": skill_level,
+                             "buff_num": masks, "skill_info": {URDTG_MASK_SKILL: 1} if masks else {}}
 
 
 def urdtg_explore_stage(modules, stage_id, plan):
     from battleengine.engine.URDTGExploreBattleEngine import URDTGExploreBattleEngine, const
-    from DynamicConfigData import (BattleMonstersInfo, DATA_NORMAL_BATTLE_CONFIG, DATA_NORMAL_BATTLE_YYS_REPLACE,
-                                   DATA_PVE_STAGE_DATA, DATA_URDTG_CONST, DATA_URDTG_DUNGEON_BATTLE, DATA_URDTG_HERO)
+    from DynamicConfigData import DATA_URDTG_DUNGEON_BATTLE
 
-    if any(modules.rows[name]["marshalSHA256"] != digest for name, digest in URDTG_SOURCES.items()):
-        raise ValueError("The original flying tournament exploration engine or tables changed")
-    profiles = DATA_URDTG_HERO.data
     actor_level, skill_level, members = plan.get("actorLevel"), plan.get("skillLevel"), plan.get("members")
-    masks, maximum = plan.get("masks"), DATA_URDTG_CONST.data[308]["value"][0]
-    if (type(actor_level) is not int or actor_level != profiles[URDTG_ACTOR]["init_lv"]
-            or type(skill_level) is not int or not 1 <= skill_level <= 3
-            or type(masks) is not int or not 0 <= masks <= maximum
-            or not isinstance(members, list) or not 1 <= len(members) <= 5):
-        raise ValueError("The tournament needs the event actor, skill level and one to five recruits")
+    if (stage_id not in URDTG_STAGES or not any(
+            row["battle_id"] == str(stage_id) for row in DATA_URDTG_DUNGEON_BATTLE.data.values())):
+        raise ValueError("Unknown tournament exploration stage")
+    group, profiles, opening = urdtg_opening(modules, URDTG_SOURCES, URDTG_EXPLORE_MODE, stage_id, URDTG_ACTIVITY,
+                                             "explore", actor_level, skill_level, plan.get("masks"))
+    if not isinstance(members, list) or not 1 <= len(members) <= 5:
+        raise ValueError("The tournament needs one to five recruits")
     roster = {}
     for row in members:
         if not isinstance(row, list) or len(row) != 2 or any(type(value) is not int for value in row):
@@ -46,42 +81,53 @@ def urdtg_explore_stage(modules, stage_id, plan):
         if hero == URDTG_ACTOR or hero in roster or hero not in profiles or level != profiles[hero]["init_lv"]:
             raise ValueError("Unknown, duplicate or invalid tournament recruit")
         roster[hero] = level
-    stage_key = str(stage_id)
-    stage = DATA_PVE_STAGE_DATA.data.get(stage_key)
-    config = DATA_NORMAL_BATTLE_CONFIG.data[URDTG_EXPLORE_MODE]
-    if (stage_id not in URDTG_STAGES or not stage or stage["groupid"] != stage_id or stage["shishentotal"] != 5
-            or stage.get("battleTime") != URDTG_LIMIT or config["halt_time"] != URDTG_LIMIT or config["group_battle"]
-            or DATA_NORMAL_BATTLE_YYS_REPLACE.data[config["replace_yys_id"]]["yys_id"] != URDTG_ACTOR
-            or not any(row["battle_id"] == stage_key for row in DATA_URDTG_DUNGEON_BATTLE.data.values())):
-        raise ValueError("Unknown tournament exploration stage")
-    group = BattleMonstersInfo.data[stage_id]
-    if len(group["MonstersInfos"]) != 1:
-        raise ValueError("The original tournament formation changed")
-    engine = URDTGExploreBattleEngine({"pve_data_flag": stage_key, "teamUid": "offline-urdtg-explore",
-                                       "act_id": URDTG_ACTIVITY, "act_heroes_info": roster,
-                                       "replace_yys_level": actor_level, "replace_yys_skill_level": skill_level,
-                                       "buff_num": masks, "skill_info": {URDTG_MASK_SKILL: 1} if masks else {}})
+    engine = URDTGExploreBattleEngine({**opening, "act_heroes_info": roster})
     engine.battleMode = URDTG_EXPLORE_MODE
     return engine, group, const, profiles
 
 
-class UrDtgExploreReplay(SoloActivityReplay):
+def urdtg_train_stage(modules, stage_id, skill_level, masks):
+    from battleengine.engine.UrDTGTrainBattleEngine import UrDTGTrainBattleEngine, const
+    from DynamicConfigData import DATA_URDTG_CONST, DATA_URDTG_HERO
+
+    if stage_id != URDTG_TRAIN_STAGE or DATA_URDTG_CONST.data[303]["value"][0] != stage_id:
+        raise ValueError("Unknown original tournament training stage")
+    actor_level = DATA_URDTG_HERO.data[URDTG_ACTOR]["init_lv"]
+    group, profiles, opening = urdtg_opening(modules, URDTG_TRAIN_SOURCES, URDTG_TRAIN_MODE, stage_id,
+                                             URDTG_TRAIN_ACTIVITY, "train", actor_level, skill_level, masks)
+    engine = UrDTGTrainBattleEngine(opening)
+    engine.battleMode = URDTG_TRAIN_MODE
+    return engine, group, const, profiles, {"actorLevel": actor_level, "skillLevel": skill_level, "masks": masks}
+
+
+class UrDtgBattleReplay(SoloActivityReplay):
     def __init__(self, engine, group, const, profiles, plan, controller):
         super().__init__(engine, group, const)
         self.profiles, self.plan, self.controller = profiles, plan, controller
         self.party = []
-        self.mask_recipients = set()
+        self.owned_party = []
+        self.mask_recipients, self.expected_mask_recipients = {}, {}
 
-    def verify_selection(self):
+    def record_selection(self, owned=False):
         from DynamicConfigData import DATA_CARD_INIT, DATA_EQUIP_SUIT
+        from DynamicConfigData import DATA_URDTG_CONST
 
         engine, owner = self.engine, self.controller
-        expected = [(URDTG_ACTOR, self.plan["actorLevel"]), *self.plan["members"]]
         units = sorted((unit for unit in engine.heroEntities.values() if unit.ownerController is owner),
                        key=lambda unit: unit.posIndex)
-        if len(units) != len(expected):
+        expected = [(URDTG_ACTOR, self.plan["actorLevel"]), *self.plan.get("members", ())]
+        if len(units) != (6 if owned else len(expected)):
             raise RuntimeError("The original tournament engine selected a different team size")
-        for position, (unit, (hero, level)) in enumerate(zip(units, expected), 1):
+        eligible = set(DATA_URDTG_CONST.data[312]["value"]) | {URDTG_ACTOR}
+        for position, unit in enumerate(units, 1):
+            if owned and position > 1:
+                if unit.posIndex != position or unit.HeroComp.heroData.heroUid != owner.ctrlPlayer.defaultHeros[position-2]:
+                    raise RuntimeError("Tournament training changed the order of the selected inventory")
+                self.owned_party.append({"id": unit.protoid, "position": position})
+                if self.plan["masks"] and unit.protoid in eligible:
+                    self.expected_mask_recipients[position] = unit.protoid
+                continue
+            hero, level = expected[position-1]
             attr = unit.AttrComp
             skills = sorted([item.skillId, item.skillLevel] for item in unit.SkillMgrComp.skillCompList)
             if (unit.protoid, attr.level, unit.posIndex) != (hero, level, position):
@@ -90,6 +136,8 @@ class UrDtgExploreReplay(SoloActivityReplay):
                 raise RuntimeError("The original tournament engine did not select the requested activity recruit")
             if position == 1 and [engine.REPLACE_YYS_ULT_SKILL_ID, self.plan["skillLevel"]] not in skills:
                 raise RuntimeError("The original tournament actor used a different ultimate skill level")
+            if self.plan["masks"] and hero in eligible:
+                self.expected_mask_recipients[position] = hero
             suit = self.profiles[hero]["suit_id"]
             components = unit.SkillMgrComp.skillCompList
             cards = {card: skill for card in DATA_EQUIP_SUIT.data[suit]["suit_card_list"]
@@ -108,14 +156,7 @@ class UrDtgExploreReplay(SoloActivityReplay):
         units = (unit for unit in self.engine.heroEntities.values() if unit.ownerController is self.controller)
         for unit in units:
             if unit.BuffMgrComp.getBuffs(URDTG_MASK_BUFF):
-                self.mask_recipients.add(unit.protoid)
-
-    @property
-    def expected_mask_recipients(self):
-        from DynamicConfigData import DATA_URDTG_CONST
-
-        eligible = DATA_URDTG_CONST.data[312]["value"] + DATA_URDTG_CONST.data[113]["value"]
-        return {row["id"] for row in self.party if row["id"] in eligible} if self.plan["masks"] else set()
+                self.mask_recipients[unit.posIndex] = unit.protoid
 
     def report(self):
         engine = self.engine
@@ -127,6 +168,7 @@ class UrDtgExploreReplay(SoloActivityReplay):
             raise RuntimeError(f"The original tournament mask recipients were {self.mask_recipients}, "
                                f"expected {self.expected_mask_recipients}")
         return {"actorLevel": self.plan["actorLevel"], "skillLevel": self.plan["skillLevel"],
-                "masks": self.plan["masks"], "maskRecipients": sorted(self.mask_recipients),
+                "masks": self.plan["masks"], "maskRecipients": sorted(self.mask_recipients.values()),
                 "party": self.party, "opening": self.opening, "deadlineSeconds": URDTG_LIMIT,
-                "timedOut": bool(engine.isHaltBattle), "combatSeconds": round(engine.now_time() - self.started, 6)}
+                "timedOut": bool(engine.isHaltBattle), "combatSeconds": round(engine.now_time() - self.started, 6),
+                **({"ownedParty": self.owned_party} if self.owned_party else {})}

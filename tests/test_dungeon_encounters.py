@@ -539,10 +539,14 @@ class TeamBattleType: pass
         tables = {
             "urdtg_event": [[3, {"id": 3, "name": "赛车对决", "type": 1, "params": [101]}],
                             [5, {"id": 5, "name": "备赛训练", "type": 7, "params": [101]}]],
+            "urdtg_ui": [[3, {"id": 3, "title": "赛事训练", "tip": "ur_datiangou_battle_tips"}]],
             "urdtg_dungeon_battle": [[101, {"monster_id": 101, "battle_id": "12140016", "name": "九命猫"}]],
-            "pve_stage_data": [["12140016", {"id": "12140016", "groupid": 12140016}]],
-            "BattleMonstersInfo": [[12140016, {}]],
-            "battle_team_routes": [[6089, {"team_type": 6089, "battleMode": 6089}]],
+            "pve_stage_data": [["12140016", {"id": "12140016", "groupid": 12140016}],
+                               ["510014", {"id": "510014", "groupid": 510014}]],
+            "BattleMonstersInfo": [[12140016, {}], [510014, {}]],
+            "battle_team_routes": [[6089, {"team_type": 6089, "battleMode": 6089}],
+                                   [6087, {"team_type": 6087, "battleMode": 6092}]],
+            "team_assist_stage": [[101014, {"id": 101014, "name": "赛事训练"}]],
             "system_rule_dsc": [["ur_datiangou_tansuo_tips", {"rule_dsc": "围场赛事"}],
                                 ["ur_datiangou_battle_tips", {"rule_dsc": "天狗面具"}]],
         }
@@ -560,6 +564,10 @@ class TeamBattleType: pass
         self.assertIn(("urdtg_event", 3), refs("urdtg_dungeon_battle", 101))
         self.assertIn(("battle_team_routes", 6089), refs("pve_stage_data", "12140016"))
         self.assertIn(("system_rule_dsc", "ur_datiangou_battle_tips"), refs("pve_stage_data", "12140016"))
+        self.assertIn(("pve_stage_data", "510014"), refs("urdtg_ui", 3))
+        self.assertIn(("battle_team_routes", 6087), refs("urdtg_ui", 3))
+        self.assertIn(("team_assist_stage", 101014), refs("urdtg_ui", 3))
+        self.assertNotIn(("battle_team_routes", 6089), refs("urdtg_ui", 3))
 
     def test_exploration_room_and_story_process_use_distinct_id_namespaces(self):
         tables = {
