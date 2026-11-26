@@ -9,6 +9,37 @@ from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_true_orochi_follows_pve_stage_groups_and_links_back_to_the_full_dungeon(self):
+        tables = {
+            "map_boss": [[71, {"id": 71, "name": "真·八岐大蛇", "gk_list": [[25100, 40040], [25101, 40050]]}],
+                         [72, {"id": 72, "name": "其他首领"}]],
+            "pve_stage_data": [["25100", {"id": 25100, "groupid": 25100}],
+                               ["25101", {"id": 25101, "groupid": 25101}]],
+            "BattleMonstersInfo": [[25100, {"resindex": 40007}], [25101, {"resindex": 40007}]],
+            "Combinesceneinfo": [[40007, {"battlesceneinfo": 507}]],
+            "BattleScenesInfo": [[507, {}]],
+            "battle_mode_routes": [[3005, {"mode_symbol": "MODE_ZHEN_DASHE", "scene_engine": "ZhenDaSheEngine"}]],
+            "team_assist_stage": [[10020228, {"ss_num": 6}]],
+            "tipsInfoData_cn": [["ZHENBAQIDASHE_TIPS", "玩法说明"]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "daily", "fields": []} for name in tables]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], entry["key"]): entry for entry in index["entries"]}
+        root = entries["map_boss", 71]
+        self.assertNotIn(("map_boss", 72), entries)
+        self.assertEqual([(ref["table"], ref["key"]) for ref in root["refs"]], [
+            ("tipsInfoData_cn", "ZHENBAQIDASHE_TIPS"), ("battle_mode_routes", 3005),
+            ("team_assist_stage", 10020228), ("pve_stage_data", "25100"), ("pve_stage_data", "25101"),
+            ("BattleMonstersInfo", 25100), ("BattleMonstersInfo", 25101), ("Combinesceneinfo", 40007),
+            ("BattleScenesInfo", 507),
+        ])
+        second = entries["pve_stage_data", "25101"]
+        self.assertEqual(second["title"], "真·八岐大蛇 · 第 2 层")
+        self.assertEqual([(ref["table"], ref["key"]) for ref in second["refs"]], [
+            ("BattleMonstersInfo", 25101), ("map_boss", 71), ("Combinesceneinfo", 40007), ("BattleScenesInfo", 507),
+        ])
+        self.assertEqual(index["unresolvedReferences"], 0)
+
     def test_regional_boss_preserves_weighted_rules_and_level_one_modifier_variants(self):
         base_skill = {"$tuple": [61701, 1, -1]}
         reward_skill = {"$tuple": [61711, 1, 2]}

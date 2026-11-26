@@ -8,6 +8,7 @@ ROOTS = {
     "pve_stage_data": ("battle", "通用 PvE 关卡"),
     "normal_battle_config": ("battle", "战斗模式默认规则"),
     "dungeon_rune": ("daily", "御魂"),
+    "map_boss": ("daily", "真·八岐大蛇"),
     "dungeon_awake": ("daily", "觉醒"),
     "dungeon_challenge": ("daily", "秘闻"),
     "dungeon_challenge2": ("daily", "秘闻"),
@@ -60,6 +61,9 @@ GUILD_BOSS_TROOPS = {101, 102, 111, 112, 121, 122}
 HUNT_CODE_TARGETS = (10020208, 10020207, 10020209, 10020210)
 RETREAT_CODE_TARGETS = {1200501: 10020206, 1200500: 10020204, 1200600: 10020205}
 REGION_DIFFICULTY_SKILLS = {10409: "极难默认词条", 10418: "极难奖励词条"}
+TRUE_OROCHI_MAP_ID = 71
+TRUE_OROCHI_MODE = 3005
+TRUE_OROCHI_CODE = 10020228
 
 # The raw fields remain available. Each relation below names the ID namespace
 # used by the corresponding client table.
@@ -210,6 +214,10 @@ def encounter_index(source, load_rows):
         for choice in area.get("weighted_battles", ()):
             if isinstance(choice, list) and len(choice) == 2 and (stage_id := numeric_key(choice[0])):
                 regions_by_stage.setdefault(stage_id, []).append(key)
+    orochi_key, orochi = table("map_boss").get(str(TRUE_OROCHI_MAP_ID), (None, {}))
+    # ZhenDaSheEngine reads gk_list in order, then reads each PvE row's groupid.
+    orochi_floors = {numeric_key(config[0]): floor for floor, config in enumerate(orochi.get("gk_list", ()), 1)
+                     if isinstance(config, list) and config and numeric_key(config[0])}
 
     def explicit(name, row):
         links = []
@@ -275,6 +283,8 @@ def encounter_index(source, load_rows):
             links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
+            if stage_id in orochi_floors:
+                links.append(relation("map_boss", orochi_key, "真·八岐大蛇挑战入口", True))
             for key in regions_by_stage.get(stage_id, ()):
                 links.append({"table": "lbs_world_boss_area", "key": key, "label": "地域鬼王玩法入口", "found": True})
             tip = relation("normal_battle_tips", row.get("id"), "通用战斗规则", False)
@@ -300,6 +310,12 @@ def encounter_index(source, load_rows):
             config = relation("normal_battle_config", row.get("battleMode"), "战斗模式默认规则", False)
             if config:
                 links.append(config)
+        if name == "map_boss" and numeric_key(row.get("id")) == str(TRUE_OROCHI_MAP_ID):
+            links.append(rule_reference("ZHENBAQIDASHE_TIPS", "真·八岐大蛇玩法原文"))
+            links.extend((relation("battle_mode_routes", TRUE_OROCHI_MODE, "原版战斗入口", True),
+                          relation("team_assist_stage", TRUE_OROCHI_CODE, "真·八岐大蛇阵容码目录", True)))
+            links.extend(relation("pve_stage_data", stage_id, f"第 {floor} 层关卡", True)
+                         for stage_id, floor in orochi_floors.items())
         if name == "BattleMonstersInfo":
             scene = relation("Combinesceneinfo", row.get("resindex", 11032), "通用 PvE 默认场景", True)
             if scene:
@@ -445,6 +461,8 @@ def encounter_index(source, load_rows):
         for key, row in load_rows(table_name):
             if not isinstance(row, dict):
                 continue
+            if table_name == "map_boss" and numeric_key(key) != str(TRUE_OROCHI_MAP_ID):
+                continue
             entrance = table_name == "mapnpc" and numeric_key(key) in table("storyChapter") \
                 and numeric_key(row.get("battle_id")) in rooms_by_map
             linked_battles = [
@@ -480,6 +498,9 @@ def encounter_index(source, load_rows):
             if table_name == "pve_stage_data" and row.get("name") in RESOURCE_STAGES:
                 entry_family, entry_kind = "daily", RESOURCE_STAGES[row["name"]][0]
                 title = f"{entry_kind} · 新服首次" if numeric_key(key) == "2111" else f"{entry_kind} · 编组 {row['groupid']}"
+            if table_name == "pve_stage_data" and (floor := orochi_floors.get(numeric_key(key))):
+                entry_family, entry_kind = "daily", "真·八岐大蛇"
+                title = f"{entry_kind} · 第 {floor} 层"
             if variant:
                 board = numeric_key(row.get("board_index"))
                 battle = numeric_key(row.get("battle_id"))

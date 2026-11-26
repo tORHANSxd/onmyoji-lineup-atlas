@@ -149,6 +149,7 @@ def replay(args, runtime, work):
         group_id, wave_count = args.stage, 1
     else:
         from battleengine.engine.MonstarGuanKaEngine import MonstarGuanKaEngine, const
+        from com.data.cdata import map_boss
         from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA
 
         stage_id = str(args.stage)
@@ -157,6 +158,8 @@ def replay(args, runtime, work):
             raise ValueError(f"Unknown native PvE stage {stage_id}")
         if stage.get("name") in RESOURCE_STAGE_NAMES:
             raise ValueError("Experience and coin encounters require their dedicated entry")
+        if any(args.stage == floor[0] for floor in map_boss.data[71]["gk_list"]):
+            raise ValueError("True Orochi floors require the original continuous dungeon engine")
         group_id = stage.get("groupid")
         group = BattleMonstersInfo.data.get(group_id)
         if not group or not group.get("MonstersInfos"):

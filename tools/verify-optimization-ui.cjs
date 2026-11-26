@@ -218,6 +218,19 @@ async function main(){
   await capture('client-journey-challenge');
   await ui('$("client-dungeons").open=false');
  });
+ if(catalog?.index.encounters&&catalog.entries.has('map_boss'))await check('真蛇展示十层敌方编组、跨层规则与原版入口',async()=>{
+  await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
+  await ui('qaEncounterInput("daily","真蛇 地图首领入口")');
+  const detail='$("client-dungeons-encounter-detail")';
+  await until(detail+'.textContent.includes("ZhenDaSheEngine")');
+  assert.match(await ui(detail+'.textContent'),/真·八岐大蛇玩法原文.*2名阴阳师.*生命上限.*ZhenDaSheEngine.*第 10 层关卡/s);
+  assert.equal(await ui(detail+'.querySelectorAll(".dungeon-encounter-waves ul").length'),10);
+  await ui(`[...${detail}.querySelectorAll('section')].find(el=>el.firstChild.textContent.includes('第 10 层关卡')).querySelector('button:last-child').click()`);
+  await until(detail+'.textContent.includes("沿用同一场战斗的十层进度")');
+  assert.match(await ui(detail+'.textContent'),/第 10 层.*25109.*真·八岐大蛇挑战入口/s);
+  assert.equal(await ui(detail+'.querySelectorAll(".dungeon-encounter-waves ul").length'),1);
+  await ui('$("client-dungeons").open=false');
+ });
  if(catalog?.index.encounters&&catalog.entries.has('lbs_world_boss_area'))await check('地域鬼王显示原版普通条件、极难词条及玩法专用入口',async()=>{
   await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
   await ui('qaEncounterInput("daily","地域鬼王 国王湖")');

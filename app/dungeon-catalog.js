@@ -15,6 +15,7 @@
     system_rule_dsc: '战斗与玩法规则原文',
     tipsInfoData_cn: '简体中文旧版玩法提示',
     dungeon_rune: '御魂副本',
+    map_boss: '地图首领入口',
     dungeon_awake: '觉醒副本',
     dungeon_challenge: '秘闻副本',
     dungeon_challenge_race: '秘闻竞速',
@@ -125,6 +126,7 @@
   };
   const journeyBossFields = {hero_id: '首领编号', reward: '奖励编号', time: '时限参数', unlocked: '解锁参数'};
   const tableFields = {
+    map_boss: {countlmt: '配置奖励次数', gk_base_id: '起始关卡 ID', gk_list: '原版楼层列表'},
     lbs_world_boss_area: {dist_id: '分区 ID', progress: '配置进度', reward: '世界排名奖励类型', group_reward: '分组奖励类型'},
     lbs_world_boss_init: {dist_name: '分区'},
     lbs_world_boss_type: {desc: '原版条件模板', detail: '战斗内条件提示模板', p1: '参数池 1', p2: '参数池 2', type: '条件类型'},
@@ -210,8 +212,9 @@
         const entry=withPracticeReferences(record,practice);
         const battle = entry.table==='act_team_battle'&&yanwu[entry.refs.find(ref=>ref.table==='pve_stage_data')?.key];
         const title = battle?`逢魔演武·${battle.name}`:entry.title;
+        const alias=entry.kind==='真·八岐大蛇'?'真蛇 真八岐大蛇':'';
         return {...entry,title,search:normalized(
-          [title, entry.kind, titles[entry.table], entry.table, keyText(entry.key), ...entry.refs.map(ref => keyText(ref.key))].join(' ')
+          [title, entry.kind, titles[entry.table], entry.table, keyText(entry.key), alias, ...entry.refs.map(ref => keyText(ref.key))].join(' ')
         )};
       }).sort((a,b) => order.indexOf(a.family) - order.indexOf(b.family));
       stage.byKey = new Map(stage.rows.map(entry => [entryKey(entry), entry]));
@@ -1087,10 +1090,12 @@
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
       const regional=entry.refs.some(ref=>ref.table==='lbs_world_boss_area');
+      const orochi=entry.refs.some(ref=>ref.table==='map_boss'&&Number(ref.key)===71);
       const practice=Object.values(window.AtlasTuzhizhuPractice?.modes??{}).some(mode=>mode.groupId===stageId);
       if(practice)destination.append(node('p','请在「逢魔木桩练习」中选择普通入口或极词条，再按对应原版引擎复跑。','caption'));
       else if(window.AtlasFengmoLive?.isLiveStage(stageId))destination.append(node('p','此编组用于逢魔实战。集结、评级与联机战报条件见逢魔实战入口。','caption'));
       else if(window.AtlasResourceEncounters.isResourceStage(row))showResourceEncounter(destination,stageId,row,formation);
+      else if(orochi)destination.append(node('p','真·八岐大蛇沿用同一场战斗的十层进度，选角与生命状态见玩法入口。','caption'));
       else if (regional) destination.append(node('p','此编组供地域鬼王入口使用。离线演练还需要该玩法下发的实际参数。','caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&
