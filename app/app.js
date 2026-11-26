@@ -184,9 +184,12 @@ function sampleBattleMarkup(samples){
   });
   const experience=sample.experience;
   const hunt=sample.guildHunt;
+  const retreat=sample.guildRetreat;
   const relay=sample.underworld;
   const outcome=hunt?`${sample.outcome==='win'?'个人结算成功':sample.completed?'个人结算失败':'结算待确认'} · `+
    `${sample.wavesCleared===sample.waveCount?'已清场':'未清场'} · 伤害 ${hunt.damage.toLocaleString('zh-CN')}`:
+   retreat?`${{'boss-defeated':'击败首领','team-defeated':'队伍落败','window-expired':'达到比较时长'}[retreat.reason]||'结算待确认'} · `+
+    `个人伤害 ${retreat.damage.toLocaleString('zh-CN')} · 作战 ${retreat.combatSeconds.toFixed(2)} 秒 · ${retreat.phases.length} 次阶段切换`:
    relay?`${sample.completed?'结算':'结算待确认'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 波 · `+
     relay.teams.map(team=>`第 ${team.team} 队在第 ${team.startWave} 波上场`).join('，')+(relay.leftAfterLastTeam?' · 已用完所选队伍':''):
    experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:describeBattle(sample);

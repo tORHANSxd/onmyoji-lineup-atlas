@@ -2,6 +2,7 @@
 
 from importlib import import_module
 from random import Random
+from guild_retreat_stage import RETREAT_MODE
 
 GUILD_HUNT_MODE = 2000
 PHASE_SKILL = "battleengine.SkillComp_GuildHuntingBoss"
@@ -63,7 +64,7 @@ def hunt_tactics(plan, mode):
     if "tactics" not in plan:
         return {}
     tactics = plan["tactics"]
-    if (mode != GUILD_HUNT_MODE or type(tactics) is not dict or not tactics
+    if (mode not in (GUILD_HUNT_MODE, RETREAT_MODE) or type(tactics) is not dict or not tactics
             or tactics.keys() - {"redBoss", "greenSlot", "manualOpening", "autoMode"}):
         raise ValueError("Unsupported Guild Hunting tactics")
     for key in ("redBoss", "manualOpening"):

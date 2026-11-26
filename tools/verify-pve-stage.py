@@ -6,6 +6,7 @@ import json
 import math
 import os
 from pathlib import Path
+import random
 import struct
 import sys
 from tempfile import TemporaryDirectory
@@ -14,6 +15,7 @@ import time
 def replay(args, runtime, work):
     from game_resources import sha256
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
+    from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_player, underworld_stage, underworld_teams
     from yuling_stage import YULING_MODE
@@ -26,6 +28,7 @@ def replay(args, runtime, work):
     plan = json.loads(team_bytes)
     suits = json.loads(suit_bytes)
     relay = args.mode == UNDERWORLD_MODE
+    retreat = args.mode == RETREAT_MODE
     if relay:
         heroes, inventory, actors, rounds = underworld_teams(plan, suits)
     else:
@@ -53,7 +56,16 @@ def replay(args, runtime, work):
     from battleengine.BattleController import LocalBattleController
     from battleengine.BattleRecorder import BattleRecorderRune
     from battleengine.battle_tools.RandomRecord import RandomRecord
-    if relay:
+    if retreat:
+        from battleengine.engine.GuildBossEngine import const
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("The personal retreat requires five shikigami")
+        random.seed(args.seed)
+        raid = GuildRetreatRaid(args.stage, args.boss, args.raid_round, args.guild_members)
+        engine, group_id, wave_count = raid.engine, args.boss, 3
+    elif relay:
         from battleengine.engine.GuildLieFengEngine import const
         from DynamicConfigData import DATA_HERO
 
@@ -145,7 +157,10 @@ def replay(args, runtime, work):
     avatar.inventory.update(inventory)
     avatar.defaultHeros = rounds[0]["members"][:] if relay else list(fighters)
 
-    if relay:
+    if retreat:
+        route = "guild-retreat-personal-window"
+        raid_window = RetreatWindow(raid, const, args.window_seconds)
+    elif relay:
         route = "underworld-gate-local-solo"
     elif args.mode == 29:
         engine, stage, enemy_ids = awake_stage(args.stage)
@@ -236,7 +251,11 @@ def replay(args, runtime, work):
         engine._createNextRoundMons = verify_spawn
     engine._time, engine.delta_time = 1000.0, .020
     engine.init()
-    if relay:
+    if retreat:
+        formation_matches = (engine.combineSceneInfoId == 40010 and engine.currBossProtoId == raid.boss["protoId"]
+                             and engine.finishedWaveCount == args.raid_round - 1 and engine.raid_id == 1
+                             and engine.hard_level == args.stage and engine.buff_member_num == args.guild_members)
+    elif relay:
         formation_matches = (engine.fbId == args.stage and engine.combineSceneInfoId == stage["scene"]
                              and engine.myRoundCount == 1 and engine.spectatorHeroCount == 0
                              and engine.campData1.shareGuiHuo == 2 and engine.campData2.initGuihuo == 4)
@@ -265,16 +284,23 @@ def replay(args, runtime, work):
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
 
-    deadline, start = time.monotonic() + (130 if relay else 75), engine.now_time()
+    deadline, start = time.monotonic() + (220 if retreat else 130 if relay else 75), engine.now_time()
     selection_checked = False
     equipped_spirit = None
-    instructions = HuntOpening(engine, controller, const, tactics, stage["monsters"][0][0]) if tactics else None
+    instructions = None
+    if tactics:
+        boss = raid.boss["protoId"] if retreat else stage["monsters"][0][0]
+        instructions = HuntOpening(engine, controller, const, tactics, boss)
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
         if host.oracle.unsupported:
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
         if instructions:
             instructions.update()
+        if retreat:
+            raid_window.update()
+            if raid_window.reason:
+                break
         if underworld:
             underworld.leave_if_out_of_teams()
         if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk or controller.isExited:
@@ -318,6 +344,9 @@ def replay(args, runtime, work):
     record = "".join(recorder.data_list).encode("utf-8")
     outcome = {const.CampFlag.CAMP1: "win", const.CampFlag.CAMP2: "loss"}.get(winner, "unknown")
     completed = engine.battleState == const.BattleState.BS_OVER and outcome != "unknown"
+    if retreat:
+        completed = raid_window.reason is not None
+        outcome = "win" if raid_window.reason == "boss-defeated" else "loss" if completed else "unknown"
     module = "battleengine.engine." + type(engine).__name__
     report = {**evidence, "route": route, "stageId": args.stage, "groupId": group_id,
               "engineClass": type(engine).__name__, "engineSHA256": modules.rows[module]["marshalSHA256"],
@@ -329,6 +358,14 @@ def replay(args, runtime, work):
               "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
     if underworld:
         report["underworld"] = underworld.report()
+    if retreat:
+        report["waveCount"], report["wavesCleared"] = 1, int(outcome == "win")
+        report["guildRetreat"] = {**raid_window.report(), "guildMembers": args.guild_members,
+                                  "raidSHA256": modules.rows["battleengine.raid.raid_controllers.RaidComp_1"]["marshalSHA256"]}
+        if instructions:
+            report["guildRetreat"]["tactics"] = instructions.applied
+            if instructions.manual_action:
+                report["guildRetreat"]["manualAction"] = instructions.manual_action
     if args.mode == 266:
         report["formationsVerified"] = len(verified_waves)
     if args.mode == RESOURCE_MODE:
@@ -377,6 +414,7 @@ def replay(args, runtime, work):
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from guild_hunt_stage import GUILD_HUNT_MODE
+    from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from resource_stage import RESOURCE_MODE
     from underworld_stage import UNDERWORLD_MODE
     from yuling_stage import YULING_MODE
@@ -384,16 +422,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, RETREAT_MODE), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
+    parser.add_argument("--boss", type=int, choices=RETREAT_BOSSES)
+    parser.add_argument("--raid-round", type=int, choices=(1, 2, 3), default=1)
+    parser.add_argument("--guild-members", type=int, default=0)
+    parser.add_argument("--window-seconds", type=int, default=1800)
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
+    if args.mode == RETREAT_MODE and (args.boss is None or not 0 <= args.guild_members <= 50 or not 30 <= args.window_seconds <= 1800):
+        parser.error("The retreat needs a boss, 0 to 50 guild members and a 30 to 1800-second window")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
-    faulthandler.dump_traceback_later(150 if args.mode == UNDERWORLD_MODE else 95, exit=True)
+    faulthandler.dump_traceback_later(240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:
         previous = Path.cwd()
         work = Path(directory).resolve()

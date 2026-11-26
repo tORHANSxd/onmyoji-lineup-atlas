@@ -90,15 +90,20 @@ async function hun13Templates(row,data){
 
 function pveGoalMet(report,battleMode){
  if(battleMode===2000)return Number.isSafeInteger(report.guildHunt?.damage)&&report.guildHunt.damage>0;
+ if(battleMode===306)return Number.isSafeInteger(report.guildRetreat?.damage)&&report.guildRetreat.damage>0;
  if(battleMode===528)return report.experience?.timedOut===false&&report.experience.requiredKills===30&&report.experience.kills===30;
  return report.wavesCleared===report.waveCount;
 }
 
+const personalScore=report=>report.guildHunt??report.guildRetreat;
+const damageMode=mode=>mode===2000||mode===306;
+
 function damageResult(samples){
- const damage=samples.map(report=>report.guildHunt?.damage);
+ const damage=samples.map(report=>personalScore(report)?.damage);
  if(!damage.length||samples.some((report,i)=>!report.completed||!Number.isSafeInteger(damage[i])||damage[i]<0))return null;
  return {average:damage.reduce((total,value)=>total+value,0)/damage.length,
-  min:Math.min(...damage),max:Math.max(...damage),credited:samples.filter(report=>report.outcome==='win'&&report.guildHunt.damage>0).length};
+  min:Math.min(...damage),max:Math.max(...damage),credited:samples.filter((report,i)=>
+   (report.guildRetreat||report.outcome==='win')&&damage[i]>0).length};
 }
 
 function compareDamage(a,b){
@@ -147,12 +152,12 @@ async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeSt
  const instructions=scoreInstructions(row.plan.tactics);
  if(!Number.isSafeInteger(waveCount)||waveCount<1||row.samples.length!==seeds.length||!row.samples.every((report,index)=>
   report.battleMode===battleMode&&report.stageId===stageId&&report.groupId===groupId&&report.seed===seeds[index]&&
-  report.completed&&report.outcome==='win'&&report.waveCount===waveCount&&pveGoalMet(report,battleMode)&&
-  (!instructions||battleMode===2000&&scoreInstructions(report.guildHunt?.tactics)===instructions)))
+  report.completed&&(battleMode===306||report.outcome==='win')&&report.waveCount===waveCount&&pveGoalMet(report,battleMode)&&
+  (!instructions||damageMode(battleMode)&&scoreInstructions(personalScore(report)?.tactics)===instructions)))
   throw Error('完成本关的全部采样复跑后才可生成此阵容码');
  if(!row.panels?.every(Boolean)||row.plan.members.some(member=>member.souls.length!==6))
   throw Error('御魂条件需要每位式神穿齐六个位置并能够计算面板');
- return draft(row,data,codeStageId,codeLabel,row.samples.length,battleMode===2000?'取得有效个人伤害结算':'通关');
+ return draft(row,data,codeStageId,codeLabel,row.samples.length,damageMode(battleMode)?'取得有效个人伤害结算':'通关');
 }
 
 async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples,outcome='通关'){
@@ -226,5 +231,5 @@ async function restore(lineup,account){
  return plan;
 }
 
-return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageResult,compareDamage,waveResult,underworldTemplates,scoreInstructions,readScoreInstructions,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
+return {sampleVerdict,hun13Verdict,passed,passedHun13,commonSampleTiming,pveGoalMet,damageMode,damageResult,compareDamage,waveResult,underworldTemplates,scoreInstructions,readScoreInstructions,template,hun13Templates,pveTemplate,receipt,receiptFor,restore};
 });

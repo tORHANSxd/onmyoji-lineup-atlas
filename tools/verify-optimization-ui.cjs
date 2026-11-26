@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,528,2000,2001]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
@@ -467,6 +467,30 @@ async function main(){
     await ui('qaGuildEncounter(1,"首领退治 难度")');
     await until('$("client-dungeons-encounter-detail").textContent.includes("各轮攻击调整")');
     assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/开启消耗阴阳寮勋章350.*退治首领池和阶段属性/s);
+    const retreatCalls=[];
+    mockPve=(plan,options)=>{
+     assert.deepEqual(options,{stageId:1,groupId:103,battleMode:306,seed:options.seed,damageFloor:true,
+      retreat:{raidRound:3,guildMembers:5,windowSeconds:180}});
+     retreatCalls.push(options.seed);
+     return {...sample,...options,outcome:'loss',waveCount:1,wavesCleared:0,guildRetreat:{
+      damage:plan.tactics?.redBoss?350000:300000,reason:'window-expired',combatSeconds:180,phases:['limao'],tactics:plan.tactics}};
+    };
+    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+    await ui(`(() => {const area=$('client-dungeons-encounter-detail');
+      const fields=area.querySelectorAll('select');
+      ['103','3','180'].forEach((value,i)=>{fields[i].value=value;fields[i].dispatchEvent(new Event('change'));});
+      const members=area.querySelector('input[type=number]');members.value='5';members.dispatchEvent(new Event('change'));
+    })()`);
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/贪婪的铁鼠.*生命14,600,832.*个人伤害/s);
+    await ui(stock+'.click()');
+    await until(status+'.textContent.includes("按平均伤害排序")',20000);
+    assert.deepEqual(retreatCalls.slice(0,2),[0,1]);
+    assert.match(await ui(reports+'.firstElementChild.textContent'),/6 \/ 6 场有效结算.*平均伤害 350,000.*达到比较时长.*1 次阶段切换/s);
+    await ui('document.querySelector("[data-pve-code]").click()');
+    const retreatCode=await ui('$("stock-candidate-code").value');
+    assert.equal(require('../desktop/ta-codec.cjs').decodeLineupData(retreatCode).select_stage_id,10020205);
+    await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
+    await capture('client-guild-retreat-damage');
    }
   }finally{
    mockPve=null;stopPve=null;

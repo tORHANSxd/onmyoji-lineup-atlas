@@ -2,7 +2,7 @@
  'use strict';
  const api=window.dungeonCatalog;
  const seeds=AtlasRuneSearch.baseSampleSeeds;
- const isDamageMode=mode=>mode===2000;
+ const isDamageMode=AtlasRuneCandidate.damageMode;
  const isWaveMode=mode=>mode===2001;
  const screenSize=2,finalistCount=5;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
@@ -108,7 +108,7 @@
  }
 
  async function replay(run,row,plan,damageFloor=false,sampleCount=seeds.length){
-  const {stageId,groupId,battleMode}=run.pane,scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
+  const {stageId,groupId,battleMode,retreat}=run.pane,scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
   const teamKey=relay?AtlasRuneSearch.relayKey(plan):AtlasRuneSearch.teamKey(plan);
   for(const seed of seeds.slice(row.samples.length,sampleCount)){
    if(!active(run))return;
@@ -116,7 +116,7 @@
    update();
    let report;
    run.native=true;
-   try{report=await api.runPve(plan,{stageId,groupId,seed,...(battleMode?{battleMode}:{}),...(damageFloor?{damageFloor:true}:{})});}
+   try{report=await api.runPve(plan,{stageId,groupId,seed,...(battleMode?{battleMode}:{}),...(damageFloor?{damageFloor:true}:{}),...(retreat?{retreat}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
    row.samples.push(report);
@@ -161,6 +161,11 @@
   const row=addRow(run,lineup.title);
   if(!C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup)){
    row.state.textContent='先解析并补齐原码要求';
+   return;
+  }
+  if(run.pane.retreat&&Number(lineup.gameSceneId)!==run.pane.codeStageId){
+   row.verdict='infeasible';
+   row.state.textContent='阵容码对应的首领与当前演练不同';
    return;
   }
   const members=lineup.members.filter(member=>member.occupied!==false);
@@ -237,7 +242,7 @@
   }
   action.onclick=()=>{
    const evidence=team?'该队已在离线接力中上阵 · 全随机分支待验证':
-    run.pane.battleMode===2000?'个人伤害结算通过采样 · 全随机分支待验证':'离线采样通过 · 全随机分支待验证';
+    isDamageMode(run.pane.battleMode)?'个人伤害结算通过采样 · 全随机分支待验证':'离线采样通过 · 全随机分支待验证';
    if(valid())openCandidateCode(output.lineup.title,evidence,output,{
     valid,save,savedMessage:'阵容码已保存到阵容库。',savedDetail:row.el.querySelector('[data-score-tactics]')?.textContent,
    });
