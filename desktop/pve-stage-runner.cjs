@@ -13,6 +13,7 @@ const yulingOpenings=require('../app/yuling-openings.js');
 const guildHuntOpenings=require('../app/guild-hunt-openings.js');
 const guildRetreatOpenings=require('../app/guild-retreat-openings.js');
 const guildCrevice=require('../app/guild-crevice.js');
+const superGhost=require('../app/superghost.js');
 const fengmoYanwu=require('../app/fengmo-yanwu.js');
 const activityScore=require('../app/general-soul-trial.js');
 const tianfa=require('../app/tianfa.js');
@@ -33,6 +34,7 @@ const engines={
  267:{name:'GorenFbEngine',route:'yuling-solo',sha256:yulingOpenings.engineSHA256},
  306:{name:'GuildBossEngine',route:'guild-retreat-personal-window',sha256:guildRetreatOpenings.engineSHA256},
  [guildCrevice.battleMode]:{name:'GuildLiefeng2022Engine',route:'guild-crevice-local-window',sha256:guildCrevice.engineSHA256},
+ [superGhost.battleMode]:{name:'SuperGhostEngine',route:'superghost-local-window',sha256:superGhost.engineSHA256},
  2000:{name:'GuildHuntingBattleEngine',route:'guild-hunting-local-owned',sha256:guildHuntOpenings.engineSHA256},
  2001:{name:'GuildLieFengEngine',route:'underworld-gate-local-solo',sha256:'5ee939050f18dc8de1960d88ce5181f5735fb89477c3736e1f32ac696426d625'},
  3004:{name:'LBSWorldBossEngine',route:'regional-boss-ordinary-scenario',sha256:'d7430531c4dd85fa2c3fc14b2c55677ee7d030e4703e8806887a3d55a0821174'},
@@ -221,23 +223,46 @@ function validQiLingReport(report,entry,input,plan){
    data.reason==='team-defeated'&&report.wavesCleared===0);
 }
 
-function validCreviceReport(report,route,windowSeconds){
- const data=report.guildCrevice;
- if(!data||report.sceneId!==guildCrevice.sceneId||report.waveCount!==1||data.kind!==route.kind||data.bossId!==route.bossId||
-    data.windowSeconds!==windowSeconds||data.sharedHp!==(route.kind!==1)||!Number.isSafeInteger(data.damage)||data.damage<0||
-    !Number.isSafeInteger(data.hpMessages)||data.hpMessages<0||!Number.isSafeInteger(data.reportedHpChange)||
-    (!data.sharedHp&&(data.hpMessages!==0||data.reportedHpChange!==0))||
+function validPersonalWindow(report,data,formation,windowSeconds,deadlineSeconds){
+ if(report.waveCount!==1||data.windowSeconds!==windowSeconds||!Number.isSafeInteger(data.damage)||data.damage<0||
     !Number.isFinite(data.combatSeconds)||data.combatSeconds<0||data.combatSeconds>report.engineSeconds||
-    !Array.isArray(data.enemies)||data.enemies.length!==route.formation.length||
-    !route.formation.every(([position,id,level],index)=>{
+    !Array.isArray(data.enemies)||data.enemies.length!==formation.length||
+    !formation.every(([position,id,level],index)=>{
      const unit=data.enemies[index];
      return unit?.position===position&&unit.id===id&&unit.level===level&&
       Number.isFinite(unit.startingHp)&&unit.startingHp>0&&Number.isFinite(unit.remainingHp)&&unit.remainingHp>=0;
     }))return false;
  if(!report.completed)return data.reason===null&&report.wavesCleared===0;
- if(data.reason==='window-expired')return windowSeconds<guildCrevice.deadlineSeconds&&data.combatSeconds===windowSeconds&&report.outcome==='loss';
+ if(data.reason==='window-expired')return windowSeconds<deadlineSeconds&&data.combatSeconds===windowSeconds&&report.outcome==='loss';
  if(report.outcome==='win')return data.reason==='cleared'&&report.wavesCleared===1;
  return ['native-timeout','team-defeated'].includes(data.reason)&&report.wavesCleared===0;
+}
+
+function validCreviceReport(report,route,windowSeconds){
+ const data=report.guildCrevice;
+ return data&&report.sceneId===guildCrevice.sceneId&&data.kind===route.kind&&data.bossId===route.bossId&&
+  data.sharedHp===(route.kind!==1)&&Number.isSafeInteger(data.hpMessages)&&data.hpMessages>=0&&
+  Number.isSafeInteger(data.reportedHpChange)&&(data.sharedHp||data.hpMessages===0&&data.reportedHpChange===0)&&
+  validPersonalWindow(report,data,route.formation,windowSeconds,guildCrevice.deadlineSeconds);
+}
+
+function validGhostSettings(input,route){
+ return input&&Object.keys(input).length===3&&[0,1].includes(input.attackType)&&
+  (input.day===0||Number.isInteger(input.day)&&Object.hasOwn(superGhost.days,input.day))&&
+  positive(input.windowSeconds)&&input.windowSeconds<=route.deadlineSeconds;
+}
+
+function validSuperGhostReport(report,route,settings,plan){
+ const data=report.superGhost,{day,attackType,windowSeconds}=settings;
+ if(!data||report.sceneId!==route.sceneId||data.day!==day||data.attackType!==attackType||data.star!==route.star||
+    data.deadlineSeconds!==route.deadlineSeconds||data.enemyDamageReduction!==superGhost.attackReductions[attackType]||
+    !validPersonalWindow(report,data,route.formation,windowSeconds,route.deadlineSeconds)||!Array.isArray(data.specialAttack))return false;
+ const groups=superGhost.days[day]?.groups??[],boosted=plan.members.flatMap((member,i)=>{
+  const heroId=Number(member.hero.heroId);
+  return groups.some(group=>group.heroIds.includes(heroId))?[{position:i+2,heroId}]:[];
+ });
+ return data.specialAttack.length===boosted.length&&boosted.every(({position,heroId})=>
+  data.specialAttack.some(row=>row.position===position&&row.heroId===heroId&&Number.isFinite(row.attackAdded)&&row.attackAdded>0));
 }
 
 function validOrochiReport(report,plan){
@@ -461,7 +486,7 @@ function launch(python,args,cwd,signal){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const engine=sixRealmsRoute?{name:sixRealmsRoute.engine,sha256:sixRealmsRoute.sha256,
   route:`six-realms-${sixRealmsState?'configured':'full-health'}-${sixRealmsEvent?'encounter':'trial'}`}:
@@ -504,6 +529,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (hunlingRoute&&!validHunlingReport(report,hunlingRoute,capture))||
     (qilingEntry&&!validQiLingReport(report,qilingEntry,qilingWindow,rounds[0]))||
     (creviceRoute&&!validCreviceReport(report,creviceRoute,creviceWindow))||
+    (ghostRoute&&!validSuperGhostReport(report,ghostRoute,ghostSettings,rounds[0]))||
     invalidTrial||invalidEvent||(sixRealmsState&&!validSixRealmsStateReport(trial?.runState,sixRealmsState,sixRealmsRoute.dao))||
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
@@ -540,21 +566,21 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul,journey,tianfaAvailable,crevice,ghost]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
      has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),
      has('fengmo_yanwu_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py'),
-     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py'),has('tianfa_stage.py'),has('guild_crevice_stage.py')]);
+     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py'),has('journey_hard_stage.py'),has('tianfa_stage.py'),has('guild_crevice_stage.py'),has('superghost_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
      ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
      ...(generalSoul?Object.keys(activityScore.modes).map(Number):[]),...(journey?[journeyHard.battleMode]:[]),...(tianfaAvailable?[tianfa.battleMode]:[]),
-     ...(crevice?[guildCrevice.battleMode]:[])]};
+     ...(crevice?[guildCrevice.battleMode]:[]),...(ghost?[superGhost.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -648,9 +674,13 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       plan.members.length!==5||!positive(creviceWindow)||creviceWindow>guildCrevice.deadlineSeconds)||
       creviceWindow!==undefined&&!creviceRoute)throw Error('狭间暗域需要正确的关卡、编组、计分时长和五位自有式神');
    if(battleMode===3&&guildCrevice.routes[stageId])throw Error('狭间暗域需要该玩法的原版入口');
+   const ghostRoute=battleMode===superGhost.battleMode?superGhost.routes[stageId]:null;
+   if(battleMode===superGhost.battleMode&&(superGhost.resourceVersion!==resourceVersion||!ghostRoute||groupId!==stageId||
+      plan.members.length!==5||!validGhostSettings(ghostSettings,ghostRoute))||
+      ghostSettings!==undefined&&!ghostRoute)throw Error('超鬼王需要正确的首领、追击方式、特攻日和计分时长');
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
-   const deadlineMs=spider?645000:battleMode===306||qilingEntry?245000:sixRealmsRoute||tianfaStage||creviceRoute?175000:
+   const deadlineMs=spider?645000:battleMode===306||qilingEntry||ghostRoute?245000:sixRealmsRoute||tianfaStage||creviceRoute?175000:
     hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000;
    const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
    let release,dir;
@@ -678,12 +708,13 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      if(qilingWindow.startingHp!==undefined)args.push('--qiling-hp',String(qilingWindow.startingHp));
     }
     if(creviceRoute)args.push('--crevice-window',String(creviceWindow));
+    if(ghostRoute)args.push('--ghost-settings',JSON.stringify(ghostSettings));
     const code=await launch(config.python,args,dir,AbortSignal.any([cancel.signal,deadline]));
     cancel.signal.throwIfAborted();
     if(code!==0&&code!==2)throw Error('本机原版引擎未能运行此关卡，请核对资料、阵容和入场条件');
     const report=JSON.parse(await fs.readFile(output,'utf8'));
     cancel.signal.throwIfAborted();
-    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,
+    return readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null});
    }catch(error){
     if(cancel.signal.aborted)throw Error('库存复跑已停止');

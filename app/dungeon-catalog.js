@@ -138,6 +138,11 @@
   };
   const journeyBossFields = {hero_id: '首领编号', reward: '奖励编号', time: '时限参数', unlocked: '解锁参数'};
   const tableFields = {
+    SuperGhost_mission: {crazy_time:'单次追击时限',private_time:'发现者专属时长',remain_time:'首领剩余时长',
+      minus_fatigue:'疲劳参数',spec_skill:'任务表词条',gk_list:'敌方编组',score_mul:'积分系数',help_mul:'协战系数'},
+    SuperGhost_bossmission: {challenge_time:'历史挑战时限',gk_list:'敌方编组'},
+    super_ghost_hjs_special_attack: {begin_time:'特攻开始时间',end_time:'特攻结束时间',hero_group:'特攻分组'},
+    super_ghost_hjs_special_attack_group: {hero_list:'特攻式神 ID',value:'攻防加成系数',desc:'原版增益说明'},
     hunling_base: {battle_tips:'共鸣规则',shoufu_tips:'首领机制'},
     hunling_tansuo_lv: {hunling_begin_star:'低星与权重',hunling_end_star:'高星与权重',need_exp:'探查经验门槛'},
     hunling_prop: {base_rate:'按探查等级的基础概率',times:'最多使用次数'},
@@ -306,6 +311,10 @@
   }
 
   function enemyWaves(table, row) {
+    if (['SuperGhost_mission','SuperGhost_bossmission'].includes(table)&&Array.isArray(row.gk_list)) {
+      return [row.gk_list.flatMap((unit,i)=>Number.isSafeInteger(unit?.[0])&&unit[0]>0&&Number.isSafeInteger(unit[1])?
+        [{position:i+1,id:unit[0],level:unit[1]}]:[])];
+    }
     if (table==='gve_battleinfo'&&row.difficulty!==100&&Array.isArray(row.monsters)) {
       return [row.monsters.map(([id,level],index)=>({id,level,position:index+1}))];
     }
@@ -1178,6 +1187,47 @@
     render();
   }
 
+  function showSuperGhost(block,entry,group){
+    const source=window.AtlasSuperGhost;
+    if(entry.table!=='SuperGhost_mission'||!matchesOpeningSource(source))return;
+    const id=Number(entry.key),route=source.routes[id],wave=group.waves[0];
+    if(!route||group.row?.sceneid!==route.sceneId||group.row.star!==route.star||group.row.crazy_time!==route.deadlineSeconds||
+       wave?.length!==route.formation.length||!route.formation.every(([position,id,level],i)=>
+         wave[i].position===position&&wave[i].id===id&&wave[i].level===level))return;
+    const controls=node('div','','actions'),workbench=node('div'),limit=route.deadlineSeconds;
+    const field=(name,element)=>{
+      const label=node('label',name,'pve-lineup-field');
+      label.append(element);controls.append(label);
+      return element;
+    };
+    const attack=field('追击方式',document.createElement('select'));
+    attack.dataset.ghostAttack='';
+    attack.replaceChildren(new Option('普通追击','0'),new Option('强力追击','1'));
+    const day=field('特攻日期',document.createElement('select'));
+    day.dataset.ghostDay='';
+    day.replaceChildren(new Option('无当日特攻','0'),...Object.entries(source.days).map(([id,row])=>new Option(row.date.join('-'),id)));
+    const duration=field('计分窗口（秒）',document.createElement('input'));
+    duration.dataset.ghostWindow='';
+    Object.assign(duration,{type:'number',min:'1',max:String(limit),step:'1',value:String(limit),required:true});
+    block.append(node('p',`原版时限 ${limit} 秒 · 敌方开场 8 火 · 从满血开始统计本队伤害`,'caption'),controls,workbench);
+    if(route.templateSkills)block.append(node('p','本条任务词条与敌方模板不同，模拟使用原版实际载入的敌方技能。','caption'));
+    const render=()=>{
+      if(!duration.checkValidity()){
+        window.AtlasPveWorkbench?.unmount();
+        workbench.replaceChildren(node('p',`计分窗口请输入 1 至 ${limit} 秒的整数。`,'caption'));
+        return;
+      }
+      const windowSeconds=duration.valueAsNumber,code=source.codeStageIds[route.star];
+      const ghostSettings={attackType:Number(attack.value),day:Number(day.value),windowSeconds};
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench,{stageId:id,groupId:id,battleMode:source.battleMode,
+        memberCount:5,waveCount:1,ghostSettings,scoreWindowSeconds:windowSeconds,version:source.resourceVersion,
+        codeStageIds:code?[code]:[],label:group.row.remarks});
+    };
+    for(const input of [attack,day,duration])input.addEventListener('change',render);
+    render();
+  }
+
   async function showEncounter(entry) {
     if (!entry) return;
     window.AtlasPveWorkbench?.unmount();
@@ -1208,6 +1258,7 @@
     }
     if (token !== stage.token) return;
     destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
+    showSuperGhost(destination,entry,groups[0]);
     const awake=awakeOpening(entry,groups);
     if (awake) {
       const codeScene=DATA.gameConfig.stages[awake.codeStageId];

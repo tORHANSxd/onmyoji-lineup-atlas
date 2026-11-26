@@ -54,7 +54,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,402,528,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3004,3005,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,402,528,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3004,3005,3008,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -321,6 +321,7 @@ async function main(){
   const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
    known('secret-race',10700011,5),known('crevice',10020211,5),
+   known('superghost',100942,5),known('superghost-five',100943,5),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),
@@ -553,6 +554,20 @@ async function main(){
       {outcome:'loss',wavesCleared:0,guildCrevice:{reason:'window-expired',damage:318000,windowSeconds:30,
        combatSeconds:30,sharedHp:true,enemies:[{position:1,startingHp:205000000,remainingHp:204682000}]}}),
       /单场最高 318,000.*达到计分窗口.*共享生命余量.*204,682,000/s);
+   }
+   if(cases.some(entry=>entry.table==='SuperGhost_mission'&&Number(entry.key)===59)){
+    await encounter('event','超鬼王 毗沙门天');
+    assert.match(await ui(panel+'.textContent'),/原版时限 180 秒.*敌方开场 8 火/s);
+    const ghostTime='document.querySelector("[data-ghost-window]")',ghostDay='document.querySelector("[data-ghost-day]")';
+    const ghostAttack='document.querySelector("[data-ghost-attack]")';
+    await ui(`${ghostTime}.value="181";${ghostTime}.dispatchEvent(new Event("change"))`);
+    assert.equal(await ui(start+'===null'),true);
+    await ui(`${ghostTime}.value="30";${ghostDay}.value="4";${ghostAttack}.value="1";${ghostTime}.dispatchEvent(new Event("change"))`);
+    assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-superghost']);
+    assert.match(await run('superghost',{stageId:59,groupId:59,battleMode:3008,ghostSettings:{attackType:1,day:4,windowSeconds:30}},
+      {outcome:'loss',wavesCleared:0,superGhost:{reason:'window-expired',damage:826920,windowSeconds:30,
+       combatSeconds:30,specialAttack:[{heroId:591,attackAdded:11549.579}],enemies:[{position:1,startingHp:12500000,remainingHp:12361902}]}}),
+      /单场最高 826,920.*达到计分窗口.*共享生命余量.*12,361,902.*特攻加成/s);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');

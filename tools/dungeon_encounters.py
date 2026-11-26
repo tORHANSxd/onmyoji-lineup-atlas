@@ -50,6 +50,8 @@ ROOTS = {
     "xinghen_battle": ("daily", "彼世逢魔"),
     "SuperGhost_mission": ("event", "超鬼王"),
     "SuperGhost_bossmission": ("event", "超鬼王首领挑战"),
+    "super_ghost_hjs_special_attack": ("event", "超鬼王特攻日期"),
+    "super_ghost_hjs_special_attack_group": ("event", "超鬼王特攻式神"),
     "journey_hardbattle": ("event", "京畿净化首领挑战"),
 }
 
@@ -547,6 +549,27 @@ def encounter_index(source, load_rows):
                 ("guild_crevice_area", route["area"], "所属暗域"),
                 ("battle_team_routes", 1161, "原版战斗入口"),
             ) if (ref := relation(dest, target, label, False)))
+        if name == "SuperGhost_mission":
+            stage_code = {5: 100943, 6: 100942}.get(row.get("star"))
+            links.extend(ref for dest, target, label in (
+                ("battle_mode_routes", 3008, "召唤首领原版战斗入口"),
+                ("team_assist_stage", stage_code, "超鬼王阵容码分类"),
+                ("Constant", 7096, "普通追击伤害修正"),
+                ("Constant", 7097, "强力追击伤害修正"),
+            ) if (ref := relation(dest, target, label, False)))
+            for skill_id, level in row.get("spec_skill", ()):
+                ref = (relation("skill", {"$tuple": [skill_id, level, 2]}, "任务表词条", False)
+                       or relation("skill", {"$tuple": [skill_id, level, -1]}, "任务表词条", False))
+                if ref:
+                    links.append(ref)
+        if name == "SuperGhost_bossmission":
+            if ref := relation("battle_mode_routes", 341, "历史每日挑战入口", False):
+                links.append(ref)
+        if name == "super_ghost_hjs_special_attack":
+            links.extend(ref for group in row.get("hero_group", ())
+                         if (ref := relation("super_ghost_hjs_special_attack_group", group, "本日特攻分组", False)))
+        if name == "super_ghost_hjs_special_attack_group":
+            links.extend(ref for hero in row.get("hero_list", ()) if (ref := relation("hero", hero, "特攻式神", False)))
         if name == "gve_battleinfo":
             week = row.get("week_day")
             if type(week) is int and 0 <= week < len(HUNT_CODE_TARGETS):
@@ -663,6 +686,14 @@ def encounter_index(source, load_rows):
                     title = f"麒麟狩猎 · {name(info)} · 难度 {row['difficulty']}"
             if table_name == "guild_boss_reward":
                 title = f"首领退治 · 难度 {row['difficulty']}"
+            if table_name == "SuperGhost_mission":
+                title = f"超鬼王 · {row['remarks']}"
+            if table_name == "SuperGhost_bossmission":
+                title = f"超鬼王历史首领挑战 · {title}"
+            if table_name == "super_ghost_hjs_special_attack":
+                title = "超鬼王特攻 · " + "-".join(map(str, row["begin_time"][:3]))
+            if table_name == "super_ghost_hjs_special_attack_group":
+                title = f"超鬼王特攻分组 {key} · {row['desc']}"
             if table_name == "xinghen_battle":
                 title = f"彼世逢魔 · {title}"
             if table_name == "boss_troops" and row.get("groupId") in GUILD_BOSS_TROOPS:

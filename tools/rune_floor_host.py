@@ -9,6 +9,27 @@ import sys
 from types import ModuleType
 
 
+def read_client_model(client, name):
+    group = "model_info"
+    try:
+        payload, _ = client.resource(group, name)
+        return payload
+    except ValueError as error:
+        if name != "model_s7_dasheshen_s7_dasheshen.json" or str(error) != "THX size mismatch: " + name:
+            raise
+        # 0.0.816's name table retains the old size for this cloud WPK entry.
+        # Use the exact active digest only after checking the recovered bytes.
+        ref = client.names[group].get(name)
+        if ref["size"] != 874 or ref["digest"] != "e2cd9d746e642b1561b2480a04c075af":
+            raise
+        payload, evidence = client.by_digest(group, ref["digest"])
+        if (evidence["size"] != 11819
+                or evidence["rawSHA256"] != "4ebc387a9a10b4e644a709cffa5b4bbd62b3eebc42940d8e59b346b852eb5af5"
+                or evidence["decodedSHA256"] != "f19a16d2c779fd60baf6668317216c41512429189278a8042bee4be6e43f3b89"):
+            raise
+        return payload
+
+
 def prepare_runtime(runtime, work):
     from game_resources import Bindict, decode_module, sha256
     from original_battle import RuntimeModules, no_transport
@@ -59,8 +80,7 @@ def prepare_runtime(runtime, work):
         if isinstance(file, (str, Path)):
             path = Path(file).resolve()
             if path.parent == models and re.fullmatch(r"model_[\w]+\.json", path.name) and not path.exists():
-                payload, _ = client.resource("model_info", path.name)
-                path.write_bytes(payload)
+                path.write_bytes(read_client_model(client, path.name))
         return builtins.open(file, *args, **kwargs)
 
     modules.game_builtins["open"] = open_model

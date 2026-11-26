@@ -206,7 +206,7 @@ function sampleBattleMarkup(samples){
   const orochi=sample.trueOrochi;
   const hunling=sample.hunling;
   const qiling=sample.qilingCollective;
-  const crevice=sample.guildCrevice;
+  const ghost=sample.superGhost,damageWindow=sample.guildCrevice??ghost;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
   const guard=trial?.runState?.guard;
@@ -241,8 +241,8 @@ function sampleBattleMarkup(samples){
    qiling?`${{'boss-defeated':'击败首领','team-defeated':'本队落败','window-expired':'达到计分时限'}[qiling.reason]||'结算待核对'} · `+
     `个人伤害 ${qiling.damage.toLocaleString('zh-CN')} · 作战 ${qiling.combatSeconds.toFixed(2)} / ${qiling.windowSeconds} 秒 · `+
     `共享生命剩余 ${Math.round(qiling.remainingHp).toLocaleString('zh-CN')}`:
-   crevice?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':'原版时限结束','window-expired':'达到计分窗口'}[crevice.reason]||'结算待核对'} · `+
-    `个人伤害 ${crevice.damage.toLocaleString('zh-CN')} · 计分窗口 ${crevice.windowSeconds} 秒 · 战斗与结算 ${crevice.combatSeconds.toFixed(2)} 秒`:
+   damageWindow?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':'原版时限结束','window-expired':'达到计分窗口'}[damageWindow.reason]||'结算待核对'} · `+
+    `个人伤害 ${damageWindow.damage.toLocaleString('zh-CN')} · 计分窗口 ${damageWindow.windowSeconds} 秒 · 战斗与结算 ${damageWindow.combatSeconds.toFixed(2)} 秒`:
    spider?`${sample.completed?describeBattle(sample):'本机复跑达到运行时限，结算待核对'} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
     `战斗 ${spider.combatSeconds.toFixed(2)} 秒`+
     (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):
@@ -275,9 +275,11 @@ function sampleBattleMarkup(samples){
    return `<li>${esc(`${unit.position} 号位 · ${unit.copied?'复制':'默认怪物'} ${name}${skills?' · 御魂技能 '+skills:''}`)}</li>`;
   }).join('')}</ol></details>`:'';
   const mechanic=secretMechanicSummary(sample.secretMechanic);
-  const life=crevice?`<div class="caption">${crevice.sharedHp?'共享':''}生命余量 · ${esc(crevice.enemies.map(unit=>
+  const life=damageWindow?`<div class="caption">${damageWindow.sharedHp||ghost?'共享':''}生命余量 · ${esc(damageWindow.enemies.map(unit=>
    `${unit.position} 号位 ${Math.round(unit.remainingHp).toLocaleString('zh-CN')} / ${Math.round(unit.startingHp).toLocaleString('zh-CN')}`).join(' · '))}</div>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}</li>`;
+  const special=ghost?.specialAttack.length?`<div class="caption">特攻加成 · ${esc(ghost.specialAttack.map(unit=>
+   `${DATA.gameConfig.heroes[unit.heroId]?.name??unit.heroId} 攻击 +${Math.round(unit.attackAdded).toLocaleString('zh-CN')}`).join(' · '))}</div>`:'';
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}</li>`;
  }).join('');
 }
 

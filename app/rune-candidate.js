@@ -6,9 +6,10 @@
   common?require('./fengmo-yanwu.js'):root.AtlasFengmoYanwu,
   common?require('./qiling-group-openings.js'):root.AtlasQiLingGroups,
   common?require('./guild-crevice.js'):root.AtlasGuildCrevice,
+  common?require('./superghost.js'):root.AtlasSuperGhost,
   common?require('./general-soul-trial.js'):root.AtlasGeneralSoulTrial);
  if(common)module.exports=api;else root.AtlasRuneCandidate=api;
-})(globalThis,function(G,R,S,yanwu,qiling,crevice,generalSoul){
+})(globalThis,function(G,R,S,yanwu,qiling,crevice,ghost,generalSoul){
 'use strict';
 
 const mainAttrs={attack_rate:'atk_per',crit_rate:'critical_rate',crit_damage:'critical_pow',speed:'spd',
@@ -104,8 +105,8 @@ function pveGoalMet(report,battleMode){
  return report.wavesCleared===report.waveCount;
 }
 
-const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.qilingCollective??report.guildCrevice??report.generalSoulTrial??report.activityScore;
-const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===qiling.battleMode||mode===crevice.battleMode||Object.hasOwn(generalSoul.modes,mode);
+const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.qilingCollective??report.guildCrevice??report.superGhost??report.generalSoulTrial??report.activityScore;
+const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===qiling.battleMode||mode===crevice.battleMode||mode===ghost.battleMode||Object.hasOwn(generalSoul.modes,mode);
 const creditedDamage=report=>!report.guildHunt||report.outcome==='win';
 
 function damageResult(samples){
