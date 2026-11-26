@@ -46,6 +46,10 @@
     MZB_fengmo: '逢魔木桩练习',
     fengmo_band_personal_boss: '逢魔乐队单人首领',
     fengmo_band_together_battle: '逢魔乐队共斗首领',
+    devil_battle: '京都万事屋历练',
+    devil_feast_event5: '鬼王之宴灵气激发',
+    devil_feast_event6: '鬼王之宴大妖考验',
+    devil_feast_event7: '鬼王之宴涤荡妖气',
     fengmo_band_bandskill: '逢魔乐队技能',
     event4: '逢魔实战首领',
     event4_honor_limit: '极逢魔实战门槛',
@@ -670,6 +674,57 @@
     };
     fields.addEventListener('change',render);
     render();
+    return true;
+  }
+
+  function showDevilFeast(destination,entry,groups){
+    const source=window.AtlasDevilFeast;
+    if(entry.table==='devil_feast_event7'){
+      destination.append(node('p','原表记录十回目奖励规则。该版本缺少当局敌方编组，离线复跑待接入。','caption'));
+      return true;
+    }
+    const stageId=entry.table==='pve_stage_data'?Number(entry.key):groups[0]?.row?.battle_id;
+    const profile=source.stage(stageId);
+    if(!profile||![profile.table,'pve_stage_data'].includes(entry.table))return false;
+    const config=groups.find(({ref})=>ref.table===profile.table&&ref.key===profile.configId)?.row;
+    const stage=groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===stageId)?.row;
+    const formation=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===stageId);
+    const route=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===source.teamType)?.row;
+    if(!matchesOpeningSource(source)||config?.battle_id!==stageId||stage?.groupid!==stageId||
+       stage.shishentotal!==5||formation?.row?.resindex!==profile.sceneId||formation.waves?.length!==1||
+       route?.battleMode!==source.battleMode||route.route_sha256!==source.routeSHA256){
+      destination.append(node('p','复跑需要同版本的活动配置、敌方编组和原版入口。','caption'));
+      return true;
+    }
+    const boss=profile.kind==='boss',title=boss?'大妖考验':profile.kind==='encounter'?'灵气激发':profile.elite?'精英历练':'普通历练';
+    const detail=boss?'按活动说明每次限时 120 秒。':
+      profile.kind==='encounter'?`原关卡时限 ${profile.seconds} 秒 · 体力 10`:
+        `原关卡时限 ${profile.seconds} 秒 · 消耗 ${config.item_cost} · 万事屋 ${config.unlock_level} 级解锁`;
+    destination.append(node('p',detail,'caption'));
+    const workbench=node('div'),mount=hp=>window.AtlasPveWorkbench?.mount(workbench,{
+      stageId,groupId:stageId,battleMode:source.battleMode,memberCount:5,waveCount:1,
+      version:source.resourceVersion,label:`鬼王之宴 · ${title}`,devilFeastHp:hp,
+    });
+    if(boss){
+      const field=node('label','开场首领生命（留空模拟满血）','pve-lineup-field'),input=document.createElement('input');
+      input.type='number';
+      input.min='0';
+      input.max=String(Number.MAX_SAFE_INTEGER);
+      input.step='any';
+      input.placeholder='满血';
+      input.dataset.devilFeastHp='';
+      field.append(input);
+      destination.append(field);
+      input.addEventListener('change',()=>{
+        workbench.replaceChildren();
+        const hp=input.value===''?undefined:Number(input.value);
+        input.setCustomValidity(hp!==undefined&&!source.validHp(hp)?'请输入大于 0 的生命值。':'');
+        if(input.reportValidity())mount(hp);
+        else window.AtlasPveWorkbench?.unmount();
+      });
+    }
+    destination.append(workbench);
+    mount();
     return true;
   }
 
@@ -1738,6 +1793,7 @@
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
     const bandMounted=showFengmoBand(destination,entry,groups);
     const bandTogetherMounted=showFengmoBandTogether(destination,entry,groups);
+    const devilFeastMounted=showDevilFeast(destination,entry,groups);
     showActivityScore(destination,entry,groups);
     showJourneyHard(destination,entry,groups);
     showTianfa(destination,entry,groups);
@@ -1810,7 +1866,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;

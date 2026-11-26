@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,445,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -812,6 +812,18 @@ async function main(){
      [...ref.querySelectorAll('button')].find(button=>button.textContent==='查看关联关卡').click();})()`);
     await until(start+'!==null');
     assert.match(await ui(panel+'.textContent'),/青森之秘 · 事件 2548/);
+   }
+   if(cases.some(entry=>entry.table==='devil_feast_event6'&&entry.key===1)){
+    await encounter('event','鬼王之宴 大妖考验 450231');
+    assert.match(await ui(panel+'.textContent'),/每次限时 120 秒/);
+    await ui(`(()=>{const hp=document.querySelector('[data-devil-feast-hp]');hp.value='939904.4000000003';
+     hp.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+    assert.match(await run('superghost-five',{stageId:450231,groupId:450231,battleMode:445,devilFeastHp:939904.4000000003},
+      {devilFeast:{kind:'boss',timedOut:false,deadlineSeconds:120,combatSeconds:58.12,enemies:[{remainingHp:0}]}}),
+      /已清场 · 战斗与结算 58.12 \/ 120 秒 · 首领剩余生命 0/);
+    await ui('qaEncounterInput("event","鬼王之宴 涤荡妖气 事件 1")');
+    await until(panel+'.textContent.includes("离线复跑待接入")');
+    assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');

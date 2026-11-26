@@ -2,6 +2,7 @@
 
 from collections import Counter
 from functools import cache
+from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM
 from dojo_area_stage import DOJO_AREA_TEAM
 from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
 from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
@@ -38,6 +39,10 @@ ROOTS = {
     "MZB_fengmo": ("daily", "逢魔木桩练习"),
     "fengmo_band_personal_boss": ("event", "逢魔乐队单人首领"),
     "fengmo_band_together_battle": ("event", "逢魔乐队共斗首领"),
+    "devil_battle": ("event", "京都万事屋历练"),
+    "devil_feast_event5": ("event", "鬼王之宴灵气激发"),
+    "devil_feast_event6": ("event", "鬼王之宴大妖考验"),
+    "devil_feast_event7": ("event", "鬼王之宴涤荡妖气"),
     "lbs_world_boss_area": ("daily", "地域鬼王"),
     "lbs_world_boss_type": ("daily", "地域鬼王规则"),
     "shilian_event_battles": ("daily", "六道之门"),
@@ -140,6 +145,9 @@ EDGES = {
     "MZB_fengmo": (("boss_id", "monster", "首领"),),
     "fengmo_band_personal_boss": (("battleid", "pve_stage_data", "单人挑战关卡"),
                                    ("monster_id", "monster", "首领原型")),
+    "devil_battle": (("battle_id", "pve_stage_data", "历练关卡"),),
+    "devil_feast_event5": (("battle_id", "pve_stage_data", "灵气激发关卡"), ("boss_id", "hero", "首领式神")),
+    "devil_feast_event6": (("battle_id", "pve_stage_data", "大妖考验关卡"), ("boss_id", "hero", "首领式神")),
     "lbs_world_boss_area": (("dist_id", "lbs_world_boss_init", "地图分区"),),
     "act_team_battle": (("act_id", "activity", "活动开放配置"),),
     "xinghen_battle": (("stage_id", "pve_stage_data", "彼世逢魔关卡"),),
@@ -247,6 +255,9 @@ def encounter_index(source, load_rows):
                 for buff in row.get(field, ()) if (ref := relation("buff", {"$tuple": [buff, 1]}, label, False))]
 
     tianfa_by_stage = {numeric_key(row.get("stage_id")): key for key, row in table("xinghen_battle").values()}
+    devil_feast_by_stage = {numeric_key(row["battle_id"]): (source, key)
+                           for source in ("devil_battle", "devil_feast_event5", "devil_feast_event6")
+                           for key, row in table(source).values()}
     dojo_area_by_stage, dojo_area_activities = {}, {}
     for year in (2025, 2026):
         plays = f"dojo{year}_bbbl_block_play"
@@ -667,6 +678,17 @@ def encounter_index(source, load_rows):
             ))
             refs.extend(("fengmo_band_bandskill", role, "乐队技能") for role in range(1, 4))
             links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
+        if name in ("devil_battle", "devil_feast_event5", "devil_feast_event6", "devil_feast_event7"):
+            refs = [("battle_team_routes", DEVIL_FEAST_TEAM, "鬼王之宴的原版战斗入口"),
+                    ("activity", 1366, "京都万事屋开放期"),
+                    ("activity", DEVIL_FEAST_ACTIVITY, "鬼王之宴开放期")]
+            if name == "devil_battle":
+                refs.append(("devil_feast_lv", row.get("unlock_level"), "解锁等级和历练次数"))
+            else:
+                refs.append(("devil_feast_task_events", int(name[-1]), "事件类型和原文"))
+            if name != "devil_feast_event7":
+                refs.append(("BattleMonstersInfo", row.get("battle_id"), "敌方编组"))
+            links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
             links.extend(ref for dest, key in dojo_area_by_stage.get(stage_id, ())
@@ -677,6 +699,12 @@ def encounter_index(source, load_rows):
                 if ref := relation("battle_team_routes", FOREST_TEAM, "单队战斗入口", False):
                     links.append(ref)
             stage_number = int(stage_id or 0)
+            if stage_id in devil_feast_by_stage:
+                source, key = devil_feast_by_stage[stage_id]
+                links.extend(ref for dest, target, label in (
+                    (source, key, "鬼王之宴活动配置"),
+                    ("battle_team_routes", DEVIL_FEAST_TEAM, "鬼王之宴的原版战斗入口"),
+                ) if (ref := relation(dest, target, label, False)))
             if stage_number in (*BAND_TOGETHER_STAGES, *BAND_ONLINE_STAGES):
                 if ref := relation("fengmo_band_together_battle", 1, "逢魔乐队共斗入口", False):
                     links.append(ref)
@@ -1201,6 +1229,15 @@ def encounter_index(source, load_rows):
                 title = f"逢魔乐队 · {title} · {row['battleid']}"
             if table_name == "fengmo_band_together_battle":
                 title = "逢魔乐队 · 胧车共斗首领"
+            if table_name == "devil_battle":
+                difficulty = "普通" if row.get("battle_type") == 1 else "精英"
+                title = f"京都万事屋 · {difficulty}历练 {key} · {row['battle_id']}"
+            if table_name in ("devil_feast_event5", "devil_feast_event6"):
+                _, boss = table("hero").get(numeric_key(row.get("boss_id")), (None, {}))
+                label = "灵气激发" if table_name.endswith("5") else "大妖考验"
+                title = f"鬼王之宴 · {label} · {name(boss)} · {row['battle_id']}"
+            if table_name == "devil_feast_event7":
+                title = f"鬼王之宴 · 涤荡妖气 · 事件 {key}"
             if table_name == "guild_fake_god_event":
                 label = FOREST_EVENT_TYPES.get(row.get("type"), "事件")
                 title = f"青森之秘 · {label} · {title.strip()} · {key}"

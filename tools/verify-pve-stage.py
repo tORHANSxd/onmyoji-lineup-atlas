@@ -17,6 +17,7 @@ SPECIAL_NIAN_WALL_SECONDS = 145
 
 
 def replay(args, runtime, work):
+    from devil_feast_stage import DEVIL_FEAST_MODE, DEVIL_FEAST_STAGES, DEVIL_FEAST_WALL_SECONDS, DevilFeastReplay
     from dojo_area_stage import DOJO_AREA_MODE, DojoAreaReplay, dojo_area_stage, is_dojo_area_stage
     from game_resources import sha256
     from fengmo_band_stage import FENGMO_BAND_MODE, FENGMO_BAND_STAGES, FengmoBandReplay
@@ -76,6 +77,7 @@ def replay(args, runtime, work):
     yanwu = args.mode == FENGMO_YANWU_MODE
     fengmo_band = args.mode == FENGMO_BAND_MODE
     band_together = args.mode == BAND_TOGETHER_MODE
+    devil_feast = args.mode == DEVIL_FEAST_MODE
     activity_score = SOLO_SCORE_MODES.get(args.mode)
     dojo_area = args.mode == DOJO_AREA_MODE
     forest = args.mode == FOREST_MODE
@@ -212,6 +214,14 @@ def replay(args, runtime, work):
         if len(fighters) != member_count:
             raise ValueError("The selected roster does not match the original solo Fengmo Yanwu route")
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif devil_feast:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Devil Feast requires five owned shikigami")
+        feast = DevilFeastReplay(modules, args.stage, args.devil_feast_hp)
+        engine, group, const = feast.engine, feast.group, feast.const
+        group_id, wave_count = group["ID"], 1
     elif fengmo_band:
         from DynamicConfigData import DATA_HERO
 
@@ -384,6 +394,8 @@ def replay(args, runtime, work):
             raise ValueError("Shichangji activity stages require their original activity route")
         if args.stage in FENGMO_BAND_STAGES or args.stage in (*BAND_TOGETHER_STAGES, *BAND_ONLINE_STAGES):
             raise ValueError("Fengmo Band stages require their original activity route")
+        if args.stage in DEVIL_FEAST_STAGES:
+            raise ValueError("Devil Feast stages require their original activity route")
         if args.stage in SCORE_STAGES:
             raise ValueError("This activity requires its dedicated original score battle engine")
         if args.stage in (*TIANFA_STAGES, TIANFA_LOBBY_STAGE):
@@ -469,6 +481,8 @@ def replay(args, runtime, work):
         route = "fengmo-yanwu-solo"
     elif fengmo_band:
         route = "fengmo-band-personal-boss"
+    elif devil_feast:
+        route = "devil-feast-activity"
     elif band_together:
         route = "fengmo-band-together-practice"
     elif dojo_area:
@@ -660,7 +674,7 @@ def replay(args, runtime, work):
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == ten_groups[0]["resindex"]
                              and engine.defeat_monster_wave == 0 and engine.monster_wave_count == len(ten_groups)
                              and tuple(engine.wave_pve_flag_list) == tuple(group["ID"] for group in ten_groups))
-    elif yanwu or fengmo_band or band_together or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
+    elif yanwu or fengmo_band or band_together or devil_feast or dojo_area or forest or ten_anniversary or ten_explore or activity_score or tianfa or journey_hard or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -698,6 +712,7 @@ def replay(args, runtime, work):
 
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else QINFEI_BOSS_REPLAY_SECONDS if qinfei_boss
                       else BAND_TOGETHER_WALL_SECONDS if band_together
+                      else DEVIL_FEAST_WALL_SECONDS if devil_feast
                       else TEN_REPLAY_SECONDS if ten_anniversary or ten_boss or ten_explore
                       else OROCHI_REPLAY_SECONDS if orochi
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
@@ -778,6 +793,8 @@ def replay(args, runtime, work):
             yanwu_replay.update()
         if fengmo_band:
             band.update()
+        if devil_feast:
+            feast.update()
         if band_together:
             band_handoff = together.update(controller)
             if not together.first and together.started is not None and not selection_checked:
@@ -925,6 +942,9 @@ def replay(args, runtime, work):
         report["fengmoBand"] = band.report()
         report["formationsVerified"] = 1
         report["wavesCleared"] = int(report["fengmoBand"]["enemiesRemaining"] == 0)
+    if devil_feast:
+        report["devilFeast"] = feast.report()
+        report["formationsVerified"] = 1
     if band_together:
         phase = together.report(completed)
         report["fengmoBandPhase"] = phase
@@ -1033,6 +1053,7 @@ def replay(args, runtime, work):
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from devil_feast_stage import DEVIL_FEAST_BOSSES, DEVIL_FEAST_MODE, DEVIL_FEAST_STAGES, DEVIL_FEAST_WALL_SECONDS
     from fengmo_band_stage import FENGMO_BAND_MODE
     from fengmo_band_together import BAND_TOGETHER_MODE, BAND_TOGETHER_STAGES, BAND_TOGETHER_WALL_SECONDS
     from dojo_area_stage import DOJO_AREA_ACTIVITY, DOJO_AREA_MODE
@@ -1069,7 +1090,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--devil-feast-hp", type=float)
     parser.add_argument("--band-score", type=int)
     parser.add_argument("--band-carry", type=int, nargs=2, metavar=("DAMAGE", "BUFF_LEVEL"))
     parser.add_argument("--dojo-area", type=int, nargs=3, metavar=("YEAR", "PLAY", "REGION_STATE"))
@@ -1105,6 +1127,11 @@ def main():
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
+    if args.mode == DEVIL_FEAST_MODE and args.stage not in DEVIL_FEAST_STAGES:
+        parser.error("Unknown Devil Feast fixed encounter")
+    if args.devil_feast_hp is not None and (args.mode != DEVIL_FEAST_MODE or args.stage not in DEVIL_FEAST_BOSSES
+                                           or not 0 < args.devil_feast_hp < 2 ** 53):
+        parser.error("Starting HP applies to Devil Feast bosses and must be positive")
     if args.mode == BAND_TOGETHER_MODE:
         if (args.stage not in BAND_TOGETHER_STAGES or args.band_score is None or not 0 <= args.band_score < 2 ** 53
                 or (args.stage == BAND_TOGETHER_STAGES[1]) != (args.band_carry is not None)
@@ -1189,6 +1216,7 @@ def main():
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
+                        DEVIL_FEAST_WALL_SECONDS + 20 if args.mode == DEVIL_FEAST_MODE else
                         BAND_TOGETHER_WALL_SECONDS + 20 if args.mode == BAND_TOGETHER_MODE else
                         TEN_REPLAY_SECONDS + 20 if args.mode in (*TEN_OWNED_MODES, TEN_BOSS_MODE, TEN_EXPLORE_MODE) else
                         OROCHI_REPLAY_SECONDS + 20 if args.mode == OROCHI_MODE else
