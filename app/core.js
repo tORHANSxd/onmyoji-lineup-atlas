@@ -375,7 +375,9 @@ function baseFromRoster(hero,roster){
     return {hp:rows[0][0],speed:rows[1][0],critDamage:1+rows[2][0],crit:rows[3][0],defense:rows[4][0],attack:rows[5][0],effectHit:rules.baseHit,effectResist:rules.baseResist,innate:hero.awake?{...rules.awakeBonus}:{},source:'export-base'};
   }
   if(hero.level!==40||hero.star!==6)return null;
-  const a=entry?.assets?.baseAttrs40?.[String(hero.awake)];
+  const assets=entry?.assets;
+  const a=assets?.baseAttrs40?.[String(hero.awake)]??
+    (assets?.awakeningAvailability==='not_applicable'?assets.baseAttrs40?.['0']:null);
   if(!object(a)||!['attack','defense','maxHp','speed','critRate','critPower','debuffEnhance','debuffResist'].every(k=>finite(a[k])))return null;
   const innate=hero.awake?{...rules?.awakeBonus}:{};
   return {attack:a.attack/(1+(innate.attackPercent||0)),defense:a.defense/(1+(innate.defensePercent||0)),hp:a.maxHp/(1+(innate.hpPercent||0)),speed:a.speed-(innate.speed||0),crit:a.critRate-(innate.crit||0),critDamage:1+a.critPower-(innate.critDamage||0),effectHit:a.debuffEnhance-(innate.effectHit||0),effectResist:a.debuffResist-(innate.effectResist||0),innate};

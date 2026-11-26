@@ -8,6 +8,7 @@ const {createPveStageRunner}=require('../desktop/pve-stage-runner.cjs');
 const {sampleSeeds:commonSeeds}=require('../app/rune-search.js');
 const game=require('../app/game-config.js');
 const {Background}=require('../desktop/background.cjs');
+const {applyLatestHeroes}=require('../desktop/latest-heroes.cjs');
 const root=path.resolve(__dirname,'..'),profile=path.join(root,'user-data','optimization-ui');
 app.setPath('userData',profile);
 app.disableHardwareAcceleration();
@@ -24,7 +25,7 @@ async function check(name,fn){try{await fn();results.push({name,passed:true});}c
 async function capture(name){await win.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true});await sleep(350);await fs.writeFile(path.join(profile,name+'.png'),(await win.webContents.capturePage(undefined,{stayHidden:true,stayAwake:true})).toPNG());}
 async function main(){
  await app.whenReady();await fs.mkdir(profile,{recursive:true});
- const data=JSON.parse(await fs.readFile(path.join(root,'data/bundle.json'),'utf8'));data.officialUpdate={autoUpdate:false};stored=blank();
+ const data=applyLatestHeroes(JSON.parse(await fs.readFile(path.join(root,'data/bundle.json'),'utf8')));data.officialUpdate={autoUpdate:false};stored=blank();
  const background=new Background(),shareCalls=[];
  const local=(name,fn)=>{ipcMain.handle(name,(_e,...args)=>fn(...args));if(name==='export-json')ipcMain.handle('export-json-text',(_e,p)=>fn({name:p.name,data:JSON.parse(p.text)}));if(['load-data','load-state'].includes(name))ipcMain.handle(name+'-json',async(_e,...args)=>JSON.stringify(await fn(...args)));if(['save-state','save-parsed-state'].includes(name))ipcMain.handle(name+'-json',(_e,text)=>fn(JSON.parse(text)));};
  local('save-state-fields-json',async text=>{if(holdSave)await new Promise(resolve=>heldSaves.push(resolve));if(failSave)throw Error('synthetic disk full');if(!stored)return {needsSnapshot:true};stored={...JSON.parse(text),lineups:stored.lineups};return {saved:true};});

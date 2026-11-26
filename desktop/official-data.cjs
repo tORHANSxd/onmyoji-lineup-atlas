@@ -85,7 +85,20 @@ class OfficialData {
   }
   getData(){
     const data=structuredClone(this.base),saved=this.snapshot;
-    if(saved.roster?.length){const builtIn=new Map(data.roster.map(r=>[r.id,r]));data.roster=saved.roster.map(r=>({...r,gameRules:builtIn.get(r.id)?.gameRules||r.gameRules}));data.roster.push(...[...builtIn.values()].filter(r=>!saved.roster.some(s=>s.id===r.id)));}
+    if(saved.roster?.length){
+      const builtIn=new Map(data.roster.map(r=>[r.id,r]));
+      data.roster=saved.roster.map(row=>{
+        const original=builtIn.get(row.id);
+        if(!original)return row;
+        const assets=row.assets&&original.assets?{...original.assets,...row.assets,
+          baseAttrs40:{...original.assets.baseAttrs40,...row.assets.baseAttrs40},
+          variants:row.assets.variants?.some(asset=>asset.status==='downloaded_valid_image')?row.assets.variants:original.assets.variants}:row.assets||original.assets;
+        return {...original,...row,assets,gameRules:original.gameRules||row.gameRules,
+          releasedAt:row.releasedAt||original.releasedAt,
+          releaseEvidenceUrls:row.releaseEvidenceUrls?.length?row.releaseEvidenceUrls:original.releaseEvidenceUrls};
+      });
+      data.roster.push(...[...builtIn.values()].filter(r=>!saved.roster.some(s=>s.id===r.id)));
+    }
     if(saved.actors?.length){const builtIn=new Map((data.actors||[]).map(a=>[a.id,a]));data.actors=[...new Map([...(data.actors||[]),...saved.actors.map(a=>({...a,gameId:builtIn.get(a.id)?.gameId??a.gameId}))].map(a=>[a.id,a])).values()];}
     data.officialNews=saved.news||data.officialNews||[];
     if(saved.report)data.assetAudit={...data.assetAudit,...saved.report};

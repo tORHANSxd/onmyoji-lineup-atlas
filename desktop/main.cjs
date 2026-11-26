@@ -45,7 +45,8 @@ app.whenReady().then(async () => {
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true } });
   win.webContents.setWindowOpenHandler(({url}) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return {action:'deny'}; });
   win.webContents.on('will-navigate', (e,url) => { if (!isAppURL(url)) { e.preventDefault(); if (/^https:\/\//.test(url)) shell.openExternal(url); } });
-  const baseData=JSON.parse(await fs.readFile(path.join(__dirname,'../data/bundle.json'),'utf8'));
+  const {applyLatestHeroes}=require('./latest-heroes.cjs');
+  const baseData=applyLatestHeroes(JSON.parse(await fs.readFile(path.join(__dirname,'../data/bundle.json'),'utf8')));
   official=await new OfficialData({baseData,appRoot:path.join(__dirname,'..'),cacheRoot:path.join(app.getPath('userData'),'official-cache'),inspectImage:(bytes,info)=>{const image=nativeImage.createFromBuffer(bytes);if(image.isEmpty())throw new Error('图片不能完整解码');const size=image.getSize();if(size.width!==info.width||size.height!==info.height||image.toBitmap().length!==size.width*size.height*4)throw new Error('图片解码尺寸不匹配');},onProgress:status=>{if(win&&!win.isDestroyed())win.webContents.send('official-progress',status);}}).init();
   protocol.handle('atlas-asset',request=>{const u=new URL(request.url),file=u.pathname.slice(1);if(u.hostname!=='cache'||u.search||!validFile(file))return new Response('Not found',{status:404});return net.fetch(pathToFileURL(path.join(official.root,'images',file)).href);});
   background=new Background({statePath:statePath()});

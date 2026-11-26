@@ -1,0 +1,2065 @@
+{
+  "resourceVersion": "0.0.816",
+  "tableSHA256": {
+    "hero": "d758523515c83dce64c98bff79ef0a3902b23d5edfc1b54b15a526d3a69941ab",
+    "skill": "9edad675a5b54e4f13a6889808e1d3295d00ffac82d9d3145ab541e29d929e1b",
+    "buff": "7ce5eab5b71a2ce8d65967a643ef553623b2c8e70d66a07e1100c85f16aa2f96",
+    "skill_tips": "9dd0e3f8498f41f96cf1790abae27a4fadcd8d29b1f88503ce143fade3f27bb6",
+    "dict_skill": "992a98fc65eba46463134f239f5c51971a552361affe09ffe83f80f0825cde01",
+    "hero_extra_skills": "c0ee0247b6d21c772338d52c9523732ab6345006f985ec266ac5fb0beb5a9052",
+    "slave": "e6280e7823fcc61469d710fd9b1b28df0f32795b981b2ecddd4f0cf66ad63ed3"
+  },
+  "roster": [
+    {
+      "id": "609",
+      "name": "咲耶",
+      "rarity": "SSR",
+      "rarityRaw": 4,
+      "releasedAt": "2026-10-10",
+      "releaseEvidenceUrls": [
+        "https://a.4399.cn/gg/54377559_99319.html"
+      ],
+      "awakeningAvailability": "supported",
+      "gameRules": {
+        "baseHit": 0.0,
+        "baseResist": 0.0,
+        "awakeBonus": {}
+      },
+      "officialUrl": "https://yys.163.com/shishen/609.html",
+      "assets": {
+        "awakeningAvailability": "supported",
+        "baseAttrs40": {
+          "0": {
+            "awakeitem": [
+              [
+                "业火轮·高级",
+                "pic_juexingcailiao_01",
+                10
+              ],
+              [
+                "风转符·高级",
+                "pic_juexingcailiao_07",
+                10
+              ],
+              [
+                "水灵鲤·高级",
+                "pic_juexingcailiao_10",
+                10
+              ],
+              [
+                "天雷鼓·高级",
+                "pic_juexingcailiao_04",
+                10
+              ]
+            ],
+            "critPower": 0.5,
+            "bodyicon": "xiaoye",
+            "initTurnPos": 0.0,
+            "debuffEnhance": 0.0,
+            "defense": 441.0,
+            "speed": 110.0,
+            "hurtReboundRate": 0.0,
+            "hurtAdditionRate": 0.0,
+            "headicon": "h_xiaoye",
+            "attack": 2680.0,
+            "score": {
+              "dodge": 0,
+              "debuffReflect": 0,
+              "hurtAdditionRate": 0,
+              "critPower": 0,
+              "leechRate": 0,
+              "koGainHPRate": 0,
+              "critRate": 3,
+              "initTurnPos": 0,
+              "revenge": 0,
+              "debuffEnhance": 0,
+              "cureStrenthRate": 0,
+              "koGainMP": 0,
+              "attack": 3,
+              "defense": 3,
+              "hurtReboundRate": 0,
+              "curedStrenthRate": 0,
+              "maxHp": 2,
+              "debuffResist": 0,
+              "speed": 4,
+              "hurtReductionRate": 0
+            },
+            "maxHp": 10823.4,
+            "debuffResist": 0.0,
+            "dodge": 0.0,
+            "debuffReflect": 0,
+            "revenge": 0.0,
+            "curedStrenthRate": 0.0,
+            "icon": "pic_ss_xiaoye",
+            "leechRate": 0.0,
+            "koGainHPRate": 0.0,
+            "critRate": 0.08,
+            "cureStrenthRate": 0.0,
+            "koGainMP": 0,
+            "hurtReductionRate": 0.0
+          },
+          "1": {
+            "awakeitem": [
+              [
+                "业火轮·高级",
+                "pic_juexingcailiao_01",
+                10
+              ],
+              [
+                "风转符·高级",
+                "pic_juexingcailiao_07",
+                10
+              ],
+              [
+                "水灵鲤·高级",
+                "pic_juexingcailiao_10",
+                10
+              ],
+              [
+                "天雷鼓·高级",
+                "pic_juexingcailiao_04",
+                10
+              ]
+            ],
+            "critPower": 0.5,
+            "bodyicon": "j_xiaoye",
+            "initTurnPos": 0.0,
+            "debuffEnhance": 0.0,
+            "defense": 485.1,
+            "speed": 120.0,
+            "hurtReboundRate": 0.0,
+            "hurtAdditionRate": 0.0,
+            "headicon": "h_j_xiaoye",
+            "attack": 2948.0000000000005,
+            "score": {
+              "dodge": 0,
+              "debuffReflect": 0,
+              "hurtAdditionRate": 0,
+              "critPower": 0,
+              "leechRate": 0,
+              "koGainHPRate": 0,
+              "critRate": 4,
+              "initTurnPos": 0,
+              "revenge": 0,
+              "debuffEnhance": 0,
+              "cureStrenthRate": 0,
+              "koGainMP": 0,
+              "attack": 4,
+              "defense": 4,
+              "hurtReboundRate": 0,
+              "curedStrenthRate": 0,
+              "maxHp": 3,
+              "debuffResist": 0,
+              "speed": 4,
+              "hurtReductionRate": 0
+            },
+            "maxHp": 11962.6,
+            "debuffResist": 0.0,
+            "dodge": 0.0,
+            "debuffReflect": 0,
+            "revenge": 0.0,
+            "curedStrenthRate": 0.0,
+            "icon": "pic_ss_xiaoye_00",
+            "leechRate": 0.0,
+            "koGainHPRate": 0.0,
+            "critRate": 0.1,
+            "cureStrenthRate": 0.0,
+            "koGainMP": 0,
+            "hurtReductionRate": 0.0
+          }
+        },
+        "awakeningEvidence": [
+          {
+            "url": "https://g37simulator.webapp.163.com/get_hero_attr?heroid=609&awake=0&level=40&star=6&callback=cb",
+            "sha256": "34ab21498dc099719672d05c8fe738ffc009cdcf6f55e1febe3c68c6ff2128a2"
+          },
+          {
+            "url": "https://g37simulator.webapp.163.com/get_hero_attr?heroid=609&awake=1&level=40&star=6&callback=cb",
+            "sha256": "bfd2faa9b77463439a3b48ff20c3ce1462bb90806baf3ce270e0dfe0bf3fca4f"
+          }
+        ],
+        "variants": [
+          {
+            "url": "https://yys.res.netease.com/pc/zt/20161108171335/data/before_awake/609.jpg",
+            "sha256": "4b1a211fc0f79c864074b80707f4a8aa139f5d4371df3645c5d5d6ea2ba4e9df",
+            "id": "609",
+            "family": "portrait-before",
+            "requestedState": "unawakened",
+            "verifiedState": "unawakened",
+            "identityVerified": true,
+            "stateVerified": true,
+            "status": "downloaded_valid_image",
+            "localPath": "data/images/609/portrait-before.jpg",
+            "fileSHA256": "4b1a211fc0f79c864074b80707f4a8aa139f5d4371df3645c5d5d6ea2ba4e9df",
+            "width": 90,
+            "height": 90
+          },
+          {
+            "url": "https://yys.res.netease.com/pc/zt/20161108171335/data/shishen_big_beforeAwake/609.png",
+            "sha256": "36e438d258ef22a1bfe8dc0b0e58863802d9ce50cecb12a240a00d59998fda4f",
+            "id": "609",
+            "family": "art-before",
+            "requestedState": "unawakened",
+            "verifiedState": "unawakened",
+            "identityVerified": true,
+            "stateVerified": true,
+            "status": "downloaded_valid_image",
+            "localPath": "data/images/609/art-before.png",
+            "fileSHA256": "36e438d258ef22a1bfe8dc0b0e58863802d9ce50cecb12a240a00d59998fda4f",
+            "width": 830,
+            "height": 696
+          },
+          {
+            "url": "https://yys.res.netease.com/pc/zt/20161108171335/data/after_awake/609.jpg",
+            "sha256": "524ee39744bbb278202c7f56061607dfe98f9974ff19f5aa8893f32f76890380",
+            "id": "609",
+            "family": "portrait-after",
+            "requestedState": "awakened",
+            "verifiedState": "awakened",
+            "identityVerified": true,
+            "stateVerified": true,
+            "status": "downloaded_valid_image",
+            "localPath": "data/images/609/portrait-after.jpg",
+            "fileSHA256": "524ee39744bbb278202c7f56061607dfe98f9974ff19f5aa8893f32f76890380",
+            "width": 90,
+            "height": 90
+          },
+          {
+            "url": "https://yys.res.netease.com/pc/zt/20161108171335/data/shishen_big_afterAwake/609.png",
+            "sha256": "2cf1d7ed714c1bf82da04221511c12cb8a27bcdd88029ed24d96252844ff4342",
+            "id": "609",
+            "family": "art-after",
+            "requestedState": "awakened",
+            "verifiedState": "awakened",
+            "identityVerified": true,
+            "stateVerified": true,
+            "status": "downloaded_valid_image",
+            "localPath": "data/images/609/art-after.png",
+            "fileSHA256": "2cf1d7ed714c1bf82da04221511c12cb8a27bcdd88029ed24d96252844ff4342",
+            "width": 830,
+            "height": 696
+          }
+        ]
+      }
+    },
+    {
+      "id": "611",
+      "name": "大天狗·高天铁羽",
+      "rarity": "UR",
+      "rarityRaw": 6,
+      "releasedAt": "2026-10-28",
+      "releaseEvidenceUrls": [
+        "https://www.taptap.cn/moment/862742080806456733"
+      ],
+      "awakeningAvailability": "not_applicable",
+      "gameRules": {
+        "baseHit": 0.0,
+        "baseResist": 0.0,
+        "awakeBonus": {}
+      },
+      "officialUrl": "https://yys.163.com/shishen/611.html",
+      "assets": {
+        "awakeningAvailability": "not_applicable",
+        "baseAttrs40": {
+          "0": {
+            "awakeitem": [
+              [
+                "业火轮·高级",
+                "pic_juexingcailiao_01",
+                10
+              ],
+              [
+                "风转符·高级",
+                "pic_juexingcailiao_07",
+                10
+              ],
+              [
+                "水灵鲤·高级",
+                "pic_juexingcailiao_10",
+                10
+              ],
+              [
+                "天雷鼓·高级",
+                "pic_juexingcailiao_04",
+                10
+              ]
+            ],
+            "critPower": 0.5,
+            "bodyicon": "ur_datiangou",
+            "initTurnPos": 0.0,
+            "debuffEnhance": 0.0,
+            "defense": 449.81999999999994,
+            "speed": 116.0,
+            "hurtReboundRate": 0.0,
+            "hurtAdditionRate": 0.0,
+            "headicon": "h_ur_datiangou",
+            "attack": 3135.6,
+            "score": {
+              "dodge": 0,
+              "debuffReflect": 0,
+              "hurtAdditionRate": 0,
+              "critPower": 0,
+              "leechRate": 0,
+              "koGainHPRate": 0,
+              "critRate": 4,
+              "initTurnPos": 0,
+              "revenge": 0,
+              "debuffEnhance": 0,
+              "cureStrenthRate": 0,
+              "koGainMP": 0,
+              "attack": 4,
+              "defense": 3,
+              "hurtReboundRate": 0,
+              "curedStrenthRate": 0,
+              "maxHp": 3,
+              "debuffResist": 0,
+              "speed": 4,
+              "hurtReductionRate": 0
+            },
+            "maxHp": 12076.52,
+            "debuffResist": 0.0,
+            "dodge": 0.0,
+            "debuffReflect": 0,
+            "revenge": 0.0,
+            "curedStrenthRate": 0.0,
+            "icon": "pic_ss_ur_datiangou",
+            "leechRate": 0.0,
+            "koGainHPRate": 0.0,
+            "critRate": 0.12,
+            "cureStrenthRate": 0.0,
+            "koGainMP": 0,
+            "hurtReductionRate": 0.0
+          }
+        },
+        "awakeningEvidence": [
+          {
+            "url": "https://g37simulator.webapp.163.com/get_hero_attr?heroid=611&awake=0&level=40&star=6&callback=cb",
+            "sha256": "0150f5a9f4cb9bf32d32aca2991ecbe8b420b7fda699928f41d9b82e103b38a0"
+          }
+        ],
+        "variants": [
+          {
+            "url": "https://yys.res.netease.com/pc/zt/20161108171335/data/before_awake/611.jpg",
+            "sha256": "e5d4c1dfad10c233bf88bc981f4c91a659fab033e1924f58f9b13d73338d78c0",
+            "id": "611",
+            "family": "portrait-before",
+            "requestedState": "unawakened",
+            "verifiedState": "unawakened",
+            "identityVerified": true,
+            "stateVerified": true,
+            "status": "downloaded_valid_image",
+            "localPath": "data/images/611/portrait-before.jpg",
+            "fileSHA256": "e5d4c1dfad10c233bf88bc981f4c91a659fab033e1924f58f9b13d73338d78c0",
+            "width": 90,
+            "height": 90
+          },
+          {
+            "url": "https://yys.res.netease.com/pc/zt/20161108171335/data/shishen_big_beforeAwake/611.png",
+            "sha256": "75c421b98c3655ef7cbf4e49d55c693a30481a6316e19e870f79cf3896a8e6ef",
+            "id": "611",
+            "family": "art-before",
+            "requestedState": "unawakened",
+            "verifiedState": "unawakened",
+            "identityVerified": true,
+            "stateVerified": true,
+            "status": "downloaded_valid_image",
+            "localPath": "data/images/611/art-before.png",
+            "fileSHA256": "75c421b98c3655ef7cbf4e49d55c693a30481a6316e19e870f79cf3896a8e6ef",
+            "width": 830,
+            "height": 696
+          }
+        ]
+      }
+    },
+    {
+      "id": "612",
+      "name": "笼梦祸津神",
+      "rarity": "SP",
+      "rarityRaw": 5,
+      "releasedAt": "2026-11-11",
+      "releaseEvidenceUrls": [
+        "https://www.taptap.cn/moment/868857953371817978"
+      ],
+      "awakeningAvailability": "not_applicable",
+      "gameRules": {
+        "baseHit": 0.0,
+        "baseResist": 0.0,
+        "awakeBonus": {}
+      },
+      "officialUrl": "https://yys.163.com/shishen/612.html",
+      "assets": {
+        "awakeningAvailability": "not_applicable",
+        "baseAttrs40": {
+          "0": {
+            "awakeitem": [
+              [
+                "业火轮·高级",
+                "pic_juexingcailiao_01",
+                10
+              ],
+              [
+                "风转符·高级",
+                "pic_juexingcailiao_07",
+                10
+              ],
+              [
+                "水灵鲤·高级",
+                "pic_juexingcailiao_10",
+                10
+              ],
+              [
+                "天雷鼓·高级",
+                "pic_juexingcailiao_04",
+                10
+              ]
+            ],
+            "critPower": 0.5,
+            "bodyicon": "sp_huojinshen",
+            "initTurnPos": 0.0,
+            "debuffEnhance": 0.0,
+            "defense": 471.87,
+            "speed": 114.0,
+            "hurtReboundRate": 0.0,
+            "hurtAdditionRate": 0.0,
+            "headicon": "h_sp_huojinshen",
+            "attack": 2760.4,
+            "score": {
+              "dodge": 0,
+              "debuffReflect": 0,
+              "hurtAdditionRate": 0,
+              "critPower": 0,
+              "leechRate": 0,
+              "koGainHPRate": 0,
+              "critRate": 4,
+              "initTurnPos": 0,
+              "revenge": 0,
+              "debuffEnhance": 0,
+              "cureStrenthRate": 0,
+              "koGainMP": 0,
+              "attack": 3,
+              "defense": 3,
+              "hurtReboundRate": 0,
+              "curedStrenthRate": 0,
+              "maxHp": 4,
+              "debuffResist": 0,
+              "speed": 4,
+              "hurtReductionRate": 0
+            },
+            "maxHp": 14810.6,
+            "debuffResist": 0.0,
+            "dodge": 0.0,
+            "debuffReflect": 0,
+            "revenge": 0.0,
+            "curedStrenthRate": 0.0,
+            "icon": "pic_ss_sp_huojinshen",
+            "leechRate": 0.0,
+            "koGainHPRate": 0.0,
+            "critRate": 0.1,
+            "cureStrenthRate": 0.0,
+            "koGainMP": 0,
+            "hurtReductionRate": 0.0
+          }
+        },
+        "awakeningEvidence": [
+          {
+            "url": "https://g37simulator.webapp.163.com/get_hero_attr?heroid=612&awake=0&level=40&star=6&callback=cb",
+            "sha256": "733bd69772e9f2a32f2bca0a1a2d256f09c460215181a113ff824521bc95ee5e"
+          }
+        ],
+        "variants": [
+          {
+            "url": "https://yys.res.netease.com/pc/zt/20161108171335/data/before_awake/612.jpg",
+            "sha256": "84e8d78846519fa341e0972c6101752b61912236d8954d18ff700941bc2d0868",
+            "id": "612",
+            "family": "portrait-before",
+            "requestedState": "unawakened",
+            "verifiedState": "unawakened",
+            "identityVerified": true,
+            "stateVerified": true,
+            "status": "downloaded_valid_image",
+            "localPath": "data/images/612/portrait-before.jpg",
+            "fileSHA256": "84e8d78846519fa341e0972c6101752b61912236d8954d18ff700941bc2d0868",
+            "width": 90,
+            "height": 90
+          },
+          {
+            "url": "https://yys.res.netease.com/pc/zt/20161108171335/data/shishen_big_beforeAwake/612.png",
+            "sha256": "2569fee6710f33df0533cacfd86a906917ff1b39c38a8bc50ebfb805edf210ae",
+            "id": "612",
+            "family": "art-before",
+            "requestedState": "unawakened",
+            "verifiedState": "unawakened",
+            "identityVerified": true,
+            "stateVerified": true,
+            "status": "downloaded_valid_image",
+            "localPath": "data/images/612/art-before.png",
+            "fileSHA256": "2569fee6710f33df0533cacfd86a906917ff1b39c38a8bc50ebfb805edf210ae",
+            "width": 830,
+            "height": 696
+          }
+        ]
+      }
+    }
+  ],
+  "heroes": {
+    "609": {
+      "id": 609,
+      "name": "咲耶",
+      "kind": "shikigami",
+      "skills": [
+        6091,
+        6092,
+        6093
+      ],
+      "awakeSkill": 0,
+      "choices": [
+        6091,
+        6092,
+        6093
+      ],
+      "equipSkills": [],
+      "groupId": null
+    },
+    "611": {
+      "id": 611,
+      "name": "大天狗·高天铁羽",
+      "kind": "shikigami",
+      "skills": [
+        6111,
+        6112,
+        6113
+      ],
+      "awakeSkill": 0,
+      "choices": [
+        6111,
+        6112,
+        6113
+      ],
+      "equipSkills": [],
+      "groupId": null
+    },
+    "612": {
+      "id": 612,
+      "name": "笼梦祸津神",
+      "kind": "shikigami",
+      "skills": [
+        6121,
+        6122,
+        6123
+      ],
+      "awakeSkill": 0,
+      "choices": [
+        6121,
+        6122,
+        6123
+      ],
+      "equipSkills": [],
+      "groupId": null
+    }
+  },
+  "skills": {
+    "6123": {
+      "id": 6123,
+      "variants": {
+        "-1": [
+          {
+            "level": 1,
+            "name": "祸身示现",
+            "icon": "6123",
+            "cost": 1,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "获得1层厄命并攻击敌方全体，造成自身生命上限10%伤害；每有3层厄命，额外消耗1点鬼火对敌方全体追加1次生命上限6%伤害(造成的伤害不超过自身初始攻击的900%）；友方触发妖术反击后，消耗鬼火立刻施放（自身回合开始前限1次）。",
+            "upgrade": "",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6121_1_-1",
+              "tips_6123_1_-1"
+            ]
+          },
+          {
+            "level": 2,
+            "name": "祸身示现",
+            "icon": "6123",
+            "cost": 1,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "获得1层厄命并攻击敌方全体，造成自身生命上限10%伤害；每有3层厄命，额外消耗1点鬼火对敌方全体追加1次生命上限8%伤害(造成的伤害不超过自身初始攻击的900%）；友方触发妖术反击后，消耗鬼火立刻施放（自身回合开始前限1次）。",
+            "upgrade": "追加伤害增至8%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6121_1_-1",
+              "tips_6123_1_-1"
+            ]
+          },
+          {
+            "level": 3,
+            "name": "祸身示现",
+            "icon": "6123",
+            "cost": 1,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "获得1层厄命并攻击敌方全体，造成自身生命上限10%伤害；每有3层厄命，额外消耗1点鬼火对敌方全体追加1次生命上限10%伤害(造成的伤害不超过自身初始攻击的900%）；友方触发妖术反击后，消耗鬼火立刻施放（自身回合开始前限1次）。",
+            "upgrade": "追加伤害增至10%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6121_1_-1",
+              "tips_6123_1_-1"
+            ]
+          },
+          {
+            "level": 4,
+            "name": "祸身示现",
+            "icon": "6123",
+            "cost": 1,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "获得1层厄命并攻击敌方全体，造成自身生命上限10%伤害；每有3层厄命，额外消耗1点鬼火分别额外对敌方全体追加1次生命上限10%与12%伤害(造成的伤害不超过自身初始攻击的900%）；友方触发妖术反击后，消耗鬼火立刻施放（自身回合开始前限1次）。",
+            "upgrade": "第2次追加伤害增至12%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6121_1_-1",
+              "tips_6123_1_-1"
+            ]
+          },
+          {
+            "level": 5,
+            "name": "祸身示现",
+            "icon": "6123",
+            "cost": 1,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "获得1层厄命并攻击敌方全体，造成自身生命上限10%伤害；每有3层厄命，额外消耗1点鬼火分别额外对敌方全体追加1次生命上限10%与15%伤害(造成的伤害不超过自身初始攻击的900%）；友方触发妖术反击后，消耗鬼火立刻施放（自身回合开始前限1次）。",
+            "upgrade": "第2次追加伤害增至15%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6121_1_-1",
+              "tips_6123_1_-1"
+            ]
+          }
+        ]
+      }
+    },
+    "6122": {
+      "id": 6122,
+      "variants": {
+        "-1": [
+          {
+            "level": 1,
+            "name": "祸茧结成",
+            "icon": "6122",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              5,
+              28,
+              8
+            ],
+            "description": "唯一效果。回合开始解除自身控制效果；在友方触发妖术反击时，获得2层厄命。\n【施放】使除自身外指定友方式神获得2次妖术反击并为其施加茧化，持续3回合。",
+            "upgrade": "灾祸之种转化妖术反击恢复祸花之佑",
+            "branches": [],
+            "aiBranches": [],
+            "related": [
+              6124
+            ],
+            "terms": [
+              "tips_11_1_-1",
+              "tips_3_1_-1",
+              "tips_6123_1_-1",
+              "buff_6121_1_-1",
+              "buff_6122_1_-1",
+              "tips_6122_1_-1",
+              "tips_3252_1_-1",
+              "tips_20_1_-1",
+              "buff_6124_1_-1"
+            ]
+          },
+          {
+            "level": 2,
+            "name": "祸茧结成",
+            "icon": "6122",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              5,
+              28,
+              8
+            ],
+            "description": "唯一效果。回合开始解除自身控制效果；在友方触发妖术反击时，获得2层厄命。\n【施放】使除自身外指定友方式神获得2次妖术反击并为其施加茧化，持续3回合；施放时，自身与目标获得祸花之佑，持续2回合。",
+            "upgrade": "施放时，自身与目标获得祸花之佑，持续2回合",
+            "branches": [],
+            "aiBranches": [],
+            "related": [
+              6124
+            ],
+            "terms": [
+              "tips_11_1_-1",
+              "tips_3_1_-1",
+              "tips_6123_1_-1",
+              "buff_6121_1_-1",
+              "buff_6122_1_-1",
+              "buff_6124_1_-1"
+            ]
+          },
+          {
+            "level": 3,
+            "name": "祸茧结成",
+            "icon": "6122",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              5,
+              28,
+              8
+            ],
+            "description": "唯一效果。回合开始解除自身控制效果；在友方触发妖术反击时，获得2层厄命；茧化移除时，恢复5次，每次为生命比例最低的友方恢复笼梦祸津神生命上限10%的生命。\n【施放】使除自身外指定友方式神获得2次妖术反击并为其施加茧化，持续3回合；施放时，自身与目标获得祸花之佑，持续2回合。",
+            "upgrade": "茧化移除时，恢复5次，每次为生命比例最低的友方恢复笼梦祸津神生命上限10%的生命",
+            "branches": [],
+            "aiBranches": [],
+            "related": [
+              6124
+            ],
+            "terms": [
+              "tips_11_1_-1",
+              "tips_3_1_-1",
+              "tips_6123_1_-1",
+              "buff_6121_1_-1",
+              "buff_6122_1_-1",
+              "tips_20_1_-1",
+              "buff_6124_1_-1"
+            ]
+          },
+          {
+            "level": 4,
+            "name": "祸茧结成",
+            "icon": "6122",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              5,
+              28,
+              8
+            ],
+            "description": "唯一效果。回合开始解除自身控制效果；在友方触发妖术反击时，获得2层厄命并使生命比例最低的友方获得祸花之佑，持续2回合；茧化移除时，恢复5次，每次为生命比例最低的友方恢复笼梦祸津神生命上限10%的生命。\n【施放】使除自身外指定友方式神获得2次妖术反击并为其施加茧化，持续3回合；施放时，自身与目标获得祸花之佑，持续2回合。",
+            "upgrade": "友方触发妖术反击时，使生命比例最低的友方获得祸花之佑，持续2回合",
+            "branches": [],
+            "aiBranches": [],
+            "related": [
+              6124
+            ],
+            "terms": [
+              "tips_11_1_-1",
+              "tips_3_1_-1",
+              "tips_6123_1_-1",
+              "buff_6121_1_-1",
+              "buff_6124_1_-1",
+              "buff_6122_1_-1",
+              "tips_20_1_-1"
+            ]
+          },
+          {
+            "level": 5,
+            "name": "祸茧结成",
+            "icon": "6122",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              5,
+              28,
+              8
+            ],
+            "description": "唯一效果。回合开始解除自身控制效果；在友方触发妖术反击时，获得2层厄命并使生命比例最低的友方获得祸花之佑，持续2回合；茧化移除时，恢复5次，每次为生命比例最低的友方恢复笼梦祸津神生命上限10%的生命。\n【施放】使除自身外指定友方式神获得2次妖术反击并为其施加茧化，持续3回合；施放时，自身与目标获得祸花之佑，持续2回合；先机：对攻击最高的友方式神施放。",
+            "upgrade": "先机：消耗3点鬼火对攻击最高的友方式神施放",
+            "branches": [],
+            "aiBranches": [],
+            "related": [
+              6124
+            ],
+            "terms": [
+              "tips_11_1_-1",
+              "tips_3_1_-1",
+              "tips_6123_1_-1",
+              "buff_6121_1_-1",
+              "buff_6124_1_-1",
+              "buff_6122_1_-1",
+              "tips_20_1_-1",
+              "tips_7_1_-1"
+            ]
+          }
+        ]
+      }
+    },
+    "6124": {
+      "id": 6124,
+      "variants": {
+        "-1": [
+          {
+            "level": 1,
+            "name": "祸茧剥蚀",
+            "icon": "6124",
+            "cost": 0,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "获得1点鬼火，攻击敌方全体，造成攻击100%无视御魂的伤害并使笼梦祸津神获得1层厄命。",
+            "upgrade": "",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6121_1_-1"
+            ]
+          }
+        ]
+      }
+    },
+    "6121": {
+      "id": 6121,
+      "variants": {
+        "-1": [
+          {
+            "level": 1,
+            "name": "祸兆",
+            "icon": "6121",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "散播灾祸的力量，造成攻击100%伤害。",
+            "upgrade": "",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 2,
+            "name": "祸兆",
+            "icon": "6121",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "散播灾祸的力量，造成攻击105%伤害。",
+            "upgrade": "伤害增加至105%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 3,
+            "name": "祸兆",
+            "icon": "6121",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "散播灾祸的力量，造成攻击110%伤害。",
+            "upgrade": "伤害增加至110%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 4,
+            "name": "祸兆",
+            "icon": "6121",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "散播灾祸的力量，造成攻击115%伤害。",
+            "upgrade": "伤害增加至115%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 5,
+            "name": "祸兆",
+            "icon": "6121",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "散播灾祸的力量，造成攻击125%伤害。",
+            "upgrade": "伤害增加至125%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          }
+        ]
+      }
+    },
+    "6113": {
+      "id": 6113,
+      "variants": {
+        "-1": [
+          {
+            "level": 1,
+            "name": "万风钧落",
+            "icon": "6113",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1,
+              12
+            ],
+            "description": "以钢铁羽翼面对狂风呼啸，对敌方全体造成攻击220%伤害；随后攻击指定目标4次，每次造成攻击40%伤害。对怪物造成伤害提高20%。",
+            "upgrade": "心羽袭掠",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6112_1_-1",
+              "buff_6114_1_-1"
+            ]
+          },
+          {
+            "level": 2,
+            "name": "万风钧落",
+            "icon": "6113",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1,
+              12
+            ],
+            "description": "以钢铁羽翼面对狂风呼啸，对敌方全体造成攻击220%伤害；随后攻击指定目标4次，每次造成攻击50%伤害。对怪物造成伤害提高20%。",
+            "upgrade": "对指定目标伤害增至50%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 3,
+            "name": "万风钧落",
+            "icon": "6113",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1,
+              12
+            ],
+            "description": "以钢铁羽翼面对狂风呼啸，对敌方全体造成攻击220%伤害；随后攻击指定目标4次，每次造成攻击50%伤害。对怪物造成伤害提高20%。施放后提升自身15%行动条。",
+            "upgrade": "施放后提升自身15%行动条",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 4,
+            "name": "万风钧落",
+            "icon": "6113",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1,
+              12
+            ],
+            "description": "以钢铁羽翼面对狂风呼啸，对敌方全体造成攻击220%伤害；随后攻击指定目标4次，每次造成攻击50%伤害。对怪物造成伤害提高20%。施放后提升自身15%行动条。若击败目标，指定血量最少的敌方继续攻击。",
+            "upgrade": "若击败目标，指定血量最少的敌方继续攻击",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 5,
+            "name": "万风钧落",
+            "icon": "6113",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1,
+              12
+            ],
+            "description": "以钢铁羽翼面对狂风呼啸，对敌方全体造成攻击220%伤害；随后攻击指定目标4次，每次造成攻击50%伤害。对怪物造成伤害提高20%。施放后提升自身15%行动条。若击败目标，指定血量最少的敌方继续攻击。每获得5层心羽，获得2层袭掠。",
+            "upgrade": "每获得5层心羽，获得2层袭掠",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6112_1_-1",
+              "buff_6114_1_-1"
+            ]
+          }
+        ]
+      }
+    },
+    "6112": {
+      "id": 6112,
+      "variants": {
+        "-1": [
+          {
+            "level": 1,
+            "name": "心羽之佑",
+            "icon": "6112",
+            "cost": 0,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              36,
+              9
+            ],
+            "description": "唯一效果，飞驰于赛道之上，自身行动条无法被锁定。行动条每提升或被击退30%，获得1层心羽。受到行动条击退效果时，速度提升50%，持续2回合。\n【施放】自身行动条提升30%，获得50%减伤1回合，并恢复30%已损失生命。",
+            "upgrade": "控制效果",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_11_1_-1",
+              "buff_6112_1_-1",
+              "tips_20_1_-1",
+              "tips_3_1_-1"
+            ]
+          },
+          {
+            "level": 2,
+            "name": "心羽之佑",
+            "icon": "6112",
+            "cost": 0,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              36,
+              9
+            ],
+            "description": "唯一效果，飞驰于赛道之上，自身行动条无法被锁定。行动条每提升或被击退30%，获得1层心羽。受到行动条击退效果时，速度提升50%，持续2回合。每获得1层心羽，提升10点速度（至多提升100点）。\n【施放】自身行动条提升30%，获得50%减伤1回合，并恢复30%已损失生命。",
+            "upgrade": "每获得1层心羽，提升10点速度（至多提升100点）",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_11_1_-1",
+              "buff_6112_1_-1",
+              "tips_20_1_-1"
+            ]
+          },
+          {
+            "level": 3,
+            "name": "心羽之佑",
+            "icon": "6112",
+            "cost": 0,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              36,
+              9
+            ],
+            "description": "唯一效果，飞驰于赛道之上，自身行动条无法被锁定。行动条每提升或被击退30%，获得1层心羽。受到行动条击退效果时，速度提升50%，持续2回合。每获得1层心羽，提升10点速度（至多提升100点）。每获得1层心羽，提升10%攻击（至多提升100%）。\n【施放】自身行动条提升30%，获得50%减伤1回合，并恢复30%已损失生命。",
+            "upgrade": "每获得1层心羽，提升10%攻击（至多提升100%）",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_11_1_-1",
+              "buff_6112_1_-1",
+              "tips_20_1_-1"
+            ]
+          },
+          {
+            "level": 4,
+            "name": "心羽之佑",
+            "icon": "6112",
+            "cost": 0,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              36,
+              9
+            ],
+            "description": "唯一效果，飞驰于赛道之上，自身行动条无法被锁定。行动条每提升或被击退30%，获得1层心羽。受到行动条击退效果时，速度提升50%，持续2回合。每获得1层心羽，提升10点速度（至多提升100点）。每获得1层心羽，提升10%攻击（至多提升100%）。受到控制效果时，获得2层心羽（自身回合开始前限1次）。\n【施放】自身行动条提升30%，获得50%减伤1回合，并恢复30%已损失生命。",
+            "upgrade": "受到控制效果时，获得2层心羽（自身回合开始前限1次）",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_11_1_-1",
+              "buff_6112_1_-1",
+              "tips_3_1_-1",
+              "tips_20_1_-1"
+            ]
+          },
+          {
+            "level": 5,
+            "name": "心羽之佑",
+            "icon": "6112",
+            "cost": 0,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              36,
+              9
+            ],
+            "description": "唯一效果，飞驰于赛道之上，自身行动条无法被锁定。行动条每提升或被击退30%，获得1层心羽。受到行动条击退效果时，速度提升50%，持续2回合。每获得1层心羽，提升10点速度（至多提升100点）。每获得1层心羽，提升10%攻击（至多提升100%）。受到控制效果时，获得2层心羽（自身回合开始前限1次）。敌方行动条提升时，获得1层心羽（自身回合开始前限1次）。\n【施放】自身行动条提升30%，获得50%减伤1回合，并恢复30%已损失生命。",
+            "upgrade": "敌方行动条提升时，获得1层心羽（自身回合开始前限1次）",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_11_1_-1",
+              "buff_6112_1_-1",
+              "tips_3_1_-1",
+              "tips_20_1_-1"
+            ]
+          }
+        ]
+      }
+    },
+    "6111": {
+      "id": 6111,
+      "variants": {
+        "-1": [
+          {
+            "level": 1,
+            "name": "劲羽",
+            "icon": "6111",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "用钢铁般的羽翼突破所有障碍，造成攻击100%的伤害。",
+            "upgrade": "",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 2,
+            "name": "劲羽",
+            "icon": "6111",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "用钢铁般的羽翼突破所有障碍，造成攻击105%的伤害。",
+            "upgrade": "伤害增加至105%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 3,
+            "name": "劲羽",
+            "icon": "6111",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "用钢铁般的羽翼突破所有障碍，造成攻击110%的伤害。",
+            "upgrade": "伤害增加至110%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 4,
+            "name": "劲羽",
+            "icon": "6111",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "用钢铁般的羽翼突破所有障碍，造成攻击115%的伤害。",
+            "upgrade": "伤害增加至115%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 5,
+            "name": "劲羽",
+            "icon": "6111",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "用钢铁般的羽翼突破所有障碍，造成攻击125%的伤害。",
+            "upgrade": "伤害增加至125%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          }
+        ]
+      }
+    },
+    "6093": {
+      "id": 6093,
+      "variants": {
+        "0": [
+          {
+            "level": 1,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续1回合，并为友方全体增加10%行动条。",
+            "upgrade": "",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_0"
+            ]
+          },
+          {
+            "level": 2,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续2回合，并为友方全体增加10%行动条。",
+            "upgrade": "易碎持续时间增至2回合",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_0"
+            ]
+          },
+          {
+            "level": 3,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续2回合，并为友方全体增加15%行动条。",
+            "upgrade": "行动条增加提升至15%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_0"
+            ]
+          },
+          {
+            "level": 4,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续2回合（对怪物施放时持续至战斗结束），并为友方全体增加15%行动条。",
+            "upgrade": "对怪物施放的易碎持续至战斗结束",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_0"
+            ]
+          },
+          {
+            "level": 5,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续2回合（对怪物施放时持续至战斗结束），并为友方全体增加20%行动条。",
+            "upgrade": "行动条增加提升至20%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_0"
+            ]
+          }
+        ],
+        "1": [
+          {
+            "level": 1,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续1回合，并为友方全体增加10%行动条。对怪物施放时，易碎额外降低100点防御。",
+            "upgrade": "",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_1"
+            ]
+          },
+          {
+            "level": 2,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续2回合，并为友方全体增加10%行动条。对怪物施放时，易碎额外降低100点防御。",
+            "upgrade": "易碎持续时间增至2回合",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_1"
+            ]
+          },
+          {
+            "level": 3,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续2回合，并为友方全体增加15%行动条。对怪物施放时，易碎额外降低100点防御。",
+            "upgrade": "行动条增加提升至15%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_1"
+            ]
+          },
+          {
+            "level": 4,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续2回合（对怪物施放时持续至战斗结束），并为友方全体增加15%行动条。对怪物施放时，易碎额外降低100点防御。",
+            "upgrade": "对怪物施放的易碎持续至战斗结束",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_1"
+            ]
+          },
+          {
+            "level": 5,
+            "name": "凝结之珀",
+            "icon": "6093",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              12,
+              15
+            ],
+            "description": "对指定敌方目标施加易碎，持续2回合（对怪物施放时持续至战斗结束），并为友方全体增加20%行动条。对怪物施放时，易碎额外降低100点防御。",
+            "upgrade": "行动条增加提升至20%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "buff_6093_1_1"
+            ]
+          }
+        ]
+      }
+    },
+    "6092": {
+      "id": 6092,
+      "variants": {
+        "-1": [
+          {
+            "level": 1,
+            "name": "刹那之花",
+            "icon": "6092",
+            "cost": 3,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              11,
+              5
+            ],
+            "description": "咲耶抵达了过去的一瞬间，使友方目标进入1个刹那；若对阵亡友方施放，目标以最后一瞬进入刹那。",
+            "upgrade": "控制效果",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_6092_1_-1",
+              "tips_6093_1_-1",
+              "tips_3_1_-1"
+            ]
+          },
+          {
+            "level": 2,
+            "name": "刹那之花",
+            "icon": "6092",
+            "cost": 2,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              11,
+              5
+            ],
+            "description": "咲耶抵达了过去的一瞬间，使友方目标进入1个刹那；若对阵亡友方施放，目标以最后一瞬进入刹那。",
+            "upgrade": "消耗鬼火减少1点",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_6092_1_-1",
+              "tips_6093_1_-1"
+            ]
+          },
+          {
+            "level": 3,
+            "name": "刹那之花",
+            "icon": "6092",
+            "cost": 2,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              11,
+              5
+            ],
+            "description": "咲耶抵达了过去的一瞬间，使友方目标进入1个刹那；若对阵亡友方施放，目标以最后一瞬进入刹那。",
+            "upgrade": "刹那中，普攻伤害提升系数增至1.5%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_6092_1_-1",
+              "tips_6093_1_-1"
+            ]
+          },
+          {
+            "level": 4,
+            "name": "刹那之花",
+            "icon": "6092",
+            "cost": 2,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              11,
+              5
+            ],
+            "description": "咲耶抵达了过去的一瞬间，使友方目标进入1个刹那；若对阵亡友方施放，目标以最后一瞬进入刹那。",
+            "upgrade": "刹那中，普攻伤害提升系数增至2%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_6092_1_-1",
+              "tips_6093_1_-1"
+            ]
+          },
+          {
+            "level": 5,
+            "name": "刹那之花",
+            "icon": "6092",
+            "cost": 2,
+            "kind": 2,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              11,
+              5
+            ],
+            "description": "咲耶抵达了过去的一瞬间，使友方目标进入1个刹那；若对阵亡友方施放，目标以最后一瞬进入刹那；刹那中，额外普攻1次。",
+            "upgrade": "刹那中，额外普攻1次",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": [
+              "tips_6092_1_-1",
+              "tips_6093_1_-1"
+            ]
+          }
+        ]
+      }
+    },
+    "6091": {
+      "id": 6091,
+      "variants": {
+        "-1": [
+          {
+            "level": 1,
+            "name": "瞬影​",
+            "icon": "6091",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "不顾一切地向前冲刺，攻击敌方目标2次，每造成攻击50%伤害。",
+            "upgrade": "",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 2,
+            "name": "瞬影​",
+            "icon": "6091",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "不顾一切地向前冲刺，攻击敌方目标2次，每造成攻击52%伤害。",
+            "upgrade": "伤害增加至52%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 3,
+            "name": "瞬影​",
+            "icon": "6091",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "不顾一切地向前冲刺，攻击敌方目标2次，每造成攻击54%伤害。",
+            "upgrade": "伤害增加至54%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 4,
+            "name": "瞬影​",
+            "icon": "6091",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "不顾一切地向前冲刺，攻击敌方目标2次，每造成攻击56%伤害。",
+            "upgrade": "伤害增加至56%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          },
+          {
+            "level": 5,
+            "name": "瞬影​",
+            "icon": "6091",
+            "cost": 0,
+            "kind": 0,
+            "passive": false,
+            "cooldown": 0,
+            "tags": [
+              1
+            ],
+            "description": "不顾一切地向前冲刺，攻击敌方目标2次，每造成攻击62%伤害。",
+            "upgrade": "伤害增加至62%",
+            "branches": [],
+            "aiBranches": [],
+            "related": [],
+            "terms": []
+          }
+        ]
+      }
+    }
+  },
+  "terms": {
+    "buff_6121_1_-1": {
+      "name": "厄命",
+      "description": "上限7层，每层提升自身及其召唤物20点速度、60点防御并提升其他友方30点防御。"
+    },
+    "tips_6123_1_-1": {
+      "name": "妖术反击",
+      "description": "友方唯一。受到伤害后，对伤害来源无消耗施放妖术反击，造成伤害降低45%；回合结束后若有剩余次数，对上次技能所选敌方触发妖术反击（不叠加其他获得回合效果且不连续触发）。"
+    },
+    "tips_11_1_-1": {
+      "name": "唯一效果",
+      "description": "若是有多个同名式神在场，只有其中一个式神的此技能会生效。"
+    },
+    "tips_3_1_-1": {
+      "name": "控制效果",
+      "description": "冰冻、沉睡、混乱、嘲讽、沉默、禁锢、缴械、变形、眩晕、挑衅、深度冰冻、影缚、霜冻、拘魂、沉沦、冰眠以上均属于控制效果，后九者无法被驱散，霜冻无法被解除。"
+    },
+    "buff_6122_1_-1": {
+      "name": "茧化",
+      "description": "友方唯一。伤害提升40%，回合开始时，失去当前生命50%的生命。携带者击败非召唤物敌方后，移除并获得目标25%全属性（至多获得携带者初始属性的100%），持续2回合；被击败或持续时间结束时，移除并使携带者转化为灾祸之种。"
+    },
+    "tips_6122_1_-1": {
+      "name": "灾祸之种",
+      "description": "视为召唤物，使笼梦祸津神受到伤害降低20%，继承目标100%初始属性，免疫减益，行动时自动施放『祸茧剥蚀』（笼梦祸津神回合开始前限3次）。"
+    },
+    "tips_3252_1_-1": {
+      "name": "转化",
+      "description": "视同被击败，被转化的友方无法触发复活效果，无法被复活。"
+    },
+    "tips_20_1_-1": {
+      "name": "恢复",
+      "description": "区别于治疗，不受减疗效果影响，不触发治疗相关效果，不会暴击。"
+    },
+    "buff_6124_1_-1": {
+      "name": "祸花之佑",
+      "description": "护盾，不可驱散，能够吸收笼梦祸津神生命上限15%的伤害。"
+    },
+    "tips_7_1_-1": {
+      "name": "先机",
+      "description": "在战斗开始时进行动作。"
+    },
+    "buff_6112_1_-1": {
+      "name": "心羽",
+      "description": "上限5层，到达上限时移除所有层数并对血量最少的敌方无消耗施放「万风钧落」（自身回合开始前限1次）。"
+    },
+    "buff_6114_1_-1": {
+      "name": "袭掠",
+      "description": "上限4层，每层对指定目标攻击次数增加1次（至多增加4次）。"
+    },
+    "buff_6093_1_0": {
+      "name": "易碎",
+      "description": "敌方场上至多存在1个，携带者被攻击时防御降低300点，受到伤害超过咲耶初始攻击300%时移除（携带者为怪物时不移除）。"
+    },
+    "buff_6093_1_1": {
+      "name": "易碎",
+      "description": "敌方场上至多存在1个，携带者被攻击时防御降低300点，受到伤害超过咲耶初始攻击300%时移除（携带者为怪物时不移除）。"
+    },
+    "tips_6092_1_-1": {
+      "name": "刹那",
+      "description": "存在片刻的瞬间，视为回合，仅可普攻。\n咲耶每有15点初始速度，提升其中目标1%普攻伤害。"
+    },
+    "tips_6093_1_-1": {
+      "name": "最后一瞬",
+      "description": "以1点生命存在的特殊姿态，免疫控制效果和伤害，刹那结束后消失。"
+    }
+  },
+  "icons": {
+    "6091": {
+      "name": "skill/6091.png",
+      "nameHash": "b2be45af3273109c",
+      "digest": "559ca2d2a9498bcad9741d66390b8b94",
+      "size": 3431,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon1.wpk",
+      "offset": 16590336,
+      "rawSHA256": "50192bbcce0924680f8a8fb9f79030b815fc263029074dd842ac4e58ff3a9929",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "d91d18ae498fafd045847549ccb83bd7c38a89a5c864934ef3d9db326b39199d",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6091.png",
+      "sha256": "1b16f2381624badafc68e1f1172cea2fced0415ea45151a6d55d8d7a2d31df78",
+      "fileSHA256": "1b16f2381624badafc68e1f1172cea2fced0415ea45151a6d55d8d7a2d31df78",
+      "width": 80,
+      "height": 80
+    },
+    "6092": {
+      "name": "skill/6092.png",
+      "nameHash": "7926c190ebbbe527",
+      "digest": "60f7a17a6644b6e9115178c8a31d5583",
+      "size": 3566,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon1.wpk",
+      "offset": 11568896,
+      "rawSHA256": "4d384ae3e3ce33db5c50fed80615ff58e0176f91bfa85b25a206a05ba33420ac",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "24d0923fbf50a255cad4d082a68b47ab904bf844ee6792de83d8065eda3ba702",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6092.png",
+      "sha256": "8990d48f31735f03328d9129e67d6079e0a4f3bdc8e30d0553657868d53c21fc",
+      "fileSHA256": "8990d48f31735f03328d9129e67d6079e0a4f3bdc8e30d0553657868d53c21fc",
+      "width": 80,
+      "height": 80
+    },
+    "6093": {
+      "name": "skill/6093.png",
+      "nameHash": "092d444b6e868a37",
+      "digest": "ff470b7c19fd4135fe62d947aff52492",
+      "size": 3370,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon1.wpk",
+      "offset": 1499904,
+      "rawSHA256": "26b015a220b86472792714639609bcb251b90d3df90b022e2ad09ed9ed069815",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "a05aeda805b627766a428c7fcda7222df9ee6060c332705db75aa31b3c0a0f2d",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6093.png",
+      "sha256": "0604dd1ab7a843f23ec9ea1676690b172cbe3146d8fb486ad3d8db0be3c07e19",
+      "fileSHA256": "0604dd1ab7a843f23ec9ea1676690b172cbe3146d8fb486ad3d8db0be3c07e19",
+      "width": 80,
+      "height": 80
+    },
+    "6111": {
+      "name": "skill/6111.png",
+      "nameHash": "f7a9c1446b85d882",
+      "digest": "ac9f80370e7b7060d6e05b03bd54ec7b",
+      "size": 3301,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon0.wpk",
+      "offset": 0,
+      "rawSHA256": "2cbd6ea3e4b514a73a34bd45985989b3d88ff360eba75529a9926c0a8b8a94da",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "da9c8870192ac06ea3d8f069d1a9b9afe70de899af0c422f03e57cf570503b03",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6111.png",
+      "sha256": "67fc7e6509a0b9528d2e644d54ec87b6c1d21cf53a0a805c9a99ef0381688cb1",
+      "fileSHA256": "67fc7e6509a0b9528d2e644d54ec87b6c1d21cf53a0a805c9a99ef0381688cb1",
+      "width": 80,
+      "height": 80
+    },
+    "6112": {
+      "name": "skill/6112.png",
+      "nameHash": "af5d4533d8d83ec7",
+      "digest": "29466b88f9ca9dfe9f2535735b509b28",
+      "size": 3552,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon0.wpk",
+      "offset": 19392,
+      "rawSHA256": "948946529fbbc5de58025174c1b951c6f749d9cc995ff0035fb8f51072b2aec6",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "d5c75111edabf1da8832e4a79297f513dc448a43a1e2410b89ca2823c3dcea2c",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6112.png",
+      "sha256": "ade7f42adabedc301abd274987a01dc3f8faf80e8513be4398b8acde1ca9b71c",
+      "fileSHA256": "ade7f42adabedc301abd274987a01dc3f8faf80e8513be4398b8acde1ca9b71c",
+      "width": 80,
+      "height": 80
+    },
+    "6113": {
+      "name": "skill/6113.png",
+      "nameHash": "1f95e11da468c216",
+      "digest": "b45c9810ebad8a858a1840e1a340e9ad",
+      "size": 3581,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon0.wpk",
+      "offset": 41664,
+      "rawSHA256": "e4deab7719cfe12e747b51a4bf59cefc988874b8c82edf9af5cb3b5b47cb3b4d",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "3daf6bf9d559e03fe28bb9bc49c6713ddf2c1e6d9fd2e88ed9eff2d0db49f1a0",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6113.png",
+      "sha256": "164bd76b96fe6e6c4b6bed551e967088080bc5040f0f6f10be3f3492a8e7a451",
+      "fileSHA256": "164bd76b96fe6e6c4b6bed551e967088080bc5040f0f6f10be3f3492a8e7a451",
+      "width": 80,
+      "height": 80
+    },
+    "6121": {
+      "name": "skill/6121.png",
+      "nameHash": "1352b4d136812d2e",
+      "digest": "c2331cca6afff6f90e1f537afd0fcd2f",
+      "size": 3486,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon1.wpk",
+      "offset": 27136,
+      "rawSHA256": "aff2693e57139a21c408ca134c66a91d43a0142d995a60709d7dd38a875b9a5e",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "0dfc5ace699cefe8e70fea0edbfcaec5faaa36bdbc3e1e6561ec6ff144a22ef0",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6121.png",
+      "sha256": "869a4e7b241ef70885b753c6d0b5dfd4437cd299907925c9b5f642d31c17658b",
+      "fileSHA256": "869a4e7b241ef70885b753c6d0b5dfd4437cd299907925c9b5f642d31c17658b",
+      "width": 80,
+      "height": 80
+    },
+    "6122": {
+      "name": "skill/6122.png",
+      "nameHash": "3673d49feda38596",
+      "digest": "e1b360b3fd7b5f954726bf7f8a4082ef",
+      "size": 3360,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon1.wpk",
+      "offset": 19968,
+      "rawSHA256": "d6849918c8a4ee6491eaa85c5d259ff6408ca255d99cb1e6a109acf971e55d77",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "31a571f1060e81d62a05b7ef29988338707c07b626b2a4f463b2a2bb26c5a532",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6122.png",
+      "sha256": "ec7e3114132c6c7f33e41b25a56d2e4dd97e2f668a5f16039e9dc43048f1bf66",
+      "fileSHA256": "ec7e3114132c6c7f33e41b25a56d2e4dd97e2f668a5f16039e9dc43048f1bf66",
+      "width": 80,
+      "height": 80
+    },
+    "6123": {
+      "name": "skill/6123.png",
+      "nameHash": "a642aa28e2caccd8",
+      "digest": "ddef260b4e6c35af6a312eecab588138",
+      "size": 3479,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon1.wpk",
+      "offset": 0,
+      "rawSHA256": "bca4f02a3fa05331ca7e021a7bc11bdc3bc439184be614f47c20be9e745a6778",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "32e01b45df5fd6051440dd928bd8b8dee9492af1a0281438fce1186f7ca3997b",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6123.png",
+      "sha256": "a74137586ea185bb4ebd193a40f819cc890c2dff12453f0fa8c1df9e28c1837e",
+      "fileSHA256": "a74137586ea185bb4ebd193a40f819cc890c2dff12453f0fa8c1df9e28c1837e",
+      "width": 80,
+      "height": 80
+    },
+    "6124": {
+      "name": "skill/6124.png",
+      "nameHash": "63158a309105346b",
+      "digest": "a6c0fe0c4172a9cc98c074ea2fec4400",
+      "size": 3505,
+      "origin": "apk",
+      "source": "raw/external/cloud_resources/icon1.wpk",
+      "offset": 6144,
+      "rawSHA256": "b29ede58ced52c328fef712cb7a6467f2daffabb2f70c4251f0f6bae337bbf55",
+      "rawMD5MatchesDigest": false,
+      "envelope": "4454535a",
+      "decodedSHA256": "0285ee2b472ffb752b99a6cd13e8b0316ae92c149143c293b971ad0080e7675f",
+      "nameTable": {
+        "source": "E:\\workspace\\AI_project\\阴阳师解包\\exports\\onmyoji\\20261125_223923_738821\\raw\\extra\\thd\\icon.thx",
+        "sha256": "0db5dbf1d21efa78a125afaace40ba8d1bb41fc1e04b361c747921a5eeb39679",
+        "rows": 22049,
+        "seeds": [
+          163,
+          37
+        ]
+      },
+      "localPath": "data/images/game/skills/6124.png",
+      "sha256": "15c99316df9c1347dfd42839c8cd1ac2e365276ecf9759f580bd220ddf23eeb7",
+      "fileSHA256": "15c99316df9c1347dfd42839c8cd1ac2e365276ecf9759f580bd220ddf23eeb7",
+      "width": 80,
+      "height": 80
+    }
+  },
+  "missingIcons": []
+}

@@ -7,8 +7,8 @@
 
 // 神罚的开场属性来自同版本的 RuneFbEngine。定位按客户端技能说明选取，
 // 例如雪御前的击败转火、因幡辉夜姬的愿力、不见岳的初始防御增伤。
-const openings=[[608,6083],[607,6073],[591,5913],[556,5563],[364,3643],[392,3923]];
-const finishers=[[608,6083],[607,6073],[389,3893],[579,5793],[568,5683],[392,3923],[591,5913],[556,5563]];
+const openings=[[612,6123],[611,6113],[608,6083],[607,6073],[591,5913],[556,5563],[364,3643],[392,3923]];
+const finishers=[[612,6123],[611,6113],[608,6083],[607,6073],[389,3893],[579,5793],[568,5683],[392,3923],[591,5913],[556,5563]];
 const openingOrbs=[[601,6013],[596,5963],[395,3953],[205,2054],[280,2803]];
 // Released set descriptions in 0.0.816 equip_suit name these chance effects.
 const volatileSuits=new Set(['魅妖','钟灵','招财猫','幽谷响','返魂香','应声虫','镜姬','木魅','狰','日女巳时',
@@ -18,18 +18,18 @@ const roles={
  opener:{heroes:openings,metric:1,sets:['海月火玉','破势','狂骨'],damage:true},
  finisher:{heroes:finishers,metric:1,sets:['隐念','片叶之苇','心眼'],damage:true},
  fastFinisher:{heroes:finishers,metric:1,sets:['隐念','心眼'],damage:true},
- debuff:{heroes:[[557,5573],[341,3413],[583,5832]],metric:7,sets:['元兴寺','遗念火']},
+ debuff:{heroes:[[609,6093],[557,5573],[341,3413],[583,5832]],metric:7,sets:['元兴寺','遗念火']},
  orbs:{heroes:[[372,3722],...openingOrbs],metric:7,sets:['火灵']},
  openingOrbs:{heroes:openingOrbs,metric:7,sets:['火灵']},
  support:{heroes:[[379],[601],[583,5832]],metric:6,sets:[]},
  healer:{heroes:[[554,5543],[594,5943],[576],[200,2002]],metric:10,sets:['火灵','树妖']},
- tempo:{heroes:[[596,5963],[341,3413],[601]],metric:7,sets:['火灵','遗念火']},
+ tempo:{heroes:[[609,6093],[596,5963],[341,3413],[601]],metric:7,sets:['火灵','遗念火']},
  groupHeal:{heroes:[[238,2383],[594,5943],[347,3473],[200,2002]],metric:10,sets:['树妖']},
  amplify:{heroes:[[347,3473],[594,5943],[557,5573]],metric:10,sets:['火灵']},
  criticalHeal:{heroes:[[554,5543],[594,5943],[200,2002]],metric:10,sets:['火灵','树妖'],auto:11},
- accelerate:{heroes:[[237,2372],[261,2612],[596,5963],[601]],metric:7,sets:['火灵','遗念火']},
- markAmp:{heroes:[[369,3693],[363,3632],[367,3672],[583,5832]],metric:7,sets:['遗念火','火灵']},
- lightDamage:{heroes:[[608,6083],[607,6073],[556,5563],[568,5683],[591,5913],[364,3643]],metric:1,sets:['海月火玉','破势','狂骨'],damage:true},
+ accelerate:{heroes:[[609,6093],[237,2372],[261,2612],[596,5963],[601]],metric:7,sets:['火灵','遗念火']},
+ markAmp:{heroes:[[609,6093],[369,3693],[363,3632],[367,3672],[583,5832]],metric:7,sets:['遗念火','火灵']},
+ lightDamage:{heroes:[...openings,[568,5683]],metric:1,sets:['海月火玉','破势','狂骨'],damage:true},
 };
 const groupBuff={name:'群疗增伤',roles:['orbs','amplify','groupHeal','opener','support']};
 const groupDebuff={name:'群疗与破防',roles:['openingOrbs','debuff','opener','groupHeal','support']};
@@ -142,7 +142,8 @@ function configFor(name,id,openingSpeed,bossSpeed,earlySpeed,set){
  let metricId=role.metric;
  if(role.damage){
   ranges.push({stat:'speed',min:name==='opener'?openingSpeed:name==='fastFinisher'?earlySpeed-1:bossSpeed});
-  mainStats[4]=['attackPercent'];
+  mainStats[4]=id===612?['hpPercent']:['attackPercent'];
+  if(id===612)metricId=10;
   mainStats[6]=id===392?['critDamage']:['crit','critDamage'];
   if(id!==392)ranges.push({stat:'crit',min:100,percentage:true});
  }else if(id===372){
@@ -170,50 +171,86 @@ function candidates(account,data,alternatives=[],dungeonId=102){
  return buildCandidates(account,data,searchProfile(dungeonId),alternatives,dungeonId);
 }
 
+function roleAssignments(strategy,available){
+ const order=strategy.roles.map((name,index)=>({name,index,options:available[name]}))
+  .sort((a,b)=>a.options.length-b.options.length||a.index-b.index);
+ const width=6;
+ function canFill(first,reserved){
+  const owners=new Map();
+  function assign(slot,seen){
+   for(const option of order[slot].options){
+    if(reserved.has(option.id)||seen.has(option.id))continue;
+    seen.add(option.id);
+    const prior=owners.get(option.id);
+    if(prior!==undefined&&!assign(prior,seen))continue;
+    owners.set(option.id,slot);return true;
+   }
+   return false;
+  }
+  for(let i=first;i<order.length;i++)if(!assign(i,new Set()))return false;
+  return true;
+ }
+ let beam=[{members:[],used:new Set(),cost:0}];
+ for(const [depth,slot] of order.entries()){
+  beam=beam.flatMap(branch=>slot.options.flatMap((option,rank)=>{
+   if(branch.used.has(option.id))return [];
+   const used=new Set([...branch.used,option.id]);
+   if(!canFill(depth+1,used))return [];
+   return [{used,cost:branch.cost+rank,members:[...branch.members,{...option,name:slot.name,index:slot.index}]}];
+  })).sort((a,b)=>a.cost-b.cost).slice(0,width);
+  if(!beam.length)break;
+ }
+ return beam.map(branch=>branch.members.sort((a,b)=>a.index-b.index));
+}
+
+function fitTeam(chosen,strategy,{openingSpeed,bossSpeed,earlySpeed},inventory,account,roster,effects,variant){
+ const profiles=chosen.map(role=>{
+  const {name,id}=role;
+  const sets=id===392?['镇墓兽']:id===372||id===379?[]:roles[name].sets;
+  const set=strategy.sets?.[name]??sets[variant%Math.max(1,sets.length)];
+  const speed=name==='accelerate'?earlySpeed+25:earlySpeed;
+  const config=configFor(name,id,openingSpeed,bossSpeed,speed,set);
+  const speedNeeded=config.ranges.find(row=>row.stat==='speed')?.min??0;
+  return {...role,set,config,speedNeeded};
+ }).sort((a,b)=>b.speedNeeded-a.speedNeeded||b.config.ranges.length-a.config.ranges.length||a.index-b.index);
+ const used=new Set(),members=[],panels=[];
+ for(const {hero,index,aiSkill,set,config} of profiles){
+  const remaining=inventory.filter(soul=>!used.has(soul.id));
+  const find=rules=>C.findBuilds(hero,rules,account,roster,effects,{inventory:remaining,width:22,perSet:3,limit:1000});
+  const matched=find(config);
+  const relaxed=set&&!matched.builds.length?find({...config,suitRequirements:[]}):null;
+  const closest=matched.closest;
+  const build=matched.builds[0]||relaxed?.builds[0]||
+   (relaxed?.closest&&(!closest||relaxed.closest.distance<closest.distance)?relaxed.closest:closest);
+  if(build?.soulIds.length!==6||build.soulIds.some(id=>used.has(id)))return null;
+  const souls=build.soulIds.map(id=>account.souls[id].raw);
+  for(const id of build.soulIds)used.add(id);
+  members[index]={instanceId:hero.instanceId,hero:hero.raw,souls,aiSkill};
+  panels[index]=build.rawPanel;
+ }
+ return {members,panels};
+}
+
 function buildCandidates(account,{gameConfig:game,roster,effects},profile,alternatives,dungeonId,max=limit){
  const onmyoji=actor(game),spirit=ownedSpirit(account,game,onmyoji.heroId);
  const heroes=Object.values(account.heroes),inventory=Object.values(account.souls).filter(allowedSoul);
  const rosterIndex=new Map(roster.map(row=>[String(row.id),row]));
  const names=new Set(profile.strategies.flatMap(strategy=>strategy.roles));
  const available=Object.fromEntries([...names].map(name=>[name,roleOptions(name,heroes,game,roster,rosterIndex)]));
- const {openingSpeed,bossSpeed,earlySpeed}=profile;
  const sampled=[],seen=new Set(alternatives);
- // Test different role combinations and sets. This bounds interactive search;
- // native replays, rather than the gear scoring, decide which teams clear waves.
- for(let variant=0;variant<4&&sampled.length<max;variant++){
-  for(const strategy of profile.strategies){
-   const chosen=[],species=new Set();
-   for(const name of strategy.roles){
-    const rows=available[name].filter(({id})=>!species.has(id));
-    const row=rows[variant%Math.max(1,Math.min(rows.length,2))];
-    if(!row)break;
-    chosen.push({name,...row});species.add(row.id);
-   }
-   if(chosen.length!==strategy.roles.length)continue;
-   const members=[],panels=[],used=new Set();
-   for(const {name,hero,id,aiSkill} of chosen){
-    const remaining=inventory.filter(q=>!used.has(q.id));
-    const sets=id===392?['镇墓兽']:id===372||id===379?[]:roles[name].sets;
-    const set=strategy.sets?.[name]??sets[variant%sets.length];
-    const fastSupport=name==='accelerate'?earlySpeed+25:earlySpeed;
-    const find=setName=>C.findBuilds(hero,configFor(name,id,openingSpeed,bossSpeed,fastSupport,setName),account,roster,effects,
-     {inventory:remaining,width:22,perSet:3,limit:1000});
-    const scored=find(set);
-    const open=set&&!scored.builds.length?find(null):null;
-    const build=scored.builds[0]||open?.builds[0]||
-     (open&&open.closest?.distance<scored.closest?.distance?open.closest:scored.closest??open?.closest);
-    if(build?.soulIds.length!==6||build.soulIds.some(id=>used.has(id)))break;
-    const souls=build.soulIds.map(id=>account.souls[id].raw);
-    for(const id of build.soulIds)used.add(id);
-    members.push({instanceId:hero.instanceId,hero:hero.raw,souls,aiSkill});
-    panels.push(build.rawPanel);
-   }
-   if(members.length!==strategy.roles.length)continue;
-   const plan={onmyoji,...(spirit?{spirit}:{}),members,damageFloor:true};
+ const paths=profile.strategies.map(strategy=>({strategy,crews:roleAssignments(strategy,available)})).filter(row=>row.crews.length);
+ const depth=Math.max(0,...paths.map(row=>row.crews.length));
+ for(let pass=0;pass<depth+2&&sampled.length<max;pass++){
+  for(const {strategy,crews} of paths){
+   const chosen=pass<depth?crews[pass]:crews[0];
+   if(!chosen)continue;
+   const fit=fitTeam(chosen,strategy,profile,inventory,account,roster,effects,pass<depth?0:pass-depth+1);
+   if(!fit)continue;
+   const plan={onmyoji,...(spirit?{spirit}:{}),members:fit.members,damageFloor:true};
    const key=teamKey(plan);
    if(seen.has(key))continue;
    seen.add(key);
-   sampled.push({dungeonId,title:strategy.name,heroIds:chosen.map(row=>row.id),plan,panels});
+   sampled.push({dungeonId,title:strategy.name,heroIds:chosen.map(row=>row.id),plan,panels:fit.panels});
    if(sampled.length===max)break;
   }
  }

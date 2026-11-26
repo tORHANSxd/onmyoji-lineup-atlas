@@ -69,6 +69,19 @@ test('库存搜索同等稀有度优先少随机技能，再优先有已核实�
  assert.equal(pveCandidates(C.parseAccount(raw),catalog,1)[0].heroIds[0],556);
 });
 
+test('三人库存搜索给只有一名合适式神的位置保留咲耶，并用笼梦祸津神输出',()=>{
+ const catalog=require('../desktop/latest-heroes.cjs').applyLatestHeroes(data);
+ const raw=inventory();
+ raw.heroes=Object.fromEntries([609,237,612].map(id=>{
+  const skinfo=catalog.gameConfig.heroes[id].skills.map(skill=>[skill,G.levels(catalog.gameConfig,skill,1).at(-1).level]);
+  return ['hero-'+id,{heroId:id,level:40,star:6,awake:1,equips:[],skinfo}];
+ }));
+ const row=pveCandidates(C.parseAccount(raw),catalog,3).find(item=>item.title==='拉条增伤与输出');
+ assert.equal(row.title,'拉条增伤与输出');
+ assert.deepEqual(row.heroIds,[237,609,612]);
+ assert.equal(new Set(row.plan.members.flatMap(member=>member.souls.map(soul=>soul.id))).size,18);
+});
+
 test('魂王有可用群疗式神时优先试能抵消低生命惩罚的配搭',()=>{
  const raw=inventory();
  raw.heroes['hero-238']={heroId:238,level:40,star:6,awake:1,equips:[],skinfo:[[2381,5],[2382,5],[2383,5]]};

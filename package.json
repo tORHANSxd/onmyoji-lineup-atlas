@@ -33,6 +33,7 @@
       "app/**/*",
       "data/images/**/*",
       "data/bundle.json",
+      "data/latest-heroes.json",
       "data/dungeon-catalog/**/*",
       "README.md",
       "LICENSE",
