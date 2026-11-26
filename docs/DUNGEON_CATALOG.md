@@ -107,6 +107,8 @@ $env:PYTHONHASHSEED = '0'
 
 本地演练的共享生命只接收当前队伍原版产生的扣血。参加人数参数用于增伤，阶段选人按本地这一名参与者处理。实际寮友伤害、多人阶段随机分支、区服排名和领奖待联机验收。
 
+资源 `0.0.816` 的真实库存复跑记录了小鬼黑白分身、年兽吞噬、铁鼠财前机关。难度 20 第三轮铁鼠在 180 秒窗口内确认了手动首动普攻、切回自动、红绿标和自动妖术，控制器记录 2,474,656 伤害。另有真实库存的难度 1 第一轮铁鼠在 30 分钟窗口约第 884.98 秒击败首领，控制器记录 18,977,975 个人伤害。该首领的三分钟对比中，六个共同种子下的最佳已复评备选平均伤害为 16,191,330，区间为 15,232,661 至 16,752,120。完整码已离线生成并回读验证。
+
 ```powershell
 & $YuqiPython tools/verify-guild-retreat-openings.py --runtime <本地运行时JSON> --output app/guild-retreat-openings.js
 & $YuqiPython tools/verify-pve-stage.py --mode 306 --stage 1 --boss 103 --raid-round 1 --guild-members 5 --window-seconds 180 --seed 0 --minimum-damage --runtime <本地运行时JSON> --team <库存配装JSON> --suit-index <御魂套装JSON> --output <战报JSON>

@@ -486,6 +486,7 @@ async function main(){
     await until(status+'.textContent.includes("按平均伤害排序")',20000);
     assert.deepEqual(retreatCalls.slice(0,2),[0,1]);
     assert.match(await ui(reports+'.firstElementChild.textContent'),/6 \/ 6 场有效结算.*平均伤害 350,000.*达到比较时长.*1 次阶段切换/s);
+    assert.doesNotMatch(await ui(reports+'.textContent'),/麒麟/);
     await ui('document.querySelector("[data-pve-code]").click()');
     const retreatCode=await ui('$("stock-candidate-code").value');
     assert.equal(require('../desktop/ta-codec.cjs').decodeLineupData(retreatCode).select_stage_id,10020205);
