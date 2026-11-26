@@ -26,18 +26,27 @@ async function capture(name){await win.webContents.capturePage(undefined,{stayHi
 async function main(){
  await app.whenReady();await fs.mkdir(profile,{recursive:true});
  const data=applyLatestHeroes(JSON.parse(await fs.readFile(path.join(root,'data/bundle.json'),'utf8')));data.officialUpdate={autoUpdate:false};stored=blank();
- const background=new Background(),shareCalls=[];
+ const background=new Background(),shareCalls=[],batchShareCalls=[];
+ let mockBatchShare=null,clipboardText='';
  const local=(name,fn)=>{ipcMain.handle(name,(_e,...args)=>fn(...args));if(name==='export-json')ipcMain.handle('export-json-text',(_e,p)=>fn({name:p.name,data:JSON.parse(p.text)}));if(['load-data','load-state'].includes(name))ipcMain.handle(name+'-json',async(_e,...args)=>JSON.stringify(await fn(...args)));if(['save-state','save-parsed-state'].includes(name))ipcMain.handle(name+'-json',(_e,text)=>fn(JSON.parse(text)));};
  local('save-state-fields-json',async text=>{if(holdSave)await new Promise(resolve=>heldSaves.push(resolve));if(failSave)throw Error('synthetic disk full');if(!stored)return {needsSnapshot:true};stored={...JSON.parse(text),lineups:stored.lineups};return {saved:true};});
  local('parse-json',text=>JSON.parse(text));local('save-parsed-delta',()=>({needsSnapshot:true}));
  let status={authenticated:false,busy:false,stage:'idle',servers:[],selected_avatar:'',remembered_accounts:[]};
+ const getTestLogin=()=>status,setTestLogin=next=>{status=next;win.webContents.send('ta-status-changed',status);};
  local('load-data',()=>data);local('load-state',()=>{if(failLoad)throw Error('synthetic corrupt database');return stored;});
  for(const channel of ['save-state','save-parsed-state'])local(channel,async s=>{if(holdSave)await new Promise(resolve=>heldSaves.push(resolve));if(failSave)throw Error('synthetic disk full');stored=structuredClone(s);return {saved:true};});
  local('export-json',payload=>{if(failExport)throw Error('synthetic read-only target');exported=structuredClone(payload.data);return true;});
  local('ta-status',()=>status);local('ta-action',(_action,p)=>{status={...status,risk_accepted:p?.accepted};return status;});local('ta-logout',()=>status);
- local('copy-code',()=>({copied:true}));local('import-files',()=>[]);
+ local('copy-code',code=>{clipboardText=code;return {copied:true};});local('import-files',()=>[]);
  local('build-lineup',input=>background.run('build',{input,catalog:data}));
- local('ta-share',async code=>{
+ local('ta-share',async (code,epoch)=>{
+  if(epoch!==undefined){
+   if(epoch!==status.share_epoch||!status.authenticated)throw Error('synthetic changed role');
+   batchShareCalls.push({code,epoch});
+   const reply=await mockBatchShare(code);
+   if(epoch!==status.share_epoch||!status.authenticated)throw Error('synthetic changed role');
+   return reply;
+  }
   shareCalls.push(code);
   return {code:await background.run('verify-share',{code,response:{err:0,share_key:'qa-stock-share',lineup_data:code}})};
  });
@@ -492,6 +501,24 @@ async function main(){
     assert.equal(require('../desktop/ta-codec.cjs').decodeLineupData(retreatCode).select_stage_id,10020205);
     await ui('$("close-dialog").click();$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
     await capture('client-guild-retreat-damage');
+    await ui('document.querySelector("[data-pve-batch]:not([hidden])").click()');
+    assert.ok(await ui('document.querySelectorAll("[data-batch-pick]").length')>=2);
+    assert.equal(await ui('document.querySelector("[data-batch-upload]").disabled'),true);
+    await ui('$("close-dialog").click()');
+    const offline=getTestLogin(),beforeAuto=batchShareCalls.length;
+    setTestLogin({...offline,authenticated:true,risk_accepted:true,query_ready:true,share_epoch:21,
+     selected_server:'99',selected_avatar:'batch-retreat',servers:[{id:'99',name:'批量测试区',category:'测试',available:true,roles:[]}]});
+    mockBatchShare=async code=>({code:await background.run('verify-share',{code,response:{err:0,share_key:`qa-auto-retreat-${batchShareCalls.length}`,lineup_data:code}})});
+    try{
+     await until('!document.querySelector("[data-pve-auto-share]").disabled');
+     await ui('document.querySelector("[data-pve-auto-share]").checked=true;'+stock+'.click()');
+     await until(status+'.textContent.includes("本次就绪")',20000);
+     const requests=batchShareCalls.slice(beforeAuto);
+     assert.ok(requests.length>=2&&requests.every(row=>row.epoch===21));
+     assert.equal(new Set(requests.map(row=>row.code)).size,requests.length);
+     assert.equal(await ui('document.querySelector("[data-pve-auto-share]").checked'),false);
+     assert.equal(stored.lineups.some(lineup=>requests.some(row=>row.code===lineup.code)),false);
+    }finally{mockBatchShare=null;setTestLogin(offline);}
    }
   }finally{
    mockPve=null;stopPve=null;
@@ -1193,6 +1220,93 @@ async function main(){
    assert.equal(await ui('document.querySelector("[data-hun13-code]")===null'),true);
    assert.equal(stored.lineups.filter(l=>pair.includes(l.code)).length,2);
   }finally{mockBattle=null;mockSeeds=null;stopSeeds=null;await ui('stopMatch();$("dungeon-workbench").open=false');}
+ });
+ await check('批量阵容码仅保存所选，逐条上传，保留成功项并阻止跨角色续传',async()=>{
+  const priorStore=stored,priorState=await ui('JSON.stringify(STATE)'),offline=status;
+  const requests=[0,1,2,3,4].map(i=>({title:`批量验收 ${i+1}`,desc:'模拟批次',select_stage_id:1001001,
+   hconf:[10,591,389,596,557,379].map(id=>game.defaultMember(data.gameConfig,id))}));
+  const outputs=await Promise.all(requests.map(input=>background.run('build',{input,catalog:data})));
+  const codes=outputs.map(output=>output.code);
+  const rows='[data-candidate-batch] textarea';
+  const part=name=>`document.querySelector('[data-batch-${name}]')`;
+  const picks='[...document.querySelectorAll("[data-batch-pick]")]';
+  const choose=async (...indices)=>ui(`${picks}.forEach((box,i)=>{box.checked=${JSON.stringify(indices)}.includes(i);box.dispatchEvent(new Event('change'));})`);
+  const reply=async (code,index)=>({code:await background.run('verify-share',{code,response:{err:0,share_key:`qa-batch-${index}`,lineup_data:code}})});
+  const before=batchShareCalls.length;
+  let release;
+  try{
+   await ui(`window.qaBatchOutputs=${JSON.stringify(outputs.map(({code,payload})=>({code,payload})))}.map(output=>({...output,lineup:C.adaptTA(output.payload,DATA)}));
+    AtlasCandidateBatch.open([...qaBatchOutputs,qaBatchOutputs[0]].map(output=>({output,valid:()=>true})));`);
+   assert.deepEqual(await ui(`[...document.querySelectorAll(${JSON.stringify(rows)})].map(el=>el.value)`),codes);
+   assert.equal(await ui(part('upload')+'.disabled'),true);
+   assert.equal(await ui(part('pick-all')+'.checked'),true);
+   await ui(part('pick-all')+'.click()');
+   assert.equal(await ui(part('save')+'.disabled'),true);
+   await choose(0,2);
+   assert.equal(await ui(part('pick-all')+'.indeterminate'),true);
+   await ui(part('copy')+'.click()');
+   await until(part('copy')+'.dataset.copyState==="success"');
+   assert.equal(clipboardText,[codes[0],codes[2]].join('\n'));
+   await ui(part('save')+'.click()');
+   await until(part('status')+'.textContent.includes("已保存 2 条")');
+   assert.deepEqual(stored.lineups.filter(l=>codes.includes(l.code)).map(l=>l.code),[codes[0],codes[2]]);
+   assert.equal(batchShareCalls.length,before);
+   status={...status,authenticated:true,risk_accepted:true,query_ready:true,share_epoch:41,
+    selected_server:'99',selected_avatar:'batch-role',servers:[{id:'99',name:'批量测试区',category:'测试',available:true,roles:[{avatar_id:'batch-role',name:'测试角色'}]}]};
+   win.webContents.send('ta-status-changed',status);
+   let failOnce=true;
+   mockBatchShare=async code=>{
+    const i=codes.indexOf(code);
+    if(i===1&&failOnce){failOnce=false;throw Error('synthetic share rejected');}
+    return reply(code,i);
+   };
+   await choose(0,1,2);
+   await until('!'+part('upload')+'.disabled');
+   await ui(part('upload')+'.click()');
+   await until(part('status')+'.textContent.includes("本次就绪 2 条，1 条失败")');
+   assert.deepEqual(batchShareCalls.slice(before),codes.slice(0,3).map(code=>({code,epoch:41})));
+   assert.equal(stored.lineups.find(l=>l.code===codes[0]).shortCode,'|TA|qa-batch-0');
+   assert.equal(stored.lineups.find(l=>l.code===codes[2]).shortCode,'|TA|qa-batch-2');
+   assert.equal(stored.lineups.some(l=>l.code===codes[1]),false);
+   await ui(part('upload')+'.click()');
+   await until(part('status')+'.textContent.includes("本次就绪 1 条")');
+   assert.deepEqual(batchShareCalls.slice(before+3),[{code:codes[1],epoch:41}]);
+   assert.equal(stored.lineups.some(l=>l.code===codes[1]),false);
+
+   await choose(3,4);
+   mockBatchShare=code=>new Promise(resolve=>{release=async()=>resolve(await reply(code,codes.indexOf(code)));});
+   await ui(part('upload')+'.click()');
+   for(let i=0;!release&&i<200;i++)await sleep(10);
+   assert.equal(typeof release,'function');
+   status={...status,share_epoch:42};win.webContents.send('ta-status-changed',status);
+   await release();release=null;
+   await until(part('status')+'.textContent.includes("登录角色发生变化，上传已停止")');
+   assert.deepEqual(batchShareCalls.slice(before+4),[{code:codes[3],epoch:41}]);
+   await ui(part('upload')+'.click()');
+   for(let i=0;!release&&i<200;i++)await sleep(10);
+   assert.equal(typeof release,'function');
+   await ui(part('stop')+'.click()');
+   await release();release=null;
+   await until(part('status')+'.textContent.includes("已停止后续上传")');
+   assert.deepEqual(batchShareCalls.slice(before+5),[{code:codes[3],epoch:42}]);
+   mockBatchShare=code=>reply(code,codes.indexOf(code));
+   await ui(part('upload')+'.click()');
+   await until(part('status')+'.textContent.includes("本次就绪 1 条")');
+   assert.deepEqual(batchShareCalls.slice(before+5),codes.slice(3).map(code=>({code,epoch:42})));
+   await choose(1,4);
+   await ui(part('copy-short')+'.click()');
+   await until(part('copy-short')+'.dataset.copyState==="success"');
+   assert.equal(clipboardText,'|TA|qa-batch-1\n|TA|qa-batch-4');
+   win.setContentSize(720,960);
+   try{assert.equal(await ui('$("detail-dialog").scrollWidth<=$("detail-dialog").clientWidth+2'),true);}
+   finally{win.setContentSize(1440,1000);}
+   await capture('candidate-codes-batch');
+  }finally{
+   if(release)await release();
+   mockBatchShare=null;status=offline;win.webContents.send('ta-status-changed',status);
+   await ui(`$('detail-dialog').close();STATE=${priorState};fillFilters();renderManage();`);
+   stored=priorStore;
+  }
  });
  if(process.argv.includes('--visual')){
   await ui('STATE='+JSON.stringify(blank())+';backupUndo=null;document.getElementById("undo-restore").hidden=true;document.getElementById("toast").classList.remove("show");document.getElementById("code-input").value="";updateCode();updateAccountSelect();fillFilters();selectView("library")');

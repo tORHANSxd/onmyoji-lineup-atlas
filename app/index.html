@@ -45,6 +45,7 @@
 <button id="dungeon-show-lineups" class="secondary">查看阵容</button>
 <button id="dungeon-match-selected" class="primary">精算勾选阵容</button>
 <button id="dungeon-search-stock" class="secondary" type="button" aria-describedby="dungeon-match-status" hidden>从库存寻找备选</button>
+<label class="candidate-auto-share" hidden><input id="dungeon-auto-share" type="checkbox"> 本次自找完成后，用当前登录角色上传短码</label>
 <button id="dungeon-stop-battle" class="secondary" hidden>停止离线复跑</button></div>
 <p id="dungeon-match-status" class="caption" role="status"></p>
 <div id="dungeon-hun13-rounds" class="dungeon-controls" hidden>
@@ -54,12 +55,14 @@
 <section id="dungeon-hun13-result" aria-labelledby="dungeon-hun13-title" hidden>
   <h3 id="dungeon-hun13-title">虚无双队战报</h3>
   <p id="dungeon-hun13-status" role="status" class="caption"></p>
+  <button id="dungeon-hun13-codes" class="secondary" type="button" hidden>管理本批阵容码</button>
   <ul id="dungeon-hun13-samples" class="dungeon-stock-list"></ul>
 </section>
 <div id="dungeon-battle-results" aria-live="polite" hidden></div>
 <section id="dungeon-stock-results" aria-labelledby="dungeon-stock-title" hidden>
   <h3 id="dungeon-stock-title">备选队伍</h3>
   <p id="dungeon-stock-status" class="caption" role="status"></p>
+  <button id="dungeon-stock-codes" class="secondary" type="button" hidden>管理本批阵容码</button>
   <ul id="dungeon-stock-list" class="dungeon-stock-list"></ul>
   <p class="caption">最多尝试 6 支队伍。复跑假设晴明 60 级，携带满级言灵·星和言灵·守，优先施放言灵·星。引擎时间用于比较采样结果，实机耗时和所有随机分支仍待验证。</p>
 </section>
@@ -127,4 +130,4 @@
 </div><div class="bulk-footer"><p id="bulk-summary" role="status">粘贴后显示导入预览</p><label class="check"><input id="bulk-auto-parse" type="checkbox" checked>添加后自动解析新码，并继续库内剩余内容</label><p id="bulk-status" role="status" aria-live="polite"></p><div class="actions"><button id="bulk-apply" class="primary" disabled>添加 0 条有效阵容</button><button id="bulk-view" class="secondary" hidden>查看已添加阵容</button></div></div>
 <input id="bulk-file" type="file" accept=".txt,.tsv,text/plain,text/tab-separated-values" hidden>
 </dialog>
-<input id="file-input" type="file" accept=".json,application/json" multiple hidden></div><script src="vendor/jsQR.js"></script><script src="qr-reader.js"></script><script src="solver.js"></script><script src="rune-openings.js"></script><script src="awake-openings.js"></script><script src="secret-openings.js"></script><script src="resource-encounters.js"></script><script src="yuling-openings.js"></script><script src="guild-hunt-openings.js"></script><script src="guild-retreat-openings.js"></script><script src="game-config.js"></script><script src="core.js"></script><script src="library-model.js"></script><script src="exact-solver.js"></script><script src="lineup-tools.js"></script><script src="bulk-import.js"></script><script src="parse-errors.js"></script><script src="library-parser.js"></script><script src="categories.js"></script><script src="rune-lineup.js"></script><script src="rune-search.js"></script><script src="rune-candidate.js"></script><script src="app.js"></script><script src="pve-workbench.js"></script><script src="dungeon-catalog.js"></script><script src="revision.js"></script><script src="ta-login.js"></script><script src="skills.js"></script><script src="builder.js"></script></body></html>
+<input id="file-input" type="file" accept=".json,application/json" multiple hidden></div><script src="vendor/jsQR.js"></script><script src="qr-reader.js"></script><script src="solver.js"></script><script src="rune-openings.js"></script><script src="awake-openings.js"></script><script src="secret-openings.js"></script><script src="resource-encounters.js"></script><script src="yuling-openings.js"></script><script src="guild-hunt-openings.js"></script><script src="guild-retreat-openings.js"></script><script src="game-config.js"></script><script src="core.js"></script><script src="library-model.js"></script><script src="exact-solver.js"></script><script src="lineup-tools.js"></script><script src="bulk-import.js"></script><script src="parse-errors.js"></script><script src="library-parser.js"></script><script src="categories.js"></script><script src="rune-lineup.js"></script><script src="rune-search.js"></script><script src="rune-candidate.js"></script><script src="app.js"></script><script src="candidate-batch.js"></script><script src="pve-workbench.js"></script><script src="dungeon-catalog.js"></script><script src="revision.js"></script><script src="ta-login.js"></script><script src="skills.js"></script><script src="builder.js"></script></body></html>

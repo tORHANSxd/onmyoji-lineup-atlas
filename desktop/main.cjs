@@ -27,7 +27,7 @@ const pageURL = pathToFileURL(path.join(__dirname, '../app/index.html')).href;
 function isAppURL(value){try{const url=new URL(value);url.hash='';return url.href===pageURL;}catch{return false;}}
 function trusted(event) { if (!isAppURL(event.senderFrame?.url)) throw new Error('不受信任的调用来源'); }
 function requireRiskAcceptance(){if(!loginRiskAccepted)throw new Error('请先阅读免责声明，并确认使用可弃用的小号及承担账号风险');}
-function loginStatus(){return {...taSession.status(),risk_accepted:loginRiskAccepted};}
+function loginStatus(){return {...taSession.status(),risk_accepted:loginRiskAccepted,share_epoch:loginEpoch};}
 function requireLogin(event, epoch=loginEpoch) { trusted(event); if(epoch!==loginEpoch||taSession?.status().authenticated!==true)throw new Error('请先扫码登录后使用软件'); requireRiskAcceptance(); }
 function handleSignedIn(name, handler, {commits=false}={}) {
   ipcMain.handle(name, async(event,...args)=>{const epoch=loginEpoch;const check=()=>requireLogin(event,epoch);check();const result=await handler(check,...args);if(!commits||!result?.saved)check();return result;});
@@ -142,7 +142,7 @@ app.whenReady().then(async () => {
     const role=authenticated?JSON.stringify([state.selected_server,state.selected_avatar]):'';
     if(role!==selectedRole){loginEpoch++;selectedRole=role;queryQueue?.reset();}
     if(authenticated!==loggedIn){loginEpoch++;loggedIn=authenticated;queryQueue?.reset();if(!authenticated)official?.cancel();else if(!isSmoke)setTimeout(()=>{if(loggedIn&&official.due())official.refresh().catch(()=>{});},6000);}
-    if(win&&!win.isDestroyed())win.webContents.send('ta-status-changed',{...state,risk_accepted:loginRiskAccepted});
+    if(win&&!win.isDestroyed())win.webContents.send('ta-status-changed',{...state,risk_accepted:loginRiskAccepted,share_epoch:loginEpoch});
   }});
   queryQueue=new TAQueryQueue({execute:code=>taSession.request('query',{code}),onProgress:progress=>{if(win&&!win.isDestroyed())win.webContents.send('ta-query-progress',progress);}});
   ipcMain.handle('ta-status',async e=>{trusted(e);return loginStatus();});
@@ -167,14 +167,22 @@ app.whenReady().then(async () => {
     if(!cached&&response.err===0){try{await responseCache.write(code,response,check);}catch{check();return {ok:false,state:'storage-error',error:'阵容原始返回未能保存，已暂停解析；请检查本机存储后重试'};}}
     const result=await background.run('decode',{input:response,options:{yysIds:official.getData().actors.map(a=>a.gameId)}});if(result.ok){result.origin='official-query';result.cacheHit=!!cached;}return result;
   });
-  handleSignedIn('ta-share',async(check,code)=>{
+  handleSignedIn('ta-share',async(check,code,expectedEpoch)=>{
+    if(expectedEpoch!==undefined&&(!Number.isSafeInteger(expectedEpoch)||expectedEpoch!==loginEpoch))throw Error('上传批次的登录角色已变更，请重新选择');
     if(typeof code!=='string'||code.length>131072||!code.startsWith('#TA#'))throw Error('请先生成有效的游戏阵容码');
     await background.run('validate',{code,catalog:gameCatalog()});check();
-    const job=queryQueue.tail.then(async()=>{check();return taSession.request('share',{code});});
-    queryQueue.tail=job.catch(()=>{});const response=await job;check();
-    const shortCode=await background.run('verify-share',{code,response});check();
-    try{await responseCache.write(shortCode,{...response,code:shortCode},check);}catch(error){check();return {code:shortCode,cacheSaved:false,warning:'官方短码已生成，但本地缓存保存失败。请复制短码留存；无需再次生成。'};}
-    return {code:shortCode,cacheSaved:true};
+    const job=queryQueue.tail.then(async()=>{
+      check();
+      if(expectedEpoch!==undefined){
+        const cached=await responseCache.findByPayload(code).catch(()=>null);check();
+        if(cached)return {code:cached,cacheSaved:true};
+      }
+      const response=await taSession.request('share',{code});check();
+      const shortCode=await background.run('verify-share',{code,response});check();
+      try{await responseCache.write(shortCode,{...response,code:shortCode},check);}catch{check();return {code:shortCode,cacheSaved:false,warning:'官方短码已生成，但本地缓存保存失败。请复制短码留存；无需再次生成。'};}
+      return {code:shortCode,cacheSaved:true};
+    });
+    queryQueue.tail=job.catch(()=>{});return job;
   });
   ipcMain.handle('ta-logout',async e=>{trusted(e);loginRiskAccepted=false;taSession.stop();return loginStatus();});
   handleLocal('load-data', async () => official.getData());

@@ -99,7 +99,15 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .dungeon-stock-health span{color:var(--muted)}
 .dungeon-stock-card>button{margin-top:10px}
 .dungeon-stock-card [data-stock-audit]{margin:4px 0 8px}
-#detail-dialog:has(.rune-code-preview){width:min(890px,95vw)}
+#detail-dialog:has(.rune-code-preview),#detail-dialog:has([data-candidate-batch]){width:min(890px,95vw)}
+.candidate-code-list{list-style:none;padding:0;display:grid;gap:10px}
+.candidate-code-list li{min-width:0;padding:12px;border:1px solid var(--line);border-radius:8px;overflow-wrap:anywhere}
+.candidate-code-list label{font-weight:600}
+.candidate-code-list .caption{margin:6px 0}
+.candidate-code-list .actions{margin:8px 0}
+.candidate-code-list textarea{box-sizing:border-box;width:100%;margin-top:6px}
+.candidate-auto-share{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.candidate-auto-share[hidden]{display:none}
 .rune-code-preview{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,330px);gap:24px;align-items:start}
 .rune-code-preview textarea{display:block;box-sizing:border-box;width:100%;margin:6px 0 12px}
 .rune-code-preview img{width:min(330px,100%);height:auto}

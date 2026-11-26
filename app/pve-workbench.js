@@ -22,6 +22,8 @@
  const active=run=>job===run&&pane===run.pane&&!run.cancelled&&DATA===run.data&&usesDungeonInventory(run);
  const ready=()=>runtime?.available&&runtime.resourceVersion===pane.version&&
   (runtime.battleModes??[3]).includes(pane.battleMode??3);
+ const batchCodes=()=>job?.pane===pane&&usesDungeonInventory(job)?(job.codeRows??[...job.previous,...job.rows])
+  .flatMap(row=>row.codes).filter(entry=>entry.valid()):[];
 
  function update(){
   if(!pane)return;
@@ -32,14 +34,18 @@
   pane.start.disabled=!supported||!hasAccount||blocked;
   pane.stock.hidden=selected.length>0&&!exhausted(selected);
   pane.stock.disabled=!supported||!hasAccount||blocked;
+  window.AtlasCandidateBatch.configure(pane.autoShare,{available:!pane.stock.hidden,disabled:pane.stock.disabled});
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
+  const codes=batchCodes();
+  pane.batch.hidden=new Set(codes.map(entry=>entry.output.code)).size<2;
+  pane.batch.disabled=blocked;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
   pane.hint.textContent=running?(job.cancelled?'正在停止复跑…':job.message):
    !supported?(runtime?.reason||(runtime?.available?'本机运行时不支持此版本或战斗模式。':'正在核对本机复跑资料…')):
    !hasAccount?'先导入并选择库存账号。':
    blocked?'已有原版复跑或正在停止，请等待其结束。':
-   job?.notice?job.notice:
+   job?.notice?job.notice+(job.shareNotice?' '+job.shareNotice:''):
    selected.length?`已勾选 ${selected.length} 套阵容，将按勾选顺序${isWaveMode(pane.battleMode)?'每 4 套组成一次接力':'核对'}。`:
    '可直接从库存寻找备选，也可先在阵容库勾选原码。';
  }
@@ -79,13 +85,17 @@
     <button class="secondary" type="button" data-pve-start>复跑勾选原码</button>
     <button class="secondary" type="button" data-pve-stock>从库存寻找备选</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
+    <button class="secondary" type="button" data-pve-batch hidden>管理本批阵容码</button>
+    <label class="candidate-auto-share" hidden><input type="checkbox" data-pve-auto-share> 本次自找完成后，用当前登录角色上传短码</label>
    </div>
    <ol class="dungeon-battle-list" data-pve-results></ol>`;
   const part=name=>section.querySelector(`[data-pve-${name}]`);
-  pane={...config,start:part('start'),stock:part('stock'),stop:part('stop'),hint:part('status'),results:part('results')};
+  pane={...config,start:part('start'),stock:part('stock'),stop:part('stop'),batch:part('batch'),autoShare:part('auto-share'),
+   hint:part('status'),results:part('results')};
   pane.start.onclick=()=>void run(false);
   pane.stock.onclick=()=>void run(true);
   pane.stop.onclick=()=>cancel();
+  pane.batch.onclick=()=>window.AtlasCandidateBatch.open(batchCodes());
   target.append(section);
   refreshRuntime();
   update();
@@ -101,7 +111,7 @@
   el.innerHTML=`<strong>${esc(title)}</strong><span data-state></span>
    <details hidden><summary>查看采样战报</summary><ul class="dungeon-stock-samples"></ul></details>`;
   const row={el,state:el.querySelector('[data-state]'),details:el.querySelector('details'),
-   report:el.querySelector('ul'),samples:[],verdict:'unknown',index:run.rows.length+1};
+   report:el.querySelector('ul'),samples:[],codes:[],verdict:'unknown',index:run.rows.length+1};
   run.rows.push(row);
   run.pane.results.append(el);
   return row;
@@ -224,22 +234,8 @@
   action.textContent=team?`查看第 ${team} 队阵容码`:'查看阵容码';
   const valid=()=>pane===run.pane&&usesDungeonInventory(run)&&
    !!(job?.rows.includes(row)||job?.previous.includes(row));
-  async function save({create}){
-   if(libraryBusy||bulkBusy)return false;
-   const current=()=>create?valid():STATE.lineups.some(lineup=>lineup.code===output.code);
-   if(!current())return false;
-   const saved=await commitState(state=>{
-    const old=state.lineups.find(lineup=>lineup.code===output.code);
-    if(!create)return {...state,lineups:state.lineups.map(lineup=>
-     lineup===old?{...old,shortCode:output.shortCode}:lineup)};
-    const now=new Date().toISOString();
-    const lineup={...output.lineup,...old,id:old?.id||'user-'+crypto.randomUUID(),sourceKind:'user',
-     shortCode:output.shortCode||old?.shortCode,createdAt:old?.createdAt||now,updatedAt:now};
-    return {...state,lineups:old?state.lineups.map(item=>item===old?lineup:item):[...state.lineups,lineup]};
-   },sessionRevision,null,null,current);
-   if(saved){fillFilters();renderManage();}
-   return saved;
-  }
+  row.codes.push({output,valid});
+  const save=({create})=>saveCandidateCodes([output],{create,valid:()=>!create||valid()});
   action.onclick=()=>{
    const evidence=team?'该队已在离线接力中上阵 · 全随机分支待验证':
     isDamageMode(run.pane.battleMode)?'个人伤害结算通过采样 · 全随机分支待验证':'离线采样通过 · 全随机分支待验证';
@@ -362,6 +358,7 @@
   const selected=checkedLineups();
   if(useStock&&selected.length&&!exhausted(selected))return;
   if(!useStock&&!selected.length)return;
+  const shareEpoch=useStock?window.AtlasCandidateBatch.takeIntent(pane.autoShare):null;
   const focus=document.activeElement===pane.start||document.activeElement===pane.stock;
   const reuse=useStock&&matchesCurrentSelection(selected);
   const previous=reuse?[...job.previous,...job.rows].filter(row=>row.verdict!=='unknown'):[];
@@ -412,6 +409,7 @@
     row.state.textContent=`通过 ${seeds.length} 个采样种子 · ${timeLabel}`;
    }
    next.pane.results.prepend(...passed.map(row=>row.el));
+   next.codeRows=passed;
    if(!useStock)next.originalsComplete=next.rows.every(row=>['loss','infeasible','scored'].includes(row.verdict));
    next.notice=passed.length?(relay?`${passed.length} 套接力已完成共同采样，按最低清波数排序。全随机分支待验证。`:
     hunting?`${passed.length} 套完成共同采样，按平均伤害排序。全随机分支待验证。`:
@@ -431,6 +429,9 @@
      const button=useStock?next.pane.stock:next.pane.start;
      if(job===next&&!button.hidden&&!button.disabled)button.focus();
     }
+    if(active(next))void window.AtlasCandidateBatch.automatic(batchCodes(),shareEpoch,()=>active(next),text=>{
+     next.shareNotice=text;update();
+    });
    }
    renderDungeonSelection();
   }
