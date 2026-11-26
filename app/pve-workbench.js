@@ -12,7 +12,8 @@
      !C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup))return false;
   const members=lineup.members.filter(member=>member.occupied!==false);
   return members.length===config.memberCount+1&&members.filter(member=>member.kind==='onmyoji').length===1&&
-   members.filter(member=>member.kind==='shikigami').length===config.memberCount;
+   members.filter(member=>member.kind==='shikigami').length===config.memberCount&&
+   (!config.trialEligible||members.some(member=>config.trialEligible.includes(Number(member.shikigamiId))));
  }
 
  function knownLineups(){
@@ -162,6 +163,10 @@
    <p class="caption" data-pve-status role="status"></p>
    <div class="actions">
     <label class="pve-lineup-field">已知阵容 <select data-pve-lineup></select></label>
+    ${config.trialEligible?`<label class="pve-lineup-field">试炼式神位置 <select data-pve-trial>
+    <option value="">自动识别唯一可选式神</option>
+    ${Array.from({length:config.memberCount},(_,i)=>`<option value="${i+1}">阵容中第 ${i+1} 位式神</option>`).join('')}
+    </select></label>`:''}
     <button class="secondary" type="button" data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
@@ -183,10 +188,11 @@
    <ol class="dungeon-battle-list" data-pve-results></ol>`;
   const part=name=>section.querySelector(`[data-pve-${name}]`);
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
+   trial:part('trial'),
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards].filter(Boolean))field.onchange=()=>{
+  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -212,7 +218,7 @@
   return row;
  }
 
- async function replay(run,row,plan){
+ async function replay(run,row,plan,trialSlot){
   const {stageId,groupId,battleMode,retreat,region,qilingWindow}=run.pane,scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
   const orochi=battleMode===AtlasTrueOrochi.battleMode;
   for(const seed of seeds){
@@ -222,7 +228,8 @@
    let report;
    run.native=true;
    try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:true,...(battleMode?{battleMode}:{}),
-    ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{}),...(qilingWindow?{qilingWindow}:{})});}
+    ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{}),...(qilingWindow?{qilingWindow}:{}),
+    ...(trialSlot?{trialSlot}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
    row.samples.push(report);
@@ -284,8 +291,19 @@
     row.state.textContent=row.verdict==='infeasible'?'库存精算已证明原码约束无解':'库存精算仍有条件待核对';
     return;
    }
-   row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码培养和技能复跑。普攻等级缺失时使用客户端最低等级。</p>');
+   if(!run.pane.trialEligible)
+    row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码培养和技能复跑。普攻等级缺失时使用客户端最低等级。</p>');
    const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount);
+   let trialSlot;
+   if(run.pane.trialEligible){
+    const eligible=plan.members.map(({hero},i)=>run.pane.trialEligible.includes(Number(hero.heroId))?i+1:0).filter(Boolean);
+    trialSlot=run.trialSlot||(eligible.length===1?eligible[0]:0);
+    if(!eligible.includes(trialSlot)){
+     row.verdict='infeasible';
+     row.state.textContent=trialSlot?'该位置的式神不属于本路线的试炼名单':'这套阵容有多个试炼式神，请指定位置';
+     return;
+    }
+   }
    if(run.reserve){
     const profile=AtlasRuneLineup.selectedOnmyoji(run.reserve.actor,run.account,run.data.gameConfig);
     plan.reserveOnmyoji=profile.onmyoji;
@@ -299,7 +317,7 @@
    }
    const scoring=isDamageMode(run.pane.battleMode);
    const tactics=scoring&&Number(lineup.gameSceneId)===run.pane.codeStageId&&AtlasRuneCandidate.readScoreInstructions(lineup.notes);
-   await replay(run,row,tactics?{...plan,tactics}:plan);
+   await replay(run,row,tactics?{...plan,tactics}:plan,trialSlot);
   }catch(error){
    if(active(run))row.state.textContent=runeError(error);
   }
@@ -352,6 +370,7 @@
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3)return;
   const focus=document.activeElement===pane.start;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
+   trialSlot:Number(pane.trial?.value)||0,
    startingInventory:reserve?reserveInventory(reserve,inventory):inventory,
    pveMemberCount:pane.memberCount,message:'正在准备库存…'};
   pane.results.replaceChildren();

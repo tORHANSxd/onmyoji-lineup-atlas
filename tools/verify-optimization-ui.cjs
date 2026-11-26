@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,1031,1032,1041,2000,2001,3004,3005,3023,5550,5551,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,921,1031,1032,1041,2000,2001,3004,3005,3023,5550,5551,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -296,7 +296,7 @@ async function main(){
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
  if(catalog?.index.encounters)await check('已知阵容按副本匹配、使用原版入口并保留逐场战报',async()=>{
   const ids=[591,389,596,554,379,557],reserves=[237,395,369,364],heroes={},items=[];
-  for(const id of [...ids,...reserves]){
+  for(const id of [...ids,...reserves,217]){
    const prototype=data.gameConfig.heroes[id],prefix='pve-'+id;
    const skinfo=prototype.skills.map(skill=>[skill,game.levels(data.gameConfig,skill,1).at(-1).level]);
    const equips=Array.from({length:6},(_,i)=>prefix+'-soul-'+i);
@@ -306,9 +306,10 @@ async function main(){
     mainAttrType:['attack_flat','speed','defense_flat','attack_rate','hp_flat','crit_rate'][i],
     mainAttrValue:[486,57,104,.55,2052,.55][i],subAttributes:[{type:'crit_rate',value:.1}]}));
   }
-  const fighters=ids.map((id,index)=>({index:index+1,kind:'shikigami',name:data.gameConfig.heroes[id].name,
+  const fighter=(id,index)=>({index:index+1,kind:'shikigami',name:data.gameConfig.heroes[id].name,
    shikigamiId:String(id),level:40,star:6,awakening:1,skills:heroes['pve-'+id].skinfo.map(([id,level])=>({id,level})),
-   aiSkill:0,config:{keepCurrent:true}}));
+   aiSkill:0,config:{keepCurrent:true}});
+  const fighters=ids.map(fighter);
   function known(id,gameSceneId,count,onmyoji=10,notes=''){
    return {id:'qa-known-'+id,title:'已知阵容 '+id,code:'|TA|qa-known-'+id,notes,
     gameSceneId,requirementsComplete:true,decodeState:'decoded-local',members:[
@@ -322,6 +323,9 @@ async function main(){
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('spider',10020221,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
    known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
+  const trial=known('six-realms',110151,6);
+  trial.members[6]=fighter(217,5);
+  squads.push(trial,known('six-realms-ineligible',110151,6));
   const boot=await ui('JSON.stringify(STATE)');
   const cases=JSON.parse(await readEncounters(catalog)).entries;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -392,6 +396,29 @@ async function main(){
    await until(status+'.textContent.includes("未通过本次采样")');
    assert.deepEqual(libraryOrder,[13,10]);
    await ui('selectedLineups.clear();renderSelection()');
+   if(cases.some(entry=>entry.table==='shilian_event_exam'&&entry.key===3)){
+    await encounter('daily','六道之门试炼关卡 香行域');
+    assert.match(await ui(panel+'.textContent'),/满生命阵容复跑档位 1/);
+    assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-six-realms']);
+    await choose('six-realms');
+    const trialPosition='document.querySelector("[data-pve-trial]")';
+    await ui(trialPosition+'.value="1";'+trialPosition+'.dispatchEvent(new Event("change"));'+start+'.click()');
+    await until(reports+'.textContent.includes("该位置的式神不属于本路线")');
+    await ui(trialPosition+'.value="";'+trialPosition+'.dispatchEvent(new Event("change"))');
+    const trialSeeds=[];
+    mockPve=(plan,request)=>{
+     assert.deepEqual(request,{battleMode:921,stageId:700133,groupId:700133,seed:request.seed,damageFloor:true,trialSlot:6});
+     assert.deepEqual(plan.members.map(member=>member.hero.heroId),[...ids.slice(0,5),217]);
+     trialSeeds.push(request.seed);
+     return {...sample,seed:request.seed,sixRealms:{dao:2,trialSlot:6,trialHero:217,difficulty:1,rounds:4}};
+    };
+    await ui(start+'.click()');
+    await until(status+'.textContent.includes("全随机分支待验证")',20000).catch(async error=>{
+     throw Error(`六道试炼回放：${await ui(status+'.textContent')} / ${await ui(reports+'.textContent')}`,{cause:error});
+    });
+    assert.deepEqual(trialSeeds,[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.textContent'),/试炼式神.*4 回合/);
+   }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='800017'&&entry.kind==='契灵之境')){
     await encounter('daily','契灵之境 平安京 770005');
     assert.match(await run('exp',{stageId:770005,groupId:770005,battleMode:1031},{hunling:{spiritId:null,regionSkill:77925}}),/已知阵容 exp/);

@@ -248,7 +248,9 @@ def encounter_index(source, load_rows):
         shilian_battles.setdefault(row.get("group_id"), []).append(key)
         shilian_battles_by_stage.setdefault(numeric_key(row.get("battle_id")), []).append(key)
     shilian_exam_stages = {numeric_key(row.get("battle_id")): key for key, row in table("shilian_event_exam").values()}
-    shilian_route_stages = {numeric_key(row.get("pve_id")): key for key, row in table("shilian_liudao").values()}
+    shilian_route_stages = {}
+    for key, row in table("shilian_liudao").values():
+        shilian_route_stages.setdefault(numeric_key(row.get("pve_id")), []).append(key)
 
     def hunling_references(route):
         region, level, spirit, _ = route
@@ -335,9 +337,8 @@ def encounter_index(source, load_rows):
             trial = relation("shilian_event_exam", shilian_exam_stages.get(stage_id), "六道试炼入口", False)
             if trial:
                 links.append(trial)
-            realm = relation("shilian_liudao", shilian_route_stages.get(stage_id), "六道路线配置", False)
-            if realm:
-                links.append(realm)
+            links.extend(ref for key in shilian_route_stages.get(stage_id, ())
+                         if (ref := relation("shilian_liudao", key, "六道路线配置", False)))
             links.extend(ref for key in shilian_battles_by_stage.get(stage_id, ())
                          if (ref := relation("shilian_event_battles", key, "六道途中战斗配置", False)))
             if route := hunling_routes.get(stage_id):

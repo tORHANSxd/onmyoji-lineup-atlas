@@ -1152,6 +1152,20 @@
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
+    const exams=window.AtlasSixRealmsExams;
+    if(entry.table==='shilian_event_exam'&&matchesOpeningSource(exams)){
+      const exam=groups[0].row,trial=exams.routes[exam?.battle_id];
+      const group=groups.find(({ref})=>ref.table==='BattleMonstersInfo');
+      const realm=groups.find(({ref})=>ref.table==='shilian_liudao');
+      const codeScene=DATA.gameConfig.stages[trial?.codeStageId];
+      if(trial&&exam.dao===trial.dao&&realm?.row?.hero?.join()===trial.eligible.join()&&
+         group?.ref.key===trial.stageId&&group?.row?.resindex===trial.sceneId&&codeScene?.actors===1&&codeScene.shikigami===6){
+        destination.append(node('p','以六位式神的满生命阵容复跑档位 1。途中技能、增益和守护条件见路线资料。','caption'));
+        window.AtlasPveWorkbench?.mount(destination,{stageId:trial.stageId,groupId:group.ref.key,memberCount:6,waveCount:1,
+          battleMode:exams.battleMode,version:exams.resourceVersion,codeStageId:trial.codeStageId,codeLabel:codeScene.name,
+          trialEligible:trial.eligible,label:'六道之门 · 单场首领试炼'});
+      }
+    }
     if(entry.table==='hunling_boss')mountQiLingWindow(destination,Number(entry.key));
     const orochi=AtlasTrueOrochi;
     if(entry.table==='map_boss'&&Number(entry.key)===orochi.stageId&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion&&
