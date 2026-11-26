@@ -950,7 +950,7 @@
       block.append(details);
     }
     destination.append(block);
-    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,skeleton,skeletonX,longche,spiderLive,spiderNormal}=source;
+    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,catfishX,skeleton,skeletonX,longche,spiderLive,spiderNormal}=source;
     const stage=row('pve_stage_data',String(scenario.stage));
     if(scenario.stage===spiderNormal.stageId&&scenario.mode===spiderNormal.battleMode&&route?.scene_engine===spiderNormal.engine.name&&
         stage?.groupid===spiderNormal.stageId&&stage.shishentotal===spiderNormal.memberCount&&formation.resindex===spiderNormal.sceneId){
@@ -991,13 +991,16 @@
         codeStageId:code?.actors===1&&code.shikigami===boss.memberCount?boss.codeStageId:null,codeLabel:code?.name});
       return;
     }
-    if(scenario.stage===catfish.stageId&&scenario.mode===catfish.battleMode&&route?.scene_engine===catfish.engine.name&&
-        stage?.groupid===catfish.stageId&&stage.shishentotal===catfish.memberCount&&formation.resindex===catfish.sceneId){
-      const code=DATA.gameConfig.stages[catfish.codeStageId];
-      destination.append(node('p','用已知阵容从满血开打，跟进海坊主祝福、小猴伤害上限和鸟居结果。可填写开场减伤层数及其他参战者的鸟居成绩。','caption'));
-      window.AtlasPveWorkbench?.mount(destination,{stageId:catfish.stageId,groupId:catfish.stageId,version:source.resourceVersion,
-        battleMode:catfish.battleMode,memberCount:catfish.memberCount,waveCount:1,label:'稀有·地震鲶',catfish:true,
-        codeStageId:code?.actors===1&&code.shikigami===catfish.memberCount?catfish.codeStageId:null,codeLabel:code?.name});
+    const fish=scenario.hard?catfishX:catfish;
+    if(scenario.stage===fish.stageId&&scenario.mode===fish.battleMode&&route?.scene_engine===fish.engine.name&&
+        stage?.groupid===fish.stageId&&stage.shishentotal===fish.memberCount&&formation.resindex===fish.sceneId){
+      const code=DATA.gameConfig.stages[fish.codeStageId];
+      const info=scenario.hard?'用已知阵容从满血开打，跟进皮糙肉厚、小猴增伤和鸟居结果。可设置开场护甲、突变效果和区服上周均时。':
+       '用已知阵容从满血开打，跟进海坊主祝福、小猴伤害上限和鸟居结果。可填写开场减伤层数及其他参战者的鸟居成绩。';
+      destination.append(node('p',info,'caption'));
+      window.AtlasPveWorkbench?.mount(destination,{stageId:fish.stageId,groupId:fish.stageId,version:source.resourceVersion,
+        battleMode:fish.battleMode,memberCount:fish.memberCount,waveCount:1,label:scenario.hard?'极·地震鲶':'稀有·地震鲶',
+        catfish:true,catfishX:scenario.hard,codeStageId:code?.actors===1&&code.shikigami===fish.memberCount?fish.codeStageId:null,codeLabel:code?.name});
       return;
     }
     if(scenario.stage===mirage.stageId&&scenario.mode===mirage.battleMode&&route?.scene_engine===mirage.engine.name&&

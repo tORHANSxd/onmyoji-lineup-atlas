@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -141,7 +141,7 @@ async function main(){
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
   const panel='$("client-dungeons-encounter-detail")';
-  const {encounters,duskWraith,songstress,mirage,catfish,skeleton,skeletonX,longche,spiderLive,spiderNormal}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  const {encounters,duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,spiderLive,spiderNormal}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
   assert.equal(entries.length,12);
   for(const entry of entries){
    const query=entry.title.replace(' · ',' ');
@@ -170,6 +170,12 @@ async function main(){
    }else if(entry.fengmoLive.stage===catfish.stageId){
     assert.match(info,/海坊主祝福、小猴伤害上限和鸟居结果.*小猴编组.*鸟居时限/s);
     assert.equal(await ui(panel+'.querySelector("[data-pve-catfish-window]")?.valueAsNumber'),catfish.defaultWindow);
+   }else if(entry.fengmoLive.stage===catfishX.stageId){
+    assert.match(info,/跟进皮糙肉厚、小猴增伤和鸟居结果.*极版小猴编组.*异变·斗魂的皮糙肉厚/s);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-catfish-weekly]")?.valueAsNumber'),catfishX.weeklyDefault);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-catfish-armor]")?.valueAsNumber'),catfishX.maxArmorStacks);
+    assert.deepEqual(await ui('[...'+panel+'.querySelector("[data-pve-catfish-trait]").options].map(el=>Number(el.value))'),
+     catfishX.traits.map(({id})=>id));
    }else if(entry.fengmoLive.stage===skeleton.stageId){
     assert.match(info,/击败两名真部下.*真假部下线索/s);
     assert.equal(await ui(panel+'.querySelector("[data-pve-skeleton-window]")?.valueAsNumber'),skeleton.defaultWindow);
@@ -388,7 +394,8 @@ async function main(){
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5,10,notes),
    known('spider-normal',10020220,5,10,notes),
    known('dusk-wraith',10020227,5),known('songstress',10020217,6,10,notes),known('mirage',10020218,5,10,notes),
-   known('catfish',10020224,5,10,notes),known('skeleton',10020222,5,10,notes),known('skeleton-x',10020223,5,10,notes),
+   known('catfish',10020224,5,10,notes),known('catfish-x',10020225,5,10,notes),
+   known('skeleton',10020222,5,10,notes),known('skeleton-x',10020223,5,10,notes),
    known('longche',10020226,5,10,notes),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
    known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
@@ -1035,7 +1042,21 @@ async function main(){
      phases:[{phase:'opening',seconds:0,bossHp:7122285},{phase:'boom',seconds:332.06,bossHp:909951}]};
     const catfishReport=await run('catfish',{stageId:25004,groupId:25004,battleMode:3014,catfishSettings},{catfish},tactical);
     assert.match(catfishReport,/击败地震鲶 · 本队伤害 7,938,661.*冲天成功 · 332\.06 秒进场/s);
-    assert.match(catfishReport,/开场减伤 4 层 · 祝福 暴击增益 · 小猴伤害增益 25%.*总击破率 50%/s);
+    assert.match(catfishReport,/开场减伤 4 层 · 祝福 暴击增益 ·\s*小猴伤害增益 25%.*总击破率 50%/s);
+    await encounter('daily','逢魔实战 极·地震鲶');
+    await choose('catfish-x');
+    const catfishArmor='document.querySelector("[data-pve-catfish-armor]")';
+    await ui(catfishArmor+'.value="11";'+catfishArmor+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(catfishArmor+'.getAttribute("aria-invalid")'),'true');
+    await ui(`for(const [field,value,event] of [['armor',1,'input'],['weekly',1200,'input'],['trait',63603,'change']]){
+     const input=document.querySelector('[data-pve-catfish-'+field+']');input.value=value;input.dispatchEvent(new Event(event));
+    }`);
+    const catfishXSettings={windowSeconds:1200,armorStacks:1,otherPlayers:0,otherBreaks:0,trait:63603,weeklySeconds:1200};
+    const catfishExtreme={...catfish,settings:catfishXSettings,armorChanges:[{seconds:0,layers:1},{seconds:290.56,layers:0}]};
+    const catfishXReport=await run('catfish-x',{stageId:45004,groupId:45004,battleMode:4442,catfishSettings:catfishXSettings},
+     {catfish:catfishExtreme},tactical);
+    assert.match(catfishXReport,/击败极·地震鲶.*开场皮糙肉厚 1 层.*异变·斗魂.*皮糙肉厚剩余 0 层.*290\.56 秒 · 皮糙肉厚降至 0 层/s);
     await encounter('daily','逢魔实战 稀有·荒骷髅');
     await choose('skeleton');
     const retainers='[...document.querySelectorAll("[data-pve-skeleton-position]")]';

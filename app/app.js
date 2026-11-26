@@ -208,6 +208,8 @@ function sampleBattleMarkup(samples){
   const song=sample.songstress;
   const mirage=sample.mirage;
   const catfish=sample.catfish;
+  const catfishExtreme=catfish&&sample.battleMode===AtlasFengmoLive.catfishX.battleMode;
+  const catfishName=catfishExtreme?'极·地震鲶':'地震鲶';
   const skeleton=sample.skeletonX??sample.skeleton;
   const skeletonName=sample.skeletonX?'极·荒骷髅':'荒骷髅';
   const longche=sample.longche;
@@ -288,7 +290,7 @@ function sampleBattleMarkup(samples){
     `作战 ${song.combatSeconds.toFixed(2)} / ${song.windowSeconds} 秒`:
    mirage?`${{'boss-defeated':'击败蜃气楼','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[mirage.reason]} · `+
     `本队伤害 ${mirage.damage.toLocaleString('zh-CN')} · 作战 ${mirage.combatSeconds.toFixed(2)} / ${mirage.settings.windowSeconds} 秒`:
-   catfish?`${{'boss-defeated':'击败地震鲶','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[catfish.reason]} · `+
+   catfish?`${{'boss-defeated':`击败${catfishName}`,'team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[catfish.reason]} · `+
     `本队伤害 ${catfish.damage.toLocaleString('zh-CN')} · 作战 ${catfish.combatSeconds.toFixed(2)} / ${catfish.settings.windowSeconds} 秒`:
    skeleton?`${{'boss-defeated':`击败${skeletonName}`,'team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[skeleton.reason]} · `+
     `本队伤害 ${skeleton.damage.toLocaleString('zh-CN')} · 作战 ${skeleton.combatSeconds.toFixed(2)} / ${skeleton.settings.windowSeconds} 秒`:
@@ -412,9 +414,14 @@ function sampleBattleMarkup(samples){
    const percent=value=>value.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2});
    const blessing=source.blessings[catfish.blessing]??(catfish.activeBlessing?`默认${source.blessings[catfish.activeBlessing]}`:'尚未取得');
    const gate=catfish.gate;
-   return `<details><summary>查看地震鲶各阶段</summary><ol>${catfish.phases.map(phase=>
+   return `<details><summary>查看${catfishName}各阶段</summary><ol>${catfish.phases.map(phase=>
     `<li>${source.phases[phase.phase]} · ${phase.seconds.toFixed(2)} 秒进场 · 首领余血 ${percent(phase.bossHp/catfish.maximumHp)}</li>`).join('')}</ol>
-    <p class="caption">开场减伤 ${catfish.settings.armorStacks} 层 · 祝福 ${blessing} · 小猴伤害增益 ${catfish.monkeyBonus===null?'尚未取得':percent(catfish.monkeyBonus)}</p>
+    <p class="caption">${catfishExtreme?'开场皮糙肉厚':'开场减伤'} ${catfish.settings.armorStacks} 层 · 祝福 ${blessing} ·
+     小猴伤害增益 ${catfish.monkeyBonus===null?'尚未取得':percent(catfish.monkeyBonus)}</p>
+    ${catfishExtreme?`<p class="caption">突变效果 ${AtlasFengmoLive.catfishX.traits.find(({id})=>id===catfish.settings.trait).label} ·
+     区服上周平均用时 ${catfish.settings.weeklySeconds} 秒 · 皮糙肉厚剩余 ${catfish.armorChanges.at(-1).layers} 层</p>
+     ${catfish.armorChanges.length>1?`<ol>${catfish.armorChanges.slice(1).map(({seconds,layers})=>
+      `<li>${seconds.toFixed(2)} 秒 · 皮糙肉厚降至 ${layers} 层</li>`).join('')}</ol>`:''}`:''}
     <p class="caption">鸟居限时 ${gate.limitSeconds} 秒 · ${gate.startedAt===null?'尚未进入鸟居阶段':gate.brokenAt===null?'本队未击破':`本队 ${(gate.brokenAt-gate.startedAt).toFixed(2)} 秒击破`}
      ${gate.breakRate===null?'':` · 总击破率 ${percent(gate.breakRate)}`} · 击败纸人 ${catfish.papersDefeated} 位</p></details>`;
   })():'';

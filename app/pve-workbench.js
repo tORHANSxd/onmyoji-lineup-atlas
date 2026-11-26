@@ -7,7 +7,7 @@
  const ghostKingTower=AtlasDevilFeast.tower;
  const laolao=AtlasDevilFeast.laolao;
  const fusion=AtlasDevilFeast.fusion;
- const {duskWraith:dusk,songstress:song,mirage,catfish,skeleton,skeletonX,longche,spiderLive,spiderNormal}=AtlasFengmoLive;
+ const {duskWraith:dusk,songstress:song,mirage,catfish,catfishX,skeleton,skeletonX,longche,spiderLive,spiderNormal}=AtlasFengmoLive;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -221,11 +221,13 @@
    for(const input of pane.miragePositions)input.setAttribute('aria-invalid',String(repeated));
   }
   const catfishSettings=pane.catfishWindow?{windowSeconds:pane.catfishWindow.valueAsNumber,armorStacks:pane.catfishArmor.valueAsNumber,
-   otherPlayers:pane.catfishPlayers.valueAsNumber,otherBreaks:pane.catfishBreaks.valueAsNumber}:null;
-  const catfishReady=!catfishSettings||catfish.validSettings(catfishSettings);
+   otherPlayers:pane.catfishPlayers.valueAsNumber,otherBreaks:pane.catfishBreaks.valueAsNumber,
+   ...(pane.catfishWeekly?{weeklySeconds:pane.catfishWeekly.valueAsNumber,trait:Number(pane.catfishTrait.value)}:{})}:null;
+  const catfishSource=pane.catfishWeekly?catfishX:catfish;
+  const catfishReady=!catfishSettings||catfishSource.validSettings(catfishSettings);
   pane.catfishSettings=catfishReady?catfishSettings:null;
   if(catfishSettings){
-   for(const input of [pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks]){
+   for(const input of [pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,pane.catfishWeekly,pane.catfishTrait].filter(Boolean)){
     input.disabled=blocked;
     input.setAttribute('aria-invalid',String(!input.validity.valid||input===pane.catfishBreaks&&
       catfishSettings.otherBreaks>catfishSettings.otherPlayers));
@@ -336,7 +338,8 @@
    !duskReady?'时长须为 1 至 1200 秒，乐律顺序须包含 2 至 6 号位且各出现一次。':
    !songReady?`计分时长须为 1 至 ${song.windowLimit} 秒的整数。`:
    !mirageReady?'请填写有效的计分时长和入场秒数，并选两个不同的真镜像位置。':
-   !catfishReady?'请核对时长、减伤层数和人数，其他队伍的击破人数不可超过参战人数。':
+   !catfishReady?(pane.catfishWeekly?'请核对时长、皮糙肉厚层数、均时、突变效果和鸟居人数。':
+    '请核对时长、减伤层数和人数，其他队伍的击破人数不可超过参战人数。'):
    !skeletonReady?(pane.skeletonWeekly?'请选择两个不同的真部下位置，并检查时长、均时、突变效果和纸人档位。':
     '请选择两个不同的真部下位置，并填写有效的模拟时长。'):
    !longcheReady?`计分时长须为 1 至 ${longche.windowLimit} 秒，修理时限须为 1 至 ${longche.repairLimit} 秒，均填写整数。`:
@@ -371,6 +374,7 @@
  }
 
  function mount(target,config){
+  const catfishSource=config.catfishX?catfishX:catfish;
   const skeletonSource=config.skeletonX?skeletonX:skeleton;
   if(!api?.pveStatus)return;
   cancel(true);
@@ -379,7 +383,8 @@
   section.innerHTML=`<h4>模拟已知阵容</h4>
    <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子${config.scoreWindowSeconds?
     ` · ${config.retreat||config.qilingWindow||config.creviceWindow||config.ghostSettings||config.historicalGhostWindow?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
-   <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive||config.spiderNormal?' id="pve-spider-live-status"':config.skeleton?' id="pve-skeleton-status"':''} data-pve-status role="status"></p>
+   <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive||config.spiderNormal?' id="pve-spider-live-status"':
+    config.skeleton?' id="pve-skeleton-status"':config.catfish?' id="pve-catfish-status"':''} data-pve-status role="status"></p>
    <div class="actions">
     <label class="pve-lineup-field">已知阵容 <select data-pve-lineup></select></label>
     ${config.trialEligible?`<label class="pve-lineup-field">试炼式神位置 <select data-pve-trial>
@@ -387,7 +392,8 @@
     ${Array.from({length:config.memberCount},(_,i)=>`<option value="${i+1}">阵容中第 ${i+1} 位式神</option>`).join('')}
     </select></label>`:''}
     <button class="secondary" type="button"${config.longche?' aria-describedby="pve-longche-status"':
-    config.spiderLive||config.spiderNormal?' aria-describedby="pve-spider-live-status"':config.skeleton?' aria-describedby="pve-skeleton-status"':''} data-pve-start>开始离线模拟</button>
+    config.spiderLive||config.spiderNormal?' aria-describedby="pve-spider-live-status"':
+    config.skeleton?' aria-describedby="pve-skeleton-status"':config.catfish?' aria-describedby="pve-catfish-status"':''} data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
    ${config.journeyHard?`<div class="actions">
@@ -486,14 +492,21 @@
      </label>`:''}
     </div>
    </fieldset>`:''}
-   ${config.catfish?`<fieldset class="pve-reserve"><legend>地震鲶模拟条件</legend>
+   ${config.catfish?`<fieldset class="pve-reserve"><legend>${config.catfishX?'极·':''}地震鲶模拟条件</legend>
     <div class="actions">
      <label class="pve-lineup-field">本地计分时长（秒）
-      <input data-pve-catfish-window type="number" min="1" max="${catfish.windowLimit}" step="1" value="${catfish.defaultWindow}" required>
+      <input data-pve-catfish-window type="number" min="1" max="${catfishSource.windowLimit}" step="1" value="${catfishSource.defaultWindow}" required>
      </label>
-     <label class="pve-lineup-field">开场减伤层数
-      <input data-pve-catfish-armor type="number" min="0" max="${catfish.maxArmorStacks}" step="1" value="0" required>
+     <label class="pve-lineup-field">${config.catfishX?'开场皮糙肉厚层数':'开场减伤层数'}
+      <input data-pve-catfish-armor type="number" min="0" max="${catfishSource.maxArmorStacks}" step="1" value="${config.catfishX?catfishSource.maxArmorStacks:0}" required>
      </label>
+     ${config.catfishX?`<label class="pve-lineup-field">本场突变效果
+      <select data-pve-catfish-trait required>${catfishX.traits.map(({id,label})=>
+       `<option value="${id}" ${id===catfishX.defaultTrait?'selected':''}>${label}</option>`).join('')}</select>
+     </label>
+     <label class="pve-lineup-field">区服上周平均用时（秒）
+      <input data-pve-catfish-weekly type="number" min="1" max="${catfishX.weeklyLimit}" step="1" value="${catfishX.weeklyDefault}" required>
+     </label>`:''}
     </div>
     <details><summary>设置其他参战者的鸟居结果</summary>
      <div class="actions">
@@ -653,6 +666,7 @@
    mirageWindow:part('mirage-window'),mirageGeneral:part('mirage-general'),miragePositions:all('mirage-position'),
    catfishWindow:part('catfish-window'),catfishArmor:part('catfish-armor'),
    catfishPlayers:part('catfish-players'),catfishBreaks:part('catfish-breaks'),
+   catfishWeekly:part('catfish-weekly'),catfishTrait:part('catfish-trait'),
    skeletonWindow:part('skeleton-window'),skeletonPositions:all('skeleton-position'),
    skeletonWeekly:part('skeleton-weekly'),skeletonTrait:part('skeleton-trait'),skeletonPaper:part('skeleton-paper'),
    longcheWindow:part('longche-window'),longcheRepair:part('longche-repair'),longcheCommander:part('longche-commander'),
@@ -670,14 +684,14 @@
   for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,
-   ...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.spiderLiveTrait,pane.spiderNormalWeakPart].filter(Boolean))field.onchange=()=>{
+   pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.spiderLiveTrait,pane.spiderNormalWeakPart].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
   for(const field of [pane.eventMoves,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.mirageWindow,pane.mirageGeneral,
-   pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,
+   pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,pane.catfishWeekly,
    pane.skeletonWindow,pane.skeletonWeekly,pane.longcheWindow,pane.longcheRepair,pane.spiderLiveWindow,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;

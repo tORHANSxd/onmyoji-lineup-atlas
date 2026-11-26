@@ -134,6 +134,18 @@
     between(armorStacks,0,this.maxArmorStacks)&&between(otherPlayers,0,this.maxOtherPlayers)&&between(otherBreaks,0,otherPlayers);
   },
  };
+ const catfishX={
+  ...catfish,stageId:45004,battleMode:4442,codeStageId:10020225,boss:4991030,monkey:4991032,gate:4991031,
+  fish:catfish.fish.map(([position,id])=>[position,id-5000000]),
+  defaultWindow:1200,maxArmorStacks:10,traits:rotationTraits,defaultTrait:63402,weeklyDefault:480,weeklyLimit:1200,
+  engine:{name:'DiZhenNianXEngine',route:'catfish-x-local-team',
+   sha256:'a46ad3ff631d90ecfea5c8b3be592f6562d8f97f39401d693ddb4d07acff69bc'},
+  validSettings(settings){
+   const {trait,weeklySeconds,...room}=settings??{};
+   return catfish.validSettings(room)&&room.armorStacks<=this.maxArmorStacks&&
+    this.traits.some(row=>row.id===trait)&&Number.isSafeInteger(weeklySeconds)&&weeklySeconds>=1&&weeklySeconds<=this.weeklyLimit;
+  },
+ };
  const mirage={
   stageId:25015,battleMode:3013,codeStageId:10020218,sceneId:40021,boss:9991106,general:9991107,paper:9991112,
   memberCount:5,windowLimit:1200,defaultWindow:600,defaultGeneralSeconds:10,maxGeneralSeconds:120,
@@ -215,6 +227,15 @@
      ...[[4151,'小猴和鸟居的首领血线'],[4152,'海坊主祝福效果'],[4155,'鸟居击破比例门槛'],[4156,'鸟居时限'],[4161,'妖琴师助战']].map(([id,label])=>ref('Constant',id,label)),
      ...[[520,'首领减伤层数'],[523,'小猴击退增益']].map(([id,label])=>ref('buff',{$tuple:[id,1]},label)));
    }
+   if(route.stage===catfishX.stageId){
+    refs.push(...[[100,'海坊主祝福编组'],[300,'极版小猴编组'],[400,'极版鸟居编组'],[500,'击破鸟居后的纸人']]
+     .map(([id,label])=>ref('dizhennianx_stage',{$tuple:[id,1]},label)),
+     ...[[4151,'小猴和鸟居的首领血线'],[4152,'海坊主祝福效果'],[4155,'鸟居击破比例门槛'],[4156,'鸟居时限'],
+      [4161,'妖琴师助战'],[10900,'共享生命参考均时']].map(([id,label])=>ref('Constant',id,label)),
+     ...[[70001,1,'皮糙肉厚'],[70001,2,'异变·斗魂的皮糙肉厚'],[70002,1,'小猴增伤']]
+      .map(([id,level,label])=>ref('buff',{$tuple:[id,level]},label)),
+     ref('skill',{$tuple:[44514,1,-1]},'皮糙肉厚移除后触发的首领技能'));
+   }
    if(route.stage===mirage.stageId){
     refs.push(...[[1100,'大将召唤编组'],[1200,'秘宝小纸人编组'],[1300,'镜像共享生命模板']].map(([id,label])=>ref('dizhennian_stage',{$tuple:[id,1]},label)),
      ...[[4011,'镜像属性倍率'],[4012,'镜像属性修正'],[4013,'蜃气勘破时长'],[4021,'缺少镜像模板时的大将']].map(([id,label])=>ref('Constant',id,label)),
@@ -256,5 +277,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton,skeletonX,longche,spiderLive,spiderNormal};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,spiderLive,spiderNormal};
 });
