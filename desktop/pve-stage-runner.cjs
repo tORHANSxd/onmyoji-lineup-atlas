@@ -54,16 +54,20 @@ function validSixRealmsEvent(event){
 }
 
 function validSixRealmsState(state){
- if(!state||Object.keys(state).some(key=>!['lifeCaps','marks','skills'].includes(key)))return false;
- const {lifeCaps,marks,skills=[]}=state;
+ if(!state||Object.keys(state).some(key=>!['lifeCaps','marks','skills','artifacts','coins'].includes(key)))return false;
+ const {lifeCaps,marks,skills=[],artifacts=[],coins=0}=state;
  return Array.isArray(lifeCaps)&&lifeCaps.length===6&&lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100)&&
   Array.isArray(marks)&&marks.length===6&&marks.every(mark=>Number.isSafeInteger(mark)&&mark>=0)&&
   Array.isArray(skills)&&skills.length<=sixRealms.maxRunSkills&&
   skills.every(row=>Array.isArray(row)&&row.length===2&&positive(row[0])&&[1,2,3,4,5].includes(row[1]))&&
-  new Set(skills.map(row=>row[0])).size===skills.length;
+  new Set(skills.map(row=>row[0])).size===skills.length&&
+  Number.isSafeInteger(coins)&&coins>=0&&Array.isArray(artifacts)&&artifacts.length<=sixRealms.maxRunArtifacts&&
+  artifacts.every(row=>Array.isArray(row)&&row.length===3&&positive(row[0])&&positive(row[1])&&
+   Array.isArray(row[2])&&row[2].every(round=>Number.isSafeInteger(round)&&round>=0))&&
+  new Set(artifacts.map(row=>row[0])).size===artifacts.length;
 }
 
-function validSixRealmsStateReport(proof,state){
+function validSixRealmsStateReport(proof,state,dao){
  const ordering=proof?.opening;
  return Array.isArray(ordering)&&ordering.length===6&&ordering.every((unit,i)=>unit&&unit.slot===i+1&&
   unit.lifeCap===state.lifeCaps[i]&&unit.markId===state.marks[i]&&
@@ -71,7 +75,24 @@ function validSixRealmsStateReport(proof,state){
   Number.isFinite(unit.baseHp)&&unit.baseHp>0&&Number.isFinite(unit.maxHp)&&unit.maxHp>=0&&Number.isFinite(unit.hp)&&unit.hp>=0&&
   Math.abs(100*unit.maxHp/unit.baseHp-unit.lifeCap)<1e-7)&&
   (!state.skills?.length||Array.isArray(proof.skills)&&proof.skills.length===state.skills.length&&
-   proof.skills.every((row,i)=>row?.itemId===state.skills[i][0]&&row.level===state.skills[i][1]&&positive(row.skillId)&&typeof row.name==='string'));
+   proof.skills.every((row,i)=>row?.itemId===state.skills[i][0]&&row.level===state.skills[i][1]&&positive(row.skillId)&&typeof row.name==='string'))&&
+  (!state.artifacts?.length||validArtifactReport(proof,state,dao));
+}
+
+function validArtifactReport(proof,state,dao){
+ return proof.coins===(state.coins??0)&&Number.isSafeInteger(proof.coinCost)&&proof.coinCost>=0&&
+  Array.isArray(proof.artifacts)&&proof.artifacts.length===state.artifacts.length&&proof.artifacts.every((row,i)=>{
+   const [id,amount,rounds]=state.artifacts[i];
+   const schedule=rounds.slice().sort((a,b)=>a-b);
+   if(row?.itemId!==id||row.amount!==amount||row.level!==(dao===4?amount:1)||!positive(row.skillId)||
+      typeof row.name!=='string'||!Array.isArray(row.requests)||row.requests.length!==rounds.length)return false;
+   const confirmed=row.requests.filter(request=>Number.isSafeInteger(request?.castRound)).length;
+   return row.remainingUses===(dao===4?1:amount-confirmed)&&row.remainingUses>=0&&row.requests.every((request,index)=>
+    request?.notBeforeRound===schedule[index]&&
+    (request.requestedRound===null||Number.isSafeInteger(request.requestedRound)&&request.requestedRound>=schedule[index])&&
+    (request.castRound===null?request.castMs===null:Number.isSafeInteger(request.castRound)&&request.requestedRound!==null&&
+     request.castRound>=request.requestedRound&&Number.isSafeInteger(request.castMs)&&request.castMs>=0));
+  });
 }
 
 function validTactics(plan,battleMode){
@@ -360,7 +381,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===orochi.battleMode&&!validOrochiReport(report,rounds[0]))||
     (hunlingRoute&&!validHunlingReport(report,hunlingRoute,capture))||
     (qilingEntry&&!validQiLingReport(report,qilingEntry,qilingWindow,rounds[0]))||
-    invalidTrial||invalidEvent||(sixRealmsState&&!validSixRealmsStateReport(trial?.runState,sixRealmsState))||
+    invalidTrial||invalidEvent||(sixRealmsState&&!validSixRealmsStateReport(trial?.runState,sixRealmsState,sixRealmsRoute.dao))||
     (regionModes.includes(battleMode)&&!validRegionalReport(report,region))||
     (secret&&(report.sceneId!==secret.sceneId||report.waveCount!==secret.waves.length||
       !Number.isSafeInteger(report.formationsVerified)||report.formationsVerified<report.wavesCleared||
@@ -458,7 +479,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(isSixRealmsEvent?!validSixRealmsEvent(sixRealmsEvent):sixRealmsEvent!==undefined)
     throw Error('六道之门途中战斗需要有效的原版事件、难度档位和前行步数');
    if(sixRealmsState!==undefined&&(!sixRealmsRoute||!validSixRealmsState(sixRealmsState)))
-    throw Error('六道之门途中状态需要六位式神的生命上限和印记设置');
+    throw Error('六道之门途中状态的生命上限、印记、技能或秘宝设置无效');
    const qilingEntry=battleMode===qilingGroups.battleMode?qilingGroups.routes[stageId]:null;
    if(battleMode===qilingGroups.battleMode&&(qilingGroups.resourceVersion!==resourceVersion||qilingEntry?.groupId!==groupId||
       plan.members.length!==5||!validQiLingWindow(qilingWindow,qilingEntry))||qilingWindow!==undefined&&!qilingEntry)

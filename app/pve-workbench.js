@@ -86,6 +86,16 @@
  const active=run=>job===run&&pane===run.pane&&!run.cancelled&&DATA===run.data&&usesDungeonInventory(run);
  const ready=()=>runtime?.available&&runtime.resourceVersion===pane.version&&
   (runtime.battleModes??[3]).includes(pane.battleMode??3);
+ function readArtifact(pane){
+  const id=Number(pane.artifactChoice.value),amount=pane.artifactAmount.valueAsNumber;
+  const rule=pane.artifactOptions.find(row=>row.id===id);
+  const entries=pane.artifactRounds.value.trim().split(/[,，\s]+/).filter(Boolean);
+  const rounds=entries.map(Number);
+  if(!rule||!Number.isSafeInteger(amount)||amount<1||!entries.every(value=>/^\d+$/.test(value))||
+     !rounds.every(Number.isSafeInteger)||(pane.artifactRefinement?amount>rule.maxRefinement:rounds.length>amount))return null;
+  return [id,amount,rounds];
+ }
+
  function update(){
   if(!pane)return;
   const available=knownLineups(),hasAccount=!!account(),blocked=runeBusy();
@@ -108,6 +118,8 @@
   const eventReady=!pane.eventMoves||Number.isSafeInteger(moves)&&moves>=0;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
+  const coins=pane.artifactCoins?.valueAsNumber;
+  const coinsReady=!pane.artifactCoins||Number.isSafeInteger(coins)&&coins>=0;
   for(const field of [...pane.lifeCaps,...pane.marks])field.disabled=blocked;
   if(pane.skillChoice){
    pane.skillChoice.disabled=blocked;
@@ -115,6 +127,15 @@
    pane.addSkill.disabled=blocked||!pane.skillChoice.value||pane.skills.length>=pane.maxRunSkills||
     pane.skills.some(([id])=>id===Number(pane.skillChoice.value));
    for(const button of pane.skillList.querySelectorAll('button'))button.disabled=blocked;
+  }
+  if(pane.artifactChoice){
+   const candidate=readArtifact(pane);
+   for(const field of [pane.artifactChoice,pane.artifactAmount,pane.artifactRounds,pane.artifactCoins])field.disabled=blocked;
+   pane.addArtifact.disabled=blocked||!candidate||pane.artifacts.length>=pane.maxRunArtifacts||
+    pane.artifacts.some(([id])=>id===candidate[0]);
+   pane.artifactHint.textContent=pane.artifactChoice.value&&!candidate?
+    (pane.artifactRefinement?'核对该秘宝的淬炼等级和施放回合。':'次数须覆盖计划施放次数，回合须为大于或等于 0 的整数。'):'';
+   for(const button of pane.artifactList.querySelectorAll('button'))button.disabled=blocked;
   }
   if(pane.trial)pane.trial.disabled=blocked;
   if(pane.eventMoves){
@@ -132,7 +153,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!stateReady||!coinsReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -144,6 +165,7 @@
    !captureReady?'请选择三个不同的出战式神位置。':
    !eventReady?'前行步数应为大于或等于 0 的整数。':
    !stateReady?'生命上限应在 0% 至 100% 之间。':
+   !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
    selected.length?`已选 ${selected.length} 套已知阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
    available.length?'从下拉列表选择，或先在阵容库勾选对应阵容。':'阵容库暂无可用于此副本的完整阵容。请先解析或手动制作阵容码。';
@@ -219,6 +241,22 @@
      </div>
      <ul data-pve-skill-list></ul>
     </fieldset>`:''}
+    ${config.artifactOptions?.length?`<fieldset class="pve-reserve pve-run-skills">
+     <legend>秘宝</legend>
+     <p class="caption">最多 ${config.maxRunArtifacts} 种。回合 0 为开场，多个回合用逗号隔开，留空时只携带秘宝。</p>
+     <div class="actions">
+      <label class="pve-lineup-field">秘宝 <select data-pve-artifact-choice><option value="">选择秘宝</option>
+       ${config.artifactOptions.map(({id,name,description})=>`<option value="${esc(id)}" title="${esc(description)}">${esc(name)}</option>`).join('')}
+      </select></label>
+      <label class="pve-lineup-field">${config.artifactRefinement?'淬炼等级':'可用次数'}
+       <input data-pve-artifact-amount type="number" value="1" min="1" step="1" required></label>
+      <label class="pve-lineup-field">最早施放回合 <input data-pve-artifact-rounds type="text" placeholder="0，6"></label>
+      <button class="secondary" type="button" data-pve-add-artifact>添加秘宝</button>
+      <label class="pve-lineup-field">万相铃 <input data-pve-artifact-coins type="number" value="0" min="0" step="1" required></label>
+     </div>
+     <p class="caption" data-pve-artifact-hint role="status"></p>
+     <ul data-pve-artifact-list></ul>
+    </fieldset>`:''}
    </details>`:''}
    ${config.battleMode===AtlasTrueOrochi.battleMode?`<fieldset class="pve-reserve">
     <legend>备选阵容</legend>
@@ -241,14 +279,16 @@
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
    skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
+   artifactChoice:part('artifact-choice'),artifactAmount:part('artifact-amount'),artifactRounds:part('artifact-rounds'),
+   artifactCoins:part('artifact-coins'),artifactHint:part('artifact-hint'),addArtifact:part('add-artifact'),artifactList:part('artifact-list'),artifacts:[],
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.eventDifficulty,pane.skillChoice].filter(Boolean))field.onchange=()=>{
+  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.eventDifficulty,pane.skillChoice,pane.artifactChoice].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
-  for(const field of [pane.eventMoves,...pane.lifeCaps,...pane.marks].filter(Boolean))field.oninput=()=>{
+  for(const field of [pane.eventMoves,...pane.lifeCaps,...pane.marks,pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -273,6 +313,33 @@
     pane.skills=pane.skills.filter(([id])=>id!==Number(button.dataset.removeSkill));
     renderSkills();
     pane.skillChoice.focus();
+   };
+  }
+  if(pane.artifactChoice){
+   const renderArtifacts=()=>{
+    pane.artifactList.innerHTML=pane.artifacts.map(([id,amount,rounds])=>{
+     const name=pane.artifactOptions.find(option=>option.id===id).name;
+     const amountLabel=pane.artifactRefinement?`淬炼 ${amount} 级`:`${amount} 次`;
+     return `<li>${esc(name)} · ${amountLabel} · ${rounds.length?'最早 '+rounds.join('、')+' 回合':'仅携带'}
+      <button class="secondary" type="button" data-remove-artifact="${id}" aria-label="移除${esc(name)}">移除</button></li>`;
+    }).join('');
+    if(job&&!busy())job.notice=null;
+    update();
+   };
+   pane.addArtifact.onclick=()=>{
+    const selection=readArtifact(pane);
+    if(!selection)return;
+    pane.artifacts.push(selection);
+    pane.artifactChoice.value='';
+    pane.artifactRounds.value='';
+    renderArtifacts();
+   };
+   pane.artifactList.onclick=event=>{
+    const button=event.target.closest('[data-remove-artifact]');
+    if(!button)return;
+    pane.artifacts=pane.artifacts.filter(([id])=>id!==Number(button.dataset.removeArtifact));
+    renderArtifacts();
+    pane.artifactChoice.focus();
    };
   }
   pane.stop.onclick=()=>cancel();
@@ -463,10 +530,12 @@
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3)return;
   const focus=document.activeElement===pane.start;
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
+  const artifacts=pane.artifacts.slice(),coins=pane.artifactCoins?.valueAsNumber??0;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
-   sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length?{lifeCaps,marks,...(skills.length?{skills}:{})}:null,
+   sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length||artifacts.length||coins?
+    {lifeCaps,marks,...(skills.length?{skills}:{}),...(artifacts.length?{artifacts}:{}),...(coins?{coins}:{})}:null,
    startingInventory:reserve?reserveInventory(reserve,inventory):inventory,
    pveMemberCount:pane.memberCount,message:'正在准备库存…'};
   pane.results.replaceChildren();

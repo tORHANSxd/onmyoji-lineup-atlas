@@ -9,6 +9,7 @@ from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, SHILIAN_EVENT_MODE, 
 REPLAY_SECONDS = 145
 TRIAL_DIFFICULTY = 1
 MAX_RUN_SKILLS = 4
+MAX_RUN_ARTIFACTS = 3
 
 
 def shilian_stage(stage_id, fighters, slot, event=None, run_state=None):
@@ -39,6 +40,7 @@ def shilian_stage(stage_id, fighters, slot, event=None, run_state=None):
     engine_class = getattr(import_module("battleengine.engine." + engine_name), engine_name)
     life_caps, marks = run_state_inputs(run_state, fighters, fighters[alias]["heroId"])
     skills = run_skills(run_state, fighters[alias]["heroId"])
+    artifacts = run_artifacts(run_state, dao, fighters[alias]["heroId"])
     engine = engine_class({
         "pve_data_flag": str(stage_id),
         "dao_id": dao,
@@ -49,6 +51,8 @@ def shilian_stage(stage_id, fighters, slot, event=None, run_state=None):
         "hero_attr_info": life_caps,
         "yinji_info": marks,
         "select_skill": [(skill, level) for _, skill, level, _ in skills],
+        "scroll_skill": [[artifact["skillId"], artifact["amount"]] for artifact in artifacts],
+        "currencys": {"601001": (run_state or {}).get("coins", 0)},
         "difficulty": TRIAL_DIFFICULTY if event is None else event["difficulty"],
         "move_count": 0 if event is None else event["moves"],
         "battle_type": config["battle_type"],
@@ -84,13 +88,14 @@ def run_state_inputs(state, roster, trial_id):
 
 
 def valid_run_state(state):
-    if not isinstance(state, dict) or set(state) - {"skills"} != {"lifeCaps", "marks"}:
+    if not isinstance(state, dict) or set(state) - {"skills", "artifacts", "coins"} != {"lifeCaps", "marks"}:
         return False
     caps, marks = state["lifeCaps"], state["marks"]
     return (isinstance(caps, list) and isinstance(marks, list) and len(caps) == len(marks) == 6
             and all(type(cap) in (int, float) and 0 <= cap <= 100 for cap in caps)
             and all(type(mark) is int and 0 <= mark < 2 ** 53 for mark in marks)
-            and valid_run_skills(state.get("skills", [])))
+            and valid_run_skills(state.get("skills", [])) and valid_run_artifacts(state.get("artifacts", []))
+            and type(state.get("coins", 0)) is int and 0 <= state.get("coins", 0) < 2 ** 53)
 
 
 def valid_run_skills(skills):
@@ -116,6 +121,38 @@ def run_skills(state, trial_id):
         if not rule or rule["hero_id"] not in (0, trial_id) or (skill, level, -1) not in DATA_SKILL.data:
             raise ValueError("The Six Realms skill and level are unavailable for the selected trial shikigami")
         resolved.append((item, skill, level, row["name"]))
+    return resolved
+
+
+def valid_run_artifacts(artifacts):
+    return (isinstance(artifacts, list) and len(artifacts) <= MAX_RUN_ARTIFACTS
+            and all(isinstance(row, list) and len(row) == 3
+                    and all(type(value) is int and 0 < value < 2 ** 53 for value in row[:2])
+                    and isinstance(row[2], list)
+                    and all(type(turn) is int and 0 <= turn < 2 ** 53 for turn in row[2])
+                    for row in artifacts)
+            and len({row[0] for row in artifacts}) == len(artifacts))
+
+
+def run_artifacts(state, dao, trial_id):
+    if not state or not state.get("artifacts"):
+        return []
+    from com.data.cdata import shilian_currency, shilian_fight_skill
+    from DynamicConfigData import DATA_SKILL
+
+    resolved = []
+    for item, amount, rounds in state["artifacts"]:
+        row = shilian_currency.data.get(item)
+        if not row or row["type"] != 2 or len(row["extra_params"]) != 1:
+            raise ValueError("Unknown Six Realms artifact")
+        skill = int(row["extra_params"][0])
+        rule = shilian_fight_skill.data.get(skill, {})
+        level, uses = (amount, 1) if dao == 4 else (1, amount)
+        if (rule.get("hero_id", 0) not in (0, trial_id) or (skill, level, -1) not in DATA_SKILL.data
+                or (dao != 4 and len(rounds) > uses)):
+            raise ValueError("The Six Realms artifact does not match the route, level or available uses")
+        resolved.append({"itemId": item, "skillId": skill, "name": row["name"], "amount": amount,
+                         "level": level, "uses": uses, "rounds": rounds})
     return resolved
 
 
@@ -226,3 +263,68 @@ class MoonTrial:
             raise RuntimeError("The Moon trial settled with inconsistent boss phases")
         return {"phases": self.openings, "phasesCleared": cleared,
                 "montageWaitMs": self.waiting_ms + self.wait_since_last_phase()}
+
+
+class ArtifactReplay:
+    """Submit configured artifact requests and observe the native cast callback."""
+
+    def __init__(self, engine, controller, const, state, dao, start):
+        self.engine, self.controller, self.const = engine, controller, const
+        self.artifacts = run_artifacts(state, dao, engine.trial_hero_id)
+        self.coins, self.start = state.get("coins", 0), start
+        self.requests = [{"index": index, "notBeforeRound": turn, "requestedRound": None, "castRound": None,
+                          "castMs": None}
+                         for index, artifact in enumerate(self.artifacts) for turn in artifact["rounds"]]
+        self.requests.sort(key=lambda request: request["notBeforeRound"])
+        self.pending = None
+        self.pending_hero = None
+        self.used_skill = engine.used_skill
+        engine.used_skill = self.record_cast
+
+    def verify_opening(self):
+        expected = [[artifact["skillId"], artifact["uses"]] for artifact in self.artifacts]
+        trial = self.engine.get_trial_hero()
+        if self.engine.scroll_skill_usage != expected or self.engine.coin_num != self.coins:
+            raise RuntimeError("The original engine did not load the requested artifacts and currency")
+        for artifact in self.artifacts:
+            component = trial.SkillMgrComp.getSkillComp(artifact["skillId"])
+            if component is None or component._skillLevel != artifact["level"]:
+                raise RuntimeError("The original engine did not install the expected artifact skill")
+
+    def update(self, fighting):
+        if not fighting:
+            return
+        trial = self.engine.get_trial_hero()
+        if not trial or trial.lifeState != self.const.CombatState.ALIVE:
+            self.pending = None
+            self.pending_hero = None
+            return
+        if self.pending and self.pending_hero == trial.uid:
+            return
+        self.pending = None
+        for request in self.requests:
+            if (request["requestedRound"] is None and self.engine.lbs_bout_counter >= request["notBeforeRound"]
+                    and self.engine.check_scroll_skill_available(request["index"])):
+                request["requestedRound"] = self.engine.lbs_bout_counter
+                self.pending = request
+                self.pending_hero = trial.uid
+                self.engine.op_useScrollSkill(self.controller, request["index"])
+                break
+
+    def record_cast(self, skill_id, index):
+        self.used_skill(skill_id, index)
+        if self.pending and index == self.pending["index"] and self.artifacts[index]["skillId"] == skill_id:
+            self.pending["castRound"] = self.engine.lbs_bout_counter
+            self.pending["castMs"] = round((self.engine.now_time() - self.start) * 1000)
+            self.pending = None
+            self.pending_hero = None
+
+    def report(self):
+        return {
+            "artifacts": [{**{key: artifact[key] for key in ("itemId", "skillId", "name", "amount", "level")},
+                           "remainingUses": self.engine.scroll_skill_usage[index][1],
+                           "requests": [{key: request[key] for key in ("notBeforeRound", "requestedRound", "castRound", "castMs")}
+                                        for request in self.requests if request["index"] == index]}
+                          for index, artifact in enumerate(self.artifacts)],
+            "coins": self.coins, "coinCost": self.engine.coin_cost_num,
+        }

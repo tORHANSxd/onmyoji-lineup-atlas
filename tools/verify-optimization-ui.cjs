@@ -454,20 +454,32 @@ async function main(){
     await selectSkill(650027);
     await ui(level+'.value="3";'+add+'.click();document.querySelector("[data-remove-skill=\'650027\']").click()');
     assert.match(await ui('document.querySelector("[data-pve-skill-list]").textContent'),/生命加成 · 2 级/);
+    const artifact='document.querySelector("[data-pve-artifact-choice]")',rounds='document.querySelector("[data-pve-artifact-rounds]")';
+    const addArtifact='document.querySelector("[data-pve-add-artifact]")';
+    await ui(artifact+'.value="660012";'+artifact+'.dispatchEvent(new Event("change"));'+rounds+'.value="0，1";'+rounds+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(addArtifact+'.disabled'),true);
+    await ui(rounds+'.value="0";'+rounds+'.dispatchEvent(new Event("input"));'+addArtifact+'.click()');
+    const coins='document.querySelector("[data-pve-artifact-coins]")';
+    await ui(coins+'.value="1234";'+coins+'.dispatchEvent(new Event("input"))');
+    assert.match(await ui('document.querySelector("[data-pve-artifact-list]").textContent'),/乾坤袋 .*最早 0 回合/);
     assert.equal(await ui(start+'.disabled'),false);
-    const state={lifeCaps:[98.75,0,100,100,100,100],marks:[0,0,0,0,0,670093],skills:[[650029,2]]};
+    const state={lifeCaps:[98.75,0,100,100,100,100],marks:[0,0,0,0,0,670093],skills:[[650029,2]],
+     artifacts:[[660012,1,[0]]],coins:1234};
     mockPve=(plan,request)=>{
      assert.deepEqual(request,{battleMode:208,stageId:700101,groupId:700101,seed:request.seed,damageFloor:true,trialSlot:6,
       sixRealmsEvent:{id:113,difficulty:3,moves:12},sixRealmsState:state});
      return {...sample,seed:request.seed,sixRealms:{dao:2,trialSlot:6,trialHero:217,difficulty:3,rounds:4,
       eventId:113,moveCount:12,battleType:0,enemyAttributeBonus:.12,
       runState:{opening:state.lifeCaps.map((lifeCap,i)=>({lifeCap,markId:state.marks[i]})),
-       skills:[{itemId:650029,skillId:66822,level:2,name:'生命加成'}]}}};
+       skills:[{itemId:650029,skillId:66822,level:2,name:'生命加成'}],coins:1234,coinCost:1000,
+       artifacts:[{itemId:660012,skillId:67612,name:'乾坤袋',amount:1,level:1,remainingUses:0,
+        requests:[{notBeforeRound:0,requestedRound:0,castRound:0,castMs:4600}]}]}}};
     };
     await ui(start+'.click()');
     await until(status+'.textContent.includes("全随机分支待验证")',20000);
     assert.match(await ui(reports+'.textContent'),/档位 3 · 前行 12 步 · 敌方属性系数加成 12%/);
     assert.match(await ui(reports+'.textContent'),/开场生命上限 98\.75% \/ 0%.*印记 1 枚 · 途中技能 生命加成 2 级/);
+    assert.match(await ui(reports+'.textContent'),/秘宝 乾坤袋 · 剩余 0 次 · 第 0 回合施放（4\.60 秒） · 万相铃消耗 1000/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='800017'&&entry.kind==='契灵之境')){
     await encounter('daily','契灵之境 平安京 770005');

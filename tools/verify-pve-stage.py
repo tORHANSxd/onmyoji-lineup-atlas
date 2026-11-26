@@ -22,7 +22,7 @@ def replay(args, runtime, work):
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, SHILIAN_MODES
-    from shilian_stage import MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, shilian_stage, verify_opening, verify_run_state
+    from shilian_stage import ArtifactReplay, MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, shilian_stage, verify_opening, verify_run_state
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
@@ -411,6 +411,8 @@ def replay(args, runtime, work):
     trial_hero = None
     event_bonus = None
     shilian_opening = None
+    artifact_replay = (ArtifactReplay(engine, controller, const, args.shilian_state, dao, start)
+                       if shilian and args.shilian_state and args.shilian_state.get("artifacts") else None)
     if tactics:
         boss = raid.boss["protoId"] if retreat else group["MonstersInfos"][0][0][1] if yanwu or qiling else stage["monsters"][0][0]
         instructions = HuntOpening(engine, controller, const, tactics, boss)
@@ -418,8 +420,15 @@ def replay(args, runtime, work):
         engine.update()
         if shilian and args.shilian_state and shilian_opening is None and engine.battleState == const.BattleState.BS_STARTED:
             shilian_opening = verify_run_state(engine, controller, args.shilian_state)
+            if artifact_replay:
+                artifact_replay.verify_opening()
         if moon_trial:
             moon_trial.update()
+        if artifact_replay:
+            fighting = engine.battleState == const.BattleState.BS_STARTED
+            if moon_trial:
+                fighting = fighting and moon_trial.phase in (moon_trial.phase_enum.HIT_MAN, moon_trial.phase_enum.HIT_WOMEN)
+            artifact_replay.update(fighting)
         if host.oracle.unsupported:
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
         if regional_replay and regional_replay.eligible is False:
@@ -535,6 +544,8 @@ def replay(args, runtime, work):
             if shilian_opening is None:
                 raise RuntimeError("The original Six Realms engine did not start the requested run state")
             report["sixRealms"]["runState"] = shilian_opening
+            if artifact_replay:
+                shilian_opening.update(artifact_replay.report())
         if moon_trial:
             phases = moon_trial.report(report["outcome"])
             report["sixRealms"].update(phases)
@@ -648,7 +659,7 @@ def main():
     if (args.mode in SHILIAN_MODES) != (args.shilian_trial_slot is not None):
         parser.error("A Six Realms trial needs an explicit eligible roster position")
     if args.shilian_state is not None and (args.mode not in SHILIAN_MODES or not valid_run_state(args.shilian_state)):
-        parser.error("A Six Realms run state needs six life caps, six mark selections, and valid optional skills")
+        parser.error("A Six Realms run state needs six life caps, six marks, and valid optional skills and artifacts")
     event_options = (args.shilian_event_id, args.shilian_difficulty, args.shilian_moves)
     if args.mode == SHILIAN_EVENT_MODE:
         if any(value is None for value in event_options) or args.shilian_event_id <= 0 or not 0 <= args.shilian_moves < 2 ** 53:

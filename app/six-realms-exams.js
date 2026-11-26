@@ -15,6 +15,7 @@ const skillTableSHA256={
  shilian_fight_skill:'c8a805ff78ac187d5560cf009c16d27ec36c48a2c3690cbecfd5648a2d8a5f49',
 };
 const maxRunSkills=4;
+const maxRunArtifacts=3;
 const eventSceneIds=[469102,469109,469111,469112,469114,469115];
 const trials=[
  {stageId:700036,dao:1,sceneId:469103,codeStageId:110150,eligible:[219,234,252],
@@ -38,7 +39,8 @@ const eventRoute=stageId=>{
  if(!trial)return null;
  return {dao,sceneId:eventSceneIds[dao-1],eligible:trial.eligible,codeStageId:trial.codeStageId,engine:trial.engine,sha256:trial.sha256};
 };
-const value={resourceVersion,battleMode,eventMode,difficulty,tableSHA256,eventTableSHA256,markTableSHA256,skillTableSHA256,maxRunSkills,routes,eventRoute};
+const value={resourceVersion,battleMode,eventMode,difficulty,tableSHA256,eventTableSHA256,markTableSHA256,
+ skillTableSHA256,maxRunSkills,maxRunArtifacts,routes,eventRoute};
 if(typeof module==='object'&&module.exports)module.exports=value;
 else globalThis.AtlasSixRealmsExams=value;
 })();

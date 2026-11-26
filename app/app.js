@@ -199,6 +199,13 @@ function sampleBattleMarkup(samples){
   const qiling=sample.qilingCollective;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
+  const artifacts=trial?.runState?.artifacts?.map(item=>{
+   const casts=item.requests.map(request=>request.castRound===null?
+    `计划第 ${request.notBeforeRound} 回合，待施放`:
+    `第 ${request.castRound} 回合施放（${(request.castMs/1000).toFixed(2)} 秒）`);
+   const status=trial.dao===4?`淬炼 ${item.level} 级`:`剩余 ${item.remainingUses} 次`;
+   return [item.name,status,...casts].join(' · ');
+  })??[];
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
   const outcome=hunt?`${sample.outcome==='win'?'个人结算成功':sample.completed?'个人结算失败':'结算待确认'} · `+
@@ -226,7 +233,8 @@ function sampleBattleMarkup(samples){
     (trial.phases?` · 首领阶段 ${trial.phasesCleared} / ${sample.waveCount} · 服务端演出等待 ${(trial.montageWaitMs/1000).toFixed(2)} 秒`:'')+
     (trial.eventId?` · 档位 ${trial.difficulty} · 前行 ${trial.moveCount} 步 · 敌方属性系数加成 ${trial.enemyAttributeBonus.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2})}`:'')+
     (trial.runState?` · 开场生命上限 ${trial.runState.opening.map(unit=>unit.lifeCap+'%').join(' / ')} · 印记 ${trial.runState.opening.filter(unit=>unit.markId).length} 枚`:'')+
-    (trial.runState?.skills?.length?` · 途中技能 ${trial.runState.skills.map(skill=>skill.name+' '+skill.level+' 级').join('、')}`:''):
+    (trial.runState?.skills?.length?` · 途中技能 ${trial.runState.skills.map(skill=>skill.name+' '+skill.level+' 级').join('、')}`:'')+
+    (artifacts.length?` · 秘宝 ${artifacts.join('，')} · 万相铃消耗 ${trial.runState.coinCost}`:''):
    experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:
    coins?`${coins.timedOut?'超时':sample.outcome==='win'?'击破首领':sample.completed?'队伍落败':'结算待确认'} · `+
     `首领剩余生命 ${(coins.bossHpFraction*100).toFixed(2)}% · 金币预览 ${coins.previewCoins.toLocaleString('zh-CN')} · `+
