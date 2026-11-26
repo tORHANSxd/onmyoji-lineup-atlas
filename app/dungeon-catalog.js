@@ -32,7 +32,12 @@
     raid_info: '首领池与难度配置',
     boss_troops: '首领机关编组',
     active_time: '玩法开放时间表',
-    guild_dinner_monster: '阴阳寮宴会首领',
+    guild_dinner: '阴阳寮宴会料理',
+    guild_dinner_monster: '阴阳寮宴会食材目标',
+    guild_dinner_notice: '阴阳寮宴会场内公告',
+    guild_dinner_question: '阴阳寮宴会题库',
+    guild_dinner_xiaozhiren: '阴阳寮宴会小纸人布置',
+    guild_dinner_food_detail: '阴阳寮宴会料理摆放',
     guild_fake_god_event: '青森之秘事件',
     guild_fake_god_map: '青森之秘地格',
     guild_fake_god_route: '青森之秘路线',
@@ -128,6 +133,9 @@
     openTime: '开放星期', activity_time: '开放配置 ID', open_type: '开放方式', level_limit: '等级限制',
     open_week_day: '开放星期索引', open_time: '开放时段',
     guild_boss_hard_limit: '首领退治最高难度',
+    food_lv: '料理等级', unlock_cost_score: '学习所需勋章', food_value: '原表料理值',
+    secs_delay: '开场后出现（秒）', notice_conent: '公告', notice_last_time: '公告持续（秒）',
+    question: '题目', right_answer: '正确答案', error_1: '错误选项一', error_2: '错误选项二', error_3: '错误选项三',
     need_team: '组队要求', notice: '机制说明', fb1_defs: '秘闻竞速规则', spec_skill: '首领特殊技能',
     remain_time: '存在时限', private_time: '私人挑战时限', crazy_time: '狂暴时限',
     atk_chng: '攻击调整', def_chng: '防御调整', hp_chng: '生命调整',
@@ -203,7 +211,8 @@
   const openingNumber = new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2});
   const entryKey = ({table, key}) => JSON.stringify([table, key]);
   const rowTitle = row => [row?.name, row?.title, row?.title_name, row?.boss_name, row?.area_name, row?.chapter_name, row?.floordesc,
-    row?.typedesc, row?.skill_name, row?.skin_name, row?.StoryName, row?.MapEntryID != null ? row.desc : null]
+    row?.typedesc, row?.skill_name, row?.skin_name, row?.StoryName, row?.food_name, row?.question, row?.notice_conent,
+    row?.MapEntryID != null ? row.desc : null]
     .find(value => typeof value === 'string' && value.trim()) || '';
 
   function fieldsFor(row, table) {
@@ -2017,6 +2026,7 @@
     }
     if (token !== stage.token) return;
     destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
+    appendGuildDinnerDetails(destination, entry, groups);
     const chapterChallengeMounted=showChapterChallenge(destination,entry,groups,monsters,chapterDifficulties);
     showSuperGhost(destination,entry,groups[0]);
     if(entry.table==='story_room'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion){
@@ -2233,13 +2243,81 @@
       block.append(details, browse);
       const linkedEncounter = !ref.primary && stage.byKey.get(entryKey(ref));
       if (linkedEncounter) {
-        const view = node('button', '查看关联关卡', 'secondary');
+        const label = ref.label === '含同模板怪物的原版战斗' ? '打开战斗与复跑' :
+          ref.table.startsWith('guild_dinner') || ref.label === '阴阳寮宴会规则' ? '查看关联资料' : '查看关联关卡';
+        const view = node('button', label, 'secondary');
         view.type = 'button';
         view.onclick = () => openEncounter(linkedEncounter);
         block.append(view);
       }
       destination.append(block);
     }
+  }
+
+  function appendGuildDinnerDetails(destination, entry, groups) {
+    const row = groups[0].row;
+    if (entry.table === 'battle_mode_routes' && row?.mode_symbol === 'MODE_GUILD_DINNER') {
+      const constant = id => groups.find(group => group.ref.table === 'Constant' && group.ref.key === id)?.row?.value;
+      const [interval, limit] = constant(4085) ?? [];
+      const [duration] = constant(4086) ?? [];
+      const [weekly] = constant(4087) ?? [];
+      const section = node('section', '', 'encounter-source');
+      section.append(node('h4', '筹备与参加'),
+        node('p', '会长或副会长学习料理并开启筹备。全寮累计击败对应怪物，备齐至少两份料理后可举办宴会。成员可携带三位式神共同进食并参加答题。'));
+      if ([interval, limit, duration, weekly].every(Number.isSafeInteger)) {
+        section.append(node('p', `每周举办与个人参加上限均为 ${weekly} 次。宴会限时 ${duration / 60} 分钟，领取料理奖励最多 ${limit} 次，间隔至少 ${interval} 秒。`, 'caption'));
+      }
+      const recipes = node('button', '查找宴会料理', 'secondary');
+      recipes.type = 'button';
+      recipes.onclick = () => {
+        el('encounter-family').value = 'guild';
+        const query = el('encounter-query');
+        query.value = '阴阳寮宴会料理';
+        filterEncounters();
+        query.focus();
+      };
+      section.append(recipes);
+      for (const table of ['guild_dinner_notice', 'guild_dinner_question', 'guild_dinner_xiaozhiren', 'guild_dinner_food_detail']) {
+        if (!state.index.tables.some(item => item.name === table && item.status === 'decoded')) continue;
+        const browse = node('button', `查看${titles[table].replace('阴阳寮宴会', '')}`, 'secondary');
+        browse.type = 'button';
+        browse.onclick = () => openRecord(table, '');
+        section.append(browse);
+      }
+      destination.append(section);
+    }
+    if (entry.table === 'guild_dinner_monster') {
+      destination.append(node('p', '宴会筹备统计全寮累计击败数。关联战斗可离线复跑，游戏内筹备进度由服务器结算。', 'caption'));
+    }
+    if (entry.table !== 'guild_dinner' || !row) return;
+    const section = node('section', '', 'encounter-source');
+    section.append(node('h4', '学习与筹备'));
+    if (row.desc) section.append(node('p', row.desc, 'encounter-rule-text'));
+    const details = document.createElement('dl');
+    const add = (label, value) => details.append(node('dt', label), node('dd', value));
+    const prerequisites = groups.filter(group => group.ref.label === '前置料理' && group.row);
+    for (const {row: required} of prerequisites) add('前置料理', `${required.food_name} ${required.food_lv} 级`);
+    for (const [type, times] of row.dinner_unlock_times_cond?.$mapping ?? []) {
+      const recipe = prerequisites.find(group => group.row.food_type === type)?.row;
+      add('烹饪次数', `${recipe?.food_name ?? type} ${times} 次`);
+    }
+    for (const [id, [count]] of row.food_material?.$mapping ?? []) {
+      if (count <= 0) continue;
+      const target = groups.find(group => group.ref.table === 'guild_dinner_monster' && group.ref.key === id)?.row;
+      add('全寮累计击败', `${target?.name ?? id} × ${count}`);
+    }
+    const xp = groups.find(group => group.ref.table === 'reward')?.row?.ssexp;
+    if (Number.isSafeInteger(xp)) add('原表式神经验', openingNumber.format(xp));
+    section.append(details);
+    if (row.publish_cost_score?.length) {
+      const costs = document.createElement('details');
+      const ranks = document.createElement('dl');
+      row.publish_cost_score.forEach((amount, index) => ranks.append(node('dt', `寮等级 ${index + 1}`), node('dd', `${amount} 勋章`)));
+      costs.append(node('summary', '按寮等级查看筹备费用'), ranks);
+      section.append(costs);
+    }
+    if (row.food_id === 10001) section.append(node('p', '四周年活动料理。开放和领取状态以游戏内为准。', 'caption'));
+    destination.append(section);
   }
 
   async function selectTable(name, key = '') {

@@ -342,6 +342,30 @@ async function main(){
   assert.match(await ui(detail+'.textContent'),/虚弱.*配置等级 50.*14608/s);
   await ui('$("client-dungeons").open=false');
  });
+ if(encounterCases.some(entry=>entry.table==='battle_mode_routes'&&entry.key===312))await check('阴阳寮宴会可查原版规则和料理，并跳转到对应食材怪物的原版复跑',async()=>{
+  await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
+  const detail='$("client-dungeons-encounter-detail")';
+  const click=(label)=>ui(`[...${detail}.querySelectorAll('button')].find(button=>button.textContent===${JSON.stringify(label)}).click()`);
+  await ui('qaEncounterInput("guild","阴阳寮宴会 312")');
+  await until(detail+'.textContent.includes("式神自动轮换规则")');
+  assert.match(await ui(detail+'.textContent'),/15 分钟.*10 次.*40 秒.*GuildDinnerScene.*最多可设置50名式神/s);
+  assert.equal(await ui('document.querySelector("[data-pve-start]")===null'),true);
+  await click('查看题库');
+  await until('$("client-dungeons-table").value==="guild_dinner_question"');
+  await ui('$("client-dungeons-mode-encounters").click();qaEncounterInput("guild","阴阳寮宴会 312")');
+  await until(detail+'.textContent.includes("式神自动轮换规则")');
+  await click('查找宴会料理');
+  assert.match(await ui('$("client-dungeons-encounter-count").textContent'),/28 条/);
+  await ui('qaEncounterInput("guild","阴阳寮宴会料理 9001")');
+  await until(detail+'.textContent.includes("按寮等级查看筹备费用")');
+  assert.match(await ui(detail+'.textContent'),/前置料理寿司 3 级.*烹饪次数寿司 10 次.*全寮累计击败石距 × 1.*原表式神经验7,840/s);
+  await ui(`[...${detail}.querySelectorAll('section')].find(section=>section.firstChild.textContent.includes('全寮累计击败目标 · 河童')).querySelector('button:last-child').click()`);
+  await until(detail+'.textContent.includes("游戏内筹备进度由服务器结算")');
+  await click('打开战斗与复跑');
+  await until('document.querySelector("[data-pve-start]")!==null');
+  assert.match(await ui(detail+'.textContent'),/2722.*模拟已知阵容.*32712.*河童/s);
+  await ui('$("client-dungeons").open=false');
+ });
  if(catalog?.index.encounters&&catalog.entries.has('lbs_world_boss_area'))await check('地域鬼王显示原版普通条件、极难词条及玩法专用入口',async()=>{
   await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
   await ui('qaEncounterInput("daily","地域鬼王 国王湖")');

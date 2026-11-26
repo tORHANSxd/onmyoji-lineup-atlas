@@ -42,6 +42,12 @@ DEVIL_TOWER_RULES = {
     "feast_for_devils_dawnexpedition": ("破晓之征阵营", "feast_for_devils_dawnexpedition_tips"),
 }
 DEVIL_TOWER_TABLES = {**TOWER_EVENT_SOURCES, **DEVIL_TOWER_RULES}
+GUILD_DINNER_MODE = 312
+GUILD_DINNER_RULES = (("guild_yanhuitip1", "举办、筹备与参加规则"), ("guild_yanhuitip2", "式神自动轮换规则"))
+GUILD_DINNER_CONSTANTS = ((4085, "料理奖励间隔与次数"), (4086, "宴会时长"), (4087, "每周举办与参加次数"))
+# Native replay examples with the exact food-target template in the formation.
+GUILD_DINNER_EXAMPLES = {23: ("map_boss", 69, 14408), 208: ("story_room", 1003, 31012),
+                         209: ("story_room", 2722, 32712), 214: ("story_room", 907, 30990)}
 
 
 ROOTS = {
@@ -90,7 +96,8 @@ ROOTS = {
     "gve_battleinfo": ("guild", "麒麟狩猎"),
     "guild_crevice_area": ("guild", "狭间暗域"),
     "guild_crevice_battle": ("guild", "狭间暗域"),
-    "guild_dinner_monster": ("guild", "阴阳寮宴会"),
+    "guild_dinner": ("guild", "阴阳寮宴会料理"),
+    "guild_dinner_monster": ("guild", "阴阳寮宴会食材目标"),
     "boss_food_battle": ("guild", "寝肥合战食材"),
     "league_qinfei": ("guild", "寝肥应援寮式神分组"),
     "qinfei_fight_buff": ("guild", "寝肥合战每日规则"),
@@ -183,6 +190,7 @@ EDGES = {
     "SuperGhost_mission": (("actid", "activity", "活动开放配置"), ("sceneid", "Combinesceneinfo", "关卡场景")),
     "SuperGhost_bossmission": (("sceneid", "Combinesceneinfo", "关卡场景"),),
     "guild_boss_show": (("bossID", "monster", "首领"),),
+    "guild_dinner": (("reward_id", "reward", "料理奖励"),),
     "gve_battleinfo": (("scene", "Combinesceneinfo", "关卡场景"),),
     "boss_info": (("protoId", "monster", "首领模板"),),
     "guild_crevice_battle": (("easy_main_monster", "monster", "简单首领"),
@@ -536,6 +544,31 @@ def encounter_index(source, load_rows):
             resolved = relation(destination, row.get(field), label, True)
             if resolved:
                 links.append(resolved)
+        if name in {"guild_dinner", "guild_dinner_monster"}:
+            if ref := relation("battle_mode_routes", GUILD_DINNER_MODE, "阴阳寮宴会规则", False):
+                links.append(ref)
+        if name == "guild_dinner":
+            links.extend(ref for material, counts in (row.get("food_material") or {}).get("$mapping", ())
+                         if counts and counts[0] > 0
+                         and (ref := relation("guild_dinner_monster", material, "全寮累计击败目标", True)))
+            links.extend(ref for recipe in row.get("dinner_unlock_pre_cond", ())
+                         if (ref := relation("guild_dinner", recipe, "前置料理", True)))
+        if name == "guild_dinner_monster" and (example := GUILD_DINNER_EXAMPLES.get(row.get("id"))):
+            destination, key, stage_id = example
+            _, entry = table(destination).get(str(key), (None, {}))
+            _, battle = table("pve_stage_data").get(str(stage_id), (None, {}))
+            _, formation = table("BattleMonstersInfo").get(numeric_key(battle.get("groupid")), (None, {}))
+            matches_entry = (entry.get("MonsterID") == stage_id if destination == "story_room"
+                             else any(stage[0] == stage_id for stage in entry.get("gk_list", ())))
+            if matches_entry and any(len(slot) > 1 and slot[1] == row["id"]
+                                     for wave in formation.get("MonstersInfos", ()) for slot in wave):
+                links.append(relation(destination, key, "含同模板怪物的原版战斗", False))
+        if name == "battle_mode_routes" and row.get("mode_symbol") == "MODE_GUILD_DINNER":
+            links.extend(rule_reference(key, label) for key, label in GUILD_DINNER_RULES if key in rules)
+            links.extend(ref for key, label in GUILD_DINNER_CONSTANTS
+                         if (ref := relation("Constant", key, label, False)))
+            links.extend(relation("guild_dinner_monster", key, "料理筹备目标", False)
+                         for key, _ in sorted(table("guild_dinner_monster").values()))
         if name.startswith(("dojo2025_bbbl_", "dojo2026_bbbl_")):
             prefix, suffix = name.split("_bbbl_", 1)
             if suffix == "map":
@@ -1364,12 +1397,14 @@ def encounter_index(source, load_rows):
             ] if not entrance else []
             scene_route = table_name == "battle_mode_routes" and row.get("scene_engine") \
                 and numeric_key(key) not in table("normal_battle_config")
+            dinner_route = table_name == "battle_mode_routes" and numeric_key(key) == str(GUILD_DINNER_MODE) \
+                and row.get("mode_symbol") == "MODE_GUILD_DINNER"
             qinfei_activity = table_name == "activity" and key in qinfei_activities
             dojo_area_activity = table_name == "activity" and key in dojo_area_activities
             forest_activity = table_name == "activity" and key == 7076
             ten_activity = table_name == "activity" and key in TEN_ACTIVITY_LINKS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
-            if (not root and not entrance and not scene_route and not linked_battles and not row.get("monsterWaves")
+            if (not root and not entrance and not scene_route and not dinner_route and not linked_battles and not row.get("monsterWaves")
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
                     and not ten_activity):
                 continue
@@ -1378,6 +1413,13 @@ def encounter_index(source, load_rows):
             if scene_route:
                 entry_kind = "初始场景引擎"
             title = name(row)
+            if dinner_route:
+                entry_family, entry_kind, title = "guild", "阴阳寮宴会", "阴阳寮宴会 · 举办与参加规则"
+            if table_name == "guild_dinner":
+                level = "历史活动" if key == 10001 else f"{row['food_lv']} 级"
+                title = f"阴阳寮宴会料理 · {row['food_name']} · {level}"
+            if table_name == "guild_dinner_monster":
+                title = f"阴阳寮宴会食材目标 · {title}"
             if table_name in DEVIL_TOWER_TABLES:
                 label, _ = DEVIL_TOWER_TABLES[table_name]
                 if table_name in TOWER_EVENT_SOURCES:

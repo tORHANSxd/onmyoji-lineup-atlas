@@ -11,6 +11,43 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_guild_dinner_indexes_preparation_and_links_only_matching_battle_examples(self):
+        tables = {
+            "battle_mode_routes": [[312, {"mode_symbol": "MODE_GUILD_DINNER", "scene_class": "GuildDinnerScene"}]],
+            "system_rule_dsc": [["guild_yanhuitip1", {"rule_dsc": "宴会料理"}]],
+            "guild_dinner": [[1001, {"food_name": "饭团", "food_lv": 1, "reward_id": 1,
+                                      "food_material": {"$mapping": [[214, [6]]]}}],
+                             [1002, {"food_name": "饭团", "food_lv": 2, "reward_id": 1,
+                                      "dinner_unlock_pre_cond": [1001], "food_material": {"$mapping": [[214, [10]]]}}],
+                             [10001, {"food_name": "四周年蛋糕", "food_lv": 4, "reward_id": 1,
+                                       "food_material": {"$mapping": [[0, [0]]]}}]],
+            "guild_dinner_monster": [[214, {"id": 214, "name": "饿鬼"}]],
+            "reward": [[1, {"ssexp": 2560}]],
+            "story_room": [[907, {"MonsterID": 30990}]],
+            "pve_stage_data": [["30990", {"groupid": 30990}]],
+            "BattleMonstersInfo": [[30990, {"MonstersInfos": [[[1, 13214, 40, 1, 0]]]}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+
+        def load_entries():
+            catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+            return {(entry["table"], entry["key"]): entry for entry in catalog["entries"]}
+
+        def refs(entry):
+            return {(ref["table"], ref["key"]) for ref in entry["refs"]}
+
+        entries = load_entries()
+        route = entries["battle_mode_routes", 312]
+        self.assertEqual(route["family"], "guild")
+        self.assertEqual(refs(route), {("guild_dinner_monster", 214), ("system_rule_dsc", "guild_yanhuitip1")})
+        self.assertEqual(refs(entries["guild_dinner", 1002]), {("guild_dinner", 1001), ("reward", 1),
+                                                                  ("guild_dinner_monster", 214), ("battle_mode_routes", 312)})
+        self.assertEqual(refs(entries["guild_dinner", 10001]), {("reward", 1), ("battle_mode_routes", 312)})
+        self.assertNotIn(("story_room", 907), refs(entries["guild_dinner_monster", 214]))
+        tables["BattleMonstersInfo"][0][1]["MonstersInfos"][0].append([2, 214, 40, 1, 0])
+        self.assertIn(("story_room", 907), refs(load_entries()["guild_dinner_monster", 214]))
+
     def test_tianfa_difficulty_links_original_stage_formation_and_lineup_code(self):
         tables = {
             "xinghen_battle": [[2, {"difficulty": 2, "name": "困难", "stage_id": 2716062}]],
