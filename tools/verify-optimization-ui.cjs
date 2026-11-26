@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3004,3005,3008,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,855,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3000,3004,3005,3008,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -607,6 +607,20 @@ async function main(){
     assert.match(await run('superghost-five',{stageId:25308,groupId:25308,battleMode:3000,mapBossPlayers:3},
       {mapBoss:{kind:'angryStone',players:3,level:50,rewardInputs:{phaseDamageRatio:0.4,paperManCount:3}}}),
       /3 人组队 · 50 级档 · 首领特殊阶段伤害比例 40% · 小纸人 3/);
+   }
+   if(cases.some(entry=>entry.table==='map_boss'&&entry.key===7&&entry.kind==='妖气封印')){
+    await encounter('daily','妖气封印 鬼使黑 1608');
+    await until(panel+'.textContent.includes("式神碎片副本玩法原文")');
+    assert.match(await ui(panel+'.textContent'),/妖气封印.*敌方 3 波.*发现规则.*契约书碎片.*WorldBossEngine/s);
+    const rank='document.querySelector("[data-map-boss-stage]")';
+    assert.equal(await ui(rank+'.options.length'),9);
+    await ui(`${rank}.value="1608";${rank}.dispatchEvent(new Event("change"))`);
+    assert.match(await run('superghost-five',{stageId:1608,groupId:1608,battleMode:855,mapBossPlayers:2},
+      {waveCount:3,wavesCleared:3,formationsVerified:3,mapBoss:{kind:'seal',players:2,level:50}}),
+      /通过 3 波.*已核对 3 波原版编组.*2 人组队 · 50 级档/);
+    await encounter('battle','1608');
+    await until(rank+'?.value==="1608"');
+    assert.equal(await ui(rank+'.options.length'),1);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');

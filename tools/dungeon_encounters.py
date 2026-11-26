@@ -4,6 +4,7 @@ from collections import Counter
 from functools import cache
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
+from map_boss_stage import SEAL_MODE, is_fragment_entry
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 
 
@@ -423,6 +424,14 @@ def encounter_index(source, load_rows):
                 links.append(rule_reference(*help_link))
                 if route := relation("battle_mode_routes", 3000, "首领战斗引擎", False):
                     links.append(route)
+            elif is_fragment_entry(row.get("id"), row):
+                if preview := relation("contract_fragment", 1, "式神碎片副本奖励预览", False):
+                    links.append(preview)
+                    _, fragment = table("contract_fragment")["1"]
+                    if tip := fragment.get("tips_key"):
+                        links.append(rule_reference(tip, "式神碎片副本玩法原文"))
+                if route := relation("battle_mode_routes", SEAL_MODE, "妖气封印战斗引擎", False):
+                    links.append(route)
             links.extend(relation("pve_stage_data", stage_id, label, True)
                          for stage_id, label in map_boss_stages.get(row.get("id"), {}).items())
         if name == "BattleMonstersInfo":
@@ -699,6 +708,10 @@ def encounter_index(source, load_rows):
             title = name(row)
             if table_name == "map_boss" and key == TRUE_OROCHI_MAP_ID:
                 entry_kind = "真·八岐大蛇"
+            elif table_name == "map_boss" and is_fragment_entry(key, row):
+                entry_kind = "妖气封印"
+                period = " · 历史活动" if row.get("begin_time") and row.get("end_time") else ""
+                title = f"{entry_kind} · {title}{period}"
             if table_name == "MZB_fengmo":
                 trait_id = row.get("skill_id")
                 _, trait = table("skill").get(reference_key(level_one_skill(trait_id)), (None, {}))

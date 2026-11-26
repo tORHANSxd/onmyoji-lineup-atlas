@@ -6,6 +6,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from dungeon_encounters import encounter_index
 from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
+from map_boss_stage import MODE, SEAL_MODE, entry_for_stage
 
 
 class EncounterIndexTests(unittest.TestCase):
@@ -143,6 +144,33 @@ class EncounterIndexTests(unittest.TestCase):
             self.assertIn(("map_boss", 73), [(ref["table"], ref["key"])
                                              for ref in entries["pve_stage_data", stage]["refs"]])
         self.assertEqual(catalog["unresolvedReferences"], 0)
+
+    def test_demon_seal_uses_fragment_rules_and_leaves_legacy_resource_rows_separate(self):
+        entries = {
+            7: {"id": 7, "name": "鬼使黑", "type": 1, "gk_list": [[1600, 10]]},
+            10: {"id": 10, "name": "金币妖怪", "type": 1, "gk_list": [[2000, 10]]},
+            63: {"id": 63, "name": "姑获鸟", "type": 1, "begin_time": [2016], "end_time": [2017]},
+        }
+        tables = {
+            "map_boss": list(entries.items()),
+            "contract_fragment": [[1, {"tips_key": "fragment_rule", "preview_reward": 440048}]],
+            "system_rule_dsc": [["fragment_rule", {"rule_dsc": "发现与契约书碎片"}]],
+            "battle_mode_routes": [[855, {"mode_symbol": "MODE_YAOQI_FB_BATTLE", "scene_engine": "WorldBossEngine"}]],
+            "pve_stage_data": [["1600", {"id": "1600", "groupid": 1600}], ["2000", {"id": "2000", "groupid": 2000}]],
+            "BattleMonstersInfo": [[1600, {"resindex": 39}], [2000, {"resindex": 42}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "daily", "fields": []} for name in tables]
+        catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        bosses = {entry["key"]: entry for entry in catalog["entries"] if entry["table"] == "map_boss"}
+        self.assertEqual(bosses[7]["title"], "妖气封印 · 鬼使黑")
+        self.assertEqual(bosses[63]["title"], "妖气封印 · 姑获鸟 · 历史活动")
+        self.assertEqual(bosses[10]["kind"], "地图首领入口")
+        self.assertEqual({(ref["table"], ref["key"]) for ref in bosses[7]["refs"][:3]}, {
+            ("contract_fragment", 1), ("system_rule_dsc", "fragment_rule"), ("battle_mode_routes", SEAL_MODE),
+        })
+        self.assertEqual(entry_for_stage(entries, 1600, SEAL_MODE), ("seal", None, 39, None, 10))
+        self.assertIsNone(entry_for_stage(entries, 2000))
+        self.assertIsNone(entry_for_stage(entries, 1600, MODE))
 
     def test_regional_boss_preserves_weighted_rules_and_level_one_modifier_variants(self):
         base_skill = {"$tuple": [61701, 1, -1]}

@@ -21,7 +21,7 @@ def replay(args, runtime, work):
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
-    from map_boss_stage import MODE as MAP_BOSS_MODE, MapBossReplay, entry_for_stage
+    from map_boss_stage import MODES as MAP_BOSS_MODES, MapBossReplay, entry_for_stage
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
@@ -192,14 +192,14 @@ def replay(args, runtime, work):
         journey = JourneyHardReplay(args.stage, args.journey_blessings, args.journey_deadline)
         engine, group, const = journey.engine, journey.group, journey.const
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
-    elif args.mode == MAP_BOSS_MODE:
+    elif args.mode in MAP_BOSS_MODES:
         from DynamicConfigData import DATA_HERO
 
         if len(fighters) != 5:
             raise ValueError("Map boss replay needs five selected shikigami")
-        map_boss_replay = MapBossReplay(modules, args.stage, args.map_boss_players)
+        map_boss_replay = MapBossReplay(modules, args.stage, args.map_boss_players, args.mode)
         engine, const = map_boss_replay.engine, map_boss_replay.const
-        group_id, wave_count = map_boss_replay.group_id, 1
+        group_id, wave_count = map_boss_replay.group_id, map_boss_replay.wave_count
     elif spider:
         from DynamicConfigData import DATA_HERO
 
@@ -739,7 +739,7 @@ def replay(args, runtime, work):
         report["journeyHard"] = journey.report()
     if map_boss_replay:
         report["mapBoss"] = map_boss_replay.report(report["outcome"])
-        report["formationsVerified"] = 1
+        report["formationsVerified"] = len(map_boss_replay.waves)
     if tianfa:
         report["tianfa"] = tianfa_replay.report(completed)
     if spider_replay:
@@ -800,7 +800,7 @@ def replay(args, runtime, work):
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from map_boss_stage import MODE as MAP_BOSS_MODE, POSITIONS as MAP_BOSS_POSITIONS
+    from map_boss_stage import MODES as MAP_BOSS_MODES, POSITIONS as MAP_BOSS_POSITIONS
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
     from general_soul_stage import SOLO_SCORE_MODES
     from guild_crevice_stage import CREVICE_MODE, CREVICE_TIME
@@ -823,7 +823,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, MAP_BOSS_MODE, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--map-boss-players", type=int, choices=MAP_BOSS_POSITIONS)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
@@ -850,7 +850,7 @@ def main():
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
-    if (args.mode == MAP_BOSS_MODE) != (args.map_boss_players is not None):
+    if (args.mode in MAP_BOSS_MODES) != (args.map_boss_players is not None):
         parser.error("Map boss replay requires the number of players")
     if args.mode == TIANFA_MODE and args.stage not in TIANFA_STAGES:
         parser.error("The Tianfa solo entrance supports only the three configured difficulties")

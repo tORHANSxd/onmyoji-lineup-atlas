@@ -1,6 +1,8 @@
-"""Replay the versioned Stone Boss and Year Beast battles with local teammates."""
+"""Replay versioned map boss and Demon Seal battles with local teammates."""
 
 MODE = 3000
+SEAL_MODE = 855
+MODES = (MODE, SEAL_MODE)
 ENGINE = "battleengine.engine.WorldBossEngine"
 SOURCE_HASHES = {
     ENGINE: "d11c14d3eb97e361bee50a58ac8666a56f3332b484e851a8dde36a80c7fe53b4",
@@ -16,22 +18,33 @@ KINDS = {
 POSITIONS = {2: ((5, 6), (2, 3, 4)), 3: ((3,), (2, 5), (4, 6))}
 
 
-def entry_for_stage(entries, stage_id):
-    for entry_id, (kind, flag, scene, boss) in KINDS.items():
-        for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
-            if stage == stage_id:
-                return kind, flag, scene, boss, level
+def is_fragment_entry(entry_id, row):
+    return row.get("type") == 1 and str(entry_id) not in {"10", "11"}
+
+
+def entry_for_stage(entries, stage_id, mode=None):
+    if mode != SEAL_MODE:
+        for entry_id, (kind, flag, scene, boss) in KINDS.items():
+            for stage, level in entries.get(entry_id, {}).get("gk_list", ()):
+                if stage == stage_id:
+                    return kind, flag, scene, boss, level
+    if mode != MODE:
+        for entry_id, row in entries.items():
+            if is_fragment_entry(entry_id, row):
+                for stage, level in row.get("gk_list", ()):
+                    if stage == stage_id:
+                        return "seal", None, 39, None, level
     return None
 
 
 class MapBossReplay:
-    def __init__(self, modules, stage_id, players):
+    def __init__(self, modules, stage_id, players, mode):
         from battleengine.engine.WorldBossEngine import DATA_PVE_STAGE_DATA, BattleMonstersInfo, WorldBossEngine, const
         from com.data.cdata import map_boss
 
         if any(modules.rows[name]["marshalSHA256"] != digest for name, digest in SOURCE_HASHES.items()):
             raise ValueError("The map boss engine or stage table has changed")
-        entry = entry_for_stage(map_boss.data, stage_id)
+        entry = entry_for_stage(map_boss.data, stage_id, mode)
         if entry is None or players not in POSITIONS:
             raise ValueError("Map boss replay requires a verified stage and two or three teammates")
         self.kind, flag, scene, self.boss_id, self.level = entry
@@ -41,19 +54,28 @@ class MapBossReplay:
         if self.group_id != stage_id or stage.get("shishentotal") != 5 or formation["resindex"] != scene:
             raise RuntimeError("Original map boss stage and formation disagree")
         waves = formation["MonstersInfos"]
-        if len(waves) != 1 or waves[0][0][:2] != [1, self.boss_id]:
+        self.wave_count = len(waves)
+        if self.kind == "seal":
+            if [len(wave) for wave in waves] != [4, 4, 6]:
+                raise RuntimeError("Original Demon Seal has an unexpected set of waves")
+        elif len(waves) != 1 or waves[0][0][:2] != [1, self.boss_id]:
             raise RuntimeError("Original map boss has an unexpected starting enemy")
-        self.expected = [(pos, proto, level) for pos, proto, level, *_ in waves[0]]
+        self.expected = [[(pos, proto, level) for pos, proto, level, *_ in wave] for wave in waves]
         self.positions = POSITIONS[players]
         self.const = const
-        self.engine = WorldBossEngine({"pve_data_flag": str(stage_id), flag: True})
-        self.engine.battleMode = const.BattleMode.MODE_WORLD_BOSS
-        if self.engine.battleMode != MODE or self.engine.combineSceneInfoId != scene:
+        params = {"pve_data_flag": str(stage_id)}
+        if flag:
+            params[flag] = True
+        self.engine = WorldBossEngine(params)
+        self.engine.battleMode = (const.BattleMode.MODE_YAOQI_FB_BATTLE if self.kind == "seal"
+                                  else const.BattleMode.MODE_WORLD_BOSS)
+        if self.engine.battleMode != mode or self.engine.combineSceneInfoId != scene:
             raise RuntimeError("The original map boss initialized another scene")
-        self.engine.onCalcRewards = self.observe_rewards
+        if flag:
+            self.engine.onCalcRewards = self.observe_rewards
         self.reward_inputs = {}
-        self.opening = None
-        self.observe_opening()
+        self.waves = []
+        self.observe_waves()
 
     def assign_players(self, player, fighters):
         members = list(fighters)
@@ -79,17 +101,20 @@ class MapBossReplay:
         if actual != selected:
             raise RuntimeError("The original map boss placed the selected lineup differently")
 
-    def observe_opening(self):
+    def observe_waves(self):
         spawn, create = self.engine._createNextRoundMons, self.engine.createMonsterEntity
 
         def start_wave():
-            if self.opening is not None:
+            wave = self.engine.finishedWaveCount
+            if wave >= self.wave_count:
                 return spawn()
+            if wave != len(self.waves):
+                raise RuntimeError("The original map boss wave order changed")
             observed = []
 
             def create_enemy(camp, owner, placement):
                 entity = create(camp, owner, placement)
-                observed.append((placement.Index, entity.protoid, placement.level))
+                observed.append((entity.posIndex, entity.protoid, entity.AttrComp.level))
                 return entity
 
             self.engine.createMonsterEntity = create_enemy
@@ -97,9 +122,9 @@ class MapBossReplay:
                 result = spawn()
             finally:
                 self.engine.createMonsterEntity = create
-            if observed != self.expected:
-                raise RuntimeError("The original map boss generated a different opening formation")
-            self.opening = observed
+            if observed != self.expected[wave]:
+                raise RuntimeError("The original map boss generated a different formation")
+            self.waves.append(observed)
             return result
 
         self.engine._createNextRoundMons = start_wave
@@ -116,8 +141,11 @@ class MapBossReplay:
         return {}
 
     def report(self, outcome):
-        if self.opening is None:
+        if not self.waves or outcome == "win" and len(self.waves) != self.wave_count:
             raise RuntimeError("The original map boss did not create enemies")
+        if self.kind == "seal":
+            return {"kind": self.kind, "level": self.level, "players": len(self.positions),
+                    "positions": self.positions, "waves": self.waves}
         rewards = None
         if outcome == "win":
             if set(self.reward_inputs) != set(range(1, len(self.positions) + 1)) or len(set(self.reward_inputs.values())) != 1:
@@ -125,4 +153,4 @@ class MapBossReplay:
             ratio, paper_men = next(iter(self.reward_inputs.values()))
             rewards = {"phaseDamageRatio": ratio, "paperManCount": paper_men}
         return {"kind": self.kind, "level": self.level, "bossId": self.boss_id, "players": len(self.positions),
-                "positions": self.positions, "opening": self.opening, "rewardInputs": rewards}
+                "positions": self.positions, "opening": self.waves[0], "rewardInputs": rewards}

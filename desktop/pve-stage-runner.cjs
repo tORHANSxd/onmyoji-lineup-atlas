@@ -50,7 +50,7 @@ const engines={
   [battleMode,{name:engine,route,sha256:engineSHA256}])),
  [tianfa.battleMode]:{name:tianfa.engine,route:tianfa.route,sha256:tianfa.engineSHA256},
  [journeyHard.battleMode]:{name:'JSNormalEngine',route:'journey-hard-solo',sha256:journeyHard.engineSHA256},
- [mapBoss.battleMode]:{name:'WorldBossEngine',route:'map-boss-local-team',sha256:mapBoss.engineSHA256},
+ ...Object.fromEntries(mapBoss.battleModes.map(mode=>[mode,{name:'WorldBossEngine',route:'map-boss-local-team',sha256:mapBoss.engineSHA256}])),
  ...Object.fromEntries(Object.entries(tuzhizhuPractice.modes).map(([id,mode])=>
   [id,{name:mode.engine,route:'tuzhizhu-practice-solo',sha256:mode.sha256}])),
  [firstExperience.battleMode]:null,
@@ -501,10 +501,15 @@ function launch(python,args,cwd,signal){
 
 function validMapBossReport(report,route,players){
  const data=report.mapBoss,rewards=data?.rewardInputs;
- const level=Math.min(route.level,40),opening=route.enemies.map((id,index)=>[index+1,id,level]);
- return report.sceneId===route.sceneId&&report.waveCount===1&&report.formationsVerified===1&&
-  data?.kind===route.kind&&data.level===route.level&&data.players===players&&data.bossId===route.enemies[0]&&
-  sameTactics(data.positions,mapBoss.positions[players])&&sameTactics(data.opening,opening)&&
+ if(report.sceneId!==route.sceneId||report.waveCount!==route.waves.length||data?.kind!==route.kind||
+    data.level!==route.level||data.players!==players||!sameTactics(data.positions,mapBoss.positions[players]))return false;
+ if(route.battleMode===mapBoss.sealMode){
+  const count=data.waves?.length;
+  return Array.isArray(data.waves)&&count>=1&&count<=route.waves.length&&report.formationsVerified===count&&
+   report.wavesCleared<=count&&(report.outcome!=='win'||report.wavesCleared===route.waves.length)&&
+   sameTactics(data.waves,route.waves.slice(0,count));
+ }
+ return report.formationsVerified===1&&data.bossId===route.waves[0][0][1]&&sameTactics(data.opening,route.waves[0])&&
   (report.outcome==='win'?report.wavesCleared===1&&Number.isFinite(rewards?.phaseDamageRatio)&&rewards.phaseDamageRatio>=0&&
    Number.isSafeInteger(rewards.paperManCount)&&rewards.paperManCount>=0&&
    rewards.paperManCount<=({stone:0,angryStone:4,yearBeast:5}[route.kind]):rewards===null);
@@ -602,7 +607,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
      ...(generalSoul?Object.keys(activityScore.modes).map(Number):[]),...(journey?[journeyHard.battleMode]:[]),...(tianfaAvailable?[tianfa.battleMode]:[]),
      ...(crevice?[guildCrevice.battleMode]:[]),...(ghost?[superGhost.battleMode,superGhost.historicalBattleMode]:[]),
-     ...(mapBossAvailable?[mapBoss.battleMode]:[])]};
+     ...(mapBossAvailable?mapBoss.battleModes:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -701,9 +706,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
       plan.members.length!==5||!positive(creviceWindow)||creviceWindow>guildCrevice.deadlineSeconds)||
       creviceWindow!==undefined&&!creviceRoute)throw Error('狭间暗域需要正确的关卡、编组、计分时长和五位自有式神');
    if(battleMode===3&&guildCrevice.routes[stageId])throw Error('狭间暗域需要该玩法的原版入口');
-   if(battleMode===3&&mapBoss.stages[stageId])throw Error('石距和年兽需要地图首领的原版组队入口');
-   const mapBossRoute=battleMode===mapBoss.battleMode?mapBoss.stages[stageId]:null;
-   if(battleMode===mapBoss.battleMode&&(!mapBossRoute||mapBoss.resourceVersion!==resourceVersion||groupId!==stageId||
+   if(battleMode===3&&mapBoss.stages[stageId])throw Error('该关卡需要地图首领的原版组队入口');
+   const mapBossMode=mapBoss.battleModes.includes(battleMode);
+   const mapBossRoute=mapBossMode?mapBoss.stages[stageId]:null;
+   if(mapBossMode&&(mapBossRoute?.battleMode!==battleMode||mapBoss.resourceVersion!==resourceVersion||groupId!==stageId||
       plan.members.length!==5||![2,3].includes(mapBossPlayers))||
       mapBossPlayers!==undefined&&!mapBossRoute)throw Error('地图首领需要正确的关卡、五位式神和两人或三人组队');
    const ghostRoute=battleMode===superGhost.battleMode?superGhost.routes[stageId]:null;
