@@ -15,6 +15,7 @@ import time
 def replay(args, runtime, work):
     from game_resources import sha256
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE, FengmoYanwuReplay, fengmo_yanwu_stage
+    from general_soul_stage import GENERAL_SOUL_MODE, GeneralSoulReplay, general_soul_stage
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
@@ -42,6 +43,7 @@ def replay(args, runtime, work):
     retreat = args.mode == RETREAT_MODE
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
+    general_soul = args.mode == GENERAL_SOUL_MODE
     spider = args.mode in PRACTICE_MODES
     shilian = args.mode in SHILIAN_MODES
     shilian_event = ({"id": args.shilian_event_id, "difficulty": args.shilian_difficulty, "moves": args.shilian_moves}
@@ -135,6 +137,13 @@ def replay(args, runtime, work):
         if len(fighters) != member_count:
             raise ValueError("The selected roster does not match the original solo Fengmo Yanwu route")
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif general_soul:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("General Soul Trial requires five owned shikigami")
+        engine, group, general_soul_act, const = general_soul_stage(args.stage)
+        group_id, wave_count = group["ID"], 1
     elif spider:
         from DynamicConfigData import DATA_HERO
 
@@ -261,6 +270,8 @@ def replay(args, runtime, work):
         route = "regional-boss-ordinary-scenario" if args.mode == REGION_MODE else "regional-boss-hard-scenario"
     elif yanwu:
         route = "fengmo-yanwu-solo"
+    elif general_soul:
+        route = "general-soul-activity-solo"
     elif spider:
         route = "tuzhizhu-practice-solo"
     elif args.mode == 29:
@@ -331,6 +342,7 @@ def replay(args, runtime, work):
     engine.onEntityCreated = observe_created
     regional_replay = RegionalBossReplay(engine, formation, args.region, effective_level, const) if regional else None
     yanwu_replay = FengmoYanwuReplay(engine, group, const) if yanwu else None
+    general_soul_replay = GeneralSoulReplay(engine, group, const) if general_soul else None
     spider_replay = TsuchigumoPractice(engine, stage, group, const) if spider else None
     verified_waves = set()
     if args.mode == 266:
@@ -376,7 +388,7 @@ def replay(args, runtime, work):
         if args.mode == REGION_HARD_MODE:
             formation_matches = (formation_matches and engine.startLevel == args.region["star"]
                                  and engine.condition == args.region["modifierIds"])
-    elif yanwu or spider or hunling or qiling or shilian:
+    elif yanwu or general_soul or spider or hunling or qiling or shilian:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -416,7 +428,7 @@ def replay(args, runtime, work):
     artifact_replay = (ArtifactReplay(engine, controller, const, args.shilian_state, dao, start)
                        if shilian and args.shilian_state and args.shilian_state.get("artifacts") else None)
     if tactics:
-        boss = raid.boss["protoId"] if retreat else group["MonstersInfos"][0][0][1] if yanwu or qiling else stage["monsters"][0][0]
+        boss = raid.boss["protoId"] if retreat else group["MonstersInfos"][0][0][1] if yanwu or qiling or general_soul else stage["monsters"][0][0]
         instructions = HuntOpening(engine, controller, const, tactics, boss)
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
@@ -437,6 +449,8 @@ def replay(args, runtime, work):
             break
         if yanwu_replay:
             yanwu_replay.update()
+        if general_soul_replay:
+            general_soul_replay.update()
         if spider_replay:
             spider_replay.update()
         if instructions:
@@ -558,6 +572,11 @@ def replay(args, runtime, work):
         report["fengmoYanwu"] = yanwu_replay.report(completed)
         if instructions:
             report["fengmoYanwu"].update(instructions.report())
+    if general_soul_replay:
+        report["generalSoulTrial"] = general_soul_replay.report(completed, [row["heroId"] for row in fighters.values()],
+                                                               general_soul_act)
+        if instructions:
+            report["generalSoulTrial"].update(instructions.report())
     if spider_replay:
         report["tuzhizhuPractice"] = spider_replay.report(report["outcome"])
     if retreat:
@@ -609,6 +628,7 @@ def replay(args, runtime, work):
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
+    from general_soul_stage import GENERAL_SOUL_MODE
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from hunling_stage import CAPTURE_ITEMS, HUNLING_BOSS, HUNLING_MODES, HUNLING_REPLAY_SECONDS
@@ -625,7 +645,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, QILING_GROUP_MODE, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, GENERAL_SOUL_MODE, QILING_GROUP_MODE, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")

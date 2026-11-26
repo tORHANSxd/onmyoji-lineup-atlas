@@ -26,6 +26,10 @@
 
 例如将魂试炼从组队类型 3507 进入模式 2507，注册引擎为 `FakeGod7GeneralSoulBattleEngine`，默认时限 180 秒，配置开启共享敌方生命和组队伤害显示。逢魔演武从 8237 进入 8238，注册引擎为 `FengMoEquipBattleEngine`，默认时限 300 秒，支援式神列表为 `[70]`。`NormalActivityEngine` 读取这些模式默认值，其 `getHaltBattleTime` 优先使用关卡中大于 0 的 `battleTime`。目录显示模式默认参数。独立引擎改写的条件需沿各自代码路径核对。
 
+将魂试炼可从历史活动条目或关卡 3504732 模拟已知阵容。阵容码场景为 100935，使用一位阴阳师及五位自有式神。原版开场为平将门·幻与五位随从，战报核对实际编组、出战式神、计分时限和个人伤害。单人复跑沿用原版共享生命的处理，无其他玩家或支援式神。活动开放时间仍取自对应活动表。
+
+客户端 2.8.87、资源 `0.0.816` 的库存样本以种子 0 和伤害下限完成到时结算，原版个人伤害为 11,320,870。计分时限为 180 秒，引擎从战斗开始到结算共 180.96 秒。另一组配置通过阵容备注指定首动普攻、红标平将门·幻、绿标第三位和第一位自动普攻。原版接受这些操作，并结算 12,012,370 点个人伤害。
+
 京畿净化可按金币、经验、御魂和觉醒查到 2,240 条原版战斗参数，详情展示棋盘编号、数值和权重。`DynamicConfigData` 分别注册四张 `journey_normalbattle_*` 参数表，御契保留各表的独立编号。普通战斗的 `SeaDailyFightPanel.init_ui` 通过当前棋格查询独立的 `DATA_JOURNEY_NORMAL_BATTLE`，再用该记录的 `battle_id` 查询体力和首领预览。本地快照未找到该面板所读的 `journey_normalbattle` 表，普通战斗的实际入场编组仍待核对。`DynamicConfigData` 的 marshal SHA-256 为 `69cc6063aba5d4fc5d797f2e9ab59b3a0af2bca22fb57515d6eb1140f8744baf`。
 
 五场首领挑战按 `SeaChallengeFightPanel.refreshUIByIdx` 的 `journey_hardbattle.battle_id` 查到通用 PvE 关卡、体力消耗、敌方波次和站位，并按 `on_tips` 展示 `defence_hard_battle` 原文。七人岬·扇对应关卡和编组 731001，体力消耗为 3，原表配置一波，站位 ID 为 716。原版面板模块的 marshal SHA-256 为 `addbb7d5bfe460f719d1c0e928f8b88b752969697dcd74be5d4a4af913c5b4c7`。

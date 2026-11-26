@@ -192,6 +192,7 @@ function sampleBattleMarkup(samples){
   const hunt=sample.guildHunt;
   const retreat=sample.guildRetreat;
   const yanwu=sample.fengmoYanwu;
+  const generalSoul=sample.generalSoulTrial;
   const spider=sample.tuzhizhuPractice;
   const relay=sample.underworld;
   const orochi=sample.trueOrochi;
@@ -218,6 +219,8 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${retreat.damage.toLocaleString('zh-CN')} · 作战 ${retreat.combatSeconds.toFixed(2)} / ${retreat.windowSeconds} 秒 · ${retreat.phases.length} 次阶段切换`:
    yanwu?`${!sample.completed?'结算待确认':yanwu.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${yanwu.damage.toLocaleString('zh-CN')} · 作战 ${yanwu.combatSeconds.toFixed(2)} 秒`:
+   generalSoul?`${!sample.completed?'结算待确认':generalSoul.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
+    `个人伤害 ${generalSoul.damage.toLocaleString('zh-CN')} · 战斗与结算 ${generalSoul.combatSeconds.toFixed(2)} 秒`:
    qiling?`${{'boss-defeated':'击败首领','team-defeated':'本队落败','window-expired':'达到计分时限'}[qiling.reason]||'结算待核对'} · `+
     `个人伤害 ${qiling.damage.toLocaleString('zh-CN')} · 作战 ${qiling.combatSeconds.toFixed(2)} / ${qiling.windowSeconds} 秒 · `+
     `共享生命剩余 ${Math.round(qiling.remainingHp).toLocaleString('zh-CN')}`:

@@ -573,6 +573,25 @@
     return true;
   }
 
+  function showGeneralSoulTrial(destination,entry,groups){
+    const trial=window.AtlasGeneralSoulTrial;
+    const activityEntry=entry.table==='act_team_battle'&&Number(entry.key)===trial.activityRow;
+    const stageEntry=entry.table==='pve_stage_data'&&Number(entry.key)===trial.stageId;
+    if(!matchesOpeningSource(trial)||!activityEntry&&!stageEntry)return;
+    const activity=activityEntry?groups[0].row:null;
+    const stage=groups.find(group=>group.ref.table==='pve_stage_data')?.row;
+    const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===trial.stageId);
+    if(activityEntry&&(activity?.act_id!==trial.actId||activity.team_battle_type!==trial.teamType||activity.battle_id!==trial.stageId)||
+       stage?.groupid!==trial.stageId||stage.shishentotal!==trial.memberCount||formation?.row?.resindex!==trial.sceneId||
+       formation.waves.length!==1||formation.waves[0].map(unit=>unit.id).join()!==trial.enemies.join())return;
+    const scene=DATA.gameConfig.stages[trial.codeStageId];
+    if(scene?.actors!==1||scene.shikigami!==trial.memberCount)return;
+    destination.append(node('p','可用已知阵容离线模拟活动的单人挑战，按原版 180 秒时限统计个人伤害。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:trial.stageId,groupId:trial.stageId,memberCount:trial.memberCount,
+      battleMode:trial.battleMode,waveCount:1,label:'将魂试炼 · 单人个人伤害',version:trial.resourceVersion,
+      scoreWindowSeconds:trial.deadlineSeconds,codeStageId:trial.codeStageId,codeLabel:scene.name});
+  }
+
   function liveScoreTable(label,columns,rows){
     const detail=node('details'),table=node('table'),head=node('thead'),heading=node('tr'),body=node('tbody');
     for(const text of columns){
@@ -1150,6 +1169,7 @@
     showFengmoLive(destination,entry,groups);
     showTuzhizhuPractice(destination,entry,groups);
     const yanwu=['act_team_battle','pve_stage_data'].includes(entry.table)&&showFengmoYanwu(destination,groups);
+    showGeneralSoulTrial(destination,entry,groups);
     showRegionalBoss(destination,entry,groups,monsters);
     showUnderworld(destination,entry,groups[0].row);
     const exams=window.AtlasSixRealmsExams;
@@ -1210,7 +1230,8 @@
         label:'真·八岐大蛇原版单人十层',version:state.index.resourceVersion,codeStageId:orochi.codeStageId,codeLabel:codeScene.name,
       });
     }
-    if (!yanwu&&entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
+    if (!yanwu&&entry.table==='pve_stage_data'&&Number(entry.key)!==AtlasGeneralSoulTrial.stageId&&
+        state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
       const regional=entry.refs.some(ref=>ref.table==='lbs_world_boss_area');

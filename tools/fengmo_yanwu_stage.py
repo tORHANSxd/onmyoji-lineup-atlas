@@ -25,7 +25,7 @@ def fengmo_yanwu_stage(stage_id):
     return engine, group, roster
 
 
-class FengmoYanwuReplay:
+class SoloActivityReplay:
     """Relay the sole participant's messages through the original group handlers."""
 
     def __init__(self, engine, group, const):
@@ -53,7 +53,7 @@ class FengmoYanwuReplay:
                 engine.createMonsterEntity = create
             if not self.opening:
                 if sorted((unit.posIndex, unit.protoid, unit.AttrComp.level) for unit in spawned) != sorted(expected):
-                    raise RuntimeError("Fengmo Yanwu opened with a different enemy formation")
+                    raise RuntimeError("The original activity opened with a different enemy formation")
                 self.opening = [{
                     "id": entity.protoid, "position": entity.posIndex, "level": entity.AttrComp.level,
                     "hp": entity.AttrComp.hp, "speed": entity.AttrComp.speed, "attack": entity.AttrComp.attack,
@@ -88,6 +88,8 @@ class FengmoYanwuReplay:
         if self.started is None and self.engine.battleState == self.const.BattleState.BS_STARTED:
             self.started = self.engine.now_time()
 
+
+class FengmoYanwuReplay(SoloActivityReplay):
     def report(self, completed):
         engine = self.engine
         if self.started is None or not self.opening:

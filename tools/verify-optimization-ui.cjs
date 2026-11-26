@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,528,921,1031,1032,1041,2000,2001,3004,3005,3023,5550,5551,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,528,921,1031,1032,1041,2000,2001,2507,3004,3005,3023,5550,5551,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -112,7 +112,7 @@ async function main(){
    }
    await ui('$("client-dungeons").scrollIntoView({block:"start",behavior:"instant"})');
    await capture('client-dungeon-encounter');
-   await ui('document.querySelector("#client-dungeons-encounter-detail .encounter-source button").click()');
+   await ui('[...document.querySelectorAll("#client-dungeons-encounter-detail .encounter-source button")].find(button=>button.textContent==="在资料表中查看").click()');
    await until('$("client-dungeons-table").value==="act_team_battle"&&!$("client-dungeons-records").hidden');
    await ui('$("client-dungeons-table").value="pve_stage_data";$("client-dungeons-table").dispatchEvent(new Event("change"))');
   }
@@ -320,7 +320,7 @@ async function main(){
   const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
-   known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('spider',10020221,5),
+   known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
    known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
   const trial=known('six-realms',110151,6);
@@ -615,6 +615,19 @@ async function main(){
     await encounter('event','逢魔演武 鬼灵歌伎');
     assert.match(await run('yanwu',{stageId:325006,groupId:325006,battleMode:8238},{outcome:'loss',wavesCleared:0,
      fengmoYanwu:{damage:750000,timedOut:true,combatSeconds:300}},undefined,10,6),/达到计分时限.*750,000/);
+   }
+   if(cases.some(entry=>entry.table==='act_team_battle'&&String(entry.key)==='4')){
+    await encounter('event','将魂试炼');
+    assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-general-soul']);
+    assert.match(await ui(panel+'.textContent'),/原版计分窗口 180 秒/);
+    assert.match(await run('general-soul',{stageId:3504732,groupId:3504732,battleMode:2507},{outcome:'loss',wavesCleared:0,
+     generalSoulTrial:{damage:11320870,timedOut:true,combatSeconds:180.96,tactics:tactical}},tactical),
+     /单场最高 11,320,870.*达到计分时限.*个人伤害 11,320,870 · 战斗与结算 180\.96 秒/s);
+    const stage=cases.find(entry=>entry.table==='pve_stage_data'&&Number(entry.key)===3504732);
+    if(stage){
+     await encounter(stage.family,'SSR3困难 3504732');
+     assert.match(await ui(panel+'.textContent'),/将魂试炼 · 单人个人伤害/);
+    }
    }
    if(catalog.entries.has('MZB_fengmo')){
     await encounter('daily','逢魔木桩 巧劲');

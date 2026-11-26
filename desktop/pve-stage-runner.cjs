@@ -13,6 +13,7 @@ const yulingOpenings=require('../app/yuling-openings.js');
 const guildHuntOpenings=require('../app/guild-hunt-openings.js');
 const guildRetreatOpenings=require('../app/guild-retreat-openings.js');
 const fengmoYanwu=require('../app/fengmo-yanwu.js');
+const generalSoulTrial=require('../app/general-soul-trial.js');
 const fengmoLive=require('../app/fengmo-live.js');
 const tuzhizhuPractice=require('../app/tuzhizhu-practice.js');
 const resourceEncounters=require('../app/resource-encounters.js');
@@ -37,6 +38,7 @@ const engines={
  [qilingGroups.battleMode]:{name:'QiLingGroupBossBattleEngine',route:'qiling-collective-local-window',sha256:qilingGroups.engineSHA256},
  3023:{name:'LBSWorldBossXEngine',route:'regional-boss-hard-scenario',sha256:'a4268deb478a53610e6ef6e23e833f3bf18d2be826f7cd703aaca7e1a54df38f'},
  [fengmoYanwu.battleMode]:{name:'FengMoEquipBattleEngine',route:'fengmo-yanwu-solo',sha256:fengmoYanwu.engineSHA256},
+ [generalSoulTrial.battleMode]:{name:'FakeGod7GeneralSoulBattleEngine',route:'general-soul-activity-solo',sha256:generalSoulTrial.engineSHA256},
  ...Object.fromEntries(Object.entries(tuzhizhuPractice.modes).map(([id,mode])=>
   [id,{name:mode.engine,route:'tuzhizhu-practice-solo',sha256:mode.sha256}])),
  [firstExperience.battleMode]:null,
@@ -115,7 +117,8 @@ function validArtifactReport(proof,state,dao){
 function validTactics(plan,battleMode){
  if(!Object.hasOwn(plan,'tactics'))return true;
  const {tactics}=plan;
- if(![2000,306,fengmoYanwu.battleMode,qilingGroups.battleMode].includes(battleMode)||!tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
+ if(![2000,306,fengmoYanwu.battleMode,qilingGroups.battleMode,generalSoulTrial.battleMode].includes(battleMode)||
+    !tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
  return Object.entries(tactics).every(([key,value])=>{
   const slot=number=>positive(number)&&number<=plan.members.length;
   if(key==='redBoss')return value===true;
@@ -314,6 +317,19 @@ function validFengmoYanwu(report,entry,plan){
    ['hp','speed','attack','defense','critRate'].every(key=>Number.isFinite(unit[key])&&unit[key]>=0))&&validScoringTactics(data,plan,entry.bossId);
 }
 
+function validGeneralSoulTrial(report,plan){
+ const trial=generalSoulTrial,data=report.generalSoulTrial;
+ const roster=plan.members.map(member=>Number(member.hero.heroId)).sort((a,b)=>a-b);
+ return data&&report.sceneId===trial.sceneId&&report.waveCount===1&&data.actId===trial.actId&&
+  data.deadlineSeconds===trial.deadlineSeconds&&typeof data.timedOut==='boolean'&&
+  Number.isFinite(data.combatSeconds)&&data.combatSeconds>=0&&(!data.timedOut||data.combatSeconds>=trial.deadlineSeconds-1)&&
+  Number.isSafeInteger(data.damage)&&data.damage>=0&&Array.isArray(data.usedHeroIds)&&
+  sameTactics(data.usedHeroIds.slice().sort((a,b)=>a-b),roster)&&validScoringTactics(data,plan,trial.enemies[0])&&
+  Array.isArray(data.opening)&&data.opening.length===trial.enemies.length&&data.opening.every((unit,i)=>
+   unit?.id===trial.enemies[i]&&unit.position===i+1&&unit.level===40&&
+   ['hp','speed','attack','defense','critRate'].every(key=>Number.isFinite(unit[key])&&unit[key]>=0));
+}
+
 function validTuzhizhuPractice(report,mode,stageId,plan){
  const data=report.tuzhizhuPractice,trait=tuzhizhuPractice.traits[stageId];
  const ids=trait?[plan.onmyoji.heroId,...plan.members.map(member=>member.hero.heroId)].map(Number).sort((a,b)=>a-b):[];
@@ -393,6 +409,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
     (retreatOpening&&!validRetreat(report,retreatOpening,retreat,rounds[0]))||
     (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
+    (battleMode===generalSoulTrial.battleMode&&!validGeneralSoulTrial(report,rounds[0]))||
     (spider&&!validTuzhizhuPractice(report,spider,stageId,rounds[0]))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
     (battleMode===orochi.battleMode&&!validOrochiReport(report,rounds[0]))||
@@ -432,14 +449,15 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    try{
     await Promise.all([readConfig(configPath),fs.access(entry),fs.access(path.join(scriptRoot,'rune_floor_host.py'))]);
     const has=name=>fs.access(path.join(scriptRoot,name)).then(()=>true,()=>false);
-    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
+    const [awake,secret,yuling,resource,hunt,underworld,retreat,regional,yanwu,spider,trueOrochi,spirit,qiling,shilian,generalSoul]=await Promise.all([has('awake_stage.py'),has('secret_stage.py'),has('yuling_stage.py'),
      has('resource_stage.py'),has('guild_hunt_stage.py'),has('underworld_stage.py'),has('guild_retreat_stage.py'),has('regional_boss_stage.py'),
      has('fengmo_yanwu_stage.py'),has('tuzhizhu_practice.py'),has('true_orochi_stage.py'),has('hunling_stage.py'),has('qiling_group_stage.py'),
-     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean))]);
+     Promise.all([has('shilian_stage.py'),has('shilian_routes.py')]).then(files=>files.every(Boolean)),has('general_soul_stage.py')]);
     return {available:true,resourceVersion,battleModes:[3,...(awake?[29]:[]),...(secret?[266]:[]),...(yuling?[267]:[]),
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
-     ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[])]};
+     ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
+     ...(generalSoul?[generalSoulTrial.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -504,6 +522,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===fengmoYanwu.battleMode&&(fengmoYanwu.resourceVersion!==resourceVersion||stageId!==groupId||
       plan.members.length!==fengmoYanwu.routes[stageId]?.memberCount))throw Error('当前配装与逢魔演武单人上阵人数不一致');
    if(battleMode===3&&Object.hasOwn(fengmoYanwu.routes,stageId))throw Error('逢魔演武需要使用原版活动计分入口');
+   if(battleMode===generalSoulTrial.battleMode&&(generalSoulTrial.resourceVersion!==resourceVersion||
+      stageId!==generalSoulTrial.stageId||groupId!==stageId||plan.members.length!==generalSoulTrial.memberCount))
+    throw Error('将魂试炼需要原版活动关卡和五位自有式神');
+   if(battleMode===3&&stageId===generalSoulTrial.stageId)throw Error('将魂试炼需要使用原版活动计分入口');
    if(battleMode===3&&fengmoLive.isLiveStage(stageId))throw Error('逢魔实战需要原版联机入场资料');
    if(battleMode===3&&Object.values(tuzhizhuPractice.modes).some(mode=>mode.groupId===stageId))
     throw Error('土蜘蛛木桩需要使用原版单人练习入口');
