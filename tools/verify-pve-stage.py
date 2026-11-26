@@ -19,24 +19,30 @@ def replay(args, runtime, work):
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
+    from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
-    from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_player, underworld_stage, underworld_teams
+    from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
     from yuling_stage import YULING_MODE
     from rune_floor_host import prepare_runtime
     from rune_replay import monster_waves, project_playback, read_models
-    from rune_team import battle_spirit, selected_team
+    from rune_team import battle_spirit, preset_player, selected_team
     from unicorn.x86_const import UC_X86_REG_XMM0
 
     team_bytes, suit_bytes = args.team.read_bytes(), args.suit_index.read_bytes()
     plan = json.loads(team_bytes)
     suits = json.loads(suit_bytes)
     relay = args.mode == UNDERWORLD_MODE
+    orochi = args.mode == OROCHI_MODE
     retreat = args.mode == RETREAT_MODE
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
     spider = args.mode in PRACTICE_MODES
     if relay:
         heroes, inventory, actors, rounds = underworld_teams(plan, suits)
+    elif orochi:
+        fighters, inventory, choices, actors = orochi_team(plan, suits)
+        actor = actors["selected-onmyoji"][0]
+        heroes = {**fighters, **{alias: profile for alias, (profile, _) in actors.items()}}
     else:
         actor, fighters, inventory, choices = selected_team(plan, suits, member_limit=6 if yanwu else 5)
         heroes = {**fighters, "selected-onmyoji": actor}
@@ -77,6 +83,11 @@ def replay(args, runtime, work):
 
         engine, stage, wave_count = underworld_stage(args.stage)
         group_id = args.stage
+    elif orochi:
+        from DynamicConfigData import DATA_HERO
+
+        engine, orochi_floors, const = orochi_stage(args.stage)
+        group_id, wave_count = orochi_floors[0][0], len(orochi_floors)
     elif regional:
         from battleengine.engine.LBSWorldBossEngine import const
         from DynamicConfigData import DATA_HERO
@@ -158,7 +169,7 @@ def replay(args, runtime, work):
             raise ValueError(f"Unknown native PvE stage {stage_id}")
         if stage.get("name") in RESOURCE_STAGE_NAMES:
             raise ValueError("Experience and coin encounters require their dedicated entry")
-        if any(args.stage == floor[0] for floor in map_boss.data[71]["gk_list"]):
+        if any(args.stage == floor[0] for floor in map_boss.data[OROCHI_STAGE]["gk_list"]):
             raise ValueError("True Orochi floors require the original continuous dungeon engine")
         group_id = stage.get("groupid")
         group = BattleMonstersInfo.data.get(group_id)
@@ -171,8 +182,9 @@ def replay(args, runtime, work):
     if any(hero["heroId"] not in DATA_HERO.data for hero in heroes.values()):
         raise ValueError("Unknown inventory character")
 
-    player = underworld_player(heroes, actors, rounds) if relay else {"heroes": heroes, "yysid": actor["heroId"]}
-    spirit = None if relay else plan.get("spirit")
+    actor_id = rounds[0]["id"] if relay else actor["heroId"]
+    player = preset_player(heroes, actors, actor_id) if relay or orochi else {"heroes": heroes, "yysid": actor_id}
+    spirit = None if relay or orochi else plan.get("spirit")
     if spirit is not None:
         from AttrCalc import HunlingAttrCalc
         from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
@@ -188,13 +200,15 @@ def replay(args, runtime, work):
     avatar = BattleAvatar()
     avatar.init_from_dict(player)
     avatar.inventory.update(inventory)
-    avatar.defaultHeros = rounds[0]["members"][:] if relay else list(fighters)
+    avatar.defaultHeros = rounds[0]["members"][:] if relay else list(fighters)[:6] if orochi else list(fighters)
 
     if retreat:
         route = "guild-retreat-personal-window"
         raid_window = RetreatWindow(raid, const, args.window_seconds)
     elif relay:
         route = "underworld-gate-local-solo"
+    elif orochi:
+        route = "true-orochi-local-solo"
     elif regional:
         route = "regional-boss-ordinary-scenario" if args.mode == REGION_MODE else "regional-boss-hard-scenario"
     elif yanwu:
@@ -236,6 +250,7 @@ def replay(args, runtime, work):
     engine.controllers.append(controller)
     engine.op_init_flag = True
     underworld = UnderworldReplay(engine, controller, const, rounds, heroes, player["yys_hunling"]) if relay else None
+    orochi_replay = OrochiReplay(engine, controller, const, orochi_floors, fighters, actors, choices, player["yys_hunling"]) if orochi else None
     init_engine_state = engine.init_engine_state
     battle_ended, create_entity = engine.doBattleEnded, engine.onEntityCreated
     winner, entity_models = None, {}
@@ -304,6 +319,9 @@ def replay(args, runtime, work):
         formation_matches = (engine.fbId == args.stage and engine.combineSceneInfoId == stage["scene"]
                              and engine.myRoundCount == 1 and engine.spectatorHeroCount == 0
                              and engine.campData1.shareGuiHuo == 2 and engine.campData2.initGuihuo == 4)
+    elif orochi:
+        formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == 40007
+                             and engine.maxPresetSSCount == 13 and engine.maxPresetYYSCount == 2)
     elif regional:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == formation["resindex"]
         if args.mode == REGION_HARD_MODE:
@@ -331,11 +349,11 @@ def replay(args, runtime, work):
     recorder = engine.battleRecorder or BattleRecorderRune(engine, controller)
     engine.battleRecorder = recorder
     if not relay:
-        engine.op_init(controller, actor["heroId"], list(fighters), [])
+        engine.op_init(controller, actor_id, avatar.defaultHeros[:], [])
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
 
-    replay_seconds = PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else 130 if relay else 75
+    replay_seconds = PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else OROCHI_REPLAY_SECONDS if orochi else 130 if relay else 75
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
     equipped_spirit = None
@@ -361,11 +379,16 @@ def replay(args, runtime, work):
                 break
         if underworld:
             underworld.leave_if_out_of_teams()
+        if orochi_replay:
+            orochi_replay.prepare()
         if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk or controller.isExited:
             continue
         if underworld:
             underworld.select()
             selection_checked = bool(underworld.confirmed)
+            continue
+        if orochi_replay:
+            selection_checked = orochi_replay.select()
             continue
         pending = dict(choices)
         for entity in engine.heroEntities.values():
@@ -418,6 +441,10 @@ def replay(args, runtime, work):
               "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
     if underworld:
         report["underworld"] = underworld.report()
+    if orochi_replay:
+        report["trueOrochi"] = {**orochi_replay.report(), "settlement": outcome}
+        if completed and engine.finishedWaveCount < engine.monsterWaveCount:
+            report["outcome"] = "loss"
     if regional_replay:
         report["regionalBoss"] = regional_replay.report(completed, winner)
     if yanwu_replay:
@@ -479,6 +506,7 @@ def main():
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from regional_boss_stage import REGION_MODES
     from resource_stage import RESOURCE_MODE
+    from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS
     from underworld_stage import UNDERWORLD_MODE
     from yuling_stage import YULING_MODE
@@ -486,7 +514,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, *REGION_MODES, *PRACTICE_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, *REGION_MODES, *PRACTICE_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -505,6 +533,7 @@ def main():
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
+                        OROCHI_REPLAY_SECONDS + 20 if args.mode == OROCHI_MODE else
                         240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
     faulthandler.dump_traceback_later(watchdog_seconds, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:

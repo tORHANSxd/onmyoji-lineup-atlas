@@ -118,3 +118,23 @@ def battle_spirit(row, calculate):
     skills.append([calc.talentSkill, calc.talentSkillLv])
     return {"uid": "selected-spirit", "id": row["id"], "star": row["star"],
             "lv": max(1, row["lv"]), "shiny": row["shiny"], "marks": marks, "skill_list": skills}
+
+
+def preset_player(heroes, actors, onmyoji_id):
+    from AttrCalc import HunlingAttrCalc
+    from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
+
+    player = {"heroes": heroes, "yysid": onmyoji_id, "hunling_info": {}, "yys_hunling": {}}
+    for alias, (actor, raw) in actors.items():
+        if raw is None:
+            continue
+        spirit = battle_spirit(raw, HunlingAttrCalc)
+        possible = DATA_HUNLING_BASE.data.get(spirit["id"], {})
+        if (actor["heroId"] not in possible.get("heroIdList", ())
+                or (spirit["id"], spirit["star"]) not in DATA_HUNLING_ATTR.data
+                or any(mark not in DATA_HUNLING_MARK.data for mark in spirit["marks"])):
+            raise ValueError("The selected spirit does not match this onmyoji")
+        spirit["uid"] = alias + "-spirit"
+        player["hunling_info"][spirit["uid"]] = spirit
+        player["yys_hunling"][str(actor["heroId"])] = spirit["uid"]
+    return player

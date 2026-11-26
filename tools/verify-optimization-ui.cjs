@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001,3004,3023,5550,5551,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001,3004,3005,3023,5550,5551,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -276,8 +276,8 @@ async function main(){
  });
  const raw={format:'mumu-snapshot-v1',completeness:'complete',player:{name:'验收库存',serverId:'10014',shortId:'synthetic'},heroes:{a:{heroId:608,level:40,star:6,awake:1,skinfo:[[6081,1]]}},hero_equips:[]};
  if(catalog?.index.encounters)await check('已知阵容按副本匹配、使用原版入口并保留逐场战报',async()=>{
-  const ids=[591,389,596,554,379,557],heroes={},items=[];
-  for(const id of ids){
+  const ids=[591,389,596,554,379,557],reserves=[237,395,369,364],heroes={},items=[];
+  for(const id of [...ids,...reserves]){
    const prototype=data.gameConfig.heroes[id],prefix='pve-'+id;
    const skinfo=prototype.skills.map(skill=>[skill,game.levels(data.gameConfig,skill,1).at(-1).level]);
    const equips=Array.from({length:6},(_,i)=>prefix+'-soul-'+i);
@@ -301,7 +301,7 @@ async function main(){
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('spider',10020221,5),
-   known('region',10020215,5,13),known('region-hard',10020216,5)];
+   known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6)];
   const boot=await ui('JSON.stringify(STATE)');
   const cases=JSON.parse(await readEncounters(catalog)).entries;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -372,6 +372,42 @@ async function main(){
    await until(status+'.textContent.includes("未通过本次采样")');
    assert.deepEqual(libraryOrder,[13,10]);
    await ui('selectedLineups.clear();renderSelection()');
+   if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
+    await encounter('daily','真蛇 地图首领入口');
+    const reserveActor='document.querySelector("[data-pve-reserve-actor]")';
+    await ui(`${options}.value="qa-known-orochi";${options}.dispatchEvent(new Event("change"))`);
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(`${reserveActor}.querySelector('option[value="qa-known-orochi"]')===null`),true);
+    await ui(`${reserveActor}.value="qa-known-story-other";${reserveActor}.dispatchEvent(new Event("change"))`);
+    await ui(`(()=>{const fields=[...document.querySelectorAll('[data-pve-reserve-member]')];
+     ${JSON.stringify(reserves)}.forEach((id,i)=>{fields[i].value='pve-'+id;fields[i].dispatchEvent(new Event('change'));});})()`);
+    await until(start+'.disabled===false');
+    assert.equal(await ui('document.querySelectorAll("[data-pve-reserve-member]")[1].querySelector("option[value=pve-237]").disabled'),true);
+    win.setContentSize(720,960);
+    assert.equal(await ui('(()=>{const form=document.querySelector(".pve-reserve");return [...form.querySelectorAll("select")].every(select=>select.getBoundingClientRect().right<=form.getBoundingClientRect().right);})()'),true);
+    win.setContentSize(1440,1000);
+    const snakeSeeds=[];
+    mockPve=(plan,request)=>{
+     const {seed}=request;
+     assert.deepEqual(request,{battleMode:3005,stageId:71,groupId:25100,seed,damageFloor:true});
+     snakeSeeds.push(seed);
+     assert.equal(plan.onmyoji.heroId,10);
+     assert.equal(plan.reserveOnmyoji.heroId,13);
+     assert.deepEqual(plan.members.map(row=>row.hero.heroId),ids);
+     assert.deepEqual(plan.reserves.map(row=>row.hero.heroId),reserves);
+     const worn=[...plan.members,...plan.reserves].flatMap(row=>row.souls.map(soul=>soul.id));
+     assert.equal(worn.length,60);
+     assert.equal(new Set(worn).size,60);
+     return {...sample,seed,outcome:seed===0?'loss':'win',waveCount:10,wavesCleared:seed===0?9:10,trueOrochi:{settlement:'win',starts:[
+      {floor:1,lineup:[{id:10,hp:2500,maxHp:2500}]},{floor:2,lineup:[{id:10,hp:2300,maxHp:2400}]},
+     ]}};
+    };
+    await ui(start+'.click()');
+    await until(status+'.textContent.includes("未通过本次采样")',20000);
+    assert.deepEqual(snakeSeeds,[0,1,2,3,7,42]);
+    const evidence=await ui(reports+'.textContent');
+    assert.match(evidence,/5 \/ 6 场十层通关.*清 9 \/ 10 层.*已按进度结算.*各层出战与生命上限.*2500\/2500.*2300\/2400/s);
+   }
    await ui('qaEncounterInput("battle","30101 剧情：晴明单挑犬神")');
    await until(panel+'.textContent.includes("剧情：晴明单挑犬神")');
    assert.equal(await ui(start+'===null'),true);

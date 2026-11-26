@@ -23,6 +23,63 @@
   return (pane.lineup.value?[pane.lineup.value]:[...selectedLineups]).map(id=>byId.get(id)).filter(Boolean);
  }
 
+ function updateSelect(select,rows,placeholder){
+  const signature=JSON.stringify(rows);
+  if(select.dataset.options===signature)return;
+  const value=select.value;
+  select.replaceChildren(new Option(placeholder,''),...rows.map(([id,title])=>new Option(title,id)));
+  if(rows.some(([id])=>id===value))select.value=value;
+  select.dataset.options=signature;
+ }
+
+ function orochiReserve(selected,inventory){
+  if(!pane.reserveActor)return null;
+  const actorOptions=new Map();
+  const usedActors=new Set(selected.flatMap(lineup=>lineup.members.filter(m=>m.kind==='onmyoji'&&m.occupied!==false).map(m=>m.onmyojiId?.toString())));
+  for(const lineup of lineups()){
+   const actor=lineup.members?.find(m=>m.kind==='onmyoji'&&m.occupied!==false);
+   if(!actor?.onmyojiId||!Array.isArray(actor.skills)||!Number.isInteger(actor.level)||!Number.isInteger(actor.star)||usedActors.has(String(actor.onmyojiId)))continue;
+   actorOptions.set(lineup.id,{actor,title:`${actor.name} · ${lineup.title}`});
+  }
+  updateSelect(pane.reserveActor,[...actorOptions].map(([id,{title}])=>[id,title]),'选择已知阵容的阴阳师配置');
+  if(!pane.reserveChoices||pane.reserveAccount!==inventory){
+   const ownership=inventory&&accountInventorySolver.equipmentOwnership(inventory),members=new Map();
+   if(ownership)for(const [id,souls] of ownership.byHero){
+    const hero=inventory.heroes[id],meta=rosterById(hero.shikigamiId);
+    if(!hero.raw?.skinfo?.length||meta?.isMaterial||DATA.gameConfig.heroes[hero.shikigamiId]?.kind!=='shikigami'||souls.some(soul=>soul.unknown.length))continue;
+    members.set(id,{title:`${accountHeroName(hero,meta)} · ${hero.level}级 · ${souls.length}件御魂 · ${id.slice(-5)}`,
+     data:{instanceId:id,hero:hero.raw,souls:souls.map(soul=>soul.raw)}});
+   }
+   const options=[...members].sort(([,a],[,b])=>a.title.localeCompare(b.title,'zh-CN')).map(([id,{title}])=>[id,title]);
+   for(const select of pane.reserveMembers){
+    if(pane.reserveAccount?.id!==inventory?.id)select.value='';
+    updateSelect(select,options,'选择已拥有式神');
+   }
+   pane.reserveSelection=null;
+   pane.reserveAccount=inventory;
+   pane.reserveChoices=members;
+  }
+  const ids=pane.reserveMembers.map(select=>select.value);
+  const selection=ids.join(',');
+  if(pane.reserveSelection!==selection){
+   for(const select of pane.reserveMembers)for(const option of select.options){
+    option.disabled=!!option.value&&option.value!==select.value&&ids.includes(option.value);
+   }
+   pane.reserveSelection=selection;
+  }
+  const actor=actorOptions.get(pane.reserveActor.value)?.actor;
+  const reserves=ids.map(id=>pane.reserveChoices.get(id)?.data);
+  return {actor,reserves,ready:!!actor&&reserves.every(Boolean)&&new Set(ids).size===4,
+   hint:actorOptions.size?'指定备选阴阳师和四位备选式神。':'需要一份包含不同阴阳师的已知配置，可在阵容制作器中保存。'};
+ }
+
+ function reserveInventory(plan,inventory){
+  const heroes=new Set(plan.reserves.map(row=>row.instanceId));
+  const souls=new Set(plan.reserves.flatMap(row=>row.souls.map(soul=>soul.id)));
+  const available=(rows,locked)=>Object.fromEntries(Object.entries(rows).filter(([id])=>!locked.has(id)));
+  return {...inventory,heroes:available(inventory.heroes,heroes),souls:available(inventory.souls,souls)};
+ }
+
  const busy=()=>!!(job?.running||stopping);
  const active=run=>job===run&&pane===run.pane&&!run.cancelled&&DATA===run.data&&usesDungeonInventory(run);
  const ready=()=>runtime?.available&&runtime.resourceVersion===pane.version&&
@@ -41,8 +98,14 @@
    pane.options=options;
   }
   const selected=selectedForReplay(available);
+  const reserve=orochiReserve(selected,account());
+  pane.reserve=reserve;
+  if(pane.reserveActor){
+   pane.reserveActor.disabled=blocked||!hasAccount;
+   for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
+  }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -50,6 +113,7 @@
    !supported?(runtime?.reason||(runtime?.available?'本机运行时不支持此版本或战斗模式。':'正在核对本机复跑资料…')):
    !hasAccount?'先导入并选择库存账号。':
    blocked?'已有原版复跑或正在停止，请等待其结束。':
+   selected.length&&reserve&&!reserve.ready?reserve.hint:
    job?.notice?job.notice:
    selected.length?`已选 ${selected.length} 套已知阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
    available.length?'从下拉列表选择，或先在阵容库勾选对应阵容。':'阵容库暂无可用于此副本的完整阵容。请先解析或手动制作阵容码。';
@@ -91,12 +155,18 @@
     <button class="secondary" type="button" data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
+   ${config.battleMode===AtlasTrueOrochi.battleMode?`<fieldset class="pve-reserve">
+    <legend>备选阵容</legend>
+    <p class="caption">备选式神沿用当前御魂。原版引擎按可用阵容继续挑战下一层。</p>
+    <label class="pve-lineup-field">备选阴阳师 <select data-pve-reserve-actor></select></label>
+    ${Array.from({length:4},(_,i)=>`<label class="pve-lineup-field">备选式神 ${i+1} <select data-pve-reserve-member></select></label>`).join('')}
+   </fieldset>`:''}
    <ol class="dungeon-battle-list" data-pve-results></ol>`;
   const part=name=>section.querySelector(`[data-pve-${name}]`);
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
-   hint:part('status'),results:part('results')};
+   hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')]};
   pane.start.onclick=()=>void run();
-  pane.lineup.onchange=()=>{
+  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -124,6 +194,7 @@
 
  async function replay(run,row,plan){
   const {stageId,groupId,battleMode,retreat,region}=run.pane,scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
+  const orochi=battleMode===AtlasTrueOrochi.battleMode;
   for(const seed of seeds){
    if(!active(run))return;
    run.message=`正在复跑第 ${row.index} 套 · 种子 ${seed}`;
@@ -149,6 +220,7 @@
     row.state.textContent=`种子 ${seed} 未取得完整波次结算，可重试`;
     return;
    }
+   if(orochi&&report.completed&&report.trueOrochi&&['win','loss'].includes(report.outcome))continue;
    const experience=report.experience;
    if(report.regionalBoss?.eligible===false){
     row.verdict='infeasible';
@@ -167,6 +239,14 @@
     return;
    }
   }
+  if(orochi){
+   const won=row.samples.filter(sample=>sample.outcome==='win'&&AtlasRuneCandidate.pveGoalMet(sample,battleMode)).length;
+   if(won<seeds.length){
+    row.verdict='loss';
+    row.state.textContent=`${won} / ${seeds.length} 场十层通关 · 最少清 ${Math.min(...row.samples.map(sample=>sample.wavesCleared))} 层`;
+    return;
+   }
+  }
   row.verdict=(scoring&&AtlasRuneCandidate.damageResult(row.samples)?.credited!==seeds.length||
    relay&&AtlasRuneCandidate.waveResult(row.samples)?.min!==70)?'scored':'pass';
  }
@@ -177,7 +257,7 @@
    row.state.textContent='正在精算库存…';
    run.message=`正在精算第 ${run.rows.length} / ${run.selected.length} 套原码`;
    update();
-   const result=await solveInventoryLineup(lineup,run);
+   const result=await solveInventoryLineup(lineup,run,undefined,run.startingInventory);
    if(!active(run))return;
    if(!result.ready){
     row.verdict=result.proof?.state==='infeasible'?'infeasible':'unknown';
@@ -186,6 +266,12 @@
    }
    row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码培养和技能复跑。普攻等级缺失时使用客户端最低等级。</p>');
    const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount);
+   if(run.reserve){
+    const profile=AtlasRuneLineup.selectedOnmyoji(run.reserve.actor,run.account,run.data.gameConfig);
+    plan.reserveOnmyoji=profile.onmyoji;
+    if(profile.spirit)plan.reserveSpirit=profile.spirit;
+    plan.reserves=run.reserve.reserves;
+   }
    if(run.pane.actorId&&plan.onmyoji.heroId!==run.pane.actorId){
     row.verdict='infeasible';
     row.state.textContent='阵容码的阴阳师与本场指定阴阳师不同';
@@ -242,9 +328,11 @@
  async function run(){
   if(!pane||runeBusy()||!account()||!ready())return;
   const selected=selectedForReplay(knownLineups());
-  if(!selected.length)return;
+  const inventory=account(),reserve=orochiReserve(selected,inventory);
+  if(!selected.length||reserve&&!reserve.ready)return;
   const focus=document.activeElement===pane.start;
-  const next=job={pane,data:DATA,account:account(),selected,rows:[],running:true,cancelled:false,
+  const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,
+   startingInventory:reserve?reserveInventory(reserve,inventory):inventory,
    pveMemberCount:pane.memberCount,message:'正在准备库存…'};
   pane.results.replaceChildren();
   update();

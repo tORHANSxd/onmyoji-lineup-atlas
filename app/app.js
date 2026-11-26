@@ -194,6 +194,7 @@ function sampleBattleMarkup(samples){
   const yanwu=sample.fengmoYanwu;
   const spider=sample.tuzhizhuPractice;
   const relay=sample.underworld;
+  const orochi=sample.trueOrochi;
   const regional=sample.regionalBoss;
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
@@ -208,13 +209,18 @@ function sampleBattleMarkup(samples){
     (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):
    relay?`${sample.completed?'结算':'结算待确认'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 波 · `+
     relay.teams.map(team=>`第 ${team.team} 队在第 ${team.startWave} 波上场`).join('，')+(relay.leftAfterLastTeam?' · 已用完所选队伍':''):
+   orochi?`${!sample.completed?'原版结算待确认':sample.outcome==='win'?'十层通关':'未通关'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 层`+
+    (sample.completed&&sample.outcome==='loss'&&orochi.settlement==='win'?' · 已按进度结算':''):
    regional?.eligible===false?'原版引擎判定阵容不符合特殊条件':
    regional?.metrics?`${describeBattle(sample)} · ${regional.metrics.rounds} 回合 · 我方承伤 ${Math.round(regional.metrics.receivedDamage).toLocaleString('zh-CN')}${modifiers}`:
    experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:
    coins?`${coins.timedOut?'超时':sample.outcome==='win'?'击破首领':sample.completed?'队伍落败':'结算待确认'} · `+
     `首领剩余生命 ${(coins.bossHpFraction*100).toFixed(2)}% · 金币预览 ${coins.previewCoins.toLocaleString('zh-CN')} · `+
     `基础金币取下限 ${coins.minimumPreviewCoins.toLocaleString('zh-CN')}`:describeBattle(sample);
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}</li>`;
+  const roster=orochi?`<details><summary>查看各层出战与生命上限</summary><ol>${orochi.starts.map(({floor,lineup})=>
+   `<li>第 ${floor} 层 · ${lineup.map(unit=>`${esc(DATA.gameConfig.heroes[unit.id]?.name||String(unit.id))} · ${Math.round(unit.hp)}/${Math.round(unit.maxHp)}`).join('，')}</li>`
+  ).join('')}</ol></details>`:'';
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}</li>`;
  }).join('');
 }
 
@@ -558,7 +564,7 @@ function renderHun13Result(dungeon){
  if(focused)list.querySelector(`[${focused.name}="${CSS.escape(focused.value)}"]`)?.focus();
 }
 
-function solveInventoryLineup(lineup,job,onProgress){
+function solveInventoryLineup(lineup,job,onProgress,inventory=job.account){
  return new Promise((resolve,reject)=>{
   const task=new Worker('match-worker.js');
   const finish=(error,value)=>{
@@ -572,7 +578,7 @@ function solveInventoryLineup(lineup,job,onProgress){
    onProgress?.(data.result.proof?.nodes??0);
   };
   task.onerror=event=>finish(Error(event.message||'库存精算线程读取失败'));
-  try{task.postMessage({batch:1,lineups:[lineup],account:job.account,roster:DATA.roster,effects:DATA.effects});}
+  try{task.postMessage({batch:1,lineups:[lineup],account:inventory,roster:DATA.roster,effects:DATA.effects});}
   catch(error){finish(error);}
  });
 }

@@ -1,6 +1,6 @@
 """Inputs and observations for the original solo GuildLieFengEngine."""
 
-from rune_team import battle_spirit, selected_team
+from rune_team import selected_team
 
 UNDERWORLD_MODE = 2001
 UNDERWORLD_STAGES = (101, 102, 103)
@@ -44,26 +44,6 @@ def underworld_teams(plan, suits):
         rounds.append({"onmyoji": actor_alias, "id": actor["heroId"], "members": lineup, "choices": choices})
     heroes.update((alias, actor) for alias, (actor, _) in actors.items())
     return heroes, inventory, actors, rounds
-
-
-def underworld_player(heroes, actors, rounds):
-    from AttrCalc import HunlingAttrCalc
-    from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
-
-    player = {"heroes": heroes, "yysid": rounds[0]["id"], "hunling_info": {}, "yys_hunling": {}}
-    for alias, (actor, raw) in actors.items():
-        if raw is None:
-            continue
-        spirit = battle_spirit(raw, HunlingAttrCalc)
-        possible = DATA_HUNLING_BASE.data.get(spirit["id"], {})
-        if (actor["heroId"] not in possible.get("heroIdList", ())
-                or (spirit["id"], spirit["star"]) not in DATA_HUNLING_ATTR.data
-                or any(mark not in DATA_HUNLING_MARK.data for mark in spirit["marks"])):
-            raise ValueError("The selected spirit does not match this onmyoji")
-        spirit["uid"] = alias + "-spirit"
-        player["hunling_info"][spirit["uid"]] = spirit
-        player["yys_hunling"][str(actor["heroId"])] = spirit["uid"]
-    return player
 
 
 class UnderworldReplay:

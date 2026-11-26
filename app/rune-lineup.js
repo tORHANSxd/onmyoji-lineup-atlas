@@ -53,15 +53,8 @@ function team(lineup,result,account,game,floor=dungeonId){
  return {plan,conditions:['阴阳师按阵容码培养和携带技能复跑，平安志未提供其实际培养。普攻等级缺失时使用客户端最低等级。']};
 }
 
-function selectedTeam(lineup,result,account,game,memberCount=5){
- if(!result?.ready||!result.completed||result.proof?.state!=='optimal'||!Array.isArray(result.assignment)){
-  throw Error('精算未给出已核对的库存配装');
- }
- const occupied=lineup.members.filter(member=>member.occupied!==false);
- const actors=occupied.filter(member=>member.kind==='onmyoji');
- const members=occupied.filter(member=>member.kind==='shikigami').sort((a,b)=>a.index-b.index);
- if(actors.length!==1||members.length!==memberCount||result.assignment.length!==members.length)throw Error('阵容码缺少战斗所需的完整阵容');
- const actor=actors[0],heroId=Number(actor.onmyojiId),actorRules=game.heroes[heroId];
+function selectedOnmyoji(actor,account,game){
+ const heroId=Number(actor?.onmyojiId),actorRules=game.heroes[heroId];
  if(actorRules?.kind!=='onmyoji'||!Array.isArray(actor.skills)||!Number.isInteger(actor.level)||!Number.isInteger(actor.star)||actor.awakening!==0){
   throw Error('阵容码没有提供完整的阴阳师培养与技能配置');
  }
@@ -71,9 +64,21 @@ function selectedTeam(lineup,result,account,game,memberCount=5){
  const skills=order.map(id=>[id,levels.get(id)??(id===basic?G.levels(game,basic,0)[0]?.level:undefined)]);
  if(skills.some(([id,level])=>!G.skill(game,id,level,0)))throw Error('阵容码包含客户端未核对的阴阳师技能');
  const onmyoji={heroId,level:actor.level,star:actor.star,awake:0,skinfo:skills,aiSkill:autoSkill(actor,game,configured)};
- const builds=new Map(result.assignment.map(build=>[build.index,build]));
  const spirit=actor.qiling?inventorySpirit(actor,account,game):null;
- return {onmyoji,...(spirit?{spirit}:{}),members:members.map(member=>{
+ return {onmyoji,...(spirit?{spirit}:{})};
+}
+
+function selectedTeam(lineup,result,account,game,memberCount=5){
+ if(!result?.ready||!result.completed||result.proof?.state!=='optimal'||!Array.isArray(result.assignment)){
+  throw Error('精算未给出已核对的库存配装');
+ }
+ const occupied=lineup.members.filter(member=>member.occupied!==false);
+ const actors=occupied.filter(member=>member.kind==='onmyoji');
+ const members=occupied.filter(member=>member.kind==='shikigami').sort((a,b)=>a.index-b.index);
+ if(actors.length!==1||members.length!==memberCount||result.assignment.length!==members.length)throw Error('阵容码缺少战斗所需的完整阵容');
+ const profile=selectedOnmyoji(actors[0],account,game);
+ const builds=new Map(result.assignment.map(build=>[build.index,build]));
+ return {...profile,members:members.map(member=>{
   const build=builds.get(member.index),hero=account.heroes[build?.heroId];
   const mode=C.soulMode(member.config),ids=build?.soulIds;
   if(!hero?.raw||String(member.shikigamiId)!==hero.shikigamiId||!Array.isArray(ids)||
@@ -144,5 +149,5 @@ function orderedPlan(rounds,result,account,game){
   assignment:assignments.filter(build=>build.index>=wave*5&&build.index<(wave+1)*5)},account,game))};
 }
 
-return {sceneId,resourceVersion,dungeonId,hun13SceneId,runeFloorIds,hun13FloorIds,sceneForDungeon,team,selectedTeam,hun13Pair,hun13Plan,underworldLineups,underworldPlan};
+return {sceneId,resourceVersion,dungeonId,hun13SceneId,runeFloorIds,hun13FloorIds,sceneForDungeon,team,selectedTeam,selectedOnmyoji,hun13Pair,hun13Plan,underworldLineups,underworldPlan};
 });
