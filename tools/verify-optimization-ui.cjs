@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -411,6 +411,7 @@ async function main(){
   const notes='资源 0.0.816，6 场离线结算。我方伤害取下限。阴阳师普攻 1 级。开场操作。入场前把第1位式神设为自动普攻。手动开场，首动普攻首领后切自动。红标首领。绿标第3位式神。全分支待验证。';
   const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
+   known('chapter-challenge',1001001,5),
    known('secret-race',10700011,5),known('crevice',10020211,5),
    known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
@@ -487,7 +488,7 @@ async function main(){
    assert.deepEqual(calls,[0,1,2,3,7,42].slice(0,live?verified.length:6));
    if(live){
     assert.ok(verified.length);
-    console.log('31811 selected lineup native results',JSON.stringify(verified));
+    console.log(expected.stageId+' selected lineup native results',JSON.stringify(verified));
    }
    return ui(reports+'.textContent');
   }
@@ -511,6 +512,16 @@ async function main(){
    await until(status+'.textContent.includes("未通过本次采样")');
    assert.deepEqual(libraryOrder,[13,10]);
    await ui('selectedLineups.clear();renderSelection()');
+   if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
+    await encounter('daily','探索式神挑战 独眼小僧');
+    const difficulty='document.querySelector("[data-friend-difficulty]")';
+    assert.equal(await ui(difficulty+'.options.length'),40);
+    assert.match(await ui(panel+'.textContent'),/换波时为我方存活单位恢复等于其生命上限 20%.*第 3 波/s);
+    await ui(difficulty+'.value="19";'+difficulty+'.dispatchEvent(new Event("change"))');
+    assert.match(await ui(panel+'.textContent'),/19 级 · 1 号位/);
+    assert.match(await run('chapter-challenge',{stageId:21230,groupId:21230,battleMode:26,friendChallenge:{bossId:39,difficulty:19}},
+      {waveCount:3,wavesCleared:3},undefined,10,5,!!pve),/已知阵容 chapter-challenge.*(通过 6 个采样种子|种子 \d+ 未通关)/s);
+   }
    if(cases.some(entry=>entry.table==='shilian_event_exam'&&entry.key===3)){
     await encounter('daily','六道之门试炼关卡 香行域');
     assert.match(await ui(panel+'.textContent'),/首领试炼使用档位 1/);

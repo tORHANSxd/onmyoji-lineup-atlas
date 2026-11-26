@@ -540,17 +540,21 @@ class TeamBattleType: pass
             "storyChapter": [[18, {"id": 18, "name": "阴阳之理", "BossList": [39], "guanKaProcess": [[1, 2]]}]],
             "mapnpc": [[18, {"id": 18, "name": "阴阳之理", "battle_id": 18}]],
             "story_room": [[1801, {"MapEntryID": 18, "MonsterID": 31811, "desc": "大天狗挑战难度1"}]],
-            "BossTower": [[39, {"HeroID": 230, "LevelID": 21230}]],
+            "BossTower": [[39, {"HeroID": 230, "LevelID": 21230, "team_boss": [[22230, 1]]}]],
+            "friend_fb": [[21230, {"sceneId": 230}], [22230, {"sceneId": 230}]],
             "hero": [[230, {"name": "独眼小僧"}]],
             "DramaProcess": [[1, {"type": 3, "RelatedStory": 1}], [2, {"type": 1, "RelatedStory": 2}]],
             "DramaLevel": [[1, {"StoryName": "犬神战斗", "ElementList": [[30101]]}],
                            [2, {"StoryName": "剧情探索", "ElementList": [[30101]]}]],
             "pve_stage_data": [["18", {"id": "18", "groupid": 18}],
                                ["31811", {"id": "31811", "groupid": 31811}],
-                               ["30101", {"id": "30101", "groupid": 30101}]],
+                               ["30101", {"id": "30101", "groupid": 30101}],
+                               ["21230", {"id": "21230", "groupid": 30101}]],
             "BattleMonstersInfo": [[31811, {"resindex": 11032}], [30101, {"resindex": 11032}]],
-            "Combinesceneinfo": [[11032, {}]],
-            "battle_mode_routes": [[1000, {"mode_symbol": "MODE_TEAM_FB", "scene_engine": "TeamFbEngine"}]],
+            "Combinesceneinfo": [[11032, {}], [230, {}]],
+            "battle_mode_routes": [[1000, {"mode_symbol": "MODE_TEAM_FB", "scene_engine": "TeamFbEngine"}],
+                                   [26, {"mode_symbol": "MODE_FRIEND_FB", "scene_engine": "FriendFbEngine"}]],
+            "Constant": [[86, {"value": [41]}]],
         }
         manifests = [
             {"name": name, "status": "decoded", "family": "other",
@@ -574,5 +578,6 @@ class TeamBattleType: pass
         self.assertEqual(refs("DramaProcess", 1), [("DramaLevel", 1), ("pve_stage_data", "30101"),
                                                  ("BattleMonstersInfo", 30101), ("Combinesceneinfo", 11032)])
         self.assertEqual(refs("DramaProcess", 2), [("DramaLevel", 2)])
-        self.assertEqual(refs("BossTower", 39), [("hero", 230)])
+        self.assertEqual(refs("BossTower", 39), [("hero", 230), ("friend_fb", 21230), ("battle_mode_routes", 26),
+                                               ("Constant", 86), ("friend_fb", 22230), ("Combinesceneinfo", 230)])
         self.assertEqual(data["unresolvedReferences"], 1)

@@ -15,6 +15,7 @@ import time
 ENGINE_START_SECONDS = 1000
 SPECIAL_NIAN_WALL_SECONDS = 145
 STORY_EXPLORATION_MODE = 1000
+FRIEND_CHALLENGE_MODE = 26
 
 
 def replay(args, runtime, work):
@@ -77,6 +78,7 @@ def replay(args, runtime, work):
     plan = json.loads(team_bytes)
     suits = json.loads(suit_bytes)
     story_exploration = args.mode == STORY_EXPLORATION_MODE
+    friend_challenge = args.mode == FRIEND_CHALLENGE_MODE
     relay = args.mode == UNDERWORLD_MODE
     orochi = args.mode == OROCHI_MODE
     hunling = args.mode in HUNLING_MODES
@@ -192,6 +194,22 @@ def replay(args, runtime, work):
 
         engine, orochi_floors, const = orochi_stage(args.stage)
         group_id, wave_count = orochi_floors[0][0], len(orochi_floors)
+    elif friend_challenge:
+        from battleengine.engine.FriendFbEngine import FriendFbEngine, const
+        from DynamicConfigData import BOSS_TOWER_LV_DATA, DATA_BOSS_TOWER, DATA_CONSTANT, DATA_FRIEND_FB, DATA_HERO
+
+        boss_id, difficulty = args.friend_challenge
+        boss = DATA_BOSS_TOWER.data.get(boss_id)
+        group = DATA_FRIEND_FB.data.get(args.stage)
+        level = BOSS_TOWER_LV_DATA.data.get(difficulty)
+        highest = DATA_CONSTANT.data[86]["value"][0] - 1
+        if (len(fighters) != 5 or not boss or boss["LevelID"] != args.stage or not group or group["monId"] != boss["HeroID"]
+                or not 1 <= difficulty <= highest or not level or level["isShare"] != "0"):
+            raise ValueError("The shikigami challenge requires its original solo stage, difficulty and five shikigami")
+        engine = FriendFbEngine({"fbId": args.stage, "passCount": 0, "allRewards": {},
+                                 "info": {"isSharedFB": False, "difficulty": difficulty, "bossID": boss_id, "allRewards": 0}})
+        engine.battleMode = const.BattleMode.MODE_FRIEND_FB
+        group_id, wave_count = group["id"], len(group["waves"])
     elif hunling:
         from DynamicConfigData import DATA_HERO
 
@@ -614,6 +632,8 @@ def replay(args, runtime, work):
         route = "underworld-gate-local-solo"
     elif orochi:
         route = "true-orochi-local-solo"
+    elif friend_challenge:
+        route = "chapter-shikigami-challenge"
     elif hunling:
         route = "hunling-personal-challenge" if hunling_route[2] is not None else "hunling-regional-exploration"
     elif qiling:
@@ -799,7 +819,7 @@ def replay(args, runtime, work):
             secret_mirror_replay = SecretMirrorReplay(engine, const)
         if setup := secret_mechanic(stage):
             secret_mechanic_replay = SecretMechanicReplay(engine, controller, const, setup)
-    if story_exploration or args.mode == 266:
+    if story_exploration or friend_challenge or args.mode == 266:
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
 
         def verify_spawn():
@@ -809,6 +829,9 @@ def replay(args, runtime, work):
             observed = []
             if story_exploration:
                 expected = [(pos, level, proto) for pos, proto, level, *_ in group["MonstersInfos"][wave]]
+                mirror_units = []
+            elif friend_challenge:
+                expected = [(pos, int(level["Level"]), proto) for pos, proto in enumerate(group["waves"][wave], 1)]
                 mirror_units = []
             elif secret_mirror_replay:
                 expected, mirror_units = secret_mirror_replay.formation(waves[wave])
@@ -885,6 +908,9 @@ def replay(args, runtime, work):
     elif story_exploration:
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group.get("resindex", 11032)
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4])
+    elif friend_challenge:
+        formation_matches = (engine.fbId == group_id and engine.combineSceneInfoId == group["sceneId"]
+                             and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
     else:
         formation_matches = engine.monstergroup == group_id
     if (engine.seed != args.seed or engine.random is not random_record or engine.battleMode != args.mode
@@ -1305,6 +1331,12 @@ def replay(args, runtime, work):
         report["storyExploration"] = {"pointId": story_room["id"], "mapId": story_room["MapEntryID"],
                                       "difficulty": story_room["difficulty"], "positions": avatar.ssPosIndexList}
         report["formationsVerified"] = len(verified_waves)
+    if friend_challenge:
+        report["friendChallenge"] = {"bossId": boss_id, "difficulty": difficulty, "enemyLevel": int(level["Level"]),
+                                     "formationBossId": group["boss_id"],
+                                     "positions": avatar.ssPosIndexList, "allyHpRecovery": group["roundHPRecover"],
+                                     "allyOrbsRecovery": group["roundGuiHuoRecover"]}
+        report["formationsVerified"] = len(verified_waves)
     if spider_replay:
         report["tuzhizhuPractice"] = spider_replay.report(report["outcome"])
     if retreat:
@@ -1422,7 +1454,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
     parser.add_argument("--fusion-settings", type=json.loads)
@@ -1448,6 +1480,7 @@ def main():
     parser.add_argument("--qinfei-profile", type=int, nargs=2, metavar=("RAID", "DIFFICULTY"))
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--story-room", type=int)
+    parser.add_argument("--friend-challenge", type=int, nargs=2, metavar=("BOSS", "DIFFICULTY"))
     parser.add_argument("--pve-deadline", type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -1579,6 +1612,8 @@ def main():
         parser.error("Eight-Hundred Tanuki settings only apply to its original battle mode")
     if (args.mode == STORY_EXPLORATION_MODE) != (args.story_room is not None) or args.story_room is not None and args.story_room < 1:
         parser.error("--story-room must name an original battle point in exploration mode")
+    if (args.mode == FRIEND_CHALLENGE_MODE) != (args.friend_challenge is not None):
+        parser.error("--friend-challenge requires the original friend challenge mode")
     if args.pve_deadline is not None and (args.mode != 3 or not 1 <= args.pve_deadline <= 10800):
         parser.error("A PvE table deadline requires mode 3 and a value in the supported client range")
     if (args.mode in MAP_BOSS_MODES) != (args.map_boss_players is not None):

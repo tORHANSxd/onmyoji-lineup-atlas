@@ -846,7 +846,7 @@
 
  async function replay(run,row,plan,trialSlot){
   const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings,historicalGhostWindow,
-   mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,dojoArea,forest,tenBonuses,bandScores,devilFeastHp}=run.pane;
+   mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,dojoArea,forest,tenBonuses,bandScores,devilFeastHp}=run.pane;
   const scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
   const orochi=battleMode===AtlasTrueOrochi.battleMode;
   for(const seed of seeds){
@@ -877,6 +877,7 @@
     ...(qinfeiFoodPiles?{qinfeiFoodPiles}:{}),
     ...(pveDeadlineSeconds?{pveDeadlineSeconds}:{}),
     ...(storyRoomId?{storyRoomId}:{}),
+    ...(friendChallenge?{friendChallenge}:{}),
     ...(dojoArea?{dojoArea}:{}),
     ...(forest?{forest}:{}),
     ...(tenBonuses?.length?{tenBonuses}:{}),

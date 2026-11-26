@@ -190,7 +190,7 @@ EDGES = {
     "Combinesceneinfo": (("battlesceneinfo", "BattleScenesInfo", "战斗站位"),),
 }
 FOLLOWED_TABLES = {"pve_stage_data", "BattleMonstersInfo", "Combinesceneinfo", "dungeon_awake_scene",
-                   "normal_battle_tips", "battle_team_routes", "raid_info", "boss_info",
+                   "normal_battle_tips", "battle_team_routes", "raid_info", "boss_info", "friend_fb",
                    "dojo2025_bbbl_block_play", "dojo2026_bbbl_block_play"}
 DOJO_AREA_TYPES = {1: "普通战斗", 2: "精英挑战", 3: "神社战斗", 4: "首领战", 5: "租借处", 6: "传送门"}
 FOREST_EVENT_TYPES = {1: "普通怪", 2: "精英", 3: "首领", 4: "巢穴", 5: "宝箱", 6: "派遣", 7: "净化", 8: "起点"}
@@ -660,6 +660,17 @@ def encounter_index(source, load_rows):
             hero = relation("hero", row.get("HeroID"), "探索挑战式神", False)
             if hero:
                 links.append(hero)
+            for dest, key, label in (("friend_fb", row.get("LevelID"), "式神挑战单人编组"),
+                                     ("battle_mode_routes", 26, "式神挑战原版战斗入口"),
+                                     ("Constant", 86, "式神挑战难度上限配置"),
+                                     ("currency", row.get("currencyID"), "式神挑战消耗道具")):
+                if ref := relation(dest, key, label, False):
+                    links.append(ref)
+            links.extend(ref for choice in row.get("team_boss", ()) if isinstance(choice, list) and choice
+                         if (ref := relation("friend_fb", choice[0], "原表组队编组", False)))
+        if name == "friend_fb":
+            if ref := relation("Combinesceneinfo", row.get("sceneId"), "式神挑战战斗场景", False):
+                links.append(ref)
         if name == "act_team_battle" and "battle_team_routes" in manifests:
             route = relation("battle_team_routes", row.get("team_battle_type"), "原版组队战斗入口", True)
             if route:

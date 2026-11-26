@@ -78,6 +78,8 @@
     mapnpc: '地图探索入口',
     story_room: '探索战斗点',
     BossTower: '探索式神挑战',
+    friend_fb: '式神挑战战斗编组',
+    BossTowerLevel: '式神挑战难度',
     DramaProcess: '主线剧情进程',
     DramaLevel: '剧情关卡',
     hunling_noraml_boss_battle: '契灵之境首领奖励',
@@ -348,6 +350,10 @@
       return row.MonstersInfos.map(wave => Array.isArray(wave) ? wave.flatMap(slot =>
         Array.isArray(slot) && Number.isSafeInteger(slot[1]) && slot[1] > 0
           ? [{position: slot[0], id: slot[1], level: slot[2]}] : []) : []);
+    }
+    if (table==='friend_fb'&&Array.isArray(row.waves)) {
+      return row.waves.map(wave=>Array.isArray(wave)?wave.flatMap((id,index)=>
+        Number.isSafeInteger(id)&&id>0?[{id,position:index+1}]:[]):[]);
     }
     if (Array.isArray(row.monsterWaves) && row.monsterWaves.every(wave => Array.isArray(wave) &&
         wave.every(item => item == null || Array.isArray(item) && item.length === 2 && Number.isSafeInteger(item[0])))) {
@@ -1882,6 +1888,45 @@
     render();
   }
 
+  function showChapterChallenge(destination,entry,groups,monsters,difficulties) {
+    if(entry.table!=='BossTower'||!difficulties?.length)return false;
+    const boss=groups[0].row;
+    const profile=groups.find(({ref})=>ref.table==='friend_fb'&&ref.key===boss?.LevelID);
+    const route=groups.find(({ref})=>ref.table==='battle_mode_routes'&&ref.key===26)?.row;
+    const limit=groups.find(({ref})=>ref.table==='Constant'&&ref.key===86)?.row?.value?.[0]-1;
+    const available=difficulties.filter((row,index)=>row?.id===index+1&&row.isShare==='0'&&row.id<=limit);
+    if(profile?.row?.monId!==boss?.HeroID||!profile?.waves.length||!available.length)return false;
+
+    const section=node('section','','encounter-source'),field=node('label','挑战难度','pve-lineup-field');
+    const difficulty=document.createElement('select'), preview=document.createElement('div'), workbench=document.createElement('div');
+    difficulty.dataset.friendDifficulty='';
+    const percent=new Intl.NumberFormat('zh-CN',{style:'percent',maximumFractionDigits:2,signDisplay:'exceptZero'});
+    const modifiers=[['生命','HPModifer','roundAttrAddHP'],['攻击','DamageModifier','roundAttrAddDMG'],
+      ['防御','DefenceModifer','roundAttrAddDEF'],['速度','SpeedModifier','roundAttrAddSPD'],
+      ['暴击','CriticalAttackModifer','roundAttrAddCRI']];
+    difficulty.replaceChildren(...available.map(row=>new Option(`第 ${row.id} 档 · 敌方 ${row.Level} 级`,String(row.id))));
+    field.append(difficulty);
+    section.append(node('h4','单人式神挑战'),field,preview,workbench);
+    destination.append(section);
+
+    function renderDifficulty(){
+      const row=available[difficulty.selectedIndex], config=profile.row;
+      const waveRules=modifiers.map(([label,base,increment])=>`${label} ${percent.format(row[base])}，后续每波 ${percent.format(config[increment])}`);
+      preview.replaceChildren(node('p',`换波时为我方存活单位恢复等于其生命上限 ${percent.format(config.roundHPRecover).replace(/^\+/,'')} 的生命，并为我方补充 ${config.roundGuiHuoRecover} 点鬼火。`,'caption'),
+        node('p',waveRules.join(' · '),'caption'));
+      appendWaves(preview,profile.waves.map(wave=>wave.map(unit=>({...unit,level:Number(row.Level)}))),monsters,true);
+      workbench.replaceChildren();
+      if(state.index.resourceVersion===AtlasRuneLineup.resourceVersion&&route?.scene_engine==='FriendFbEngine'){
+        window.AtlasPveWorkbench?.mount(workbench,{stageId:config.id,groupId:config.id,memberCount:5,battleMode:26,
+          version:state.index.resourceVersion,waveCount:profile.waves.length,label:entry.title,
+          friendChallenge:{bossId:boss.id,difficulty:row.id}});
+      }
+    }
+    difficulty.addEventListener('change',renderDifficulty);
+    renderDifficulty();
+    return true;
+  }
+
   async function showEncounter(entry) {
     if (!entry) return;
     window.AtlasPveWorkbench?.unmount();
@@ -1903,13 +1948,15 @@
     const laolao=AtlasDevilFeast.laolao;
     const laolaoStageId=Number(entry.key),laolaoProfile=entry.table==='pve_stage_data'?laolao.stage(laolaoStageId):null;
     const isFusion=entry.table==='pve_stage_data'&&laolaoStageId===AtlasDevilFeast.fusion.stageId;
-    const [records,buffRows,towerOptions,laolaoOptions] = await Promise.all([
+    const [records,buffRows,towerOptions,laolaoOptions,chapterDifficulties] = await Promise.all([
       Promise.allSettled(refs.map(ref => ref.found ? api.records(ref.table, [ref.key]) : null)),
       isYinYang&&matchesOpeningSource(yinYang)?api.records('defence_dungeon_multiple_buff',yinYang.buffIds).catch(()=>null):null,
       isTower&&matchesOpeningSource(tower)?Promise.all([api.records('feast_for_devils_tower_event6',tower.blessingIds),
         api.records('feast_for_devils_dawnexpedition',tower.factionIds)]).catch(()=>null):null,
       (laolaoProfile||isFusion)&&matchesOpeningSource(laolao)?Promise.all([api.records(laolao.faithTable,laolao.faithIds),
         api.records('feast_for_devils_dawnexpedition',laolao.factionIds)]).catch(()=>null):null,
+      entry.table==='BossTower'&&state.index.tables.some(table=>table.name==='BossTowerLevel')?
+        api.records('BossTowerLevel',Array.from({length:40},(_,i)=>i+1)).catch(()=>null):null,
     ]);
     if (token !== stage.token) return;
     const groups = refs.map((ref,i) => {
@@ -1929,6 +1976,7 @@
     }
     if (token !== stage.token) return;
     destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
+    const chapterChallengeMounted=showChapterChallenge(destination,entry,groups,monsters,chapterDifficulties);
     showSuperGhost(destination,entry,groups[0]);
     if(entry.table==='story_room'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion){
       const point=groups[0].row,battleMode=1000;
@@ -2130,7 +2178,8 @@
       if (fields.childElementCount) block.append(fields);
       appendSpecialDetails(block, ref.table, row);
       appendRetreatDetails(block, ref.table, row);
-      appendWaves(block,waves,monsters,entry.table==='dungeon_challenge_series'&&ref.primary);
+      if(!chapterChallengeMounted||ref.label!=='式神挑战单人编组')
+        appendWaves(block,waves,monsters,ref.table==='friend_fb'||entry.table==='dungeon_challenge_series'&&ref.primary);
       const details = document.createElement('details');
       const source = state.index.tables.find(t => t.name === ref.table)?.source;
       details.append(node('summary', '全部原始字段'),
