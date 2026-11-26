@@ -11,9 +11,9 @@ import sys
 from tempfile import TemporaryDirectory
 import time
 
-
 def replay(args, runtime, work):
     from game_resources import sha256
+    from resource_stage import FIRST_EXP_STAGE, RESOURCE_MODE, RESOURCE_STAGE_NAMES
     from rune_floor_host import prepare_runtime
     from rune_replay import monster_waves, project_playback, read_models
     from rune_team import battle_spirit, selected_team
@@ -59,6 +59,17 @@ def replay(args, runtime, work):
         if not secret_solo(stage) or len(fighters) != 5:
             raise ValueError("This Secret Zone floor does not use the verified five-shikigami solo route")
         group_id, wave_count = args.stage, len(waves)
+    elif args.mode == RESOURCE_MODE:
+        from battleengine.engine.NewExpEngine import const
+        from DynamicConfigData import DATA_HERO
+        from resource_stage import first_experience_stage, observe_experience_opening
+
+        if args.stage != FIRST_EXP_STAGE:
+            raise ValueError("Only the new-server first experience route is verified locally")
+        engine, stage, formation = first_experience_stage(modules)
+        if len(fighters) != stage["shishentotal"]:
+            raise ValueError("The first experience encounter requires the five combat slots")
+        group_id, wave_count = stage["groupid"], len(formation["MonstersInfos"])
     else:
         from battleengine.engine.MonstarGuanKaEngine import MonstarGuanKaEngine, const
         from DynamicConfigData import BattleMonstersInfo, DATA_HERO, DATA_PVE_STAGE_DATA
@@ -67,6 +78,8 @@ def replay(args, runtime, work):
         stage = DATA_PVE_STAGE_DATA.data.get(stage_id)
         if stage is None:
             raise ValueError(f"Unknown native PvE stage {stage_id}")
+        if stage.get("name") in RESOURCE_STAGE_NAMES:
+            raise ValueError("Experience and coin encounters require their dedicated entry")
         group_id = stage.get("groupid")
         group = BattleMonstersInfo.data.get(group_id)
         if not group or not group.get("MonstersInfos"):
@@ -103,6 +116,9 @@ def replay(args, runtime, work):
         route = "awake-ordinary-solo"
     elif args.mode == 266:
         route = "secret-ordinary-solo"
+    elif args.mode == RESOURCE_MODE:
+        route = "resource-first-new-server-exp"
+        experience_opening = observe_experience_opening(engine, const, formation)
     else:
         engine = MonstarGuanKaEngine({"pve_data_flag": stage_id})
         if engine.isDramaGuanKa or not engine.selectHeroEnabled:
@@ -181,6 +197,9 @@ def replay(args, runtime, work):
     elif args.mode == 266:
         formation_matches = (engine.getFbConfig() is stage and engine.fbId == args.stage
                              and engine.combineSceneInfoId == stage["scene"])
+    elif args.mode == RESOURCE_MODE:
+        formation_matches = (engine.pve_data_flag == str(FIRST_EXP_STAGE) and engine.is_local_newbie_battle
+                             and engine.spectatorHeroCount == 4 and engine.get_timeout_seconds() == 150)
     else:
         formation_matches = engine.monstergroup == group_id
     if (engine.seed != args.seed or engine.random is not random_record or engine.battleMode != args.mode
@@ -243,6 +262,12 @@ def replay(args, runtime, work):
               "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
     if args.mode == 266:
         report["formationsVerified"] = len(verified_waves)
+    if args.mode == RESOURCE_MODE:
+        if not experience_opening:
+            raise RuntimeError("The original experience encounter never created its opening formation")
+        report["experience"] = {"kills": engine.get_kill_monster_count(), "requiredKills": 30,
+                                "timedOut": engine.is_timeout, "deadlineSeconds": engine.get_timeout_seconds(),
+                                "opening": experience_opening}
     if args.minimum_damage:
         report["minimumDamage"] = minimum
     try:
@@ -262,10 +287,13 @@ def replay(args, runtime, work):
 
 
 def main():
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from resource_stage import RESOURCE_MODE
+
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, RESOURCE_MODE), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -273,7 +301,7 @@ def main():
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
-    sys.path[:0] = [str(Path(__file__).resolve().parent), runtime["gameTools"]]
+    sys.path.insert(1, runtime["gameTools"])
     faulthandler.dump_traceback_later(95, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:
         previous = Path.cwd()

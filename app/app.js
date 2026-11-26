@@ -182,7 +182,9 @@ function sampleBattleMarkup(samples){
    const seconds=waveEngineSeconds(wave);
    return seconds===null?[]:[`第 ${wave.wave} 波 ${seconds.toFixed(2)} 秒`];
   });
-  return `<li>种子 ${esc(sample.seed)} · ${esc(describeBattle(sample)+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}</li>`;
+  const experience=sample.experience;
+  const outcome=experience?`${experience.timedOut?'超时':sample.outcome==='win'?'原版胜利':sample.completed?'未通关':'结算待确认'} · 击杀 ${experience.kills} / ${experience.requiredKills}`:describeBattle(sample);
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+time)}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}</li>`;
  }).join('');
 }
 

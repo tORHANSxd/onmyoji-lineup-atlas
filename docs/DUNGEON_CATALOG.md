@@ -62,6 +62,22 @@ $env:PYTHONHASHSEED = '0'
 
 资源 `0.0.816` 的 `AwakeFbEngine` marshal SHA-256 为 `c763bfc82cf6fce267a05c82114b0f78ca646e33e2378a367dec01eed3aaf2e6`。`AwakeLevelNewPanel` 的同类校验值为 `204baa32f3bc1ff6512089621e85bd1da464149baecd4350eb606f488f5bff1e`。
 
+## 经验妖怪与金币妖怪
+
+普通经验和金币分别注册组队类型 656、657，共用模式 528。原版 `team_type_new_exp_gold.TeamBattleType` 对两类均声明 `GoldBattleScene`、`NewExpEngine`、允许单人开战和强制自动战斗。`ResourceFightPanel` 的普通入口提交队伍创建请求。目录把 `2109` 经验编组和 `2009` 金币编组列入日常，保留相应组队入口、敌位和场景。`Constant[9820]` 与 `[9821]` 可查到两个原始 ID 列表，部分 ID 在本快照缺少关卡记录。组队服务器实际选择的配置、共享生命和最终奖励仍待联机核验。
+
+经验引擎补怪池来自 `Constant[9824]`，数量目标是 30，击杀后允许在空位继续补怪。金币场景 `calc_drop_coin` 读取首领剩余生命，并用 `Constant[9828]` 至 `[9831]` 的档位、倍率和基础量计算金币。首领满血时返回 0。未核验的普通玩法不会用通用 PvE 引擎给出通关结果。
+
+新服首次经验由 `ResourceFightPanel.on_create_team` 直入 `2111`。原版入场参数指定单人、四个观战位和 `local_battle_limit_time=180`，原版引擎另使用 `Constant[9822]` 的 150 秒截止规则。开场六只同种 10 级怪，速度 88、生命 1,063.20、攻击 166、防御 94、暴击 10%。补怪固定使用原版模板 `14442`，目标达成依据引擎记录的 30 次击杀。观战位奖励没有纳入离线验收。工作台以五个出战位置配装，检查原版开场敌位、自动技能、击杀数和超时。缺少已核对的官方阵容码目标时只显示采样战报。
+
+使用真实库存自动生成的拉条双输出在种子 0、1、2、3、7、42 中都达到 30 次击杀，开战至结算为 37.32 至 37.52 秒。相同库存的当前穿戴在种子 0 用时 107.60 秒。另用合成的一级无御魂配装触发原版超时，结算为落败，记录 2 次击杀。当前报告覆盖资源 `0.0.816` 的离线样本。
+
+```powershell
+& $YuqiPython tools/verify-pve-stage.py --mode 528 --stage 2111 --seed 0 --minimum-damage --runtime <本地运行时JSON> --team <库存配装JSON> --suit-index <御魂套装JSON> --output <战报JSON>
+```
+
+组队注册、首次入场面板和经验引擎的 marshal SHA-256 分别为 `ce6a7399767a118ca87b7e03c81e4eeb32373fcdf42197522dae611b5ffef122`、`991c81c9eaa2ac4f7e0e78f4bf26aa52ffec63358102980022d616a61c3b1b00`、`b28f2dd8720d52fad468846119c8108e2c6bbd7821dde4d3206dec6be3d5833a`。
+
 ## 秘闻副本
 
 旧版和新版秘闻面板用 `type`、`floor_num` 和 `advanced == 0` 查找普通关卡。体力检查通过后，`need_team = 0` 走单人请求，`need_team = 1` 走组队请求。直入回调将 `fbType`、`floor_num`、`fbId` 和奖励传给模式 266 的 `ChallengeFbEngine`。原版单人分配一位阴阳师和 2 至 6 号位的五位式神。场景和怪物波次由本层配置决定，逐波应用 `atk_alter`、`def_alter`、`hp_alter`、`crt_alter` 和 `sp_alter`。

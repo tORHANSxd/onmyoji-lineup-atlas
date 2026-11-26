@@ -44,6 +44,15 @@ JOURNEY_BATTLE_VARIANTS = {
     "journey_normalbattle_juexing": "觉醒",
 }
 
+RESOURCE_STAGES = {"经验副本": ("经验妖怪", 656), "金币副本": ("金币妖怪", 657)}
+RESOURCE_CONSTANTS = {
+    "2111": ((9822, "引擎截止时间"), (9834, "补怪总量")),
+    "2109": ((9820, "原版经验关卡 ID 列表"), (9822, "引擎截止时间"), (9823, "选角时间"),
+             (9824, "原版补怪模板池"), (9834, "补怪总量")),
+    "2009": ((9821, "原版金币关卡 ID 列表"), (9822, "引擎截止时间"), (9823, "选角时间"),
+             (9828, "金币计算参数"), (9829, "首领生命百分比档位"), (9830, "金币档位倍率"), (9831, "基础金币量")),
+}
+
 # The raw fields remain available. Each relation below names the ID namespace
 # used by the corresponding client table.
 EDGES = {
@@ -194,6 +203,16 @@ def encounter_index(source, load_rows):
             tip = relation("normal_battle_tips", row.get("id"), "通用战斗规则", False)
             if tip:
                 links.append(tip)
+            resource = RESOURCE_STAGES.get(row.get("name"))
+            if resource:
+                stage_id = numeric_key(row.get("id"))
+                team = relation("battle_team_routes", resource[1], "当前玩法组队入口资料", False) if stage_id != "2111" else None
+                if team:
+                    links.append(team)
+                for key, label in RESOURCE_CONSTANTS.get(stage_id, ()):
+                    rule = relation("Constant", key, label, False)
+                    if rule:
+                        links.append(rule)
         if name == "normal_battle_config":
             mode = row.get("battleMode")
             scene = relation("battle_mode_routes", mode, "客户端初始场景注册", False)
@@ -289,6 +308,9 @@ def encounter_index(source, load_rows):
             if scene_route:
                 entry_kind = "初始场景引擎"
             title = name(row)
+            if table_name == "pve_stage_data" and row.get("name") in RESOURCE_STAGES:
+                entry_family, entry_kind = "daily", RESOURCE_STAGES[row["name"]][0]
+                title = f"{entry_kind} · 新服首次" if numeric_key(key) == "2111" else f"{entry_kind} · 编组 {row['groupid']}"
             if variant:
                 board = numeric_key(row.get("board_index"))
                 battle = numeric_key(row.get("battle_id"))

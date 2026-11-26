@@ -120,13 +120,16 @@
    row.details.hidden=false;
    row.report.innerHTML=sampleBattleMarkup(row.samples);
    row.state.textContent=`已复跑 ${row.samples.length} / ${seeds.length} 个种子`;
-   if(report.completed&&report.outcome==='loss'){
+   const experience=report.experience;
+   const ranOut=experience?.timedOut===true;
+   if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     run.alternatives.push(teamKey);
-    row.state.textContent=`种子 ${seed} 未通关`;
+    row.state.textContent=ranOut?`种子 ${seed} 超时，击杀 ${experience.kills} / ${experience.requiredKills}`:`种子 ${seed} 未通关`;
     return;
    }
-   if(!report.completed||report.outcome!=='win'||report.wavesCleared!==report.waveCount){
+   const objectiveMet=experience?experience.kills===run.pane.requiredKills:report.wavesCleared===report.waveCount;
+   if(!report.completed||report.outcome!=='win'||!objectiveMet){
     row.state.textContent=`种子 ${seed} 未取得完整通关记录，可重试`;
     return;
    }

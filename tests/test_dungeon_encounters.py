@@ -5,10 +5,19 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from dungeon_encounters import encounter_index
-from dungeon_battle_routes import bind_scene_engines
+from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_team_decorator_preserves_shared_literal_registrations(self):
+        code = compile("""
+@team_type_base.team_type(const.team_battle_type.TEAM_BATTLE_TYPE_NEW_EXP,
+                          const.team_battle_type.TEAM_BATTLE_TYPE_NEW_COIN)
+class TeamBattleType: pass
+""", "team_type_new_exp_gold.py", "exec")
+        self.assertEqual(list(registered_team_symbols(code)),
+                         ["TEAM_BATTLE_TYPE_NEW_EXP", "TEAM_BATTLE_TYPE_NEW_COIN"])
+
     def test_scene_engine_keeps_direct_source_and_omits_conditional_declarations(self):
         scenes = {"SimpleScene": 'EngineClassName = "ExampleEngine"',
                   "GuardedScene": 'if some_condition:\n        EngineClassName = "OtherEngine"'}

@@ -44,7 +44,7 @@
       {
         "from": "tools",
         "to": "rune-runner",
-        "filter": ["verify-rune-runtime.py", "verify-rune-floor.py", "verify-hun13.py", "verify-pve-stage.py", "awake_stage.py", "secret_stage.py", "minimum_damage.py", "rune_floor_host.py", "extract-dungeon-catalog.py", "rune_replay.py", "rune_team.py", "rune_random.py"]
+        "filter": ["verify-rune-runtime.py", "verify-rune-floor.py", "verify-hun13.py", "verify-pve-stage.py", "awake_stage.py", "secret_stage.py", "resource_stage.py", "minimum_damage.py", "rune_floor_host.py", "extract-dungeon-catalog.py", "rune_replay.py", "rune_team.py", "rune_random.py"]
       },
       {
         "from": "release/ta-runtime/atlas-ta-helper",

@@ -39,6 +39,23 @@ def returns_literal(fn):
     return None
 
 
+def registered_team_symbols(code):
+    ops = instructions(code)
+    for index, op in enumerate(ops):
+        if op.opname not in {"LOAD_ATTR", "LOAD_METHOD"} or op.argval != "team_type":
+            continue
+        symbols = []
+        following = index + 1
+        while [step.opname for step in ops[following:following + 3]] == ["LOAD_NAME", "LOAD_ATTR", "LOAD_ATTR"]:
+            base, namespace, value = ops[following:following + 3]
+            if (base.argval, namespace.argval) != ("const", "team_battle_type"):
+                break
+            symbols.append(value.argval)
+            following += 3
+        if symbols and following < len(ops) and ops[following].opname == "CALL" and ops[following].arg == len(symbols):
+            yield from symbols
+
+
 def initial_scene_routes(code, modes):
     ops = instructions(child(child(code, "SceneManager"), "_initMapSrc"))
     cut = next(i for i, op in enumerate(ops) if op.opname == "STORE_ATTR" and op.argval == "map_src")
@@ -96,20 +113,14 @@ def team_routes(modules, decoder, modes, team_ids, registry):
         original, source = modules[path]
         code = decoder.code(original)
         cls = child(code, "TeamBattleType")
-        top = instructions(code)
-        team_symbol = next((e.argval for a, b, c, e, f in zip(top, top[1:], top[2:], top[3:], top[4:])
-                            if ([a.opname, b.opname, c.opname, e.opname, f.opname]
-                                == ["LOAD_ATTR", "LOAD_NAME", "LOAD_ATTR", "LOAD_ATTR", "CALL"]
-                                and (a.argval, b.argval, c.argval) == ("team_type", "const", "team_battle_type"))), None)
         mode_ops = instructions(child(cls, "get_battle_mode")) if cls else []
         if ([op.opname for op in mode_ops] != ["LOAD_GLOBAL", "LOAD_ATTR", "LOAD_ATTR", "RETURN_VALUE"]
                 or [op.argval for op in mode_ops[:2]] != ["const", "BattleMode"]):
             continue
         symbol = mode_ops[2].argval
-        if team_symbol not in team_ids or symbol not in modes:
+        if symbol not in modes:
             continue
-        mode, team_id = modes[symbol], team_ids[team_symbol]
-        record = {"battleMode": mode, "mode_symbol": symbol, "team_type": team_id, "team_symbol": team_symbol,
+        record = {"battleMode": modes[symbol], "mode_symbol": symbol,
                   "route_module": path, "route_sha256": source["marshalSHA256"]}
         scene_ops = instructions(child(cls, "get_sceneClass"))
         if ([op.opname for op in scene_ops] == ["LOAD_CONST", "LOAD_CONST", "LOAD_CONST", "BUILD_CONST_KEY_MAP", "RETURN_VALUE"]
@@ -123,7 +134,10 @@ def team_routes(modules, decoder, modes, team_ids, registry):
             value = returns_literal(child(cls, method))
             if type(value) is bool:
                 record[field] = value
-        rows[team_id] = record
+        for team_symbol in registered_team_symbols(code):
+            if team_symbol in team_ids:
+                team_id = team_ids[team_symbol]
+                rows[team_id] = {**record, "team_type": team_id, "team_symbol": team_symbol}
     return rows
 
 

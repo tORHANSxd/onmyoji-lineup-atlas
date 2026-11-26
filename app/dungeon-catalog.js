@@ -414,6 +414,26 @@
     return opening;
   }
 
+  function showResourceEncounter(destination,stageId,row,formation){
+    const source=window.AtlasResourceEncounters;
+    if(!matchesOpeningSource(source))return;
+    const first=source.firstExperience;
+    const initial=formation?.waves[0];
+    if(stageId===first.stageId&&row.groupid===first.groupId&&formation?.row?.resindex===first.sceneId&&
+       formation.waves.length===1&&initial.length===6&&row.shishentotal===first.memberCount&&
+       initial.every((unit,i)=>unit.id===first.enemy.id&&unit.position===i+1&&unit.level===first.enemy.level)){
+      formation.waves=[initial.map(unit=>({...unit,opening:first.enemy}))];
+      destination.append(node('p',`新服首次经验妖怪 · 击杀 ${first.requiredKills} 只 · 首批 6 只 · 击杀后补位 · 强制自动战斗 · `+
+        `引擎时限 ${first.deadlineSeconds} 秒 · 4 个观战位`,'caption'));
+      window.AtlasPveWorkbench?.mount(destination,{...first,label:'新服首次经验妖怪',version:source.resourceVersion,
+        openingSpeed:first.enemy.speed});
+    }else if(stageId===2109){
+      destination.append(node('p','普通经验妖怪走组队入口，可单人开始。原版会从配置池补怪，累计击杀 30 只。组队共享结算仍待核验。','caption'));
+    }else if(stageId===2009){
+      destination.append(node('p','金币妖怪走组队入口，可单人开始。金币结算随首领剩余生命变化。组队共享结算仍待核验。','caption'));
+    }
+  }
+
   async function showEncounter(entry) {
     if (!entry) return;
     window.AtlasPveWorkbench?.unmount();
@@ -475,7 +495,8 @@
     if (entry.table==='pve_stage_data'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
-      if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
+      if(window.AtlasResourceEncounters.isResourceStage(row))showResourceEncounter(destination,stageId,row,formation);
+      else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&
           formation?.row?.MonstersInfos?.length&&!['no_yys','replace_yysid','isplot','sl_file'].some(field=>row[field])) {
         window.AtlasPveWorkbench?.mount(destination,{stageId,groupId,memberCount,version:state.index.resourceVersion});

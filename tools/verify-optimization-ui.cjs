@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,528]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,mockRandom=null,stopRandom=null,mockSeeds=null,stopSeeds=null,savedEvidence=null;
@@ -332,6 +332,29 @@ async function main(){
    await ui('qaSecretEncounter(1071,"1071 开心的山兔")');
    await until('$("client-dungeons-encounter-detail").textContent.includes("竞速配置")');
    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/7 号位 · 开场速度 -9.*8 号位 · 开场速度 -9/s);
+   if(JSON.parse(await readEncounters(catalog)).entries.some(entry=>entry.kind==='经验妖怪')){
+    const experienceCalls=[];
+    mockPve=(plan,options)=>{
+     assert.deepEqual(options,{stageId:2111,groupId:2111,battleMode:528,seed:options.seed,damageFloor:true});
+     assert.equal(plan.members.length,5);
+     experienceCalls.push(options.seed);
+     return {...sample,...options,waveCount:1,wavesCleared:0,
+      experience:{kills:30,requiredKills:30,timedOut:false,deadlineSeconds:150}};
+    };
+    await ui('qaEncounterInput("daily","经验妖怪 新服首次")');
+    await until('!!document.querySelector("[data-pve-stock]:not([disabled])")');
+    assert.match(await ui('$("client-dungeons-encounter-detail").textContent'),/击杀 30 只.*击杀后补位.*引擎时限 150 秒.*开场速度 88/s);
+    await ui(stock+'.click()');
+    await until(status+'.textContent.includes("全随机分支待验证")',20000);
+    assert.deepEqual(experienceCalls.slice(0,6),[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.textContent'),/原版胜利 · 击杀 30 \/ 30/);
+    assert.equal(await ui('document.querySelector("[data-pve-code]")===null'),true);
+    await ui('$("client-dungeons-encounter-detail").scrollIntoView({block:"start",behavior:"instant"});');
+    await capture('client-resource-first-experience');
+    await ui('qaEncounterInput("daily","金币妖怪 编组 2009")');
+    await until('$("client-dungeons-encounter-detail").textContent.includes("金币结算随首领剩余生命变化")');
+    assert.equal(await ui('document.querySelector("[data-pve-stock]")===null'),true);
+   }
   }finally{
    mockPve=null;stopPve=null;
    await ui(`stopMatch();STATE=${boot};selectedLineups.clear();$('client-dungeons').open=false;renderSelection();`);
