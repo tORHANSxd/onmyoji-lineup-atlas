@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,4440,4441,4442,4443,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -141,7 +141,7 @@ async function main(){
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
   const panel='$("client-dungeons-encounter-detail")';
-  const {encounters,duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,spiderLive,spiderNormal}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  const {encounters,duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
   assert.equal(entries.length,12);
   for(const entry of entries){
    const query=entry.title.replace(' · ',' ');
@@ -191,6 +191,10 @@ async function main(){
     assert.equal(await ui(panel+'.querySelector("[data-pve-longche-window]")?.valueAsNumber'),longche.defaultWindow);
     assert.equal(await ui(panel+'.querySelector("[data-pve-longche-repair]")?.valueAsNumber'),longche.defaultRepairSeconds);
     assert.equal(await ui(panel+'.querySelector("[data-pve-longche-commander]")?.value'),String(longche.defaultCommander));
+   }else if(entry.fengmoLive.stage===longcheX.stageId){
+    assert.match(info,/模拟四只修理呱、吸收强化和金辉赐福.*四只修理呱太.*吸收哐呱后的攻击强化/s);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-longche-weekly]")?.valueAsNumber'),longcheX.weeklyDefault);
+    assert.deepEqual(await ui('[...'+panel+'.querySelectorAll("[data-pve-longche-order]")].map(el=>Number(el.value))'),longcheX.defaultRepairOrder);
    }else if(entry.fengmoLive.stage===spiderLive.stageId){
     assert.match(info,/战报记录部位余血和白茧恢复.*白茧部位配置/s);
     assert.equal(await ui(panel+'.querySelector("[data-pve-spider-live-window]")?.valueAsNumber'),spiderLive.windowLimit);
@@ -396,7 +400,7 @@ async function main(){
    known('dusk-wraith',10020227,5),known('songstress',10020217,6,10,notes),known('mirage',10020218,5,10,notes),
    known('catfish',10020224,5,10,notes),known('catfish-x',10020225,5,10,notes),
    known('skeleton',10020222,5,10,notes),known('skeleton-x',10020223,5,10,notes),
-   known('longche',10020226,5,10,notes),
+   known('longche',10020226,5,10,notes),known('longche-x',10020229,5,10,notes),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
    known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
@@ -1111,6 +1115,25 @@ async function main(){
       {seconds:345.5,interrupted:false,timeout:true,remaining:[.91,.97],healed:504000}]};
     const longcheReport=await run('longche',{stageId:25002,groupId:25002,battleMode:3006,longcheSettings},{longche},tactical);
     assert.match(longcheReport,/击败胧车 · 本队伤害 7,895,200.*胧车升空 · 71\.42 秒进场.*大天狗呱.*打断修理.*修理超时.*胧车恢复 504,000 生命/s);
+    await encounter('daily','逢魔实战 极·胧车');
+    await choose('longche-x');
+    const repairOrder='[...document.querySelectorAll("[data-pve-longche-order]")]';
+    const setOrder=(index,value)=>ui(`(()=>{const select=${repairOrder}[${index}];select.value=${value};select.dispatchEvent(new Event('change'));})()`);
+    await setOrder(0,103);
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(repairOrder+'[0].getAttribute("aria-invalid")'),'true');
+    await setOrder(1,101);
+    await ui(`for(const [field,value,event] of [['weekly',1200,'input'],['trait',63603,'change']]){
+     const input=document.querySelector('[data-pve-longche-'+field+']');input.value=value;input.dispatchEvent(new Event(event));
+    }`);
+    const longcheXSettings={windowSeconds:1200,repairSeconds:30,commanderId:99159,weeklySeconds:1200,trait:63603,repairOrder:[103,101,102,104]};
+    const longcheExtreme={...longche,settings:longcheXSettings,retributions:[201.9],
+     phases:[...longche.phases,{phase:'repair_success',seconds:203.3,bossHp:1200000}],
+     repairs:[{seconds:200,interrupted:false,timeout:true,remaining:[0,.22,.05,.23],healed:504000,
+      deaths:[{id:103,seconds:194,partnerHpRate:.36}],absorptionBuffs:[418]}]};
+    const longcheXReport=await run('longche-x',{stageId:25027,groupId:25027,battleMode:4443,longcheSettings:longcheXSettings},
+     {longche:longcheExtreme},tactical);
+    assert.match(longcheXReport,/击败极·胧车.*金辉赐福.*异变·斗魂.*修理超时.*吸收后的强化 · 防御增加.*哐呱（红精英）倒下时同色余血 36%/s);
     await encounter('daily','逢魔实战 极·土蜘蛛');
     await choose('spider');
     const spiderWindow='document.querySelector("[data-pve-spider-live-window]")';

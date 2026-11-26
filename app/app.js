@@ -213,6 +213,8 @@ function sampleBattleMarkup(samples){
   const skeleton=sample.skeletonX??sample.skeleton;
   const skeletonName=sample.skeletonX?'极·荒骷髅':'荒骷髅';
   const longche=sample.longche;
+  const longcheExtreme=longche&&sample.battleMode===AtlasFengmoLive.longcheX.battleMode;
+  const longcheName=longcheExtreme?'极·胧车':'胧车';
   const spiderLive=sample.spiderLive;
   const spiderNormal=sample.spiderNormal;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
@@ -294,7 +296,7 @@ function sampleBattleMarkup(samples){
     `本队伤害 ${catfish.damage.toLocaleString('zh-CN')} · 作战 ${catfish.combatSeconds.toFixed(2)} / ${catfish.settings.windowSeconds} 秒`:
    skeleton?`${{'boss-defeated':`击败${skeletonName}`,'team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[skeleton.reason]} · `+
     `本队伤害 ${skeleton.damage.toLocaleString('zh-CN')} · 作战 ${skeleton.combatSeconds.toFixed(2)} / ${skeleton.settings.windowSeconds} 秒`:
-   longche?`${{'boss-defeated':'击败胧车','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[longche.reason]} · `+
+   longche?`${{'boss-defeated':`击败${longcheName}`,'team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[longche.reason]} · `+
     `本队伤害 ${longche.damage.toLocaleString('zh-CN')} · 作战 ${longche.combatSeconds.toFixed(2)} / ${longche.settings.windowSeconds} 秒`:
    spiderLive?`${{'boss-defeated':'击败极·土蜘蛛','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[spiderLive.reason]} · `+
     `本队伤害 ${spiderLive.damage.toLocaleString('zh-CN')} · 作战 ${spiderLive.combatSeconds.toFixed(2)} / ${spiderLive.settings.windowSeconds} 秒`:
@@ -438,14 +440,22 @@ function sampleBattleMarkup(samples){
     `${vote.position} 号位（${vote.wrong?'假':'真'}）`).join('、')}</p>`:''}
    <p class="caption">误杀后实际触发惩罚 ${skeleton.punishments.length} 次 · 击败纸人 ${skeleton.papersDefeated} 位</p></details>`:'';
   const longcheStages=longche?(()=>{
-   const source=AtlasFengmoLive.longche;
+   const source=longcheExtreme?AtlasFengmoLive.longcheX:AtlasFengmoLive.longche;
    const percent=value=>value.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2});
-   return `<details><summary>查看胧车各阶段</summary><ol>${longche.phases.map(phase=>
+   return `<details><summary>查看${longcheName}各阶段</summary><ol>${longche.phases.map(phase=>
     `<li>${source.phases[phase.phase]} · ${phase.seconds.toFixed(2)} 秒进场 · 首领余血 ${percent(phase.bossHp/longche.maximumHp)}</li>`).join('')}</ol>
    <p class="caption">地面召唤 ${longche.groundWaves.length} 波 · 统帅 ${source.commanders[longche.settings.commanderId]} · 出现线索 ${longche.clues.length} 次 · 击败统帅 ${longche.commanderKills.length} 次</p>
-   ${longche.repairs.length?`<ul>${longche.repairs.map(result=>
-    `<li>${result.seconds.toFixed(2)} 秒 · ${result.interrupted?'打断修理':result.timeout?'修理超时':'修理成功'} ·
-     红、蓝修理呱余血 ${result.remaining.map(percent).join(' / ')}${result.healed?` · 胧车恢复 ${Math.round(result.healed).toLocaleString('zh-CN')} 生命`:''}</li>`).join('')}</ul>`:''}
+   ${longcheExtreme?`<p class="caption">突变效果 ${source.traits.find(({id})=>id===longche.settings.trait).label} ·
+    区服上周平均用时 ${longche.settings.weeklySeconds} 秒 · 吸收技能实际施放 ${longche.retributions.length} 次</p>`:''}
+   ${longche.repairs.length?`<ul>${longche.repairs.map(result=>{
+    const remaining=longcheExtreme?result.remaining.map((rate,index)=>`${source.repairNames[longche.settings.repairOrder[index]]} ${percent(rate)}`).join('、'):
+     `红、蓝修理呱余血 ${result.remaining.map(percent).join(' / ')}`;
+    return `<li>${result.seconds.toFixed(2)} 秒 · ${result.interrupted?'打断修理':result.timeout?'修理超时':'修理成功'} ·
+     ${remaining}${result.healed?` · 胧车恢复 ${Math.round(result.healed).toLocaleString('zh-CN')} 生命`:''}
+     ${result.absorptionBuffs?.length?`<div class="caption">吸收后的强化 · ${result.absorptionBuffs.map(id=>source.absorptionNames[id]).join('、')}</div>`:''}
+     ${result.deaths?.length?`<div class="caption">${result.deaths.map(row=>
+      `${source.repairNames[row.id]}倒下时同色余血 ${percent(row.partnerHpRate)}`).join('、')}</div>`:''}</li>`;
+   }).join('')}</ul>`:''}
    <p class="caption">击败地面纸人 ${longche.groundPapersDefeated} 位 · 击败维修纸人 ${longche.papersDefeated} 位</p></details>`;
   })():'';
   const spiderLiveStages=spiderLive?(()=>{

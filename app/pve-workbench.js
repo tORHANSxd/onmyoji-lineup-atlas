@@ -7,7 +7,7 @@
  const ghostKingTower=AtlasDevilFeast.tower;
  const laolao=AtlasDevilFeast.laolao;
  const fusion=AtlasDevilFeast.fusion;
- const {duskWraith:dusk,songstress:song,mirage,catfish,catfishX,skeleton,skeletonX,longche,spiderLive,spiderNormal}=AtlasFengmoLive;
+ const {duskWraith:dusk,songstress:song,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=AtlasFengmoLive;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
@@ -249,13 +249,17 @@
    }
   }
   const longcheSettings=pane.longcheWindow?{windowSeconds:pane.longcheWindow.valueAsNumber,
-   repairSeconds:pane.longcheRepair.valueAsNumber,commanderId:Number(pane.longcheCommander.value)}:null;
-  const longcheReady=!longcheSettings||longche.validSettings(longcheSettings);
+   repairSeconds:pane.longcheRepair.valueAsNumber,commanderId:Number(pane.longcheCommander.value),
+   ...(pane.longcheWeekly?{weeklySeconds:pane.longcheWeekly.valueAsNumber,trait:Number(pane.longcheTrait.value),
+    repairOrder:pane.longcheOrder.map(input=>Number(input.value))}:{})}:null;
+  const longcheSource=pane.longcheWeekly?longcheX:longche;
+  const longcheReady=!longcheSettings||longcheSource.validSettings(longcheSettings);
   pane.longcheSettings=longcheReady?longcheSettings:null;
   if(longcheSettings){
-   for(const input of [pane.longcheWindow,pane.longcheRepair,pane.longcheCommander]){
+   const repeated=pane.longcheWeekly&&new Set(longcheSettings.repairOrder).size!==longcheX.repairSlots.length;
+   for(const input of [pane.longcheWindow,pane.longcheRepair,pane.longcheCommander,pane.longcheWeekly,pane.longcheTrait,...pane.longcheOrder].filter(Boolean)){
     input.disabled=blocked;
-    const invalid=!input.validity.valid;
+    const invalid=!input.validity.valid||Boolean(repeated&&pane.longcheOrder.includes(input));
     input.setAttribute('aria-invalid',String(invalid));
     if(invalid)input.setAttribute('aria-describedby','pve-longche-status');
     else input.removeAttribute('aria-describedby');
@@ -342,7 +346,8 @@
     '请核对时长、减伤层数和人数，其他队伍的击破人数不可超过参战人数。'):
    !skeletonReady?(pane.skeletonWeekly?'请选择两个不同的真部下位置，并检查时长、均时、突变效果和纸人档位。':
     '请选择两个不同的真部下位置，并填写有效的模拟时长。'):
-   !longcheReady?`计分时长须为 1 至 ${longche.windowLimit} 秒，修理时限须为 1 至 ${longche.repairLimit} 秒，均填写整数。`:
+   !longcheReady?(pane.longcheWeekly?'请检查计分时长、修理时限、区服均时和四只修理呱的站位，每只呱只能选一次。':
+    `计分时长须为 1 至 ${longche.windowLimit} 秒，修理时限须为 1 至 ${longche.repairLimit} 秒，均填写整数。`):
    !spiderLiveReady?`计分时长须为 1 至 ${spiderLive.windowLimit} 秒的整数${pane.spiderLiveTrait?'，并选择一项突变词条':''}。`:
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
@@ -376,6 +381,7 @@
  function mount(target,config){
   const catfishSource=config.catfishX?catfishX:catfish;
   const skeletonSource=config.skeletonX?skeletonX:skeleton;
+  const longcheSource=config.longcheX?longcheX:longche;
   if(!api?.pveStatus)return;
   cancel(true);
   const section=document.createElement('section');
@@ -457,7 +463,7 @@
      </label>`}
     </div>
    </fieldset>`:''}
-   ${config.longche?`<fieldset class="pve-reserve"><legend>胧车模拟条件</legend>
+   ${config.longche?`<fieldset class="pve-reserve"><legend>${config.longcheX?'极·':''}胧车模拟条件</legend>
     <div class="actions">
      <label class="pve-lineup-field">本地计分时长（秒）
       <input data-pve-longche-window type="number" min="1" max="${longche.windowLimit}" step="1" value="${longche.defaultWindow}" required>
@@ -466,10 +472,23 @@
       <input data-pve-longche-repair type="number" min="1" max="${longche.repairLimit}" step="1" value="${longche.defaultRepairSeconds}" required>
      </label>
      <label class="pve-lineup-field">升空阶段的统帅
-      <select data-pve-longche-commander required>${Object.entries(longche.commanders).map(([id,name])=>
-       `<option value="${id}" ${Number(id)===longche.defaultCommander?'selected':''}>${name}</option>`).join('')}</select>
+      <select data-pve-longche-commander required>${Object.entries(longcheSource.commanders).map(([id,name])=>
+       `<option value="${id}" ${Number(id)===longcheSource.defaultCommander?'selected':''}>${name}</option>`).join('')}</select>
      </label>
+     ${config.longcheX?`<label class="pve-lineup-field">本场突变效果
+      <select data-pve-longche-trait required>${longcheX.traits.map(({id,label})=>
+       `<option value="${id}" ${id===longcheX.defaultTrait?'selected':''}>${label}</option>`).join('')}</select>
+     </label>
+     <label class="pve-lineup-field">区服上周平均用时（秒）
+      <input data-pve-longche-weekly type="number" min="1" max="${longcheX.weeklyLimit}" step="1" value="${longcheX.weeklyDefault}" required>
+     </label>`:''}
     </div>
+    ${config.longcheX?`<details><summary>设置四只修理呱的站位</summary><div class="actions">
+     ${longcheX.repairSlots.map((pos,index)=>`<label class="pve-lineup-field">${pos} 号位
+      <select data-pve-longche-order required>${Object.entries(longcheX.repairNames).map(([id,name])=>
+       `<option value="${id}" ${Number(id)===longcheX.defaultRepairOrder[index]?'selected':''}>${name}</option>`).join('')}</select>
+     </label>`).join('')}
+     </div><p class="caption">击败红蓝各一只时，各自同色的另一只须保持超过 30% 生命。</p></details>`:''}
    </fieldset>`:''}
    ${config.skeleton?`<fieldset class="pve-reserve"><legend>${config.skeletonX?'极·':''}荒骷髅模拟条件</legend>
     <div class="actions">
@@ -670,6 +689,7 @@
    skeletonWindow:part('skeleton-window'),skeletonPositions:all('skeleton-position'),
    skeletonWeekly:part('skeleton-weekly'),skeletonTrait:part('skeleton-trait'),skeletonPaper:part('skeleton-paper'),
    longcheWindow:part('longche-window'),longcheRepair:part('longche-repair'),longcheCommander:part('longche-commander'),
+   longcheWeekly:part('longche-weekly'),longcheTrait:part('longche-trait'),longcheOrder:all('longche-order'),
    spiderLiveWindow:part('spider-live-window'),spiderLiveTrait:part('spider-live-trait'),
    spiderNormalWeakPart:part('spider-normal-weak'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
@@ -684,7 +704,8 @@
   for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,
-   pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.spiderLiveTrait,pane.spiderNormalWeakPart].filter(Boolean))field.onchange=()=>{
+   pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.longcheTrait,
+   ...pane.longcheOrder,pane.spiderLiveTrait,pane.spiderNormalWeakPart].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -692,7 +713,7 @@
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.mirageWindow,pane.mirageGeneral,
    pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,pane.catfishWeekly,
-   pane.skeletonWindow,pane.skeletonWeekly,pane.longcheWindow,pane.longcheRepair,pane.spiderLiveWindow,
+   pane.skeletonWindow,pane.skeletonWeekly,pane.longcheWindow,pane.longcheRepair,pane.longcheWeekly,pane.spiderLiveWindow,
    pane.artifactAmount,pane.artifactRounds,pane.artifactCoins].filter(Boolean))field.oninput=()=>{
    if(job&&!busy())job.notice=null;
    update();

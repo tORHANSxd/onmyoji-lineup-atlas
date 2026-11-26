@@ -33,7 +33,7 @@ const yinYang=journeyHard.boss;
 const mapBoss=require('../app/map-boss.js');
 const qinfei=mapBoss.qinfeiBoss;
 const fengmoLive=require('../app/fengmo-live.js');
-const {duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,spiderLive,spiderNormal}=fengmoLive;
+const {duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=fengmoLive;
 const tuzhizhuPractice=require('../app/tuzhizhu-practice.js');
 const resourceEncounters=require('../app/resource-encounters.js');
 const orochi=require('../app/true-orochi.js');
@@ -80,6 +80,7 @@ const engines={
  [skeleton.battleMode]:skeleton.engine,
  [skeletonX.battleMode]:skeletonX.engine,
  [longche.battleMode]:longche.engine,
+ [longcheX.battleMode]:longcheX.engine,
  [spiderLive.battleMode]:spiderLive.engine,
  [spiderNormal.battleMode]:spiderNormal.engine,
  ...Object.fromEntries(Object.values(activityScore.modes).map(({battleMode,engine,route,engineSHA256})=>
@@ -166,7 +167,7 @@ function validArtifactReport(proof,state,dao){
 function validTactics(plan,battleMode){
  if(!Object.hasOwn(plan,'tactics'))return true;
  const {tactics}=plan;
- if((![2000,306,fengmoYanwu.battleMode,duskWraith.battleMode,songstress.battleMode,mirage.battleMode,catfish.battleMode,catfishX.battleMode,skeleton.battleMode,skeletonX.battleMode,longche.battleMode,spiderLive.battleMode,spiderNormal.battleMode,qilingGroups.battleMode,qinfei.battleMode].includes(battleMode)&&!Object.hasOwn(activityScore.modes,battleMode))||
+ if((![2000,306,fengmoYanwu.battleMode,duskWraith.battleMode,songstress.battleMode,mirage.battleMode,catfish.battleMode,catfishX.battleMode,skeleton.battleMode,skeletonX.battleMode,longche.battleMode,longcheX.battleMode,spiderLive.battleMode,spiderNormal.battleMode,qilingGroups.battleMode,qinfei.battleMode].includes(battleMode)&&!Object.hasOwn(activityScore.modes,battleMode))||
     !tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
  return Object.entries(tactics).every(([key,value])=>{
   const slot=number=>positive(number)&&number<=plan.members.length;
@@ -728,8 +729,8 @@ function validSpiderLive(report,settings,plan){
   data.reason==='window-expired'&&data.combatSeconds>=settings.windowSeconds);
 }
 
-function validLongche(report,settings,plan){
- const data=report.longche,source=longche;
+function validLongche(report,settings,plan,source){
+ const data=report.longche,extreme=source===longcheX;
  const between=(value,min,max)=>Number.isFinite(value)&&value>=min&&value<=max;
  if(!data||report.sceneId!==source.sceneId||report.waveCount!==1||!sameTactics(data.settings,settings)||
     !validScoringTactics(data,plan,source.boss)||!Number.isSafeInteger(data.damage)||data.damage<0||
@@ -737,7 +738,7 @@ function validLongche(report,settings,plan){
     !between(data.bossHp,0,data.maximumHp)||!Number.isInteger(data.papersDefeated)||
     !between(data.papersDefeated,0,8)||!Number.isInteger(data.groundPapersDefeated)||!between(data.groundPapersDefeated,0,2))return false;
  const {phases,clues,commanderKills,repairs,groundWaves}=data;
- const next={slime:['flee'],flee:['slime','repair'],repair:['slime','gift'],gift:['slime']};
+ const next={slime:['flee'],flee:['slime','repair'],repair:[extreme?'repair_success':'slime','gift'],gift:['slime'],repair_success:[]};
  if(!Array.isArray(phases)||!phases.length||phases.length>17||report.formationsVerified!==phases.length||
     !Array.isArray(clues)||!Array.isArray(commanderKills)||!Array.isArray(repairs)||!Array.isArray(groundWaves))return false;
  for(const [index,phase] of phases.entries()){
@@ -746,7 +747,7 @@ function validLongche(report,settings,plan){
      !between(phase.seconds,previous?.seconds??0,data.combatSeconds)||!Number.isSafeInteger(phase.damage)||
      !between(phase.damage,previous?.damage??0,data.damage)||!between(phase.bossHp,0,data.maximumHp)||
      !Array.isArray(phase.opening))return false;
-  const expected=source.formations[phase.phase];
+  const expected=extreme&&phase.phase==='repair'?source.repairSlots.map((pos,i)=>[pos,settings.repairOrder[i]]):source.formations[phase.phase];
   if(phase.opening.length!==expected.length||phase.opening.some((row,i)=>
      row?.position!==expected[i][0]||row.id!==expected[i][1]||row.level!==40||
      phase.phase==='flee'&&row.commander!==(row.id===settings.commanderId)))return false;
@@ -766,12 +767,29 @@ function validLongche(report,settings,plan){
   const phase=repairPhases[index],after=phases[phases.indexOf(phase)+1];
   if(!between(result?.seconds,phase.seconds,after?.seconds??data.combatSeconds)||
      typeof result.interrupted!=='boolean'||typeof result.timeout!=='boolean'||!Array.isArray(result.remaining)||
-     result.remaining.length!==2||result.remaining.some(rate=>!between(rate,0,1))||
-     (result.timeout?Math.min(...result.remaining)<=0||result.seconds-phase.seconds+1e-7<settings.repairSeconds:
-       Math.min(...result.remaining)!==0)||
-     result.interrupted!==(!result.timeout&&Math.max(...result.remaining)<=.1)||
+     result.remaining.length!==(extreme?4:2)||result.remaining.some(rate=>!between(rate,0,1))||
+     result.timeout&&result.seconds-phase.seconds+1e-7<settings.repairSeconds||
      !between(result.healed,0,data.maximumHp*.12+1e-6)||result.interrupted&&result.healed!==0||
-     after&&after.phase!==(result.interrupted?'gift':'slime'))return false;
+     after&&after.phase!==(result.interrupted?'gift':extreme?'repair_success':'slime'))return false;
+  if(extreme){
+   const {deaths,absorptionBuffs}=result;
+   if(!Array.isArray(deaths)||new Set(deaths.map(row=>row.id)).size!==deaths.length||
+      deaths.some((row,i)=>!settings.repairOrder.includes(row.id)||result.remaining[settings.repairOrder.indexOf(row.id)]!==0||
+       !between(row.seconds,deaths[i-1]?.seconds??phase.seconds,result.seconds)||!between(row.partnerHpRate,0,1))||
+      (absorptionBuffs===null?Boolean(after):!Array.isArray(absorptionBuffs)||new Set(absorptionBuffs).size!==absorptionBuffs.length||
+       absorptionBuffs.some(id=>!Object.hasOwn(source.absorptionNames,id))))return false;
+   const counts=source.repairGroups.map(group=>deaths.filter(row=>group.includes(row.id)).length);
+   const interrupted=counts.every(count=>count===1)&&deaths.every(row=>row.partnerHpRate>source.repairThreshold);
+   if(result.timeout!==counts.some(count=>count===0)||result.interrupted!==interrupted)return false;
+  }else if((result.timeout?Math.min(...result.remaining)<=0:Math.min(...result.remaining)!==0)||
+            result.interrupted!==(!result.timeout&&Math.max(...result.remaining)<=.1))return false;
+ }
+ if(extreme){
+  const ids=[plan.onmyoji,...plan.members.map(unit=>unit.hero)].map(unit=>Number(unit.heroId));
+  const completedRepair=repairs.find(row=>!row.interrupted);
+  if(!Array.isArray(data.traitRecipients)||!sameTactics([...data.traitRecipients].sort(),ids.sort())||
+     !Array.isArray(data.retributions)||data.retributions.length>1||
+     data.retributions.some(at=>!completedRepair||!between(at,completedRepair.seconds,data.combatSeconds)))return false;
  }
  if(data.papersDefeated>2*phases.filter(row=>row.phase==='gift').length)return false;
  if(!report.completed)return data.reason==='incomplete'&&report.wavesCleared===0;
@@ -1233,7 +1251,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (catfishSettings&&!validCatfish(report,catfishSettings,rounds[0],battleMode===catfishX.battleMode?catfishX:catfish))||
     (battleMode===skeleton.battleMode&&!validSkeleton(report,skeletonSettings,rounds[0]))||
     (battleMode===skeletonX.battleMode&&!validSkeleton(report,skeletonXSettings,rounds[0],skeletonX))||
-    (battleMode===longche.battleMode&&!validLongche(report,longcheSettings,rounds[0]))||
+    (longcheSettings&&!validLongche(report,longcheSettings,rounds[0],battleMode===longcheX.battleMode?longcheX:longche))||
     (battleMode===spiderLive.battleMode&&!validSpiderLive(report,spiderLiveSettings,rounds[0]))||
     (battleMode===spiderNormal.battleMode&&!validSpiderNormal(report,spiderNormalSettings,rounds[0]))||
     (activityScore.modes[battleMode]&&!validActivityScore(report,rounds[0],activityScore.modes[battleMode]))||
@@ -1293,7 +1311,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(band?[fengmoBand.battleMode]:[]),...(bandPractice?[bandTogether.battleMode]:[]),
      ...(feast?[devilFeast.battleMode,laolao.battleMode]:[]),...(feast&&resource?[ghostKingTower.battleMode]:[]),
-     ...(feast&&fusionAvailable?[fusion.battleMode]:[]),...(duskAvailable?[duskWraith.battleMode]:[]),...(songAvailable?[songstress.battleMode]:[]),...(mirageAvailable?[mirage.battleMode]:[]),...(catfishAvailable?[catfish.battleMode,catfishX.battleMode]:[]),...(skeletonAvailable?[skeleton.battleMode,skeletonX.battleMode]:[]),...(longcheAvailable?[longche.battleMode]:[]),...(spiderLiveAvailable?[spiderLive.battleMode]:[]),
+     ...(feast&&fusionAvailable?[fusion.battleMode]:[]),...(duskAvailable?[duskWraith.battleMode]:[]),...(songAvailable?[songstress.battleMode]:[]),...(mirageAvailable?[mirage.battleMode]:[]),...(catfishAvailable?[catfish.battleMode,catfishX.battleMode]:[]),...(skeletonAvailable?[skeleton.battleMode,skeletonX.battleMode]:[]),...(longcheAvailable?[longche.battleMode,longcheX.battleMode]:[]),...(spiderLiveAvailable?[spiderLive.battleMode]:[]),
      ...(spiderNormalAvailable&&spiderLiveAvailable?[spiderNormal.battleMode]:[]),
      ...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
      ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
@@ -1417,9 +1435,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(spiderLiveMode&&(fengmoLive.resourceVersion!==resourceVersion||stageId!==spiderLive.stageId||groupId!==stageId||
       plan.members.length!==spiderLive.memberCount||!spiderLive.validSettings(spiderLiveSettings))||
       spiderLiveSettings!==undefined&&!spiderLiveMode)throw Error('极·土蜘蛛需要对应的原版关卡、五位自有式神和有效的突变词条');
-   const longcheMode=battleMode===longche.battleMode;
-   if(longcheMode&&(fengmoLive.resourceVersion!==resourceVersion||stageId!==longche.stageId||groupId!==stageId||
-      plan.members.length!==longche.memberCount||!longche.validSettings(longcheSettings))||
+   const longcheSource=battleMode===longcheX.battleMode?longcheX:longche;
+   const longcheMode=battleMode===longcheSource.battleMode;
+   if(longcheMode&&(fengmoLive.resourceVersion!==resourceVersion||stageId!==longcheSource.stageId||groupId!==stageId||
+      plan.members.length!==longcheSource.memberCount||!longcheSource.validSettings(longcheSettings))||
       longcheSettings!==undefined&&!longcheMode)throw Error('胧车需要对应的原版关卡、五位自有式神和有效的修理条件');
    const skeletonMode=battleMode===skeleton.battleMode;
    if(skeletonMode&&(fengmoLive.resourceVersion!==resourceVersion||stageId!==skeleton.stageId||groupId!==stageId||

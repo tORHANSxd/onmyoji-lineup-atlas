@@ -40,7 +40,7 @@ def replay(args, runtime, work):
     from fengmo_mirage_stage import MIRAGE_MODE, MIRAGE_WALL_SECONDS, MirageReplay
     from fengmo_catfish_stage import CATFISH_MODE, CATFISH_WALL_SECONDS, CATFISH_X_MODE, CatfishReplay
     from fengmo_skeleton_stage import SKELETON_MODE, SKELETON_WALL_SECONDS, SKELETON_X_MODE, SkeletonReplay
-    from fengmo_longche_stage import LONGCHE_MODE, LONGCHE_WALL_SECONDS, LongcheReplay
+    from fengmo_longche_stage import LONGCHE_MODE, LONGCHE_WALL_SECONDS, LONGCHE_X_MODE, LongcheReplay
     from fengmo_spider_stage import SPIDER_LIVE_MODE, SPIDER_LIVE_WALL_SECONDS, SpiderLiveReplay
     from fengmo_spider_normal_stage import SPIDER_NORMAL_MODE, SpiderNormalReplay
     from laolao_fusion_stage import LAOLAO_FUSION_MODE, FUSION_WALL_SECONDS, LaolaoFusionReplay
@@ -100,7 +100,8 @@ def replay(args, runtime, work):
     catfish = args.mode == CATFISH_MODE or catfish_x
     skeleton_x = args.mode == SKELETON_X_MODE
     skeleton = args.mode == SKELETON_MODE or skeleton_x
-    longche = args.mode == LONGCHE_MODE
+    longche_x = args.mode == LONGCHE_X_MODE
+    longche = args.mode == LONGCHE_MODE or longche_x
     spider_live = args.mode == SPIDER_LIVE_MODE
     spider_normal = args.mode == SPIDER_NORMAL_MODE
     laolao_fusion = args.mode == LAOLAO_FUSION_MODE
@@ -358,7 +359,9 @@ def replay(args, runtime, work):
 
         if len(fighters) != 5:
             raise ValueError("Longche requires five owned shikigami")
-        longche_replay = LongcheReplay(modules, args.longche_settings)
+        if longche_x:
+            random.seed(args.seed)
+        longche_replay = LongcheReplay(modules, args.longche_settings, extreme=longche_x)
         engine, group, const = longche_replay.engine, longche_replay.group, longche_replay.const
         group_id, wave_count = group["ID"], 1
     elif spider_live:
@@ -628,7 +631,7 @@ def replay(args, runtime, work):
     elif skeleton:
         route = "skeleton-x-local-team" if skeleton_x else "skeleton-local-team"
     elif longche:
-        route = "longche-local-team"
+        route = "longche-x-local-team" if longche_x else "longche-local-team"
     elif spider_live:
         route = "spider-live-local-team"
     elif spider_normal:
@@ -933,6 +936,8 @@ def replay(args, runtime, work):
                 catfish_replay.check_selected(entity)
             if skeleton_x:
                 skeleton_replay.check_selected(entity)
+            if longche_x:
+                longche_replay.check_selected(entity)
             if setting:
                 engine.op_setAutoSkill(owner, entity.uid, setting)
                 if owner.autoSkill.get(entity.uid) != setting:
@@ -1356,7 +1361,8 @@ def main():
                                      CATFISH_X_STAGE, valid_catfish_settings, valid_catfish_x_settings)
     from fengmo_skeleton_stage import (SKELETON_MODE, SKELETON_STAGE, SKELETON_WALL_SECONDS, SKELETON_X_MODE,
                                       SKELETON_X_STAGE, valid_skeleton_settings, valid_skeleton_x_settings)
-    from fengmo_longche_stage import LONGCHE_MODE, LONGCHE_STAGE, LONGCHE_WALL_SECONDS, valid_longche_settings
+    from fengmo_longche_stage import (LONGCHE_MODE, LONGCHE_STAGE, LONGCHE_WALL_SECONDS, LONGCHE_X_MODE, LONGCHE_X_STAGE,
+                                      valid_longche_settings, valid_longche_x_settings)
     from fengmo_spider_stage import SPIDER_LIVE_MODE, SPIDER_LIVE_STAGE, SPIDER_LIVE_WALL_SECONDS, valid_spider_live_settings
     from fengmo_spider_normal_stage import SPIDER_NORMAL_MODE, SPIDER_NORMAL_STAGE, valid_spider_normal_settings
     from laolao_fusion_stage import LAOLAO_FUSION_MODE, LAOLAO_FUSION_STAGE, FUSION_WALL_SECONDS, valid_fusion_settings
@@ -1382,7 +1388,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
     parser.add_argument("--fusion-settings", type=json.loads)
@@ -1467,6 +1473,9 @@ def main():
     if args.mode == LONGCHE_MODE:
         if args.stage != LONGCHE_STAGE or not valid_longche_settings(args.longche_settings):
             parser.error("Longche needs its original stage and valid phase settings")
+    elif args.mode == LONGCHE_X_MODE:
+        if args.stage != LONGCHE_X_STAGE or not valid_longche_x_settings(args.longche_settings):
+            parser.error("Extreme Longche needs its original stage and valid repair settings")
     elif args.longche_settings is not None:
         parser.error("Longche phase settings apply only to its original mode")
     if args.mode == SPIDER_LIVE_MODE:
@@ -1600,7 +1609,7 @@ def main():
                         MIRAGE_WALL_SECONDS + 20 if args.mode == MIRAGE_MODE else
                         CATFISH_WALL_SECONDS + 20 if args.mode in (CATFISH_MODE, CATFISH_X_MODE) else
                         SKELETON_WALL_SECONDS + 20 if args.mode in (SKELETON_MODE, SKELETON_X_MODE) else
-                        LONGCHE_WALL_SECONDS + 20 if args.mode == LONGCHE_MODE else
+                        LONGCHE_WALL_SECONDS + 20 if args.mode in (LONGCHE_MODE, LONGCHE_X_MODE) else
                         SPIDER_LIVE_WALL_SECONDS + 20 if args.mode in (SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE) else
                         YINYANG_BOSS_WALL_SECONDS + 20 if args.mode == YINYANG_BOSS_MODE else
                         BAND_TOGETHER_WALL_SECONDS + 20 if args.mode == BAND_TOGETHER_MODE else

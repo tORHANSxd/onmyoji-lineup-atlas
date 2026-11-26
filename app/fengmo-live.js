@@ -86,6 +86,30 @@
     Number.isSafeInteger(commanderId)&&Object.hasOwn(this.commanders,commanderId);
   },
  };
+ const longcheRepairUnits=[[5,101],[6,103],[7,102],[8,104]];
+ const longcheX={
+  ...longche,stageId:25027,battleMode:4443,codeStageId:10020229,boss:100290,defaultCommander:99159,
+  commanders:Object.fromEntries(Object.entries(longche.commanders).map(([id,name])=>[Number(id)+99000,name])),
+  clues:Object.fromEntries(Object.entries(longche.clues).map(([id,clue])=>[Number(id)+99000,clue])),
+  phases:{...longche.phases,repair_success:'金辉赐福'},
+  formations:{...longche.formations,flee:longche.formations.flee.map(([pos,id])=>[pos,id+99000]),
+   repair:longcheRepairUnits,repair_success:[]},
+  repairNames:{101:'叮呱（红）',102:'咚呱（蓝）',103:'哐呱（红精英）',104:'锵呱（蓝精英）'},
+  repairGroups:[[101,103],[102,104]],repairSlots:longcheRepairUnits.map(([pos])=>pos),
+  defaultRepairOrder:longcheRepairUnits.map(([,id])=>id),repairThreshold:.3,
+  absorptionNames:{417:'攻击增加',418:'防御增加'},
+  traits:rotationTraits,defaultTrait:63402,weeklyDefault:480,weeklyLimit:1200,
+  engine:{name:'LongCheXEngine',route:'longche-x-local-team',
+   sha256:'a645028ed5310f722403dc76c148b9968f1fab4fc595ae5c72ef3045d12c2f83'},
+  validSettings(settings){
+   const {commanderId,trait,weeklySeconds,repairOrder,...room}=settings??{};
+   return Number.isSafeInteger(commanderId)&&Object.hasOwn(this.commanders,commanderId)&&
+    longche.validSettings({...room,commanderId:commanderId-99000})&&this.traits.some(row=>row.id===trait)&&
+    Number.isSafeInteger(weeklySeconds)&&weeklySeconds>=1&&weeklySeconds<=this.weeklyLimit&&
+    Array.isArray(repairOrder)&&repairOrder.length===this.repairSlots.length&&new Set(repairOrder).size===this.repairSlots.length&&
+    Array.from(repairOrder).every(id=>Number.isSafeInteger(id)&&Object.hasOwn(this.repairNames,id));
+  },
+ };
  const skeleton={
   stageId:25003,battleMode:3012,codeStageId:10020222,sceneId:40012,boss:9991001,
   memberCount:5,windowLimit:1200,defaultWindow:600,positions:[2,3,4,5,6,7],defaultTruePositions:[2,3],
@@ -208,6 +232,15 @@
      ...[420,421,422,423,424,426,433,444].map(id=>ref('skill',{$tuple:[id,1,-1]},'原版阶段技能')),
      ...Object.keys(longche.commanders).map(id=>ref('Contrast',Number(id),'统帅与地面线索的对应关系')));
    }
+   if(route.stage===longcheX.stageId){
+    refs.push(...[[100,'地面小呱太示例'],[600,'本地采用的极版升空编组'],[500,'四只修理呱太'],[400,'打断维修后的纸人编组']]
+     .map(([id,label])=>ref('troops',{$tuple:[id,1]},label)),
+     ...[3592,3606,3611,3619,3621,3625,3633,3634,3635,3636,10900].map(id=>ref('Constant',id,'原版阶段和共血参数')),
+     ref('skill',{$tuple:[420,2,-1]},'极版无限鬼爪'),
+     ...[[428,'四只修理呱太及打断条件'],[429,'吸收修理呱太'],[430,'金辉赐福']].map(([id,label])=>ref('skill',{$tuple:[id,1,-1]},label)),
+     ...[[417,'吸收哐呱后的攻击强化'],[418,'吸收锵呱后的防御强化']].map(([id,label])=>ref('buff',{$tuple:[id,1]},label)),
+     ...Object.keys(longche.commanders).map(id=>ref('Contrast',Number(id),'统帅与地面线索的对应关系')));
+   }
    if(route.stage===skeleton.stageId){
     refs.push(...[[100,'首轮小怪'],[200,'真假部下'],[300,'秘宝小纸人'],[400,'末轮小怪']].map(([id,label])=>ref('huangkulou_stage',{$tuple:[id,1]},label)),
      ...[3801,3802,3803].map(id=>ref('Constant',id,'阶段血线')),
@@ -277,5 +310,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,spiderLive,spiderNormal};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal};
 });

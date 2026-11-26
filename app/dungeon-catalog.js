@@ -950,7 +950,7 @@
       block.append(details);
     }
     destination.append(block);
-    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,catfishX,skeleton,skeletonX,longche,spiderLive,spiderNormal}=source;
+    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=source;
     const stage=row('pve_stage_data',String(scenario.stage));
     if(scenario.stage===spiderNormal.stageId&&scenario.mode===spiderNormal.battleMode&&route?.scene_engine===spiderNormal.engine.name&&
         stage?.groupid===spiderNormal.stageId&&stage.shishentotal===spiderNormal.memberCount&&formation.resindex===spiderNormal.sceneId){
@@ -970,13 +970,16 @@
         codeStageId:code?.actors===1&&code.shikigami===spiderLive.memberCount?spiderLive.codeStageId:null,codeLabel:code?.name});
       return;
     }
-    if(scenario.stage===longche.stageId&&scenario.mode===longche.battleMode&&route?.scene_engine===longche.engine.name&&
-        stage?.groupid===longche.stageId&&stage.shishentotal===longche.memberCount&&formation.resindex===longche.sceneId){
-      const code=DATA.gameConfig.stages[longche.codeStageId];
-      destination.append(node('p','用已知阵容从满血开打。单队按 80%、60%、40%、20% 血线请求升空，使用原表第一套精英编组；统帅和修理时限可设置。','caption'));
-      window.AtlasPveWorkbench?.mount(destination,{stageId:longche.stageId,groupId:longche.stageId,version:source.resourceVersion,
-        battleMode:longche.battleMode,memberCount:longche.memberCount,waveCount:1,label:'稀有·胧车',longche:true,
-        codeStageId:code?.actors===1&&code.shikigami===longche.memberCount?longche.codeStageId:null,codeLabel:code?.name});
+    const car=scenario.hard?longcheX:longche;
+    if(scenario.stage===car.stageId&&scenario.mode===car.battleMode&&route?.scene_engine===car.engine.name&&
+        stage?.groupid===car.stageId&&stage.shishentotal===car.memberCount&&formation.resindex===car.sceneId){
+      const code=DATA.gameConfig.stages[car.codeStageId];
+      const info=scenario.hard?'用已知阵容模拟四只修理呱、吸收强化和金辉赐福。复跑采用原表第一套极版精英编组。':
+       '用已知阵容从满血开打。单队按 80%、60%、40%、20% 血线请求升空，使用原表第一套精英编组；统帅和修理时限可设置。';
+      destination.append(node('p',info,'caption'));
+      window.AtlasPveWorkbench?.mount(destination,{stageId:car.stageId,groupId:car.stageId,version:source.resourceVersion,
+        battleMode:car.battleMode,memberCount:car.memberCount,waveCount:1,label:scenario.hard?'极·胧车':'稀有·胧车',
+        longche:true,longcheX:scenario.hard,codeStageId:code?.actors===1&&code.shikigami===car.memberCount?car.codeStageId:null,codeLabel:code?.name});
       return;
     }
     const boss=scenario.hard?skeletonX:skeleton;
