@@ -218,6 +218,25 @@ async function main(){
   await capture('client-journey-challenge');
   await ui('$("client-dungeons").open=false');
  });
+ if(catalog?.index.encounters&&catalog.entries.has('shilian_liudao'))await check('六道之门按路线显示首领、规则与候选编组',async()=>{
+  await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
+  const detail='$("client-dungeons-encounter-detail")';
+  await ui('qaEncounterInput("daily","六道之门路线 香行域")');
+  await until(detail+'.textContent.includes("ShiLianXunXiangXingEngine")');
+  const route=await ui(detail+'.textContent');
+  assert.match(route,/可选试炼式神 ID.*217.*264.*238.*试炼引擎 ShiLianXunXiangXingEngine.*928.*路线阵容码.*110151.*途中战斗引擎.*927/s);
+  assert.match(route,/迷影诡谲.*每前行一步.*结算评级/s);
+  await ui('qaEncounterInput("daily","六道之门试炼关卡 香行域")');
+  await until(detail+'.textContent.includes("持国天")');
+  assert.match(await ui(detail+'.textContent'),/路线阵容码.*110151.*通用 PvE 关卡.*700133.*敌方编组/s);
+  await ui('qaEncounterInput("battle","700133")');
+  await until(detail+'.textContent.includes("六道之门专用引擎")');
+  assert.equal(await ui(detail+'.textContent.includes("模拟已知阵容")'),false);
+  await ui('qaEncounterInput("daily","六道之门岛屿 54")');
+  await until(detail+'.textContent.includes("原版战斗候选")');
+  assert.match(await ui(detail+'.textContent'),/混沌之屿.*事件组26.*岛屿玩法说明.*原版战斗候选/s);
+  await ui('$("client-dungeons").open=false');
+ });
  if(catalog?.index.encounters&&catalog.entries.has('map_boss'))await check('真蛇展示十层敌方编组、跨层规则与原版入口',async()=>{
   await ui('$("client-dungeons").open=true;$("client-dungeons-mode-encounters").click()');
   await ui('qaEncounterInput("daily","真蛇 地图首领入口")');

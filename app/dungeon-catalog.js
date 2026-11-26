@@ -45,9 +45,16 @@
     lbs_world_boss_area: '地域鬼王',
     lbs_world_boss_init: '地域鬼王地图分区',
     lbs_world_boss_type: '地域鬼王普通特殊条件',
-    shilian_stage_detail: '六道之门试炼',
+    shilian_stage_detail: '六道之门关卡规则',
     shilian_event_battles: '六道之门战斗配置',
     shilian_event_exam: '六道之门试炼关卡',
+    shilian_liudao: '六道之门路线',
+    shilian_area: '六道之门岛屿',
+    shilian_level: '六道之门结算评级',
+    shilian_event_campsit: '六道之门营地商品',
+    shilian_event_chest: '六道之门宝匣',
+    shilian_event_question: '六道之门奇遇',
+    shilian_yanling_event: '六道之门真言塔事件',
     activity: '活动开放配置',
     storyChapter: '探索章节',
     mapnpc: '地图探索入口',
@@ -140,6 +147,16 @@
     lbs_world_boss_init: {dist_name: '分区'},
     lbs_world_boss_type: {desc: '原版条件模板', detail: '战斗内条件提示模板', p1: '参数池 1', p2: '参数池 2', type: '条件类型'},
     team_assist_stage: {search_id: '阵容码检索 ID', ss_num: '式神人数', yys_num: '阴阳师人数'},
+    shilian_liudao: {hero: '可选试炼式神 ID', system_hero: '原表系统试炼式神开关', guard_id: '助战守护 ID', pve_id: '路线配置 PvE'},
+    shilian_stage_detail: {mode: '关卡规则类型', desc: '玩法说明', body: '规则正文', skills: '关联技能'},
+    shilian_event_exam: {battle_name: '试炼首领', battle_type: '战斗类型', drop_show: '奖励预览'},
+    shilian_event_battles: {group_id: '候选组', battle_type: '战斗类型', battle_rate: '候选权重', drop_show: '奖励预览'},
+    shilian_area: {type: '岛屿类型', subtype: '岛屿子类型', event_group: '事件组', desc: '玩法说明', can_leave: '可离开'},
+    shilian_level: {grade_str: '评级', min: '下限', max: '上限', desc: '评级说明'},
+    shilian_event_campsit: {group_id: '候选组', item_id: '商品 ID', money_id: '货币 ID', price: '价格', weight: '权重'},
+    shilian_event_chest: {group_id: '候选组', chest_rate: '出现权重', drop_desc: '宝匣奖励'},
+    shilian_event_question: {desc: '奇遇说明', option_infos: '可选项', drop_show: '奖励预览'},
+    shilian_yanling_event: {desc: '事件说明', params: '原版事件参数', tips: '事件提示'},
   };
   const state = { token: 0, index: null, entry: null, rows: [], matches: [], page: 0, selected: -1 };
   const stage = { token: 0, loading: false, rows: null, byKey: new Map(), matches: [], page: 0, selected: null, mode: 'tables' };
@@ -1149,6 +1166,7 @@
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
       const regional=entry.refs.some(ref=>ref.table==='lbs_world_boss_area');
+      const shilian=entry.refs.some(ref=>['shilian_liudao','shilian_event_exam','shilian_event_battles'].includes(ref.table));
       const orochiFloor=orochi.isFloor(stageId);
       const hunling=AtlasHunlingEncounters;
       const spiritRoute=matchesOpeningSource(hunling)?hunling.routes[stageId]:null;
@@ -1166,6 +1184,7 @@
       else if(stageId===800021||stageId>=810001&&stageId<=810009)
         destination.append(node('p','此编组由契灵教程、集结或集结后的收服入口使用，入场条件取自对应原版流程。','caption'));
       else if (regional) destination.append(node('p','此编组供地域鬼王入口使用。离线演练还需要该玩法下发的实际参数。','caption'));
+      else if (shilian) destination.append(node('p','此编组由六道之门专用引擎使用。请从关联入口核对试炼式神及途中规则。','caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&
           formation?.row?.MonstersInfos?.length&&!['no_yys','replace_yysid','isplot','sl_file'].some(field=>row[field])) {

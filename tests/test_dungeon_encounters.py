@@ -9,6 +9,50 @@ from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_six_realms_keeps_trial_routing_and_battle_island_pools_distinct(self):
+        tables = {
+            "shilian_liudao": [[2, {"id": 2, "name": "香行域", "pve_id": 700101}],
+                              [0, {"id": 0, "name": "月之海", "pve_id": 690001}]],
+            "shilian_stage_detail": [[20, {"dao": 2, "name": "香炉规则"}]],
+            "shilian_level": [[{"$tuple": [2, 1]}, {"dao": 2, "grade_str": "壹"}]],
+            "shilian_event_exam": [[1, {"dao": 0, "battle_id": 690036}], [3, {"dao": 2, "battle_id": 700133}]],
+            "shilian_area": [[14, {"type": 40, "event_group": 7, "tips_key": "island"}],
+                             [15, {"type": 20, "event_group": 7}]],
+            "shilian_event_battles": [[201, {"group_id": 7, "battle_id": 700120}],
+                                      [202, {"group_id": 8, "battle_id": 700121}]],
+            "pve_stage_data": [[str(key), {"id": key, "groupid": key}]
+                               for key in (690001, 690036, 700101, 700120, 700121, 700133)],
+            "BattleMonstersInfo": [[key, {"resindex": 100}]
+                                   for key in (690001, 690036, 700101, 700120, 700121, 700133)],
+            "Combinesceneinfo": [[100, {"battlesceneinfo": 10}]],
+            "BattleScenesInfo": [[10, {}]],
+            "battle_team_routes": [[927, {"battleMode": 208}], [928, {"battleMode": 921}]],
+            "team_assist_stage": [[110151, {"ss_num": 6}]],
+            "tipsInfoData_cn": [["island", "岛屿说明"]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "daily",
+                      "fields": [field for _, row in rows if isinstance(row, dict) for field in row]}
+                     for name, rows in tables.items()]
+        catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(entry["table"], str(entry["key"])): entry for entry in catalog["entries"]}
+
+        def references(table, key):
+            return [(ref["table"], ref["key"]) for ref in entries[table, str(key)]["refs"]]
+
+        route = entries["shilian_liudao", "2"]
+        self.assertEqual(route["title"], "六道之门 · 香行域")
+        self.assertIn(("shilian_level", {"$tuple": [2, 1]}), references("shilian_liudao", 2))
+        self.assertIn(("shilian_event_exam", 3), references("shilian_liudao", 2))
+        self.assertIn(("battle_team_routes", 927), references("shilian_liudao", 2))
+        self.assertIn(("battle_team_routes", 928), references("shilian_event_exam", 3))
+        self.assertIn(("team_assist_stage", 110151), references("shilian_event_exam", 3))
+        self.assertIn(("shilian_liudao", 0), references("shilian_event_exam", 1))
+        self.assertIn(("shilian_event_exam", 3), references("pve_stage_data", 700133))
+        self.assertIn(("shilian_event_battles", 201), references("pve_stage_data", 700120))
+        self.assertEqual(references("shilian_area", 14), [("tipsInfoData_cn", "island"), ("shilian_event_battles", 201)])
+        self.assertEqual(references("shilian_area", 15), [])
+        self.assertEqual(catalog["unresolvedReferences"], 0)
+
     def test_true_orochi_follows_pve_stage_groups_and_links_back_to_the_full_dungeon(self):
         tables = {
             "map_boss": [[71, {"id": 71, "name": "真·八岐大蛇", "gk_list": [[25100, 40040], [25101, 40050]]}],

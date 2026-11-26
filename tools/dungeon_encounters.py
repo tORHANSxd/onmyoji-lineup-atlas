@@ -3,6 +3,7 @@
 from collections import Counter
 from functools import cache
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
+from shilian_routes import SHILIAN_DAOS
 
 
 ROOTS = {
@@ -22,6 +23,13 @@ ROOTS = {
     "shilian_event_battles": ("daily", "六道之门"),
     "shilian_event_exam": ("daily", "六道之门试炼"),
     "shilian_stage_detail": ("daily", "六道之门关卡"),
+    "shilian_liudao": ("daily", "六道之门路线"),
+    "shilian_area": ("daily", "六道之门岛屿"),
+    "shilian_level": ("daily", "六道之门结算评级"),
+    "shilian_event_campsit": ("daily", "六道之门营地商品"),
+    "shilian_event_chest": ("daily", "六道之门宝匣"),
+    "shilian_event_question": ("daily", "六道之门奇遇"),
+    "shilian_yanling_event": ("daily", "六道之门真言塔事件"),
     "hunling_boss": ("daily", "契灵之境"),
     "hunling_tansuo": ("daily", "契灵之境"),
     "rpg_chapter": ("daily", "剧情副本"),
@@ -86,6 +94,7 @@ EDGES = {
     "lbs_world_boss_area": (("dist_id", "lbs_world_boss_init", "地图分区"),),
     "act_team_battle": (("act_id", "activity", "活动开放配置"),),
     "journey_hardbattle": (("battle_id", "pve_stage_data", "首领挑战关卡"),),
+    "shilian_liudao": (("pve_id", "pve_stage_data", "路线配置 PvE"),),
     "SuperGhost_mission": (("actid", "activity", "活动开放配置"), ("sceneid", "Combinesceneinfo", "关卡场景")),
     "SuperGhost_bossmission": (("sceneid", "Combinesceneinfo", "关卡场景"),),
     "guild_boss_show": (("bossID", "monster", "首领"),),
@@ -124,6 +133,8 @@ def reference_key(value):
         parts = tuple(str(item) if type(item) is int else numeric_key(item) for item in value["$tuple"])
         if parts and None not in parts:
             return parts
+    if type(value) is int and value == 0:
+        return "0"
     return numeric_key(value) or (value if isinstance(value, str) and value else None)
 
 
@@ -225,6 +236,19 @@ def encounter_index(source, load_rows):
     hunling_routes = {str(stage_id): row for stage_id, row in (*exploration_stages(), *challenge_stages())}
     hunling_codes = {row["search_id"]: key for key, row in table("team_assist_stage").values()
                      if isinstance(row.get("name"), str) and row["name"].startswith("契灵")}
+    shilian_exams = {row.get("dao"): key for key, row in table("shilian_event_exam").values()}
+    shilian_details = {}
+    for key, row in table("shilian_stage_detail").values():
+        shilian_details.setdefault(row.get("dao"), []).append(key)
+    shilian_grades = {}
+    for key, row in table("shilian_level").values():
+        shilian_grades.setdefault(row.get("dao"), []).append(key)
+    shilian_battles, shilian_battles_by_stage = {}, {}
+    for key, row in table("shilian_event_battles").values():
+        shilian_battles.setdefault(row.get("group_id"), []).append(key)
+        shilian_battles_by_stage.setdefault(numeric_key(row.get("battle_id")), []).append(key)
+    shilian_exam_stages = {numeric_key(row.get("battle_id")): key for key, row in table("shilian_event_exam").values()}
+    shilian_route_stages = {numeric_key(row.get("pve_id")): key for key, row in table("shilian_liudao").values()}
 
     def hunling_references(route):
         region, level, spirit, _ = route
@@ -308,6 +332,14 @@ def encounter_index(source, load_rows):
             links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
+            trial = relation("shilian_event_exam", shilian_exam_stages.get(stage_id), "六道试炼入口", False)
+            if trial:
+                links.append(trial)
+            realm = relation("shilian_liudao", shilian_route_stages.get(stage_id), "六道路线配置", False)
+            if realm:
+                links.append(realm)
+            links.extend(ref for key in shilian_battles_by_stage.get(stage_id, ())
+                         if (ref := relation("shilian_event_battles", key, "六道途中战斗配置", False)))
             if route := hunling_routes.get(stage_id):
                 links.extend(hunling_references(route))
             if stage_id in orochi_floors:
@@ -349,6 +381,29 @@ def encounter_index(source, load_rows):
                 links.append(scene)
         if name == "journey_hardbattle":
             links.append(rule_reference("defence_hard_battle", "京畿净化首领挑战规则"))
+        if name in {"shilian_liudao", "shilian_event_exam", "shilian_stage_detail"}:
+            dao = row.get("id") if name == "shilian_liudao" else row.get("dao")
+            targets = []
+            if original := SHILIAN_DAOS.get(dao):
+                event_team, exam_team, engine, code = original
+                targets.extend((("battle_team_routes", exam_team, f"试炼引擎 {engine}"),
+                                ("team_assist_stage", code, "路线阵容码")))
+                if name == "shilian_liudao":
+                    targets.append(("battle_team_routes", event_team, f"途中战斗引擎 {engine}"))
+            if name == "shilian_liudao":
+                targets.append(("shilian_event_exam", shilian_exams.get(dao), "路线试炼"))
+                targets.extend(("shilian_stage_detail", key, "关卡规则") for key in shilian_details.get(dao, ()))
+                targets.extend(("shilian_level", key, "结算评级") for key in shilian_grades.get(dao, ()))
+            else:
+                targets.append(("shilian_liudao", dao, "所属路线"))
+            links.extend(ref for dest, key, label in targets if (ref := relation(dest, key, label, False)))
+        if name == "shilian_area":
+            tip = row.get("tips_key")
+            if tip in rules or tip in tips:
+                links.append(rule_reference(tip, "岛屿玩法说明"))
+            if row.get("type") == 40:
+                links.extend(ref for key in shilian_battles.get(row.get("event_group"), ())
+                             if (ref := relation("shilian_event_battles", key, "原版战斗候选", False)))
         if name == "hunling_tansuo":
             region_id = row.get("id")
             links.append(rule_reference("qilingzhijing_map_tips", "地域开放与探索规则"))
@@ -555,6 +610,14 @@ def encounter_index(source, load_rows):
                 _, spirit_row = table("hunling_base").get(str(spirit), (None, {}))
                 entry_family, entry_kind = "daily", "契灵之境"
                 title = " · ".join(filter(None, (entry_kind, name(region_row), name(spirit_row), f"探查 {level} 级")))
+            if table_name in {"shilian_liudao", "shilian_stage_detail", "shilian_event_exam", "shilian_level"}:
+                dao = row.get("id") if table_name == "shilian_liudao" else row.get("dao")
+                _, realm = table("shilian_liudao").get(reference_key(dao), (None, {}))
+                label = "活动旧版月之海" if dao == 0 else name(realm)
+                detail = {"shilian_event_exam": row.get("battle_name") or "首领试炼",
+                          "shilian_level": row.get("grade_str")}.get(table_name, title)
+                parts = ("六道之门", label) if table_name == "shilian_liudao" else ("六道之门", label, detail)
+                title = " · ".join(filter(None, parts))
             if table_name == "hunling_tansuo":
                 title = f"契灵之境 · {title}"
             if table_name == "hunling_boss":
