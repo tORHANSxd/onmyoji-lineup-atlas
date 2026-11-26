@@ -2,6 +2,7 @@
 
 from collections import Counter
 from functools import cache
+from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
 
 
 ROOTS = {
@@ -22,6 +23,7 @@ ROOTS = {
     "shilian_event_exam": ("daily", "六道之门试炼"),
     "shilian_stage_detail": ("daily", "六道之门关卡"),
     "hunling_boss": ("daily", "契灵之境"),
+    "hunling_tansuo": ("daily", "契灵之境"),
     "rpg_chapter": ("daily", "剧情副本"),
     "storyChapter": ("daily", "探索章节"),
     "story_room": ("daily", "探索战斗点"),
@@ -93,7 +95,9 @@ EDGES = {
                              ("normal_main_monster", "monster", "普通首领"),
                              ("hard_main_monster", "monster", "困难首领"),
                              ("ji_main_monster", "monster", "极难首领")),
-    "hunling_boss": (("catch_battle_id", "pve_stage_data", "收服关卡"),),
+    "hunling_boss": (("catch_battle_id", "pve_stage_data", "收服关卡"),
+                     ("hunling_id", "hunling_base", "首领与共鸣规则"),
+                     ("mark_group_id", "hunling_mark_group", "指定术印组")),
     "Combinesceneinfo": (("battlesceneinfo", "BattleScenesInfo", "战斗站位"),),
 }
 FOLLOWED_TABLES = {"pve_stage_data", "BattleMonstersInfo", "Combinesceneinfo", "dungeon_awake_scene",
@@ -218,6 +222,27 @@ def encounter_index(source, load_rows):
     # ZhenDaSheEngine reads gk_list in order, then reads each PvE row's groupid.
     orochi_floors = {numeric_key(config[0]): floor for floor, config in enumerate(orochi.get("gk_list", ()), 1)
                      if isinstance(config, list) and config and numeric_key(config[0])}
+    hunling_routes = {str(stage_id): row for stage_id, row in (*exploration_stages(), *challenge_stages())}
+    hunling_codes = {row["search_id"]: key for key, row in table("team_assist_stage").values()
+                     if isinstance(row.get("name"), str) and row["name"].startswith("契灵")}
+
+    def hunling_references(route):
+        region, level, spirit, _ = route
+        team = 1030 if spirit is None else 1031
+        refs = [("hunling_tansuo", region, "探查地区与增益"), ("hunling_tansuo_lv", level, "探查等级与星级池"),
+                ("battle_team_routes", team, "原版战斗入口")]
+        if spirit is not None:
+            refs.extend((("hunling_base", spirit, "首领与共鸣规则"), ("hunling_weak_soul", spirit, "缘分式神概率加成"),
+                         ("hunling_noraml_boss_battle", {"$tuple": [spirit, level]}, "该等级首领奖励")))
+            refs.extend(("hunling_prop", item, "式盘及分级基础概率") for item in CAPTURE_ITEMS)
+            _, level_row = table("hunling_tansuo_lv").get(str(level), (None, {}))
+            stars = sorted({level_row[key][0] for key in ("hunling_begin_star", "hunling_end_star") if level_row.get(key)})
+            refs.extend(("team_assist_stage", hunling_codes.get(30000 + (spirit - 100) * 10 + star), f"{star} 星阵容码目录")
+                        for star in stars)
+        else:
+            _, region_row = table("hunling_tansuo").get(str(region), (None, {}))
+            refs.append(("skill", level_one_skill(region_row.get("skill_id")), "探查实际增益"))
+        return [ref for dest, target, label in refs if (ref := relation(dest, target, label, False))]
 
     def explicit(name, row):
         links = []
@@ -283,6 +308,8 @@ def encounter_index(source, load_rows):
             links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
         if name == "pve_stage_data":
             stage_id = numeric_key(row.get("id"))
+            if route := hunling_routes.get(stage_id):
+                links.extend(hunling_references(route))
             if stage_id in orochi_floors:
                 links.append(relation("map_boss", orochi_key, "真·八岐大蛇挑战入口", True))
             for key in regions_by_stage.get(stage_id, ()):
@@ -322,6 +349,17 @@ def encounter_index(source, load_rows):
                 links.append(scene)
         if name == "journey_hardbattle":
             links.append(rule_reference("defence_hard_battle", "京畿净化首领挑战规则"))
+        if name == "hunling_tansuo":
+            region_id = row.get("id")
+            links.extend(ref for stage_id, (region, _, spirit, _) in hunling_routes.items() if region == region_id and spirit is None
+                         if (ref := relation("pve_stage_data", stage_id, "原表探查战斗编组", False)))
+            links.extend(ref for spirit in row.get("hunling_ids", ())
+                         if (ref := relation("hunling_base", spirit, "契灵与首领规则", False)))
+        if name == "hunling_boss":
+            links.extend(ref for key, label in ((2595, "集结首领战斗入口"), (1042, "集结后收服入口"))
+                         if (ref := relation("battle_team_routes", key, label, False)))
+            links.extend(ref for key in row.get("mark_list", ())
+                         if (ref := relation("hunling_mark", key, "可获得术印", False)))
         panel_field = PANEL_RULE_FIELDS.get(name)
         if panel_field:
             field, label = panel_field
@@ -501,6 +539,17 @@ def encounter_index(source, load_rows):
             if table_name == "pve_stage_data" and (floor := orochi_floors.get(numeric_key(key))):
                 entry_family, entry_kind = "daily", "真·八岐大蛇"
                 title = f"{entry_kind} · 第 {floor} 层"
+            if table_name == "pve_stage_data" and (route := hunling_routes.get(numeric_key(key))):
+                region, level, spirit, _ = route
+                _, region_row = table("hunling_tansuo").get(str(region), (None, {}))
+                _, spirit_row = table("hunling_base").get(str(spirit), (None, {}))
+                entry_family, entry_kind = "daily", "契灵之境"
+                title = " · ".join(filter(None, (entry_kind, name(region_row), name(spirit_row), f"探查 {level} 级")))
+            if table_name == "hunling_tansuo":
+                title = f"契灵之境 · {title}"
+            if table_name == "hunling_boss":
+                _, spirit_row = table("hunling_base").get(numeric_key(row.get("hunling_id")), (None, {}))
+                title = f"契灵之境集结 · {name(spirit_row)} · 术印配置 {key}"
             if variant:
                 board = numeric_key(row.get("board_index"))
                 battle = numeric_key(row.get("battle_id"))

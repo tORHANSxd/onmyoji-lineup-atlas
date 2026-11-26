@@ -103,6 +103,8 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .pve-lineup-field select{width:100%;min-width:0}
 .pve-reserve{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:10px;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:5px;min-width:0}
 .pve-reserve .caption{grid-column:1/-1;margin:0}
+.pve-capture-fields{display:grid;grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:10px}
+.pve-capture-fields[hidden]{display:none}
 @media(max-width:780px){.dungeon-battle-list>li{grid-template-columns:minmax(0,1fr)}}
 .dungeon-waves{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;margin:12px 0}
 .dungeon-wave{border:1px solid var(--line);border-radius:8px;padding:12px;min-width:0}

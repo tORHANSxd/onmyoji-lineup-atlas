@@ -8,6 +8,7 @@
 
  function replayableLineup(lineup,config){
   if((config.codeStageId!=null&&Number(lineup.gameSceneId)!==config.codeStageId)||
+     (config.codeStageIds?.length&&!config.codeStageIds.includes(Number(lineup.gameSceneId)))||
      !C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup))return false;
   const members=lineup.members.filter(member=>member.occupied!==false);
   return members.length===config.memberCount+1&&members.filter(member=>member.kind==='onmyoji').length===1&&
@@ -100,12 +101,20 @@
   const selected=selectedForReplay(available);
   const reserve=orochiReserve(selected,account());
   pane.reserve=reserve;
+  const capture=pane.captureItem?.value?{itemId:Number(pane.captureItem.value),cards:pane.captureCards.map(field=>Number(field.value))}:null;
+  const captureReady=!capture||new Set(capture.cards).size===3;
+  pane.capture=capture;
+  if(pane.captureItem){
+   pane.captureItem.disabled=blocked;
+   pane.captureFields.hidden=!capture;
+   for(const field of pane.captureCards)field.disabled=blocked||!capture;
+  }
   if(pane.reserveActor){
    pane.reserveActor.disabled=blocked||!hasAccount;
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -114,6 +123,7 @@
    !hasAccount?'先导入并选择库存账号。':
    blocked?'已有原版复跑或正在停止，请等待其结束。':
    selected.length&&reserve&&!reserve.ready?reserve.hint:
+   !captureReady?'请选择三个不同的出战式神位置。':
    job?.notice?job.notice:
    selected.length?`已选 ${selected.length} 套已知阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
    available.length?'从下拉列表选择，或先在阵容库勾选对应阵容。':'阵容库暂无可用于此副本的完整阵容。请先解析或手动制作阵容码。';
@@ -161,12 +171,22 @@
     <label class="pve-lineup-field">备选阴阳师 <select data-pve-reserve-actor></select></label>
     ${Array.from({length:4},(_,i)=>`<label class="pve-lineup-field">备选式神 ${i+1} <select data-pve-reserve-member></select></label>`).join('')}
    </fieldset>`:''}
+   ${config.captureItems?`<fieldset class="pve-reserve">
+    <legend>收服模拟</legend>
+    <label class="pve-lineup-field">式盘 <select data-pve-capture-item><option value="">只挑战至虚弱</option>
+    ${Object.entries(config.captureItems).map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join('')}</select></label>
+    <div class="pve-capture-fields" data-pve-capture-fields hidden>
+    ${[1,2,3].map(slot=>`<label class="pve-lineup-field">结契式神 ${slot}<select data-pve-capture-card>
+     ${[1,2,3,4,5].map(index=>`<option value="${index}" ${index===slot?'selected':''}>阵容中第 ${index} 位式神</option>`).join('')}</select></label>`).join('')}
+    </div>
+   </fieldset>`:''}
    <ol class="dungeon-battle-list" data-pve-results></ol>`;
   const part=name=>section.querySelector(`[data-pve-${name}]`);
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
-   hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')]};
+   hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
+   captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers].filter(Boolean))field.onchange=()=>{
+  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -202,7 +222,7 @@
    let report;
    run.native=true;
    try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:true,...(battleMode?{battleMode}:{}),
-    ...(retreat?{retreat}:{}),...(region?{region}:{})});}
+    ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{})});}
    finally{run.native=false;}
    if(!active(run))return;
    row.samples.push(report);
@@ -329,9 +349,9 @@
   if(!pane||runeBusy()||!account()||!ready())return;
   const selected=selectedForReplay(knownLineups());
   const inventory=account(),reserve=orochiReserve(selected,inventory);
-  if(!selected.length||reserve&&!reserve.ready)return;
+  if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3)return;
   const focus=document.activeElement===pane.start;
-  const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,
+  const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    startingInventory:reserve?reserveInventory(reserve,inventory):inventory,
    pveMemberCount:pane.memberCount,message:'正在准备库存…'};
   pane.results.replaceChildren();

@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,2000,2001,3004,3005,3023,5550,5551,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,266,267,306,528,1031,1032,2000,2001,3004,3005,3023,5550,5551,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -301,7 +301,8 @@ async function main(){
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('spider',10020221,5),
-   known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6)];
+   known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
+   known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5)];
   const boot=await ui('JSON.stringify(STATE)');
   const cases=JSON.parse(await readEncounters(catalog)).entries;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -372,6 +373,32 @@ async function main(){
    await until(status+'.textContent.includes("未通过本次采样")');
    assert.deepEqual(libraryOrder,[13,10]);
    await ui('selectedLineups.clear();renderSelection()');
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='800017'&&entry.kind==='契灵之境')){
+    await encounter('daily','契灵之境 平安京 770005');
+    assert.match(await run('exp',{stageId:770005,groupId:770005,battleMode:1031},{hunling:{spiritId:null,regionSkill:77925}}),/已知阵容 exp/);
+    await encounter('daily','契灵之境 小黑 800017');
+    assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),
+      ['qa-known-hunling','qa-known-hunling-3star']);
+    await choose('hunling');
+    const choice='document.querySelector("[data-pve-capture-item]")';
+    await ui(choice+'.value="777800";'+choice+'.dispatchEvent(new Event("change"))');
+    await ui('window.qaCaptureSlot=(i,value)=>{const field=document.querySelectorAll("[data-pve-capture-card]")[i];field.value=value;field.dispatchEvent(new Event("change"));};qaCaptureSlot(0,"2")');
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui('qaCaptureSlot(0,"4")');
+    const captureCalls=[];
+    mockPve=(plan,request)=>{
+     assert.deepEqual(request,{battleMode:1032,stageId:800017,groupId:800017,seed:request.seed,damageFloor:true,capture:{itemId:777800,cards:[4,2,3]}});
+     assert.equal(plan.members.length,5);
+     captureCalls.push(request.seed);
+     return {...sample,seed:request.seed,hunling:{spiritId:103,weakened:true,weakenSeconds:14.44,
+      capture:{itemId:777800,cards:[4,2,3],success:request.seed!==7,baseRate:.7,bonusRate:0}}};
+    };
+    await ui(start+'.click()');
+    await until(status+'.textContent.includes("全随机分支待验证")',20000);
+    assert.deepEqual(captureCalls,[0,1,2,3,7,42]);
+    assert.match(await ui(reports+'.textContent'),/首领已虚弱.*百物式盘.*收服成功.*70\.0%.*收服失败/s);
+    assert.match(await ui(panel+'.textContent'),/孽缘/);
+   }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');
     const reserveActor='document.querySelector("[data-pve-reserve-actor]")';

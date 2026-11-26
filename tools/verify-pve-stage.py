@@ -17,6 +17,7 @@ def replay(args, runtime, work):
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE, FengmoYanwuReplay, fengmo_yanwu_stage
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RetreatWindow
+    from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
@@ -33,6 +34,7 @@ def replay(args, runtime, work):
     suits = json.loads(suit_bytes)
     relay = args.mode == UNDERWORLD_MODE
     orochi = args.mode == OROCHI_MODE
+    hunling = args.mode in HUNLING_MODES
     retreat = args.mode == RETREAT_MODE
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
@@ -88,6 +90,13 @@ def replay(args, runtime, work):
 
         engine, orochi_floors, const = orochi_stage(args.stage)
         group_id, wave_count = orochi_floors[0][0], len(orochi_floors)
+    elif hunling:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("The original Hunling solo fight needs five owned shikigami")
+        engine, group, hunling_route, const = hunling_stage(args.stage, args.mode, args.capture_item)
+        group_id, wave_count = group["ID"], 1
     elif regional:
         from battleengine.engine.LBSWorldBossEngine import const
         from DynamicConfigData import DATA_HERO
@@ -171,6 +180,9 @@ def replay(args, runtime, work):
             raise ValueError("Experience and coin encounters require their dedicated entry")
         if any(args.stage == floor[0] for floor in map_boss.data[OROCHI_STAGE]["gk_list"]):
             raise ValueError("True Orochi floors require the original continuous dungeon engine")
+        if (args.stage in dict(challenge_stages()) or args.stage in dict(exploration_stages())
+                or args.stage == 800021 or 810001 <= args.stage <= 810009):
+            raise ValueError("Hunling stages require their dedicated original engine and scenario")
         group_id = stage.get("groupid")
         group = BattleMonstersInfo.data.get(group_id)
         if not group or not group.get("MonstersInfos"):
@@ -209,6 +221,8 @@ def replay(args, runtime, work):
         route = "underworld-gate-local-solo"
     elif orochi:
         route = "true-orochi-local-solo"
+    elif hunling:
+        route = "hunling-personal-challenge" if hunling_route[2] is not None else "hunling-regional-exploration"
     elif regional:
         route = "regional-boss-ordinary-scenario" if args.mode == REGION_MODE else "regional-boss-hard-scenario"
     elif yanwu:
@@ -251,6 +265,7 @@ def replay(args, runtime, work):
     engine.op_init_flag = True
     underworld = UnderworldReplay(engine, controller, const, rounds, heroes, player["yys_hunling"]) if relay else None
     orochi_replay = OrochiReplay(engine, controller, const, orochi_floors, fighters, actors, choices, player["yys_hunling"]) if orochi else None
+    hunling_replay = HunlingReplay(engine, controller, group, hunling_route, const, args.capture_item, args.capture_cards) if hunling else None
     init_engine_state = engine.init_engine_state
     battle_ended, create_entity = engine.doBattleEnded, engine.onEntityCreated
     winner, entity_models = None, {}
@@ -327,7 +342,7 @@ def replay(args, runtime, work):
         if args.mode == REGION_HARD_MODE:
             formation_matches = (formation_matches and engine.startLevel == args.region["star"]
                                  and engine.condition == args.region["modifierIds"])
-    elif yanwu or spider:
+    elif yanwu or spider or hunling:
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif args.mode == 29:
         formation_matches = engine.bossId == enemy_ids
@@ -353,7 +368,8 @@ def replay(args, runtime, work):
     engine.battleState = const.BattleState.BS_LOADING
     engine.op_sceneLoaded(controller)
 
-    replay_seconds = PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else OROCHI_REPLAY_SECONDS if orochi else 130 if relay else 75
+    replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else OROCHI_REPLAY_SECONDS if orochi
+                      else HUNLING_REPLAY_SECONDS if hunling else 130 if relay else 75)
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
     equipped_spirit = None
@@ -381,6 +397,8 @@ def replay(args, runtime, work):
             underworld.leave_if_out_of_teams()
         if orochi_replay:
             orochi_replay.prepare()
+        if hunling_replay:
+            hunling_replay.update()
         if engine.battleState != const.BattleState.BS_SELETING_HERO or controller.selectHeroOk or controller.isExited:
             continue
         if underworld:
@@ -445,6 +463,10 @@ def replay(args, runtime, work):
         report["trueOrochi"] = {**orochi_replay.report(), "settlement": outcome}
         if completed and engine.finishedWaveCount < engine.monsterWaveCount:
             report["outcome"] = "loss"
+    if hunling_replay:
+        report["hunling"] = hunling_replay.report(completed)
+        if hunling_route[2] is not None:
+            report["wavesCleared"] = int(report["hunling"]["weakened"])
     if regional_replay:
         report["regionalBoss"] = regional_replay.report(completed, winner)
     if yanwu_replay:
@@ -504,6 +526,7 @@ def main():
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
+    from hunling_stage import CAPTURE_ITEMS, HUNLING_BOSS, HUNLING_MODES, HUNLING_REPLAY_SECONDS
     from regional_boss_stage import REGION_MODES
     from resource_stage import RESOURCE_MODE
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
@@ -514,7 +537,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, *REGION_MODES, *PRACTICE_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -523,6 +546,8 @@ def main():
     parser.add_argument("--guild-members", type=int, default=0)
     parser.add_argument("--window-seconds", type=int, default=1800)
     parser.add_argument("--region", type=json.loads)
+    parser.add_argument("--capture-item", type=int, choices=CAPTURE_ITEMS)
+    parser.add_argument("--capture-cards", type=int, nargs=3, choices=range(1, 6))
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
@@ -530,10 +555,14 @@ def main():
         parser.error("The retreat needs a boss, 0 to 50 guild members and a 1 to 1800-second window")
     if (args.mode in REGION_MODES) != (args.region is not None):
         parser.error("--region is required only for a Regional Boss scenario")
+    if (args.capture_item is None) != (args.capture_cards is None) or args.capture_item is not None and (
+            args.mode != HUNLING_BOSS or len(set(args.capture_cards)) != 3):
+        parser.error("A Hunling capture attempt requires an item and three distinct lineup positions")
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
                         OROCHI_REPLAY_SECONDS + 20 if args.mode == OROCHI_MODE else
+                        HUNLING_REPLAY_SECONDS + 20 if args.mode in HUNLING_MODES else
                         240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
     faulthandler.dump_traceback_later(watchdog_seconds, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:

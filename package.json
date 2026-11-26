@@ -44,7 +44,7 @@
       {
         "from": "tools",
         "to": "rune-runner",
-        "filter": ["verify-rune-runtime.py", "verify-rune-floor.py", "verify-hun13.py", "verify-pve-stage.py", "awake_stage.py", "secret_stage.py", "resource_stage.py", "yuling_stage.py", "guild_hunt_stage.py", "guild_retreat_stage.py", "underworld_stage.py", "regional_boss_stage.py", "true_orochi_stage.py", "fengmo_yanwu_stage.py", "tuzhizhu_practice.py", "minimum_damage.py", "rune_floor_host.py", "extract-dungeon-catalog.py", "rune_replay.py", "rune_team.py", "rune_random.py"]
+        "filter": ["verify-rune-runtime.py", "verify-rune-floor.py", "verify-hun13.py", "verify-pve-stage.py", "awake_stage.py", "secret_stage.py", "resource_stage.py", "yuling_stage.py", "guild_hunt_stage.py", "guild_retreat_stage.py", "underworld_stage.py", "regional_boss_stage.py", "true_orochi_stage.py", "hunling_stage.py", "fengmo_yanwu_stage.py", "tuzhizhu_practice.py", "minimum_damage.py", "rune_floor_host.py", "extract-dungeon-catalog.py", "rune_replay.py", "rune_team.py", "rune_random.py"]
       },
       {
         "from": "release/ta-runtime/atlas-ta-helper",

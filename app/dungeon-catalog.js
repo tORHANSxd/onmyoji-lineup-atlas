@@ -57,6 +57,11 @@
     DramaLevel: '剧情关卡',
     hunling_noraml_boss_battle: '契灵之境首领奖励',
     hunling_jijie_boss_battle: '契灵集结首领奖励',
+    hunling_tansuo: '契灵探查地区',
+    hunling_base: '契灵首领与收服规则',
+    hunling_tansuo_lv: '契灵探查等级与星级池',
+    hunling_prop: '契灵收服式盘',
+    hunling_weak_soul: '契灵收服缘分',
     SuperGhost_bossmission: '超鬼王历史首领挑战',
     super_ghost_boss_accumulate_reward: '超鬼王累计奖励',
     rpg_chapter: '剧情副本章节',
@@ -126,6 +131,10 @@
   };
   const journeyBossFields = {hero_id: '首领编号', reward: '奖励编号', time: '时限参数', unlocked: '解锁参数'};
   const tableFields = {
+    hunling_base: {battle_tips:'共鸣规则',shoufu_tips:'首领机制'},
+    hunling_tansuo_lv: {hunling_begin_star:'低星与权重',hunling_end_star:'高星与权重',need_exp:'探查经验门槛'},
+    hunling_prop: {base_rate:'按探查等级的基础概率',times:'最多使用次数'},
+    hunling_weak_soul: {weak_hero_ids:'缘分式神 ID',add_rate:'每个缘分式神的概率加成系数'},
     map_boss: {countlmt: '配置奖励次数', gk_base_id: '起始关卡 ID', gk_list: '原版楼层列表'},
     lbs_world_boss_area: {dist_id: '分区 ID', progress: '配置进度', reward: '世界排名奖励类型', group_reward: '分组奖励类型'},
     lbs_world_boss_init: {dist_name: '分区'},
@@ -232,6 +241,11 @@
     const words = normalized(el('encounter-query').value).split(/\s+/);
     stage.matches = relatedEntry ? [relatedEntry] : stage.rows.filter(record => (!family || record.family === family) &&
       words.every(word => record.search.includes(word)));
+    const ids = words.filter(word => /^\d+$/.test(word));
+    if (!relatedEntry && ids.length) {
+      const exact = record => Number(ids.includes(keyText(record.key)));
+      stage.matches.sort((first,second)=>exact(second)-exact(first));
+    }
     stage.page = 0;
     if (!stage.matches.includes(stage.selected)) {
       window.AtlasPveWorkbench?.unmount();
@@ -1100,11 +1114,21 @@
       const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===groupId);
       const regional=entry.refs.some(ref=>ref.table==='lbs_world_boss_area');
       const orochiFloor=orochi.isFloor(stageId);
+      const hunling=AtlasHunlingEncounters;
+      const spiritRoute=matchesOpeningSource(hunling)?hunling.routes[stageId]:null;
       const practice=Object.values(window.AtlasTuzhizhuPractice?.modes??{}).some(mode=>mode.groupId===stageId);
       if(practice)destination.append(node('p','请在「逢魔木桩练习」中选择普通入口或极词条，再按对应原版引擎复跑。','caption'));
       else if(window.AtlasFengmoLive?.isLiveStage(stageId))destination.append(node('p','此编组用于逢魔实战。集结、评级与联机战报条件见逢魔实战入口。','caption'));
       else if(window.AtlasResourceEncounters.isResourceStage(row))showResourceEncounter(destination,stageId,row,formation);
       else if(orochiFloor)destination.append(node('p','真·八岐大蛇沿用同一场战斗的十层进度，选角与生命状态见玩法入口。','caption'));
+      else if(spiritRoute&&spiritRoute.groupId===groupId&&memberCount===5)window.AtlasPveWorkbench?.mount(destination,{
+        stageId,groupId,memberCount,battleMode:spiritRoute.battleMode,waveCount:1,label:spiritRoute.label,
+        version:state.index.resourceVersion,codeStageIds:spiritRoute.codeStageIds,
+        captureItems:spiritRoute.spiritId===null?null:hunling.items,
+      });
+      else if(hunling.routes[stageId])destination.append(node('p','契灵原版复跑需要与此关卡匹配的客户端资料。','caption'));
+      else if(stageId===800021||stageId>=810001&&stageId<=810009)
+        destination.append(node('p','此编组由契灵教程、集结或集结后的收服入口使用，入场条件取自对应原版流程。','caption'));
       else if (regional) destination.append(node('p','此编组供地域鬼王入口使用。离线演练还需要该玩法下发的实际参数。','caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&
