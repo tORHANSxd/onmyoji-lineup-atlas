@@ -216,7 +216,7 @@
   section.className='encounter-source';
   section.innerHTML=`<h4>模拟已知阵容</h4>
    <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子${config.scoreWindowSeconds?
-    ` · ${config.retreat||config.qilingWindow||config.creviceWindow||config.ghostSettings?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
+    ` · ${config.retreat||config.qilingWindow||config.creviceWindow||config.ghostSettings||config.historicalGhostWindow?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
    <p class="caption" data-pve-status role="status"></p>
    <div class="actions">
     <label class="pve-lineup-field">已知阵容 <select data-pve-lineup></select></label>
@@ -401,7 +401,8 @@
  }
 
  async function replay(run,row,plan,trialSlot){
-  const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings}=run.pane,scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
+  const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings,historicalGhostWindow}=run.pane;
+  const scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
   const orochi=battleMode===AtlasTrueOrochi.battleMode;
   for(const seed of seeds){
    if(!active(run))return;
@@ -412,6 +413,7 @@
    try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:true,...(battleMode?{battleMode}:{}),
     ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{}),...(qilingWindow?{qilingWindow}:{}),
     ...(run.journeyHard?{journeyHard:run.journeyHard}:{}),...(creviceWindow?{creviceWindow}:{}),...(ghostSettings?{ghostSettings}:{}),
+    ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(trialSlot?{trialSlot}:{}),...(run.sixRealmsEvent?{sixRealmsEvent:run.sixRealmsEvent}:{}),
     ...(run.sixRealmsState?{sixRealmsState:run.sixRealmsState}:{})});}
    finally{run.native=false;}

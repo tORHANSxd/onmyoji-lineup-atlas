@@ -1,4 +1,4 @@
-"""Selected inventory replays of the original summoned Super Ghost encounter."""
+"""Selected inventory replays of the original Super Ghost encounters."""
 
 from math import isclose, isfinite
 from types import SimpleNamespace
@@ -6,6 +6,8 @@ from types import SimpleNamespace
 SUPERGHOST_MODE = 3008
 SUPERGHOST_STAGES = {*range(1, 62), 100}
 SUPERGHOST_WALL_SECONDS = 150
+HISTORICAL_GHOST_MODE = 341
+HISTORICAL_GHOST_STAGES = set(range(1, 8))
 
 
 def ghost_formation(stage):
@@ -29,6 +31,15 @@ def ghost_route(stage_id, stage, monsters):
     if not set(map(tuple, declared)) <= set(template):
         route["templateSkills"] = template
     return route
+
+
+def historical_ghost_route(stage_id, stage):
+    if stage_id not in HISTORICAL_GHOST_STAGES or not stage or stage["id"] != stage_id:
+        raise ValueError(f"Unknown historical Super Ghost challenge {stage_id}")
+    formation = ghost_formation(stage)
+    if not formation or formation[0][0] != 1 or stage["challenge_time"] != 180:
+        raise ValueError("Unexpected historical Super Ghost challenge data")
+    return {"formation": formation, "sceneId": stage["sceneid"], "deadlineSeconds": stage["challenge_time"]}
 
 
 def ghost_special_attack(day, days, groups):
@@ -138,3 +149,61 @@ class SuperGhostReplay:
                 "damage": round(-engine.myTotalDmg), "reason": self.reason, "enemyDamageReduction": self.reduction,
                 "combatSeconds": round(engine.now_time() - self.started, 6), "specialAttack": self.bonuses,
                 "enemies": [{**row, "remainingHp": entities[row["position"]]["hp"]} for row in self.opening]}
+
+
+class HistoricalGhostReplay:
+    def __init__(self, stage_id, window):
+        from battleengine.engine import SuperGhostBossEngine as original
+
+        self.const = original.const
+        self.route = historical_ghost_route(stage_id, original.DATA_SUPERGHOST_BOSS.data.get(stage_id))
+        self.window = window
+        self.engine = original.SuperGhostBossEngine({"pve_data_flag": stage_id, "soul_data": {}})
+        self.engine.battleMode = self.const.BattleMode.MODE_SUPERGHOST_BOSS
+        original.time = SimpleNamespace(time=self.engine.now_time)
+        self.enemies = []
+        self.started, self.reason, self.outcome = None, None, "unknown"
+        self.spawn = self.engine._createNextRoundMons
+        self.engine._createNextRoundMons = self.observe_spawn
+
+    def observe_spawn(self):
+        result = self.spawn()
+        units = sorted(self.engine.monsterEntities.values(), key=lambda unit: unit.posIndex)
+        if self.enemies or [(unit.posIndex, unit.protoid, unit.AttrComp.level) for unit in units] != self.route["formation"]:
+            raise RuntimeError("The original historical Super Ghost opened with a different formation")
+        self.enemies = [(unit, unit.AttrComp.hp) for unit in units]
+        return result
+
+    def update(self, winner):
+        engine, const = self.engine, self.const
+        if self.started is None and engine.battleState == const.BattleState.BS_STARTED:
+            self.started = engine.now_time()
+            if engine.timeout_stamp - int(self.started) != self.route["deadlineSeconds"]:
+                raise RuntimeError("The original historical Super Ghost deadline changed")
+            engine.timeout_stamp = int(self.started) + self.window
+        if engine.battleState != const.BattleState.BS_OVER:
+            return
+        # Native rewards mark every scoring settlement as a win. Keep that
+        # settlement separate from the state of the actual enemy wave.
+        if engine.is_timeout:
+            self.reason = "native-timeout"
+        elif winner == const.CampFlag.CAMP1 and all(unit.AttrComp.hp <= 0 for unit, _ in self.enemies):
+            self.outcome, self.reason = "win", "cleared"
+        else:
+            self.reason = "team-defeated"
+        if self.outcome == "unknown":
+            self.outcome = "loss"
+
+    def report(self):
+        engine = self.engine
+        if (self.started is None or not self.enemies or engine.boss_entity is not self.enemies[0][0]
+                or not isclose(self.enemies[0][1], engine.boss_max_hp)):
+            raise RuntimeError("The original historical Super Ghost did not bind the configured scoring boss")
+        damage = int(engine.boss_max_hp) - int(engine.boss_entity.AttrComp.hp)
+        if damage < 0 or self.reason is not None and engine.engineUserData.get("boss_damage") != damage:
+            raise RuntimeError("The original historical Super Ghost did not return the expected boss-only damage")
+        return {"windowSeconds": self.window, "deadlineSeconds": self.route["deadlineSeconds"], "damage": damage,
+                "combatSeconds": round(engine.now_time() - self.started, 6), "reason": self.reason,
+                "bossDefeated": engine.boss_entity.AttrComp.hp <= 0, "nativeSettled": self.reason is not None,
+                "enemies": [{"position": unit.posIndex, "id": unit.protoid, "level": unit.AttrComp.level,
+                             "startingHp": hp, "remainingHp": max(0, unit.AttrComp.hp)} for unit, hp in self.enemies]}

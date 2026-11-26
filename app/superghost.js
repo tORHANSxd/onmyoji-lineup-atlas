@@ -5,6 +5,7 @@
   "resourceVersion": "0.0.816",
   "tableSHA256": {
     "SuperGhost_mission": "70ce07809416fdf4c534f5f3024cb08bf59627347e17041b57e951a2dfefa9ed",
+    "SuperGhost_bossmission": "b005420711033336baa0e89f6b7edcdccf2cf88da6658749d51ef79c6df9b0e4",
     "monster": "2e07f2f3e9b6cda27cad55bb46ced4221040ca17c77f31c14f004c9ac6dc590f",
     "super_ghost_hjs_special_attack": "359c77b68b11099843e44a46363f9aa3ef2ce99ff25f665463902d4612fa00de",
     "super_ghost_hjs_special_attack_group": "c871a0d0cdf94c6ad66453802ed3cb127710a597c7c3018ca858e652d0563758",
@@ -202,6 +203,182 @@
           "rate": 1.5
         }
       ]
+    }
+  },
+  "historicalBattleMode": 341,
+  "historicalEngineSHA256": "d939ef227b04f67bd48d35f62bf19cbe8aa3e609e9edd4e64088250b79225b60",
+  "historicalRoutes": {
+    "1": {
+      "formation": [
+        [
+          1,
+          5020255,
+          40
+        ],
+        [
+          2,
+          5020210,
+          40
+        ],
+        [
+          3,
+          5020251,
+          40
+        ],
+        [
+          4,
+          5020211,
+          40
+        ],
+        [
+          5,
+          5020277,
+          40
+        ],
+        [
+          6,
+          5020278,
+          40
+        ]
+      ],
+      "sceneId": 1065,
+      "deadlineSeconds": 180
+    },
+    "2": {
+      "formation": [
+        [
+          1,
+          5021217,
+          40
+        ],
+        [
+          2,
+          5021218,
+          40
+        ],
+        [
+          4,
+          5022218,
+          40
+        ],
+        [
+          5,
+          5023218,
+          40
+        ],
+        [
+          6,
+          5024218,
+          40
+        ]
+      ],
+      "sceneId": 1062,
+      "deadlineSeconds": 180
+    },
+    "3": {
+      "formation": [
+        [
+          1,
+          5022219,
+          40
+        ],
+        [
+          2,
+          5022312,
+          40
+        ],
+        [
+          3,
+          5022265,
+          40
+        ],
+        [
+          4,
+          5022342,
+          40
+        ]
+      ],
+      "sceneId": 41114,
+      "deadlineSeconds": 180
+    },
+    "4": {
+      "formation": [
+        [
+          1,
+          5023333,
+          40
+        ],
+        [
+          2,
+          5024332,
+          40
+        ],
+        [
+          4,
+          5023335,
+          40
+        ]
+      ],
+      "sceneId": 40104,
+      "deadlineSeconds": 180
+    },
+    "5": {
+      "formation": [
+        [
+          1,
+          5024300,
+          40
+        ]
+      ],
+      "sceneId": 1063,
+      "deadlineSeconds": 180
+    },
+    "6": {
+      "formation": [
+        [
+          1,
+          5025325,
+          40
+        ],
+        [
+          2,
+          5025099,
+          40
+        ],
+        [
+          3,
+          5026099,
+          40
+        ],
+        [
+          4,
+          5027099,
+          40
+        ],
+        [
+          5,
+          5028099,
+          40
+        ],
+        [
+          6,
+          5029099,
+          40
+        ]
+      ],
+      "sceneId": 1064,
+      "deadlineSeconds": 180
+    },
+    "7": {
+      "formation": [
+        [
+          1,
+          5027345,
+          40
+        ]
+      ],
+      "sceneId": 42020,
+      "deadlineSeconds": 180
     }
   },
   "codeStageIds": {

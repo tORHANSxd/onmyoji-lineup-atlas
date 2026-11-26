@@ -26,7 +26,7 @@ def replay(args, runtime, work):
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, SHILIAN_MODES
     from shilian_stage import ArtifactReplay, MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, guard_battle_input, shilian_stage, verify_opening, verify_run_state
-    from superghost_stage import SUPERGHOST_MODE, SUPERGHOST_WALL_SECONDS, SuperGhostReplay
+    from superghost_stage import HISTORICAL_GHOST_MODE, SUPERGHOST_MODE, SUPERGHOST_WALL_SECONDS, HistoricalGhostReplay, SuperGhostReplay
     from tianfa_stage import TIANFA_MEMBER_COUNT, TIANFA_MODE, TIANFA_REPLAY_SECONDS, TIANFA_STAGES, TianfaReplay
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
@@ -46,6 +46,7 @@ def replay(args, runtime, work):
     qiling = args.mode == QILING_GROUP_MODE
     crevice = args.mode == CREVICE_MODE
     superghost = args.mode == SUPERGHOST_MODE
+    historical_ghost = args.mode == HISTORICAL_GHOST_MODE
     retreat = args.mode == RETREAT_MODE
     regional = args.mode in REGION_MODES
     yanwu = args.mode == FENGMO_YANWU_MODE
@@ -141,12 +142,13 @@ def replay(args, runtime, work):
         crevice_replay = CreviceReplay(args.stage, args.crevice_window)
         engine, const = crevice_replay.engine, crevice_replay.const
         group_id, wave_count = crevice_replay.route["groupId"], 1
-    elif superghost:
+    elif superghost or historical_ghost:
         from DynamicConfigData import DATA_HERO
 
         if len(fighters) != 5:
             raise ValueError("The Super Ghost replay needs five owned shikigami")
-        ghost_replay = SuperGhostReplay(args.stage, args.ghost_settings)
+        ghost_replay = (HistoricalGhostReplay(args.stage, args.historical_ghost_window) if historical_ghost
+                        else SuperGhostReplay(args.stage, args.ghost_settings))
         engine, const = ghost_replay.engine, ghost_replay.const
         group_id, wave_count = args.stage, 1
     elif regional:
@@ -324,8 +326,8 @@ def replay(args, runtime, work):
         route = "qiling-collective-local-window"
     elif crevice:
         route = "guild-crevice-local-window"
-    elif superghost:
-        route = "superghost-local-window"
+    elif superghost or historical_ghost:
+        route = "superghost-historical-personal" if historical_ghost else "superghost-local-window"
     elif shilian:
         state_label = "configured" if args.shilian_state else "full-health"
         route = f"six-realms-{state_label}-{'encounter' if shilian_event else 'trial'}"
@@ -492,6 +494,9 @@ def replay(args, runtime, work):
     elif superghost:
         formation_matches = (engine.fbId == args.stage and engine.combineSceneInfoId == ghost_replay.route["sceneId"]
                              and engine.campData2.initGuihuo == 8)
+    elif historical_ghost:
+        formation_matches = (engine.pve_data_flag == args.stage and engine.combineSceneInfoId == ghost_replay.route["sceneId"]
+                             and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
     else:
         formation_matches = engine.monstergroup == group_id
     if (engine.seed != args.seed or engine.random is not random_record or engine.battleMode != args.mode
@@ -508,7 +513,7 @@ def replay(args, runtime, work):
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else OROCHI_REPLAY_SECONDS if orochi
                       else HUNLING_REPLAY_SECONDS if hunling else QILING_GROUP_REPLAY_SECONDS if qiling
                       else CREVICE_WALL_SECONDS if crevice
-                      else SUPERGHOST_WALL_SECONDS if superghost
+                      else SUPERGHOST_WALL_SECONDS if superghost or historical_ghost
                       else SHILIAN_REPLAY_SECONDS if shilian else TIANFA_REPLAY_SECONDS if tianfa else 130 if relay else 75)
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
@@ -569,7 +574,7 @@ def replay(args, runtime, work):
             crevice_replay.update(winner)
             if crevice_replay.reason:
                 break
-        if superghost:
+        if superghost or historical_ghost:
             ghost_replay.update(winner)
             if ghost_replay.reason:
                 break
@@ -633,7 +638,7 @@ def replay(args, runtime, work):
         outcome = "win" if collective.reason == "boss-defeated" else "loss" if completed else "unknown"
     if crevice:
         completed, outcome = crevice_replay.reason is not None, crevice_replay.outcome
-    if superghost:
+    if superghost or historical_ghost:
         completed, outcome = ghost_replay.reason is not None, ghost_replay.outcome
     module = "battleengine.engine." + type(engine).__name__
     report = {**evidence, "route": route, "stageId": args.stage, "groupId": group_id,
@@ -662,8 +667,8 @@ def replay(args, runtime, work):
     if crevice:
         report["guildCrevice"] = crevice_replay.report()
         report["wavesCleared"] = int(outcome == "win")
-    if superghost:
-        report["superGhost"] = ghost_replay.report()
+    if superghost or historical_ghost:
+        report["historicalSuperGhost" if historical_ghost else "superGhost"] = ghost_replay.report()
         report["wavesCleared"] = int(outcome == "win")
     if shilian:
         report["sixRealms"] = {"dao": dao, "trialSlot": args.shilian_trial_slot, "trialHero": trial_hero,
@@ -758,7 +763,7 @@ def main():
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
     from general_soul_stage import SOLO_SCORE_MODES
     from guild_crevice_stage import CREVICE_MODE, CREVICE_TIME
-    from superghost_stage import SUPERGHOST_MODE, valid_ghost_settings
+    from superghost_stage import HISTORICAL_GHOST_MODE, SUPERGHOST_MODE, valid_ghost_settings
     from guild_hunt_stage import GUILD_HUNT_MODE
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from hunling_stage import CAPTURE_ITEMS, HUNLING_BOSS, HUNLING_MODES, HUNLING_REPLAY_SECONDS
@@ -777,7 +782,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, TIANFA_MODE, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, JOURNEY_HARD_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--stage", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
@@ -792,6 +797,7 @@ def main():
     parser.add_argument("--qiling-hp", type=int)
     parser.add_argument("--crevice-window", type=int)
     parser.add_argument("--ghost-settings", type=json.loads)
+    parser.add_argument("--historical-ghost-window", type=int)
     parser.add_argument("--journey-blessings", type=int)
     parser.add_argument("--journey-deadline", type=int)
     parser.add_argument("--shilian-trial-slot", type=int, choices=range(1, 7))
@@ -822,6 +828,9 @@ def main():
     if (args.mode == SUPERGHOST_MODE) != (args.ghost_settings is not None) or (
             args.ghost_settings is not None and not valid_ghost_settings(args.ghost_settings)):
         parser.error("Super Ghost requires a valid attack type, date and scoring window")
+    if (args.mode == HISTORICAL_GHOST_MODE) != (args.historical_ghost_window is not None) or (
+            args.historical_ghost_window is not None and not 1 <= args.historical_ghost_window <= 180):
+        parser.error("A historical Super Ghost challenge requires a 1 to 180 second scoring window")
     if args.mode == JOURNEY_HARD_MODE:
         if (args.journey_blessings is None or not 0 <= args.journey_blessings < 2 ** 53
                 or args.journey_deadline is None or not 1 <= args.journey_deadline < 2 ** 53):

@@ -140,7 +140,8 @@
   const tableFields = {
     SuperGhost_mission: {crazy_time:'单次追击时限',private_time:'发现者专属时长',remain_time:'首领剩余时长',
       minus_fatigue:'疲劳参数',spec_skill:'任务表词条',gk_list:'敌方编组',score_mul:'积分系数',help_mul:'协战系数'},
-    SuperGhost_bossmission: {challenge_time:'历史挑战时限',gk_list:'敌方编组'},
+    SuperGhost_bossmission: {challenge_time:'历史挑战时限',begin_time:'开放时间',end_time:'结束时间',
+      cost:'入场消耗',first_rewardid:'首次奖励编号',rewardid:'奖励编号',gk_list:'敌方编组'},
     super_ghost_hjs_special_attack: {begin_time:'特攻开始时间',end_time:'特攻结束时间',hero_group:'特攻分组'},
     super_ghost_hjs_special_attack_group: {hero_list:'特攻式神 ID',value:'攻防加成系数',desc:'原版增益说明'},
     hunling_base: {battle_tips:'共鸣规则',shoufu_tips:'首领机制'},
@@ -1189,9 +1190,11 @@
 
   function showSuperGhost(block,entry,group){
     const source=window.AtlasSuperGhost;
-    if(entry.table!=='SuperGhost_mission'||!matchesOpeningSource(source))return;
-    const id=Number(entry.key),route=source.routes[id],wave=group.waves[0];
-    if(!route||group.row?.sceneid!==route.sceneId||group.row.star!==route.star||group.row.crazy_time!==route.deadlineSeconds||
+    const historical=entry.table==='SuperGhost_bossmission';
+    if((!historical&&entry.table!=='SuperGhost_mission')||!matchesOpeningSource(source))return;
+    const id=Number(entry.key),route=(historical?source.historicalRoutes:source.routes)[id],wave=group.waves[0];
+    if(!route||group.row?.sceneid!==route.sceneId||
+       (historical?group.row.challenge_time!==route.deadlineSeconds:group.row.star!==route.star||group.row.crazy_time!==route.deadlineSeconds)||
        wave?.length!==route.formation.length||!route.formation.every(([position,id,level],i)=>
          wave[i].position===position&&wave[i].id===id&&wave[i].level===level))return;
     const controls=node('div','','actions'),workbench=node('div'),limit=route.deadlineSeconds;
@@ -1200,16 +1203,20 @@
       label.append(element);controls.append(label);
       return element;
     };
-    const attack=field('追击方式',document.createElement('select'));
-    attack.dataset.ghostAttack='';
-    attack.replaceChildren(new Option('普通追击','0'),new Option('强力追击','1'));
-    const day=field('特攻日期',document.createElement('select'));
-    day.dataset.ghostDay='';
-    day.replaceChildren(new Option('无当日特攻','0'),...Object.entries(source.days).map(([id,row])=>new Option(row.date.join('-'),id)));
+    let attack,day;
+    if(!historical){
+      attack=field('追击方式',document.createElement('select'));
+      attack.dataset.ghostAttack='';
+      attack.replaceChildren(new Option('普通追击','0'),new Option('强力追击','1'));
+      day=field('特攻日期',document.createElement('select'));
+      day.dataset.ghostDay='';
+      day.replaceChildren(new Option('无当日特攻','0'),...Object.entries(source.days).map(([id,row])=>new Option(row.date.join('-'),id)));
+    }
     const duration=field('计分窗口（秒）',document.createElement('input'));
     duration.dataset.ghostWindow='';
     Object.assign(duration,{type:'number',min:'1',max:String(limit),step:'1',value:String(limit),required:true});
-    block.append(node('p',`原版时限 ${limit} 秒 · 敌方开场 8 火 · 从满血开始统计本队伤害`,'caption'),controls,workbench);
+    const description=historical?'仅计 1 号位首领的生命减少量。原版时钟到点后完成结算。':'敌方开场 8 火 · 从满血开始统计本队伤害';
+    block.append(node('p',`原版时限 ${limit} 秒 · ${description}`,'caption'),controls,workbench);
     if(route.templateSkills)block.append(node('p','本条任务词条与敌方模板不同，模拟使用原版实际载入的敌方技能。','caption'));
     const render=()=>{
       if(!duration.checkValidity()){
@@ -1218,13 +1225,14 @@
         return;
       }
       const windowSeconds=duration.valueAsNumber,code=source.codeStageIds[route.star];
-      const ghostSettings={attackType:Number(attack.value),day:Number(day.value),windowSeconds};
+      const options=historical?{battleMode:source.historicalBattleMode,historicalGhostWindow:windowSeconds,label:group.row.desc}:
+        {battleMode:source.battleMode,ghostSettings:{attackType:Number(attack.value),day:Number(day.value),windowSeconds},
+         codeStageIds:code?[code]:[],label:group.row.remarks};
       workbench.replaceChildren();
-      window.AtlasPveWorkbench?.mount(workbench,{stageId:id,groupId:id,battleMode:source.battleMode,
-        memberCount:5,waveCount:1,ghostSettings,scoreWindowSeconds:windowSeconds,version:source.resourceVersion,
-        codeStageIds:code?[code]:[],label:group.row.remarks});
+      window.AtlasPveWorkbench?.mount(workbench,{stageId:id,groupId:id,...options,
+        memberCount:5,waveCount:1,scoreWindowSeconds:windowSeconds,version:source.resourceVersion});
     };
-    for(const input of [attack,day,duration])input.addEventListener('change',render);
+    for(const input of [attack,day,duration])input?.addEventListener('change',render);
     render();
   }
 

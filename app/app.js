@@ -206,7 +206,8 @@ function sampleBattleMarkup(samples){
   const orochi=sample.trueOrochi;
   const hunling=sample.hunling;
   const qiling=sample.qilingCollective;
-  const ghost=sample.superGhost,damageWindow=sample.guildCrevice??ghost;
+  const ghost=sample.superGhost,historicalGhost=sample.historicalSuperGhost;
+  const damageWindow=sample.guildCrevice??ghost??historicalGhost;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
   const guard=trial?.runState?.guard;
@@ -241,8 +242,11 @@ function sampleBattleMarkup(samples){
    qiling?`${{'boss-defeated':'击败首领','team-defeated':'本队落败','window-expired':'达到计分时限'}[qiling.reason]||'结算待核对'} · `+
     `个人伤害 ${qiling.damage.toLocaleString('zh-CN')} · 作战 ${qiling.combatSeconds.toFixed(2)} / ${qiling.windowSeconds} 秒 · `+
     `共享生命剩余 ${Math.round(qiling.remainingHp).toLocaleString('zh-CN')}`:
-   damageWindow?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':'原版时限结束','window-expired':'达到计分窗口'}[damageWindow.reason]||'结算待核对'} · `+
-    `个人伤害 ${damageWindow.damage.toLocaleString('zh-CN')} · 计分窗口 ${damageWindow.windowSeconds} 秒 · 战斗与结算 ${damageWindow.combatSeconds.toFixed(2)} 秒`:
+   damageWindow?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':
+    historicalGhost&&historicalGhost.windowSeconds<historicalGhost.deadlineSeconds?'达到计分窗口':'原版时限结束',
+    'window-expired':'达到计分窗口'}[damageWindow.reason]||'结算待核对'} · `+
+    `${historicalGhost?'首领伤害':'个人伤害'} ${damageWindow.damage.toLocaleString('zh-CN')} · 计分窗口 ${damageWindow.windowSeconds} 秒 · 战斗与结算 ${damageWindow.combatSeconds.toFixed(2)} 秒`+
+    (historicalGhost?` · 首领${historicalGhost.bossDefeated?'已击破':'仍存活'}`:''):
    spider?`${sample.completed?describeBattle(sample):'本机复跑达到运行时限，结算待核对'} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
     `战斗 ${spider.combatSeconds.toFixed(2)} 秒`+
     (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):

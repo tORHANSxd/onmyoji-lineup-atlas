@@ -689,7 +689,9 @@ def encounter_index(source, load_rows):
             if table_name == "SuperGhost_mission":
                 title = f"超鬼王 · {row['remarks']}"
             if table_name == "SuperGhost_bossmission":
-                title = f"超鬼王历史首领挑战 · {title}"
+                boss_id = next((unit[0] for unit in row.get("gk_list", ()) if unit and unit[0] is not None), None)
+                _, boss = table("monster").get(numeric_key(boss_id), (None, {}))
+                title = " · ".join(filter(None, ("超鬼王历史首领挑战", row.get("desc"), name(boss))))
             if table_name == "super_ghost_hjs_special_attack":
                 title = "超鬼王特攻 · " + "-".join(map(str, row["begin_time"][:3]))
             if table_name == "super_ghost_hjs_special_attack_group":

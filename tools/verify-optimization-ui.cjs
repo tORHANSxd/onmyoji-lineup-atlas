@@ -54,7 +54,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,402,528,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3004,3005,3008,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,341,402,528,921,1031,1032,1041,1121,2000,2001,2069,2507,2600,3004,3005,3008,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -568,6 +568,18 @@ async function main(){
       {outcome:'loss',wavesCleared:0,superGhost:{reason:'window-expired',damage:826920,windowSeconds:30,
        combatSeconds:30,specialAttack:[{heroId:591,attackAdded:11549.579}],enemies:[{position:1,startingHp:12500000,remainingHp:12361902}]}}),
       /单场最高 826,920.*达到计分窗口.*共享生命余量.*12,361,902.*特攻加成/s);
+   }
+   if(cases.some(entry=>entry.table==='SuperGhost_bossmission'&&Number(entry.key)===4)){
+    await encounter('event','超鬼王历史首领挑战 第四天');
+    assert.match(await ui(panel+'.textContent'),/仅计 1 号位首领/);
+    assert.equal(await ui('document.querySelector("[data-ghost-attack]")===null'),true);
+    const time='document.querySelector("[data-ghost-window]")';
+    await ui(`${time}.value="30";${time}.dispatchEvent(new Event("change"))`);
+    assert.match(await run('superghost-five',{stageId:4,groupId:4,battleMode:341,historicalGhostWindow:30},
+      {outcome:'loss',wavesCleared:0,historicalSuperGhost:{reason:'native-timeout',damage:287209,windowSeconds:30,
+       deadlineSeconds:180,combatSeconds:33.34,bossDefeated:false,
+       enemies:[{position:1,startingHp:4999999,remainingHp:4712790}]}}),
+      /单场最高 287,209.*达到计分窗口.*首领伤害 287,209.*首领仍存活/s);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');

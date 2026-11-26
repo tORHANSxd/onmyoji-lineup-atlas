@@ -6,7 +6,8 @@ import hashlib
 import json
 from pathlib import Path
 
-from superghost_stage import SUPERGHOST_MODE, SUPERGHOST_STAGES, ghost_route, ghost_special_attack
+from superghost_stage import (HISTORICAL_GHOST_MODE, HISTORICAL_GHOST_STAGES, SUPERGHOST_MODE, SUPERGHOST_STAGES,
+                              ghost_route, ghost_special_attack, historical_ghost_route)
 
 
 def main():
@@ -34,6 +35,7 @@ def main():
         return dict(json.loads(gzip.decompress(data)))
 
     missions = load("SuperGhost_mission")
+    historical = load("SuperGhost_bossmission")
     monsters = load("monster")
     schedule = load("super_ghost_hjs_special_attack")
     groups = load("super_ghost_hjs_special_attack_group")
@@ -41,6 +43,8 @@ def main():
     codes = load("team_assist_stage")
     if missions.keys() != SUPERGHOST_STAGES:
         raise ValueError("The original mission range changed")
+    if historical.keys() != HISTORICAL_GHOST_STAGES:
+        raise ValueError("The original historical Super Ghost range changed")
     stages = {}
     for stage_id in sorted(missions):
         row = missions[stage_id]
@@ -54,6 +58,10 @@ def main():
         code_ids[star] = code_id
     meta = {"resourceVersion": index["resourceVersion"], "tableSHA256": hashes, "battleMode": SUPERGHOST_MODE,
             "engineSHA256": script_modules["battleengine/engine/SuperGhostEngine.py"], "days": days,
+            "historicalBattleMode": HISTORICAL_GHOST_MODE,
+            "historicalEngineSHA256": script_modules["battleengine/engine/SuperGhostBossEngine.py"],
+            "historicalRoutes": {stage_id: historical_ghost_route(stage_id, historical[stage_id])
+                                 for stage_id in sorted(historical)},
             "codeStageIds": code_ids, "attackReductions": [-constants[key]["value"][0] for key in (7096, 7097)]}
     metadata = json.dumps(meta, ensure_ascii=False, indent=2).removesuffix("\n}")
     rows = ",\n".join(f"  {key}:{json.dumps(row, ensure_ascii=False, separators=(',', ':'))}" for key, row in stages.items())
@@ -61,7 +69,7 @@ def main():
               + ',\n "routes":{\n' + rows + "\n }\n };\n"
               + " if(typeof module==='object'&&module.exports)module.exports=data;else root.AtlasSuperGhost=data;\n})(globalThis);\n")
     args.output.write_text(source, encoding="utf-8", newline="\n")
-    print(f"{len(stages)} missions, {len(days)} daily special attack settings")
+    print(f"{len(stages)} missions, {len(days)} special attack dates, {len(historical)} historical challenges")
 
 
 if __name__ == "__main__":
