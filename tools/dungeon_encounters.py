@@ -14,6 +14,8 @@ from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIV
 from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES, QINFEI_BOSS_STAGE
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
+from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EXPLORATION_STAGES,
+                                   TEN_TOWER_STAGES, is_ten_anniversary_stage)
 
 
 ROOTS = {
@@ -73,6 +75,8 @@ ROOTS = {
     "super_ghost_hjs_special_attack": ("event", "超鬼王特攻日期"),
     "super_ghost_hjs_special_attack_group": ("event", "超鬼王特攻式神"),
     "journey_hardbattle": ("event", "京畿净化首领挑战"),
+    "ten_anni_2026_event": ("event", "巡于黄金之河事件"),
+    "ten_anni_2026_dungeon_battle": ("event", "巡于黄金之河战斗配置"),
 }
 
 JOURNEY_BATTLE_VARIANTS = {
@@ -154,6 +158,22 @@ FOLLOWED_TABLES = {"pve_stage_data", "BattleMonstersInfo", "Combinesceneinfo", "
 DOJO_AREA_TYPES = {1: "普通战斗", 2: "精英挑战", 3: "神社战斗", 4: "首领战", 5: "租借处", 6: "传送门"}
 FOREST_EVENT_TYPES = {1: "普通怪", 2: "精英", 3: "首领", 4: "巢穴", 5: "宝箱", 6: "派遣", 7: "净化", 8: "起点"}
 BATTLE_ID_FIELDS = ("battle_id", "battleId", "pve_stage_id", "pve_id")
+TEN_ACTIVITY_LINKS = {
+    12130: (("ten_anni_2026_ui", 1, "拾光永恒活动入口"), ("activity", 12132, "亘地回响开放期"),
+            ("activity", 12134, "巡于黄金之河开放期"), ("activity", 12135, "炼石成金开放期")),
+    12132: (("ten_anni_2026_ui", 16, "虚无精锐战斗入口"),
+            ("pve_stage_data", 12130001, "虚无精锐简单档"), ("pve_stage_data", 12130002, "虚无精锐困难档")),
+    12134: (("ten_anni_2026_ui", 3, "地图探索入口"),),
+    12135: (("ten_anni_2026_ui", 5, "炼石成金挑战入口"), ("battle_team_routes", 2322, "原版首领战入口"),
+            ("ten_anni_2026_const", 100, "五层首领顺序"),
+            *(("pve_stage_data", stage, f"首领第 {index} 层") for index, stage in enumerate(TEN_BOSS_STAGES, 1))),
+}
+TEN_ACTIVITY_RULES = {
+    12130: ("10th_ssrshichangji_main_tip", "活动参与和玩法规则"),
+    12132: ("10th_ssrshichangji_pata_tip", "虚无精锐及虚无合战规则"),
+    12134: ("ssr10th_shichangji_ditu_tip", "探索和遭遇战队伍规则"),
+    12135: ("ssr10th_shichangji_boss_tip", "首领战计分和奖励规则"),
+}
 RULE_TEXT_FIELDS = {"tip": "关卡提示", "fbtips": "副本规则", "attack_tip": "战斗提示",
                     "rule": "玩法规则", "boss_rule": "首领机制", "notice": "机制说明", "fb1_defs": "竞速规则"}
 PANEL_RULE_FIELDS = {"normal_battle_tips": ("rule_key", "通用战斗规则原文"),
@@ -231,6 +251,12 @@ def encounter_index(source, load_rows):
     forest_map_cells = {}
     for key, row in sorted(table("guild_fake_god_map").values()):
         forest_map_cells.setdefault(row["map_id"], []).append(key)
+    ten_dungeon_by_stage = {numeric_key(row["battle_id"]): key
+                            for key, row in table("ten_anni_2026_dungeon_battle").values()}
+    ten_map_events = {}
+    for key, row in table("ten_anni_2026_event").values():
+        if row.get("type") in (1, 2, 5) and row.get("params"):
+            ten_map_events.setdefault(row["params"][0], []).append(key)
 
     def rule_reference(key, label):
         dest = legacy_tips if key not in rules and key in tips else rule_table
@@ -513,6 +539,34 @@ def encounter_index(source, load_rows):
                                 ("qingsen_shangdian", "青森之叶与兑换规则")):
                 if rule in rules:
                     links.append(rule_reference(rule, label))
+        if name == "activity" and row.get("id") in TEN_ACTIVITY_LINKS:
+            links.extend(ref for dest, target, label in TEN_ACTIVITY_LINKS[row["id"]]
+                         if (ref := relation(dest, target, label, False)))
+            rule, label = TEN_ACTIVITY_RULES[row["id"]]
+            if rule in rules:
+                links.append(rule_reference(rule, label))
+        if name == "ten_anni_2026_event":
+            data_id = row["params"][0] if row.get("type") in (1, 2, 5) and row.get("params") else None
+            if ref := relation("ten_anni_2026_dungeon_battle", data_id, "地图战斗配置", False):
+                links.append(ref)
+                _, data = table("ten_anni_2026_dungeon_battle")[numeric_key(data_id)]
+                if ref := relation("pve_stage_data", data["battle_id"], "事件战斗关卡", True):
+                    links.append(ref)
+            if ref := relation(name, row.get("pre_id"), "前置事件", False):
+                links.append(ref)
+            if ref := relation("ten_anni_2026_event_type", row.get("type"), "事件类型", True):
+                links.append(ref)
+            if row.get("type") == 11:
+                if ref := relation("activity", 12135, "炼石成金", False):
+                    links.append(ref)
+            if "ssr10th_shichangji_ditu_tip" in rules:
+                links.append(rule_reference("ssr10th_shichangji_ditu_tip", "地图探索原文"))
+        if name == "ten_anni_2026_dungeon_battle":
+            if ref := relation("pve_stage_data", row["battle_id"], "专用战斗关卡", True):
+                links.append(ref)
+            data_id = ten_dungeon_by_stage.get(numeric_key(row["battle_id"]))
+            links.extend(ref for key in ten_map_events.get(data_id, ())
+                         if (ref := relation("ten_anni_2026_event", key, "对应地图事件", False)))
         if name == "storyChapter":
             entrance = relation("mapnpc", row.get("id"), "地图探索入口", False)
             if entrance:
@@ -583,6 +637,35 @@ def encounter_index(source, load_rows):
                              if (ref := relation("guild_fake_god_event", key, "青森战斗配置", False)))
                 if ref := relation("battle_team_routes", FOREST_TEAM, "单队战斗入口", False):
                     links.append(ref)
+            stage_number = int(stage_id or 0)
+            if is_ten_anniversary_stage(stage_number):
+                if stage_number in TEN_TOWER_STAGES:
+                    team, mode, code, activity = 2320, 9591, 100998, 12132
+                    for key, label in ((TEN_TOWER_STAGES[stage_number], "难度与关卡"), (72, "金花灵符消耗"),
+                                       (74, "普通体力消耗"), (76, "自动战斗饱食度")):
+                        if ref := relation("ten_anni_2026_const", key, label, False):
+                            links.append(ref)
+                elif stage_number in TEN_BOSS_STAGES:
+                    team, mode, code, activity = 2322, 9592, 100999, 12135
+                elif stage_number in TEN_ENCOUNTER_STAGES:
+                    team, mode, code, activity = 2321, 9593, 101000, 12134
+                else:
+                    team, mode, code, activity = 2319, 9590, 101000, 12134
+                links.extend(ref for dest, target, label in (
+                    ("ten_anni_2026_dungeon_battle", ten_dungeon_by_stage.get(stage_id), "地图战斗配置"),
+                    ("battle_team_routes", team, "专用组队入口"),
+                    ("normal_battle_config", mode, "原版战斗与时限参数"),
+                    ("team_assist_stage", code, "阵容码分类"),
+                    ("activity", activity, "原版开放期"),
+                ) if (ref := relation(dest, target, label, False)))
+                rule, label = TEN_ACTIVITY_RULES[activity]
+                if rule in rules:
+                    links.append(rule_reference(rule, label))
+                if mode in (9591, 9593):
+                    if ref := relation("normal_battle_assist_hero", 105, "原版石长姬助战", False):
+                        links.append(ref)
+                    if "10th_shichangji_yangcheng_tip" in rules:
+                        links.append(rule_reference("10th_shichangji_yangcheng_tip", "助战和养成规则"))
             qinfei_stage = int(stage_id or 0)
             if qinfei_stage in QINFEI_FOOD_STAGES:
                 food = QINFEI_FOODS[(qinfei_stage - QINFEI_FOOD_STAGES.start) % len(QINFEI_FOODS)]
@@ -1011,7 +1094,7 @@ def encounter_index(source, load_rows):
             family, kind = "event", "京畿净化战斗参数"
         # The four resource tables are registered separately from the normal
         # fight panel's journey_normalbattle lookup. A numeric match is insufficient.
-        generic_edges = [] if variant or table_name == "journey_hardbattle" else [
+        generic_edges = [] if variant or table_name in {"journey_hardbattle", "ten_anni_2026_dungeon_battle"} else [
             field for field in BATTLE_ID_FIELDS if field in manifest["fields"]
         ]
         for key, row in load_rows(table_name):
@@ -1028,9 +1111,11 @@ def encounter_index(source, load_rows):
             qinfei_activity = table_name == "activity" and key in qinfei_activities
             dojo_area_activity = table_name == "activity" and key in dojo_area_activities
             forest_activity = table_name == "activity" and key == 7076
+            ten_activity = table_name == "activity" and key in TEN_ACTIVITY_LINKS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not linked_battles and not row.get("monsterWaves")
-                    and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity):
+                    and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
+                    and not ten_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -1043,6 +1128,12 @@ def encounter_index(source, load_rows):
                 entry_family, entry_kind = "event", "八百八狸场次"
             if forest_activity:
                 entry_family, entry_kind = "guild", "青森之秘活动"
+            if ten_activity:
+                entry_family, entry_kind = "event", "拾光永恒"
+                title = {12130: "拾光永恒 · 石长姬十周年活动", 12132: "拾光永恒 · 亘地回响",
+                         12134: "拾光永恒 · 巡于黄金之河", 12135: "拾光永恒 · 炼石成金"}[key]
+            if table_name in ("ten_anni_2026_event", "ten_anni_2026_dungeon_battle"):
+                title = f"巡于黄金之河 · {title} · {key}"
             if table_name == "guild_fake_god_event":
                 label = FOREST_EVENT_TYPES.get(row.get("type"), "事件")
                 title = f"青森之秘 · {label} · {title.strip()} · {key}"
@@ -1142,6 +1233,18 @@ def encounter_index(source, load_rows):
                 elif stage_id in FOREST_STAGES:
                     entry_family, entry_kind = "guild", "青森之秘战斗"
                     title = f"青森之秘 · {title}"
+                elif is_ten_anniversary_stage(stage_id):
+                    entry_family, entry_kind = "event", "拾光永恒战斗"
+                    if stage_id in TEN_TOWER_STAGES:
+                        title = f"拾光永恒 · 虚无精锐 · {'简单' if stage_id == 12130001 else '困难'}"
+                    elif stage_id in TEN_ENCOUNTER_STAGES:
+                        event_key = ten_dungeon_by_stage.get(numeric_key(key))
+                        _, event = table("ten_anni_2026_dungeon_battle").get(numeric_key(event_key), (None, {}))
+                        title = f"巡于黄金之河 · 遭遇战 · {name(event)}"
+                    elif stage_id in TEN_BOSS_STAGES:
+                        title = f"炼石成金 · 第 {stage_id - TEN_BOSS_STAGES.start + 1} 层"
+                    else:
+                        title = f"巡于黄金之河 · {title}"
                 elif stage_id in NIAN_STAGES:
                     entry_family, entry_kind = "event", "现世年兽"
                     title = f"{entry_kind} · {NIAN_STAGES[stage_id]} 级档"

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3022,3023,5550,5551,6086,8238,9591,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -345,7 +345,8 @@ async function main(){
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
    known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
-   known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
+   known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5),
+   known('ten-tower',100998,5),known('ten-map',101000,5)];
   const trial=known('six-realms',110151,6);
   trial.members[6]=fighter(217,5);
   const moon=known('moon-trial',110150,6);
@@ -807,6 +808,20 @@ async function main(){
      [...ref.querySelectorAll('button')].find(button=>button.textContent==='查看关联关卡').click();})()`);
     await until(start+'!==null');
     assert.match(await ui(panel+'.textContent'),/青森之秘 · 事件 2548/);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='12130002'&&entry.kind==='拾光永恒战斗')){
+    await encounter('event','虚无精锐 困难 12130002');
+    const buff='document.querySelector("[data-ten-bonus=\\"810243\\"]")';
+    await ui(buff+'.checked=true;'+buff+'.dispatchEvent(new Event("change",{bubbles:true}))');
+    assert.match(await run('ten-tower',{stageId:12130002,groupId:12130002,battleMode:9591,tenBonuses:[810243]},
+      {tenAnniversary:{timedOut:false,bonuses:[810241,810243],combatSeconds:108.28,deadlineSeconds:180}}),/助战石长姬 · 生效增益 2 项/);
+    await encounter('event','黄金之河 虚无浪潮 12');
+    assert.match(await ui(panel+'.textContent'),/原版时限 300 秒 · 助战石长姬/);
+    assert.match(await run('ten-map',{stageId:12130069,groupId:12130069,battleMode:9593},
+      {tenAnniversary:{timedOut:false,bonuses:[810241],combatSeconds:190,deadlineSeconds:300}}),/原版时限 300 秒/);
+    await ui('qaEncounterInput("event","黄金之河 石长姬-探索1 12130016")');
+    await until(panel+'.textContent.includes("活动队伍复跑待接入")');
+    assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='11112'&&entry.refs.some(ref=>!ref.found))){
     await ui('qaEncounterInput("battle","结界入侵 11112")');

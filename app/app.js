@@ -213,6 +213,7 @@ function sampleBattleMarkup(samples){
   const pveDeadline=sample.pveDeadline;
   const dojoArea=sample.dojoArea;
   const forest=sample.guildForest;
+  const ten=sample.tenAnniversary;
   const damageWindow=sample.guildCrevice??ghost??historicalGhost;
   const regional=sample.regionalBoss;
   const trial=sample.sixRealms;
@@ -275,6 +276,8 @@ function sampleBattleMarkup(samples){
     `战斗与结算 ${dojoArea.combatSeconds.toFixed(2)} 秒 · 时限 ${dojoArea.deadlineSeconds} 秒`:
    forest?`${!sample.completed?'结算待核对':forest.timedOut?'达到原版时限':sample.outcome==='win'?'本队清场':'本队落败'} · `+
     `个人伤害 ${forest.damage.toLocaleString('zh-CN')} · 战斗与结算 ${forest.combatSeconds.toFixed(2)} 秒`:
+   ten?`${ten.timedOut?'原版判定超时':describeBattle(sample,false)} · 助战石长姬 · 生效增益 ${ten.bonuses.length} 项 · `+
+    `战斗与结算 ${ten.combatSeconds.toFixed(2)} 秒 · 原版时限 ${ten.deadlineSeconds} 秒`:
    damageWindow?`${{cleared:'本队清场','team-defeated':'本队落败','native-timeout':
     historicalGhost&&historicalGhost.windowSeconds<historicalGhost.deadlineSeconds?'达到计分窗口':'原版时限结束',
     'window-expired':'达到计分窗口'}[damageWindow.reason]||'结算待核对'} · `+

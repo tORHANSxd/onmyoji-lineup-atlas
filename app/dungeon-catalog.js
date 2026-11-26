@@ -33,6 +33,8 @@
     guild_fake_god_event: '青森之秘事件',
     guild_fake_god_map: '青森之秘地格',
     guild_fake_god_route: '青森之秘路线',
+    ten_anni_2026_event: '巡于黄金之河事件',
+    ten_anni_2026_dungeon_battle: '巡于黄金之河战斗配置',
     act_team_battle: '活动组队战斗',
     activity_lbs_intro: '现世妖约活动详情',
     activity_offline_lbs_mass: '现世妖约活动地点',
@@ -1411,6 +1413,53 @@
     return true;
   }
 
+  function showTenAnniversary(destination,entry,groups){
+    if(!['pve_stage_data','ten_anni_2026_event','ten_anni_2026_dungeon_battle'].includes(entry.table))return false;
+    const source=window.AtlasTenAnniversary,primary=groups[0].row;
+    const stageId=entry.table==='pve_stage_data'?Number(entry.key):entry.table==='ten_anni_2026_dungeon_battle'?
+      Number(primary?.battle_id):Number(groups.find(({ref})=>ref.table==='ten_anni_2026_dungeon_battle'&&
+        ref.label==='地图战斗配置')?.row?.battle_id);
+    if(!source.isStage(stageId))return false;
+    const battleMode=source.modeFor(stageId);
+    if(!battleMode){
+      destination.append(node('p',source.exploration(stageId)?
+        '此战斗使用地图内招募的式神和培养等级。活动队伍复跑待接入。':
+        '炼石成金由原版首领引擎连续换场。当前可查战斗顺序、编组和计分规则。','caption'));
+      return true;
+    }
+    const route=source.modes[battleMode];
+    const entryRoute=groups.find(({ref})=>ref.table==='battle_team_routes'&&ref.key===route.teamType)?.row;
+    if(!matchesOpeningSource(source)||entryRoute?.battleMode!==battleMode||entryRoute.route_sha256!==route.routeSHA256)return true;
+    const stage=groups.find(({ref})=>ref.table==='pve_stage_data'&&Number(ref.key)===stageId)?.row;
+    const group=groups.find(({ref})=>ref.table==='BattleMonstersInfo'&&ref.key===stage?.groupid);
+    const seconds=source.deadlineFor(stageId);
+    if(stage?.battleTime!==seconds||stage.shishentotal!==5||group?.waves?.length!==1)return true;
+    const caption=node('p',`原版时限 ${seconds} 秒 · 助战石长姬 · 默认提升友方 20% 暴击，溢出转为暴击伤害`,'caption');
+    const details=node('details','','encounter-source');
+    details.append(node('summary','设置已解锁的养成增益'),
+      node('p','助战属性按基础值模拟，可勾选当时已解锁的技能。','caption'));
+    const workbench=node('div'),options=[];
+    for(const [id,text] of Object.entries(source.bonuses)){
+      const label=node('label','','pve-lineup-field'),input=document.createElement('input');
+      input.type='checkbox';
+      input.value=id;
+      input.dataset.tenBonus=id;
+      label.append(input,document.createTextNode(text));
+      details.append(label);
+      options.push(input);
+    }
+    destination.append(caption,details,workbench);
+    const render=()=>{
+      workbench.replaceChildren();
+      window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:stage.groupid,memberCount:5,waveCount:1,battleMode,
+        version:source.resourceVersion,label:entry.title,codeStageIds:[route.codeStageId],
+        tenBonuses:options.filter(input=>input.checked).map(input=>Number(input.value))});
+    };
+    details.addEventListener('change',render);
+    render();
+    return true;
+  }
+
   function mountCreviceWindow(block,stageId,row,formation){
     const source=window.AtlasGuildCrevice,route=source.routes[stageId];
     if(!matchesOpeningSource(source)||row?.groupid!==route.groupId||row?.shishentotal!==5||
@@ -1630,11 +1679,12 @@
     const mapBossMounted=showMapBoss(destination,entry,groups);
     const dojoAreaMounted=showDojoArea(destination,entry,groups);
     const forestMounted=showGuildForest(destination,entry,groups);
+    const tenMounted=showTenAnniversary(destination,entry,groups);
     showQinfeiBoss(destination,entry,groups);
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
