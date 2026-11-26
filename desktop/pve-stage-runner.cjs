@@ -54,9 +54,13 @@ function validSixRealmsEvent(event){
 }
 
 function validSixRealmsState(state){
- return state&&Object.keys(state).length===2&&Array.isArray(state.lifeCaps)&&state.lifeCaps.length===6&&
-  state.lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100)&&Array.isArray(state.marks)&&state.marks.length===6&&
-  state.marks.every(mark=>Number.isSafeInteger(mark)&&mark>=0);
+ if(!state||Object.keys(state).some(key=>!['lifeCaps','marks','skills'].includes(key)))return false;
+ const {lifeCaps,marks,skills=[]}=state;
+ return Array.isArray(lifeCaps)&&lifeCaps.length===6&&lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100)&&
+  Array.isArray(marks)&&marks.length===6&&marks.every(mark=>Number.isSafeInteger(mark)&&mark>=0)&&
+  Array.isArray(skills)&&skills.length<=sixRealms.maxRunSkills&&
+  skills.every(row=>Array.isArray(row)&&row.length===2&&positive(row[0])&&[1,2,3,4,5].includes(row[1]))&&
+  new Set(skills.map(row=>row[0])).size===skills.length;
 }
 
 function validSixRealmsStateReport(proof,state){
@@ -65,7 +69,9 @@ function validSixRealmsStateReport(proof,state){
   unit.lifeCap===state.lifeCaps[i]&&unit.markId===state.marks[i]&&
   (unit.markId>0?positive(unit.markSkill):unit.markSkill===0)&&
   Number.isFinite(unit.baseHp)&&unit.baseHp>0&&Number.isFinite(unit.maxHp)&&unit.maxHp>=0&&Number.isFinite(unit.hp)&&unit.hp>=0&&
-  Math.abs(100*unit.maxHp/unit.baseHp-unit.lifeCap)<1e-7);
+  Math.abs(100*unit.maxHp/unit.baseHp-unit.lifeCap)<1e-7)&&
+  (!state.skills?.length||Array.isArray(proof.skills)&&proof.skills.length===state.skills.length&&
+   proof.skills.every((row,i)=>row?.itemId===state.skills[i][0]&&row.level===state.skills[i][1]&&positive(row.skillId)&&typeof row.name==='string'));
 }
 
 function validTactics(plan,battleMode){

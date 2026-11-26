@@ -109,6 +109,13 @@
   const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber);
   const stateReady=lifeCaps.every(cap=>Number.isFinite(cap)&&cap>=0&&cap<=100);
   for(const field of [...pane.lifeCaps,...pane.marks])field.disabled=blocked;
+  if(pane.skillChoice){
+   pane.skillChoice.disabled=blocked;
+   pane.skillLevel.disabled=blocked;
+   pane.addSkill.disabled=blocked||!pane.skillChoice.value||pane.skills.length>=pane.maxRunSkills||
+    pane.skills.some(([id])=>id===Number(pane.skillChoice.value));
+   for(const button of pane.skillList.querySelectorAll('button'))button.disabled=blocked;
+  }
   if(pane.trial)pane.trial.disabled=blocked;
   if(pane.eventMoves){
    pane.eventMoves.disabled=blocked;
@@ -198,6 +205,20 @@
       ${config.markOptions.map(({id,name,level,source,owner})=>`<option value="${esc(id)}" title="${esc(source)}">${esc(name)} · ${esc(level)} 级${owner?' · '+esc(owner)+'专属':''}</option>`).join('')}
      </select></label>
     </div>`).join('')}
+    ${config.skillOptions?.length?`<fieldset class="pve-reserve pve-run-skills">
+     <legend>途中技能</legend>
+     <p class="caption">按游戏当局填写，最多 ${config.maxRunSkills} 个。</p>
+     <div class="actions">
+      <label class="pve-lineup-field">技能 <select data-pve-skill-choice><option value="">选择技能</option>
+       ${config.skillOptions.map(({id,name,description})=>`<option value="${esc(id)}" title="${esc(description)}">${esc(name)}</option>`).join('')}
+      </select></label>
+      <label class="pve-lineup-field">等级 <select data-pve-skill-level>
+       ${[1,2,3,4,5].map(level=>`<option value="${level}">${level} 级</option>`).join('')}
+      </select></label>
+      <button class="secondary" type="button" data-pve-add-skill>添加技能</button>
+     </div>
+     <ul data-pve-skill-list></ul>
+    </fieldset>`:''}
    </details>`:''}
    ${config.battleMode===AtlasTrueOrochi.battleMode?`<fieldset class="pve-reserve">
     <legend>备选阵容</legend>
@@ -219,10 +240,11 @@
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
    trial:part('trial'),eventDifficulty:part('event-difficulty'),eventMoves:part('event-moves'),
    lifeCaps:[...section.querySelectorAll('[data-pve-life-cap]')],marks:[...section.querySelectorAll('[data-pve-yinji]')],
+   skillChoice:part('skill-choice'),skillLevel:part('skill-level'),addSkill:part('add-skill'),skillList:part('skill-list'),skills:[],
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.eventDifficulty].filter(Boolean))field.onchange=()=>{
+  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.eventDifficulty,pane.skillChoice].filter(Boolean))field.onchange=()=>{
    if(job&&!busy())job.notice=null;
    update();
   };
@@ -230,6 +252,29 @@
    if(job&&!busy())job.notice=null;
    update();
   };
+  if(pane.skillChoice){
+   const renderSkills=()=>{
+    pane.skillList.innerHTML=pane.skills.map(([id,level])=>{
+     const name=pane.skillOptions.find(option=>option.id===id).name;
+     return `<li>${esc(name)} · ${level} 级 <button class="secondary" type="button" data-remove-skill="${id}"
+      aria-label="移除${esc(name)}">移除</button></li>`;
+    }).join('');
+    if(job&&!busy())job.notice=null;
+    update();
+   };
+   pane.addSkill.onclick=()=>{
+    pane.skills.push([Number(pane.skillChoice.value),Number(pane.skillLevel.value)]);
+    pane.skillChoice.value='';
+    renderSkills();
+   };
+   pane.skillList.onclick=event=>{
+    const button=event.target.closest('[data-remove-skill]');
+    if(!button)return;
+    pane.skills=pane.skills.filter(([id])=>id!==Number(button.dataset.removeSkill));
+    renderSkills();
+    pane.skillChoice.focus();
+   };
+  }
   pane.stop.onclick=()=>cancel();
   target.append(section);
   refreshRuntime();
@@ -344,6 +389,13 @@
      row.state.textContent='专属印记与装备位置的式神不匹配';
      return;
     }
+    const trialHero=Number(plan.members[trialSlot-1].hero.heroId);
+    if(run.sixRealmsState?.skills?.some(([id])=>!run.pane.skillOptions.some(
+     skill=>skill.id===id&&(skill.heroId===0||skill.heroId===trialHero)))){
+     row.verdict='infeasible';
+     row.state.textContent='途中技能与所选试炼式神不匹配';
+     return;
+    }
    }
    if(run.reserve){
     const profile=AtlasRuneLineup.selectedOnmyoji(run.reserve.actor,run.account,run.data.gameConfig);
@@ -410,11 +462,11 @@
   const inventory=account(),reserve=orochiReserve(selected,inventory);
   if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3)return;
   const focus=document.activeElement===pane.start;
-  const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value));
+  const lifeCaps=pane.lifeCaps.map(field=>field.valueAsNumber),marks=pane.marks.map(field=>Number(field.value)),skills=pane.skills.slice();
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    trialSlot:Number(pane.trial?.value)||0,
    sixRealmsEvent:pane.eventMoves?{id:pane.shilianEventId,difficulty:Number(pane.eventDifficulty.value),moves:pane.eventMoves.valueAsNumber}:null,
-   sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)?{lifeCaps,marks}:null,
+   sixRealmsState:lifeCaps.some(value=>value!==100)||marks.some(Boolean)||skills.length?{lifeCaps,marks,...(skills.length?{skills}:{})}:null,
    startingInventory:reserve?reserveInventory(reserve,inventory):inventory,
    pveMemberCount:pane.memberCount,message:'正在准备库存…'};
   pane.results.replaceChildren();

@@ -103,6 +103,10 @@ dialog,#detail-dialog,#bulk-dialog,#gap-dialog{max-width:none;width:min(1240px,9
 .pve-lineup-field select{width:100%;min-width:0}
 .pve-reserve{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:10px;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:5px;min-width:0}
 .pve-reserve .caption{grid-column:1/-1;margin:0}
+.pve-run-skills,.pve-run-skills>.actions,.pve-run-skills>ul{grid-column:1/-1}
+.pve-run-skills>ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.pve-run-skills>ul:empty{display:none}
+.pve-run-skills li{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .pve-capture-fields{display:grid;grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:10px}
 .pve-capture-fields[hidden]{display:none}
 @media(max-width:780px){.dungeon-battle-list>li{grid-template-columns:minmax(0,1fr)}}

@@ -8,6 +8,7 @@ from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, SHILIAN_EVENT_MODE, 
 
 REPLAY_SECONDS = 145
 TRIAL_DIFFICULTY = 1
+MAX_RUN_SKILLS = 4
 
 
 def shilian_stage(stage_id, fighters, slot, event=None, run_state=None):
@@ -37,6 +38,7 @@ def shilian_stage(stage_id, fighters, slot, event=None, run_state=None):
     engine_name = SHILIAN_DAOS[dao][2]
     engine_class = getattr(import_module("battleengine.engine." + engine_name), engine_name)
     life_caps, marks = run_state_inputs(run_state, fighters, fighters[alias]["heroId"])
+    skills = run_skills(run_state, fighters[alias]["heroId"])
     engine = engine_class({
         "pve_data_flag": str(stage_id),
         "dao_id": dao,
@@ -46,6 +48,7 @@ def shilian_stage(stage_id, fighters, slot, event=None, run_state=None):
         "battle_heroes_uid": list(fighters),
         "hero_attr_info": life_caps,
         "yinji_info": marks,
+        "select_skill": [(skill, level) for _, skill, level, _ in skills],
         "difficulty": TRIAL_DIFFICULTY if event is None else event["difficulty"],
         "move_count": 0 if event is None else event["moves"],
         "battle_type": config["battle_type"],
@@ -81,12 +84,39 @@ def run_state_inputs(state, roster, trial_id):
 
 
 def valid_run_state(state):
-    if not isinstance(state, dict) or set(state) != {"lifeCaps", "marks"}:
+    if not isinstance(state, dict) or set(state) - {"skills"} != {"lifeCaps", "marks"}:
         return False
     caps, marks = state["lifeCaps"], state["marks"]
     return (isinstance(caps, list) and isinstance(marks, list) and len(caps) == len(marks) == 6
             and all(type(cap) in (int, float) and 0 <= cap <= 100 for cap in caps)
-            and all(type(mark) is int and 0 <= mark < 2 ** 53 for mark in marks))
+            and all(type(mark) is int and 0 <= mark < 2 ** 53 for mark in marks)
+            and valid_run_skills(state.get("skills", [])))
+
+
+def valid_run_skills(skills):
+    return (isinstance(skills, list) and len(skills) <= MAX_RUN_SKILLS
+            and all(isinstance(row, list) and len(row) == 2 and type(row[0]) is int and 0 < row[0] < 2 ** 53
+                    and type(row[1]) is int and 1 <= row[1] <= 5 for row in skills)
+            and len({row[0] for row in skills}) == len(skills))
+
+
+def run_skills(state, trial_id):
+    if not state or not state.get("skills"):
+        return []
+    from com.data.cdata import shilian_currency, shilian_fight_skill
+    from DynamicConfigData import DATA_SKILL
+
+    resolved = []
+    for item, level in state["skills"]:
+        row = shilian_currency.data.get(item)
+        if not row or row["type"] != 3 or len(row["extra_params"]) != 1:
+            raise ValueError("Unknown selectable Six Realms skill")
+        skill = int(row["extra_params"][0])
+        rule = shilian_fight_skill.data.get(skill)
+        if not rule or rule["hero_id"] not in (0, trial_id) or (skill, level, -1) not in DATA_SKILL.data:
+            raise ValueError("The Six Realms skill and level are unavailable for the selected trial shikigami")
+        resolved.append((item, skill, level, row["name"]))
+    return resolved
 
 
 def verify_run_state(engine, controller, run_state):
@@ -109,7 +139,18 @@ def verify_run_state(engine, controller, run_state):
             raise RuntimeError("The original Six Realms engine did not equip the requested mark")
         opening.append({"slot": index, "lifeCap": cap, "hp": hp, "maxHp": limit if cap else 0, "baseHp": base,
                         "markId": mark_id, "markSkill": mark_skill})
-    return {"opening": opening}
+    report = {"opening": opening}
+    if run_state.get("skills"):
+        trial = engine.get_trial_hero()
+        resolved = run_skills(run_state, trial.protoid)
+        observed = []
+        for item, skill, level, name in resolved:
+            component = trial.SkillMgrComp.getSkillComp(skill)
+            if component is None or component._skillLevel != level:
+                raise RuntimeError("The original Six Realms engine did not install the selected skill")
+            observed.append({"itemId": item, "skillId": skill, "level": level, "name": name})
+        report["skills"] = observed
+    return report
 
 
 def verify_opening(engine, group, slot):

@@ -648,7 +648,7 @@ def main():
     if (args.mode in SHILIAN_MODES) != (args.shilian_trial_slot is not None):
         parser.error("A Six Realms trial needs an explicit eligible roster position")
     if args.shilian_state is not None and (args.mode not in SHILIAN_MODES or not valid_run_state(args.shilian_state)):
-        parser.error("A Six Realms run state needs six life caps and six mark selections")
+        parser.error("A Six Realms run state needs six life caps, six mark selections, and valid optional skills")
     event_options = (args.shilian_event_id, args.shilian_difficulty, args.shilian_moves)
     if args.mode == SHILIAN_EVENT_MODE:
         if any(value is None for value in event_options) or args.shilian_event_id <= 0 or not 0 <= args.shilian_moves < 2 ** 53:

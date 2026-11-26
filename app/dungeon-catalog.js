@@ -1165,21 +1165,31 @@
         exam?.dao===trial?.dao;
       if(trial&&routeAgrees&&realm?.row?.hero?.join()===trial.eligible.join()&&
          group?.ref.key===stageId&&group?.row?.resindex===trial.sceneId&&codeScene?.actors===1&&codeScene.shikigami===6){
-        const markTable=state.index.tables.find(table=>table.name==='shilian_yinji');
-        const marks=markTable?.source?.marshalSHA256===exams.markTableSHA256?
-          await api.table('shilian_yinji').then(JSON.parse).catch(()=>[]):[];
+        const readSource=(name,hash)=>state.index.tables.find(table=>table.name===name)?.source?.marshalSHA256===hash?
+          api.table(name).then(JSON.parse).catch(()=>[]):[];
+        const [marks,items,skillRules]=await Promise.all([
+          readSource('shilian_yinji',exams.markTableSHA256),
+          readSource('shilian_currency',exams.skillTableSHA256.shilian_currency),
+          readSource('shilian_fight_skill',exams.skillTableSHA256.shilian_fight_skill),
+        ]);
         if(token!==stage.token)return;
         const markOptions=marks.filter(([id,row])=>id===row.id)
           .map(([id,row])=>({id,name:row.name,level:row.level,heroId:row.hero_id,source:row.src,
             owner:DATA.gameConfig.heroes[row.hero_id]?.name}))
           .sort((a,b)=>a.name.localeCompare(b.name,'zh-CN')||a.level-b.level);
-        const scenario=sixRealmsEvent?'填写当局难度和前行步数。生命上限与印记可在途中状态中调整。':
-          '首领试炼使用档位 1。生命上限与印记可在途中状态中调整。';
+        const rules=new Map(skillRules);
+        const skillOptions=items.flatMap(([id,row])=>{
+          const rule=row.type===3?rules.get(row.extra_params?.[0]):null;
+          return rule&&(rule.hero_id===0||trial.eligible.includes(rule.hero_id))?
+            [{id,name:row.name,heroId:rule.hero_id,description:row.desc}]:[];
+        }).sort((a,b)=>a.name.localeCompare(b.name,'zh-CN'));
+        const scenario=sixRealmsEvent?'填写当局难度和前行步数。生命上限、印记与技能可在途中状态中调整。':
+          '首领试炼使用档位 1。生命上限、印记与技能可在途中状态中调整。';
         destination.append(node('p',scenario,'caption'));
         if(trial.phases)destination.append(node('p','月之海按原版两阶段战斗复跑，演出等待使用原版服务端超时机制并在战报单列。','caption'));
         window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:group.ref.key,memberCount:6,waveCount:trial.phases?.length??1,
           battleMode:sixRealmsEvent?exams.eventMode:exams.battleMode,version:exams.resourceVersion,codeStageId:trial.codeStageId,codeLabel:codeScene.name,
-          trialEligible:trial.eligible,markOptions,shilianEventId:sixRealmsEvent?exam.id:null,
+          trialEligible:trial.eligible,markOptions,skillOptions,maxRunSkills:exams.maxRunSkills,shilianEventId:sixRealmsEvent?exam.id:null,
           label:sixRealmsEvent?'六道之门 · 途中战斗':'六道之门 · 单场首领试炼'});
       }
     }

@@ -443,19 +443,31 @@ async function main(){
     await ui(caps+'[0].value="98.75";'+caps+'[0].dispatchEvent(new Event("input"));'+caps+'[1].value="0";'+caps+'[1].dispatchEvent(new Event("input"))');
     assert.equal(await ui(marks+'[5].querySelector("option[value=\'670093\']").textContent.trim()'),'印记·暴风 · 3 级 · 大天狗专属');
     await ui(marks+'[5].value="670093";'+marks+'[5].dispatchEvent(new Event("input"))');
+    const skill='document.querySelector("[data-pve-skill-choice]")',level='document.querySelector("[data-pve-skill-level]")';
+    const add='document.querySelector("[data-pve-add-skill]")';
+    const selectSkill=id=>ui(`${skill}.value="${id}";${skill}.dispatchEvent(new Event("change"))`);
+    await selectSkill(650029);
+    assert.match(await ui(skill+'.selectedOptions[0].textContent'),/生命加成/);
+    await ui(level+'.value="2";'+add+'.click()');
+    await selectSkill(650029);
+    assert.equal(await ui(add+'.disabled'),true);
+    await selectSkill(650027);
+    await ui(level+'.value="3";'+add+'.click();document.querySelector("[data-remove-skill=\'650027\']").click()');
+    assert.match(await ui('document.querySelector("[data-pve-skill-list]").textContent'),/生命加成 · 2 级/);
     assert.equal(await ui(start+'.disabled'),false);
-    const state={lifeCaps:[98.75,0,100,100,100,100],marks:[0,0,0,0,0,670093]};
+    const state={lifeCaps:[98.75,0,100,100,100,100],marks:[0,0,0,0,0,670093],skills:[[650029,2]]};
     mockPve=(plan,request)=>{
      assert.deepEqual(request,{battleMode:208,stageId:700101,groupId:700101,seed:request.seed,damageFloor:true,trialSlot:6,
       sixRealmsEvent:{id:113,difficulty:3,moves:12},sixRealmsState:state});
      return {...sample,seed:request.seed,sixRealms:{dao:2,trialSlot:6,trialHero:217,difficulty:3,rounds:4,
       eventId:113,moveCount:12,battleType:0,enemyAttributeBonus:.12,
-      runState:{opening:state.lifeCaps.map((lifeCap,i)=>({lifeCap,markId:state.marks[i]}))}}};
+      runState:{opening:state.lifeCaps.map((lifeCap,i)=>({lifeCap,markId:state.marks[i]})),
+       skills:[{itemId:650029,skillId:66822,level:2,name:'生命加成'}]}}};
     };
     await ui(start+'.click()');
     await until(status+'.textContent.includes("全随机分支待验证")',20000);
     assert.match(await ui(reports+'.textContent'),/档位 3 · 前行 12 步 · 敌方属性系数加成 12%/);
-    assert.match(await ui(reports+'.textContent'),/开场生命上限 98\.75% \/ 0%.*印记 1 枚/);
+    assert.match(await ui(reports+'.textContent'),/开场生命上限 98\.75% \/ 0%.*印记 1 枚 · 途中技能 生命加成 2 级/);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='800017'&&entry.kind==='契灵之境')){
     await encounter('daily','契灵之境 平安京 770005');
