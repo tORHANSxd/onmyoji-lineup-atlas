@@ -211,6 +211,7 @@ function sampleBattleMarkup(samples){
   const skeleton=sample.skeleton;
   const longche=sample.longche;
   const spiderLive=sample.spiderLive;
+  const spiderNormal=sample.spiderNormal;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -294,6 +295,8 @@ function sampleBattleMarkup(samples){
     `本队伤害 ${longche.damage.toLocaleString('zh-CN')} · 作战 ${longche.combatSeconds.toFixed(2)} / ${longche.settings.windowSeconds} 秒`:
    spiderLive?`${{'boss-defeated':'击败极·土蜘蛛','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[spiderLive.reason]} · `+
     `本队伤害 ${spiderLive.damage.toLocaleString('zh-CN')} · 作战 ${spiderLive.combatSeconds.toFixed(2)} / ${spiderLive.settings.windowSeconds} 秒`:
+   spiderNormal?`${{'boss-defeated':'击败稀有·土蜘蛛','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[spiderNormal.reason]} · `+
+    `本队伤害 ${spiderNormal.damage.toLocaleString('zh-CN')} · 作战 ${spiderNormal.combatSeconds.toFixed(2)} / ${spiderNormal.settings.windowSeconds} 秒`:
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+
@@ -447,6 +450,21 @@ function sampleBattleMarkup(samples){
     ${cocoon?.recovery.length?`<p class="caption">恢复生命 · ${cocoon.recovery.map(row=>
      `${parts[row.position-1][2]} +${hp(row.amount)}`).join('、')}</p>`:''}</details>`;
   })():'';
+  const spiderNormalStages=spiderNormal?(()=>{
+   const {parts,spawns}=AtlasFengmoLive.spiderNormal;
+   const hp=value=>Math.round(value).toLocaleString('zh-CN');
+   return `<details><summary>查看土蜘蛛部位与召唤</summary>
+    <p class="caption">${spiderNormal.weakPartVerified?'本场弱点':'预设弱点'} ${parts[spiderNormal.weakPart-1][2]} ·
+     伤害评级 ${spiderNormal.damageRating} 档 · 实际召唤 ${spiderNormal.summonWaves.length} / ${spiderNormal.summonLimit} 波 ·
+     击败纸人 ${spiderNormal.papersDefeated} 位 · 击败金色小蜘蛛 ${spiderNormal.goldDefeated} 只</p>
+    <ul>${spiderNormal.parts.map((unit,i)=>`<li>${parts[i][2]} · ${unit.brokenAt===null?
+     `${hp(unit.hp)} / ${hp(unit.maximumHp)} 生命`:`${unit.brokenAt.toFixed(2)} 秒击破`}</li>`).join('')}</ul>
+    ${spiderNormal.summonWaves.length?`<ol>${spiderNormal.summonWaves.map(wave=>
+     `<li>${wave.seconds.toFixed(2)} 秒出现 · ${Object.entries(spawns).flatMap(([id,label])=>{
+      const count=wave.units.filter(unit=>unit.id===Number(id)).length;
+      return count?[`${label} × ${count}`]:[];
+     }).join('、')}</li>`).join('')}</ol>`:''}</details>`;
+  })():'';
   const towerLife=ghostKingTower?.kind==='boss'?`<div class="caption">敌方余血 · ${esc(ghostKingTower.enemies.map(unit=>
    `${unit.position} 号位 ${unit.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})}`).join(' · '))}
    ${sample.completed&&ghostKingTower.enemies.some(unit=>unit.remainingHp>0)?
@@ -466,7 +484,7 @@ function sampleBattleMarkup(samples){
    return `<li>${esc(name)} · 原版实体 ${unit.level} 级 · 速度 ${unit.speed.toFixed(2)} · `+
     `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}</li>`;
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}</li>`;
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}${spiderNormalStages}</li>`;
  }).join('');
 }
 

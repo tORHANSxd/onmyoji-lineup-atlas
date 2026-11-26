@@ -950,8 +950,17 @@
       block.append(details);
     }
     destination.append(block);
-    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,skeleton,longche,spiderLive}=source;
+    const source=AtlasFengmoLive,{duskWraith:dusk,songstress:song,mirage,catfish,skeleton,longche,spiderLive,spiderNormal}=source;
     const stage=row('pve_stage_data',String(scenario.stage));
+    if(scenario.stage===spiderNormal.stageId&&scenario.mode===spiderNormal.battleMode&&route?.scene_engine===spiderNormal.engine.name&&
+        stage?.groupid===spiderNormal.stageId&&stage.shishentotal===spiderNormal.memberCount&&formation.resindex===spiderNormal.sceneId){
+      const code=DATA.gameConfig.stages[spiderNormal.codeStageId];
+      destination.append(node('p','用已知阵容从满血挑战。可指定触发召唤的弱点，也可由模拟种子选取。开场手动点首领或红标首领时先瞄准钳。','caption'));
+      window.AtlasPveWorkbench?.mount(destination,{stageId:spiderNormal.stageId,groupId:spiderNormal.stageId,version:source.resourceVersion,
+        battleMode:spiderNormal.battleMode,memberCount:spiderNormal.memberCount,waveCount:1,label:'稀有·土蜘蛛',spiderNormal:true,
+        codeStageId:code?.actors===1&&code.shikigami===spiderNormal.memberCount?spiderNormal.codeStageId:null,codeLabel:code?.name});
+      return;
+    }
     if(scenario.stage===spiderLive.stageId&&scenario.mode===spiderLive.battleMode&&route?.scene_engine===spiderLive.engine.name&&
         stage?.groupid===spiderLive.stageId&&stage.shishentotal===spiderLive.memberCount&&formation.resindex===spiderLive.sceneId){
       const code=DATA.gameConfig.stages[spiderLive.codeStageId];

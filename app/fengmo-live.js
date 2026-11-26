@@ -41,6 +41,19 @@
  const rotationConstant=10631;
  const rotationSkills=[63402,63601,63404,63602,63405,63603,63406];
  const ref=(table,key,label)=>({table,key,label,found:true});
+ const spiderNormal={
+  stageId:25001,battleMode:3003,codeStageId:10020220,sceneId:40005,openingTarget:82,
+  memberCount:5,windowLimit:3600,summonLimit:5,ratingThresholds:[0,30000,300000,800000,2000000],
+  parts:[[1,81,'本体'],[2,82,'钳'],[3,83,'背'],[4,84,'脚']],
+  spawns:{85:'小蜘蛛',86:'秘宝小纸人',87:'金色小蜘蛛'},
+  engine:{name:'HHZSGveEngine',route:'spider-normal-local-team',
+   sha256:'9d7119492ea6524c37a1f63fcc51a5d160d35d3579650ec7e3fec59428044cd5'},
+  validSettings(settings){
+   const {windowSeconds,weakPart}=settings??{};
+   return Object.keys(settings??{}).length===2&&Number.isSafeInteger(windowSeconds)&&windowSeconds>=1&&windowSeconds<=this.windowLimit&&
+    [0,2,3,4].includes(weakPart);
+  },
+ };
  const spiderLive={
   stageId:25017,battleMode:4440,codeStageId:10020221,sceneId:40005,openingTarget:250172,
   memberCount:5,windowLimit:3600,cocoonSeconds:60,defaultTrait:63402,
@@ -196,6 +209,9 @@
     refs.push(ref('battle_team_routes',route.team??route.mode,'客户端组队注册'),
      ref('Constant',rotationConstant,'极词条轮换池'),...rotationSkills.map(id=>ref('skill',{$tuple:[id,1,-1]},'极词条技能')));
    }
+   if(soil&&!hard)refs.push(ref('Constant',231,'金色小蜘蛛概率'),
+    ...[353,355,356].map(id=>ref('skill',{$tuple:[id,1,-1]},'原版部位、召唤与激怒技能')),
+    ...Object.keys(spiderNormal.spawns).map(id=>ref('monster',Number(id),'原版召唤物')));
    if(hard&&soil)refs.push(ref('Constant',10639,'白茧剩余时限'),ref('Constant',10641,'白茧部位配置'),
     ...[63408,63409,63410,63411].map(id=>ref('skill',{$tuple:[id,1,-1]},'原版部位与召唤技能')),
     ...[250175,250176,250177,250178,250179,250180].map(id=>ref('monster',id,'原版召唤物')),
@@ -214,5 +230,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton,longche,spiderLive};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton,longche,spiderLive,spiderNormal};
 });
