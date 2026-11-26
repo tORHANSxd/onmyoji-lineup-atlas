@@ -56,8 +56,10 @@ def urdtg_opening(modules, expected_sources, mode, stage_id, activity, engine_ty
     group = BattleMonstersInfo.data[stage_id]
     if len(group["MonstersInfos"]) != 1:
         raise RuntimeError("The original tournament formation changed")
+    # The native recorder serializes these fields in insertion order.
     return group, profiles, {"pve_data_flag": str(stage_id), "teamUid": f"offline-urdtg-{engine_type}",
-                             "act_id": activity, "replace_yys_level": actor_level, "replace_yys_skill_level": skill_level,
+                             "act_id": activity, **({"act_heroes_info": {}} if mode == URDTG_EXPLORE_MODE else {}),
+                             "replace_yys_level": actor_level, "replace_yys_skill_level": skill_level,
                              "buff_num": masks, "skill_info": {URDTG_MASK_SKILL: 1} if masks else {}}
 
 
@@ -81,7 +83,8 @@ def urdtg_explore_stage(modules, stage_id, plan):
         if hero == URDTG_ACTOR or hero in roster or hero not in profiles or level != profiles[hero]["init_lv"]:
             raise ValueError("Unknown, duplicate or invalid tournament recruit")
         roster[hero] = level
-    engine = URDTGExploreBattleEngine({**opening, "act_heroes_info": roster})
+    opening["act_heroes_info"] = roster
+    engine = URDTGExploreBattleEngine(opening)
     engine.battleMode = URDTG_EXPLORE_MODE
     return engine, group, const, profiles
 
