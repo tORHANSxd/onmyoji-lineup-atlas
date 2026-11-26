@@ -1309,7 +1309,8 @@
     const limit=route.deadlineSeconds?` · 原表时限 ${route.deadlineSeconds} 秒`:` · 原表 ${route.waves.length} 波`;
     destination.append(node('p',`原表编组演练${limit}。正式活动的入场配置由游戏服务器下发。`,'caption'));
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,battleMode:3,
-      waveCount:route.waves.length,label:`${entry.title} · 原表编组演练`,version:source.resourceVersion});
+      waveCount:route.waves.length,label:`${entry.title} · 原表编组演练`,version:source.resourceVersion,
+      pveDeadlineSeconds:route.deadlineSeconds});
   }
 
   function mountCreviceWindow(block,stageId,row,formation){
@@ -1569,10 +1570,14 @@
         destination.append(node('p','寝肥食材战需要匹配版本的原版关卡、食材和敌方站位。','caption'));
       else if (window.AtlasMapBoss?.stages[stageId]) destination.append(node('p','地图首领组队复跑需要匹配的客户端关卡与编组资料。','caption'));
       else if (entry.refs.some(ref=>ref.table==='map_boss')) destination.append(node('p','对应玩法的入场与结算条件见关联的地图首领入口。','caption'));
+      else if(entry.refs.some(ref=>ref.table==='BattleMonstersInfo'&&!ref.found))
+        destination.append(node('p',`当前客户端保留了关卡配置，敌方编组 ${groupId} 未在原表中找到。`,'caption'));
       else if (Number.isSafeInteger(stageId)&&stageId>0&&Number.isSafeInteger(groupId)&&groupId>0&&
           Number.isSafeInteger(memberCount)&&memberCount>=1&&memberCount<=5&&
           formation?.row?.MonstersInfos?.length&&!['no_yys','replace_yysid','isplot','sl_file'].some(field=>row[field])) {
-        window.AtlasPveWorkbench?.mount(destination,{stageId,groupId,memberCount,version:state.index.resourceVersion});
+        const pveDeadlineSeconds=Number.isSafeInteger(row.battleTime)&&row.battleTime>0?row.battleTime:null;
+        if(pveDeadlineSeconds)destination.append(node('p',`原表时限 ${pveDeadlineSeconds} 秒`,'caption'));
+        window.AtlasPveWorkbench?.mount(destination,{stageId,groupId,memberCount,version:state.index.resourceVersion,pveDeadlineSeconds});
       }
     }
     for (const {ref,row,error,waves} of groups) {

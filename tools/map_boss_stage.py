@@ -1,8 +1,7 @@
 """Replay versioned map boss battles with the original player positions."""
 
-from types import FunctionType, MethodType, SimpleNamespace
-
 from rune_team import assign_local_party, verify_local_party, verify_local_party_selection
+from pve_clock import NativePveClock
 
 MODE = 3000
 SEAL_MODE = 855
@@ -331,38 +330,13 @@ class QinfeiSideReplay(MapBossReplay):
         self.expected = [[tuple(enemy[:3]) for enemy in wave] for wave in waves]
         self.wave_count = len(wave_sizes)
         self.waves = []
-        self.started = None
+        self.clock = NativePveClock(engine, self.deadline)
         self.observe_waves()
-        self.observe_clock()
-
-    def observe_clock(self):
-        if self.deadline is not None:
-            native_deadline = self.engine.getHaltBattleTime.__func__
-            # The client uses wall time for this deadline. Bind that single
-            # original method to the replay clock so native PvE checks can fire.
-            bindings = dict(native_deadline.__globals__, time=SimpleNamespace(time=self.engine.now_time))
-            self.engine.getHaltBattleTime = MethodType(FunctionType(native_deadline.__code__, bindings), self.engine)
-        set_deadline = self.engine.set_haltBattleTime
-
-        def record_deadline(value):
-            now = self.engine.now_time()
-            expected = None if self.deadline is None else int(now) + self.deadline
-            if value != expected or self.deadline is not None and self.started is not None:
-                raise RuntimeError("The original PvE engine set a different Qinfei deadline")
-            if self.started is None:
-                self.started = now
-            return set_deadline(value)
-
-        self.engine.set_haltBattleTime = record_deadline
 
     def report(self, outcome):
-        if self.started is None or not self.waves or outcome == "win" and len(self.waves) != self.wave_count:
+        if not self.waves or outcome == "win" and len(self.waves) != self.wave_count:
             raise RuntimeError("The original PvE engine did not create the expected Qinfei waves")
-        timed_out = bool(self.engine.isHaltBattle)
-        if timed_out and (self.deadline is None or outcome == "win"):
-            raise RuntimeError("The original Qinfei side battle returned an invalid timeout")
-        return {"waves": self.waves, "deadlineSeconds": self.deadline, "timedOut": timed_out,
-                "combatSeconds": round(self.engine.now_time() - self.started, 6)}
+        return {"waves": self.waves, **self.clock.report(outcome)}
 
 
 def qinfei_food_profile(stage_id):

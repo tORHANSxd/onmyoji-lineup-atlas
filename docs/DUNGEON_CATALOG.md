@@ -84,6 +84,10 @@
 
 寝肥目录还收录 2024 年赛程、2025 与 2026 年活动配置、应援寮分组、每日首领机制、寮间排行与食材投喂规则、入场券和首领技能。
 
+通用 PvE 入口以原表 `battleTime` 设置限时。离线运行把原版时限计算绑定到固定步进的引擎时钟，显示原表秒数和超时结算。独立活动引擎仍使用各自的入场和计分规则。
+
+资源 `0.0.816` 的 `pve_stage_data` 有 14 条记录指向同版 `BattleMonstersInfo` 中不存在的编组。目录保留关卡原始字段并标出缺失编号，复跑入口需要有效编组。
+
 `PanelCombat.refreshCombatTipsBtn` 以 `pve_data_flag` 查询 `normal_battle_tips.rule_key`。`PanelCombat.onBtnCombatTips` 读取 `dungeon_challenge_series.fbtips`，并可在战斗条件满足时替换此键。`CommonTipPanel` 先查 `system_rule_dsc`，再查 `tipsInfoData_cn`。御契按此顺序关联了 13 条通用战斗提示与 514 条秘闻默认提示，其中 327 条秘闻提示来自第二张表。该表由 `com/data/pdata/tipsInfoData_cn.py` 的字面量映射提取，原模块 marshal SHA-256 为 `1f3218f2809e2604c87e14a012b81716ebfc74762d0a5a0d5a5c96026140bf28`。界面展示去掉色标后的正文，同时保留完整原字段。
 
 从 `SceneManager._initMapSrc` 提取了 630 条初始场景注册，其中 145 个模式对应的 133 个场景直接声明 `EngineClassName`。例如通用 PvE（3）声明 `MonstarGuanKaEngine`，觉醒（29）声明 `AwakeFbEngine`，阴阳寮首领退治模式（306）声明 `GuildBossEngine`。可按引擎名搜索并展开查看场景脚本与校验值。123 个有直接声明且无模式默认表记录的模式已加入关卡搜索。客户端本地开场可走组队注册、特殊副本或场景自身入口，远程战斗还取决于服务器数据。

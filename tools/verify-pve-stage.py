@@ -25,6 +25,7 @@ def replay(args, runtime, work):
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RaidDamageWindow
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import JOURNEY_HARD_MODE, JourneyHardReplay
+    from pve_clock import NativePveClock, pve_wall_seconds
     from map_boss_stage import (MODES as MAP_BOSS_MODES, ARCHIVED_NIAN_STAGES, MEITUAN_MODE, NIAN_MODES,
                                 QINFEI_FOOD_CHAIN_SECONDS, QINFEI_FOOD_MODE, QINFEI_SIDE_STAGES, QINFEI_STATIC_STAGES,
                                 SPECIAL_NIAN_MODE, MapBossReplay, MeituanReplay, NianReplay, QinfeiFoodReplay,
@@ -69,6 +70,7 @@ def replay(args, runtime, work):
     journey_hard = args.mode == JOURNEY_HARD_MODE
     map_boss_replay = None
     qinfei_side_replay = None
+    pve_clock = None
     spider = args.mode in PRACTICE_MODES
     shilian = args.mode in SHILIAN_MODES
     secret_actor_config = None
@@ -418,11 +420,16 @@ def replay(args, runtime, work):
         engine.battleMode = const.BattleMode.MODE_PVE
         wave_count = len(group["MonstersInfos"])
         route = "mode-pve-default-solo"
+        configured_deadline = stage.get("battleTime") or None
+        if args.pve_deadline is not None and configured_deadline != args.pve_deadline:
+            raise ValueError("The requested PvE deadline differs from the original stage table")
         if args.stage in QINFEI_SIDE_STAGES:
             if len(fighters) != 5:
                 raise ValueError("The Qinfei formation preview requires five owned shikigami")
             qinfei_side_replay = QinfeiSideReplay(modules, args.stage, stage, group, engine)
             route = "qinfei-side-static-formation"
+        elif configured_deadline is not None:
+            pve_clock = NativePveClock(engine, configured_deadline)
     engine.engineLocation = const.BattleLocation.LOCAL_SERVER
     engine.seed = args.seed
     generator = engine.random
@@ -591,7 +598,8 @@ def replay(args, runtime, work):
                       else SUPERGHOST_WALL_SECONDS if superghost or historical_ghost
                       else SHILIAN_REPLAY_SECONDS if shilian else TIANFA_REPLAY_SECONDS if tianfa
                       else QINFEI_FOOD_CHAIN_SECONDS if qinfei_food and args.qinfei_food_next
-                      else SPECIAL_NIAN_WALL_SECONDS if args.mode == SPECIAL_NIAN_MODE else 130 if relay else 75)
+                      else SPECIAL_NIAN_WALL_SECONDS if args.mode == SPECIAL_NIAN_MODE else 130 if relay
+                      else pve_wall_seconds(args.pve_deadline))
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
     equipped_spirit = None
@@ -791,6 +799,8 @@ def replay(args, runtime, work):
     if qinfei_side_replay:
         report["qinfeiSide"] = qinfei_side_replay.report(report["outcome"])
         report["formationsVerified"] = len(qinfei_side_replay.waves)
+    if pve_clock:
+        report["pveDeadline"] = pve_clock.report(report["outcome"])
     if tianfa:
         report["tianfa"] = tianfa_replay.report(completed)
     if spider_replay:
@@ -867,6 +877,7 @@ def main():
     from guild_retreat_stage import RETREAT_MODE, RETREAT_BOSSES
     from hunling_stage import CAPTURE_ITEMS, HUNLING_BOSS, HUNLING_MODES, HUNLING_REPLAY_SECONDS
     from journey_hard_stage import JOURNEY_HARD_MODE
+    from pve_clock import pve_wall_seconds
     from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
     from qinfei_boss_stage import (QINFEI_BOSS_MAX_WINDOW, QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES,
                                    QINFEI_BOSS_REPLAY_SECONDS, QINFEI_BOSS_STAGE)
@@ -888,6 +899,7 @@ def main():
     parser.add_argument("--qinfei-food-next", type=int, nargs="+")
     parser.add_argument("--qinfei-profile", type=int, nargs=2, metavar=("RAID", "DIFFICULTY"))
     parser.add_argument("--stage", required=True, type=int)
+    parser.add_argument("--pve-deadline", type=int)
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument("--minimum-damage", action="store_true")
     parser.add_argument("--boss", type=int, choices=RETREAT_BOSSES)
@@ -913,6 +925,8 @@ def main():
     args = parser.parse_args()
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")
+    if args.pve_deadline is not None and (args.mode != 3 or not 1 <= args.pve_deadline <= 10800):
+        parser.error("A PvE table deadline requires mode 3 and a value in the supported client range")
     if (args.mode in MAP_BOSS_MODES) != (args.map_boss_players is not None):
         parser.error("Map boss replay requires the number of players")
     if args.map_boss_players is not None and not party_positions(args.mode, args.map_boss_players):
@@ -980,7 +994,8 @@ def main():
                         QINFEI_BOSS_REPLAY_SECONDS + 20 if args.mode == QINFEI_BOSS_MODE else
                         QINFEI_FOOD_CHAIN_SECONDS + 20 if args.qinfei_food_next else
                         SPECIAL_NIAN_WALL_SECONDS + 20 if args.mode == SPECIAL_NIAN_MODE else
-                        240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else 95)
+                        240 if args.mode == RETREAT_MODE else 150 if args.mode == UNDERWORLD_MODE else
+                        pve_wall_seconds(args.pve_deadline) + 20)
     faulthandler.dump_traceback_later(watchdog_seconds, exit=True)
     with TemporaryDirectory(prefix="yuqi-pve-stage-") as directory:
         previous = Path.cwd()

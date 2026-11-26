@@ -767,8 +767,19 @@ async function main(){
       /原表编组演练 · 战斗与结算 38\.84 秒/);
     await encounter('guild','寝肥筹备副本 501200');
     assert.match(await ui(panel+'.textContent'),/原表编组演练 · 原表时限 180 秒/);
-    assert.match(await run('superghost-five',{stageId:501200,groupId:501200,battleMode:3},
+    assert.match(await run('superghost-five',{stageId:501200,groupId:501200,battleMode:3,pveDeadlineSeconds:180},
       {qinfeiSide:{timedOut:false,deadlineSeconds:180,combatSeconds:17}}),/原表时限 180 秒/);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='5114001')){
+    await encounter('battle','5114001');
+    assert.match(await ui(panel+'.textContent'),/原表时限 60 秒/);
+    assert.match(await run('superghost-five',{stageId:5114001,groupId:5114001,pveDeadlineSeconds:60},
+      {pveDeadline:{timedOut:false,deadlineSeconds:60,combatSeconds:19}}),/原表时限 60 秒/);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&entry.key==='11112'&&entry.refs.some(ref=>!ref.found))){
+    await ui('qaEncounterInput("battle","结界入侵 11112")');
+    await until(panel+'.textContent.includes("敌方编组 11112 未在原表中找到")');
+    assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='map_boss'&&entry.key===71)){
     await encounter('daily','真蛇 地图首领入口');
