@@ -13,7 +13,7 @@ const yulingOpenings=require('../app/yuling-openings.js');
 const guildHuntOpenings=require('../app/guild-hunt-openings.js');
 const guildRetreatOpenings=require('../app/guild-retreat-openings.js');
 const fengmoYanwu=require('../app/fengmo-yanwu.js');
-const generalSoulTrial=require('../app/general-soul-trial.js');
+const activityScore=require('../app/general-soul-trial.js');
 const journeyHard=require('../app/journey-hard.js');
 const fengmoLive=require('../app/fengmo-live.js');
 const tuzhizhuPractice=require('../app/tuzhizhu-practice.js');
@@ -39,7 +39,8 @@ const engines={
  [qilingGroups.battleMode]:{name:'QiLingGroupBossBattleEngine',route:'qiling-collective-local-window',sha256:qilingGroups.engineSHA256},
  3023:{name:'LBSWorldBossXEngine',route:'regional-boss-hard-scenario',sha256:'a4268deb478a53610e6ef6e23e833f3bf18d2be826f7cd703aaca7e1a54df38f'},
  [fengmoYanwu.battleMode]:{name:'FengMoEquipBattleEngine',route:'fengmo-yanwu-solo',sha256:fengmoYanwu.engineSHA256},
- [generalSoulTrial.battleMode]:{name:'FakeGod7GeneralSoulBattleEngine',route:'general-soul-activity-solo',sha256:generalSoulTrial.engineSHA256},
+ ...Object.fromEntries(Object.values(activityScore.modes).map(({battleMode,engine,route,engineSHA256})=>
+  [battleMode,{name:engine,route,sha256:engineSHA256}])),
  [journeyHard.battleMode]:{name:'JSNormalEngine',route:'journey-hard-solo',sha256:journeyHard.engineSHA256},
  ...Object.fromEntries(Object.entries(tuzhizhuPractice.modes).map(([id,mode])=>
   [id,{name:mode.engine,route:'tuzhizhu-practice-solo',sha256:mode.sha256}])),
@@ -119,7 +120,7 @@ function validArtifactReport(proof,state,dao){
 function validTactics(plan,battleMode){
  if(!Object.hasOwn(plan,'tactics'))return true;
  const {tactics}=plan;
- if(![2000,306,fengmoYanwu.battleMode,qilingGroups.battleMode,generalSoulTrial.battleMode].includes(battleMode)||
+ if((![2000,306,fengmoYanwu.battleMode,qilingGroups.battleMode].includes(battleMode)&&!Object.hasOwn(activityScore.modes,battleMode))||
     !tactics||typeof tactics!=='object'||Array.isArray(tactics)||!Object.keys(tactics).length)return false;
  return Object.entries(tactics).every(([key,value])=>{
   const slot=number=>positive(number)&&number<=plan.members.length;
@@ -319,8 +320,8 @@ function validFengmoYanwu(report,entry,plan){
    ['hp','speed','attack','defense','critRate'].every(key=>Number.isFinite(unit[key])&&unit[key]>=0))&&validScoringTactics(data,plan,entry.bossId);
 }
 
-function validGeneralSoulTrial(report,plan){
- const trial=generalSoulTrial,data=report.generalSoulTrial;
+function validActivityScore(report,plan,trial){
+ const data=report[trial.reportKey];
  const roster=plan.members.map(member=>Number(member.hero.heroId)).sort((a,b)=>a-b);
  return data&&report.sceneId===trial.sceneId&&report.waveCount===1&&data.actId===trial.actId&&
   data.deadlineSeconds===trial.deadlineSeconds&&typeof data.timedOut==='boolean'&&
@@ -427,7 +428,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
     (retreatOpening&&!validRetreat(report,retreatOpening,retreat,rounds[0]))||
     (yanwu&&!validFengmoYanwu(report,yanwu,rounds[0]))||
-    (battleMode===generalSoulTrial.battleMode&&!validGeneralSoulTrial(report,rounds[0]))||
+    (activityScore.modes[battleMode]&&!validActivityScore(report,rounds[0],activityScore.modes[battleMode]))||
     (journeyRoute&&!validJourneyReport(report,journeyRoute,journeySettings))||
     (spider&&!validTuzhizhuPractice(report,spider,stageId,rounds[0]))||
     (battleMode===2001&&!validUnderworld(report,rounds))||
@@ -476,7 +477,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(resource?[firstExperience.battleMode]:[]),...(hunt?[2000]:[]),...(underworld?[2001]:[]),...(retreat?[306]:[]),...(regional?regionModes:[]),
      ...(yanwu?[fengmoYanwu.battleMode]:[]),...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
      ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
-     ...(generalSoul?[generalSoulTrial.battleMode]:[]),...(journey?[journeyHard.battleMode]:[])]};
+     ...(generalSoul?Object.keys(activityScore.modes).map(Number):[]),...(journey?[journeyHard.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -541,10 +542,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===fengmoYanwu.battleMode&&(fengmoYanwu.resourceVersion!==resourceVersion||stageId!==groupId||
       plan.members.length!==fengmoYanwu.routes[stageId]?.memberCount))throw Error('当前配装与逢魔演武单人上阵人数不一致');
    if(battleMode===3&&Object.hasOwn(fengmoYanwu.routes,stageId))throw Error('逢魔演武需要使用原版活动计分入口');
-   if(battleMode===generalSoulTrial.battleMode&&(generalSoulTrial.resourceVersion!==resourceVersion||
-      stageId!==generalSoulTrial.stageId||groupId!==stageId||plan.members.length!==generalSoulTrial.memberCount))
-    throw Error('将魂试炼需要原版活动关卡和五位自有式神');
-   if(battleMode===3&&stageId===generalSoulTrial.stageId)throw Error('将魂试炼需要使用原版活动计分入口');
+   const scoreRoute=activityScore.modes[battleMode];
+   if(scoreRoute&&(scoreRoute.resourceVersion!==resourceVersion||stageId!==scoreRoute.stageId||
+      groupId!==stageId||plan.members.length!==scoreRoute.memberCount))
+    throw Error(`${scoreRoute.label}需要原版活动关卡和五位自有式神`);
+   if(battleMode===3&&activityScore.stages[stageId])throw Error(`${activityScore.stages[stageId].label}需要使用原版活动计分入口`);
    const journeyRoute=battleMode===journeyHard.battleMode?journeyHard.routes[stageId]:null;
    if(battleMode===journeyHard.battleMode&&(journeyHard.resourceVersion!==resourceVersion||!journeyRoute||stageId!==groupId||
       plan.members.length!==journeyHard.memberCount||!validJourneySettings(journeySettings))||journeySettings!==undefined&&!journeyRoute)

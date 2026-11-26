@@ -103,8 +103,8 @@ function pveGoalMet(report,battleMode){
  return report.wavesCleared===report.waveCount;
 }
 
-const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.qilingCollective??report.generalSoulTrial;
-const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===qiling.battleMode||mode===generalSoul.battleMode;
+const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.qilingCollective??report.generalSoulTrial??report.activityScore;
+const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===qiling.battleMode||Object.hasOwn(generalSoul.modes,mode);
 const creditedDamage=report=>!report.guildHunt||report.outcome==='win';
 
 function damageResult(samples){

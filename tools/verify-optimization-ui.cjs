@@ -53,7 +53,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,402,528,921,1031,1032,1041,2000,2001,2507,3004,3005,3023,5550,5551,8238]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,402,528,921,1031,1032,1041,2000,2001,2069,2507,3004,3005,3023,5550,5551,6086,8238]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -321,6 +321,7 @@ async function main(){
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
+   known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
    known('hunling',10051005,5),known('hunling-3star',10051004,5),known('hunling-1star',10051006,5),known('qiling-group',10055004,5)];
   const trial=known('six-realms',110151,6);
@@ -628,6 +629,23 @@ async function main(){
      await encounter(stage.family,'SSR3困难 3504732');
      assert.match(await ui(panel+'.textContent'),/将魂试炼 · 单人个人伤害/);
     }
+   }
+   for(const [activityRow,label,lineup,stageId,battleMode] of [
+    [58,'雪山修行','snow',7287242,2069],[6082,'刹那试炼','instant',3334472,6086],
+   ]){
+    if(!cases.some(entry=>entry.table==='act_team_battle'&&Number(entry.key)===activityRow))continue;
+    await encounter('event',label);
+    assert.deepEqual(await ui('[...'+options+'.options].map(o=>o.value).filter(id=>id.startsWith("qa-known-"))'),['qa-known-'+lineup]);
+    assert.match(await ui(panel+'.textContent'),/原版计分窗口 300 秒/);
+    assert.match(await run(lineup,{stageId,groupId:stageId,battleMode},{outcome:'loss',wavesCleared:0,
+     activityScore:{damage:2154000,timedOut:true,combatSeconds:300.25}}),
+     /单场最高 2,154,000.*达到计分时限.*个人伤害 2,154,000 · 战斗与结算 300\.25 秒/s);
+   }
+   if(cases.some(entry=>entry.table==='act_team_battle'&&Number(entry.key)===57)){
+    await ui('qaEncounterInput("event","彼世逢魔")');
+    await until(panel+'.textContent.includes("需要当局队友阵容及入场状态")');
+    assert.match(await ui(panel+'.textContent'),/原版组队入口 · 3 名玩家 · 关卡时限 180 秒/);
+    assert.equal(await ui(start+'===null'),true);
    }
    if(catalog.entries.has('journey_hardbattle')){
     await encounter('event','京畿净化首领挑战 七人岬·扇');

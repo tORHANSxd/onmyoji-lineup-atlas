@@ -192,7 +192,7 @@ function sampleBattleMarkup(samples){
   const hunt=sample.guildHunt;
   const retreat=sample.guildRetreat;
   const yanwu=sample.fengmoYanwu;
-  const generalSoul=sample.generalSoulTrial;
+  const activityScore=sample.generalSoulTrial??sample.activityScore;
   const journey=sample.journeyHard;
   const journeyBonus=journey?Object.entries({attack:'攻击',defense:'防御',hp:'生命',speed:'速度',crit:'暴击',critDamage:'暴击伤害'})
    .flatMap(([key,label])=>journey.blessingBonus[key]?[`${label} +${key==='speed'?journey.blessingBonus[key]:
@@ -223,8 +223,8 @@ function sampleBattleMarkup(samples){
     `个人伤害 ${retreat.damage.toLocaleString('zh-CN')} · 作战 ${retreat.combatSeconds.toFixed(2)} / ${retreat.windowSeconds} 秒 · ${retreat.phases.length} 次阶段切换`:
    yanwu?`${!sample.completed?'结算待确认':yanwu.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${yanwu.damage.toLocaleString('zh-CN')} · 作战 ${yanwu.combatSeconds.toFixed(2)} 秒`:
-   generalSoul?`${!sample.completed?'结算待确认':generalSoul.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
-    `个人伤害 ${generalSoul.damage.toLocaleString('zh-CN')} · 战斗与结算 ${generalSoul.combatSeconds.toFixed(2)} 秒`:
+   activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
+    `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    journey?`${!sample.completed?'结算待确认':journey.timedOut?'原版判定超时':describeBattle(sample,false)} · `+
     `时限 ${journey.deadlineSeconds} 秒 · 战斗与结算 ${journey.combatSeconds.toFixed(2)} 秒 · 祝福 ${journey.blessingCount} 层`+
     (journeyBonus.length?` · 开场 ${journeyBonus.join('、')}`:''):

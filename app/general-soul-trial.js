@@ -3,6 +3,7 @@
 
 const trial={resourceVersion:'0.0.816',battleMode:2507,teamType:3507,actId:10771,
  activityRow:4,stageId:3504732,sceneId:5069600,codeStageId:100935,deadlineSeconds:180,memberCount:5,
+ label:'将魂试炼',engine:'FakeGod7GeneralSoulBattleEngine',route:'general-soul-activity-solo',reportKey:'generalSoulTrial',
  enemies:[27988592,27988368,27988279,27988318,27988370,27988259],
  engineSHA256:'c337409be3a67ba594ad92f2f23df7ee0643a104dbd90f0c5137f4601670bcb8',
  tableSHA256:{
@@ -12,6 +13,24 @@ const trial={resourceVersion:'0.0.816',battleMode:2507,teamType:3507,actId:10771
   normal_battle_config:'51124450333f6b6859599013d31c8d70c90c57972d154bbb17f1d3aaa8a6db66',
  },
 };
-if(typeof module==='object'&&module.exports)module.exports=trial;
-else globalThis.AtlasGeneralSoulTrial=trial;
+const legacy=Object.freeze(trial);
+const soloFields={resourceVersion:trial.resourceVersion,tableSHA256:trial.tableSHA256,deadlineSeconds:300,
+ memberCount:5,route:'solo-activity-score',reportKey:'activityScore'};
+const snow={...soloFields,label:'雪山修行',battleMode:2069,teamType:3069,actId:11510,activityRow:58,
+ stageId:7287242,sceneId:3064595,codeStageId:100973,
+ enemies:[75294258,75294590,75294322,75294300,75294394,75294379],engine:'SijinshenGeneralSoulBattleEngine',
+ engineSHA256:'e27732ffb01aa82a77ece359f26e77ccefcd3c5af278a2b9de640738bd167983'};
+const instant={...soloFields,label:'刹那试炼',battleMode:6086,teamType:6086,actId:12440,activityRow:6082,
+ stageId:3334472,sceneId:3647228,codeStageId:101009,
+ enemies:[43483331,43483220,43483300,43483558,43483577,43483344],engine:'XiaoyeBaitiBattleEngine',
+ engineSHA256:'cb98b0fd37d34f1be074ee91dedf39d3a032ea826123e60a71fb75f51d5a628a'};
+const team={resourceVersion:trial.resourceVersion,tableSHA256:trial.tableSHA256,label:'彼世逢魔',
+ battleMode:2600,teamType:3600,actId:11696,activityRow:57,stageId:594011,sceneId:40061,deadlineSeconds:180,
+ playerCount:3,memberCount:5,enemies:[9402266,9402266,9402266,9401231,9401231,9401231]};
+const solo=[legacy,snow,instant];
+const modes=Object.fromEntries(solo.map(row=>[row.battleMode,row]));
+const stages=Object.fromEntries([...solo,team].map(row=>[row.stageId,row]));
+const encounters={...legacy,modes,stages};
+if(typeof module==='object'&&module.exports)module.exports=encounters;
+else globalThis.AtlasGeneralSoulTrial=encounters;
 })();
