@@ -41,6 +41,22 @@
  const rotationConstant=10631;
  const rotationSkills=[63402,63601,63404,63602,63405,63603,63406];
  const ref=(table,key,label)=>({table,key,label,found:true});
+ const longche={
+  stageId:25002,battleMode:3006,codeStageId:10020226,sceneId:40010,boss:90,
+  memberCount:5,windowLimit:1200,defaultWindow:1200,repairLimit:150,defaultRepairSeconds:30,defaultCommander:159,
+  commanders:{151:'大天狗呱',152:'荒川呱',156:'酒吞呱',159:'青行呱'},
+  clues:{151:121,152:122,156:126,159:129},
+  phases:{slime:'地面交战',flee:'胧车升空',repair:'紧急修理',gift:'秘宝小纸人'},
+  formations:{slime:[],flee:[[2,152],[4,159],[5,156],[6,151]],repair:[[7,91],[8,92]],gift:[[2,99],[4,99]]},
+  engine:{name:'LongCheBossEngine',route:'longche-local-team',
+   sha256:'5fe8e20a505c79306ab8c90f10295b3f472d64b3b55d5e5e80c55a7a2ced8067'},
+  validSettings(settings){
+   const {windowSeconds,repairSeconds,commanderId}=settings??{};
+   const allowed=(value,limit)=>Number.isSafeInteger(value)&&value>=1&&value<=limit;
+   return Object.keys(settings??{}).length===3&&allowed(windowSeconds,this.windowLimit)&&allowed(repairSeconds,this.repairLimit)&&
+    Number.isSafeInteger(commanderId)&&Object.hasOwn(this.commanders,commanderId);
+  },
+ };
  const skeleton={
   stageId:25003,battleMode:3012,codeStageId:10020222,sceneId:40012,boss:9991001,
   memberCount:5,windowLimit:1200,defaultWindow:600,positions:[2,3,4,5,6,7],defaultTruePositions:[2,3],
@@ -128,6 +144,13 @@
     ref(route.ruleTable??'tipsInfoData_cn',route.rule,'客户端玩法说明'),
     ...coinConstants.map(([id,label])=>ref('Constant',id,label)),
    ];
+   if(route.stage===longche.stageId){
+    refs.push(...[[100,'地面小呱太示例'],[200,'本地采用的升空精英编组'],[300,'红、蓝修理呱阵位'],[400,'修理中断的纸人编组']]
+     .map(([id,label])=>ref('troops',{$tuple:[id,1]},label)),
+     ...[3606,3619,3622,3625].map(id=>ref('Constant',id,'计时及修理规则')),
+     ...[420,421,422,423,424,426,433,444].map(id=>ref('skill',{$tuple:[id,1,-1]},'原版阶段技能')),
+     ...Object.keys(longche.commanders).map(id=>ref('Contrast',Number(id),'统帅与地面线索的对应关系')));
+   }
    if(route.stage===skeleton.stageId){
     refs.push(...[[100,'首轮小怪'],[200,'真假部下'],[300,'秘宝小纸人'],[400,'末轮小怪']].map(([id,label])=>ref('huangkulou_stage',{$tuple:[id,1]},label)),
      ...[3801,3802,3803].map(id=>ref('Constant',id,'阶段血线')),
@@ -175,5 +198,5 @@
  }
 
  const isLiveStage=stageId=>bosses.some(({normal,extreme})=>normal.stage===stageId||extreme?.stage===stageId);
- return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton};
+ return {resourceVersion,tableSHA256,encounters,ratingBands,isLiveStage,duskWraith,songstress,mirage,catfish,skeleton,longche};
 });

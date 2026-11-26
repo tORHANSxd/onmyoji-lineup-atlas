@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3008,3012,3013,3014,3015,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,5001,5002,5550,5551,6086,8238,9590,9591,9592,9593]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -141,7 +141,7 @@ async function main(){
  });
  if(catalog?.index.encounters&&catalog.entries.has('event4'))await check('逢魔实战按十二个入口展示原版编组、评级和奖励',async()=>{
   const panel='$("client-dungeons-encounter-detail")';
-  const {encounters,duskWraith,songstress,mirage,catfish,skeleton}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
+  const {encounters,duskWraith,songstress,mirage,catfish,skeleton,longche}=require('../app/fengmo-live.js'),entries=encounters(new Set(catalog.entries.keys()));
   assert.equal(entries.length,12);
   for(const entry of entries){
    const query=entry.title.replace(' · ',' ');
@@ -174,6 +174,11 @@ async function main(){
     assert.match(info,/击败两名真部下.*真假部下线索/s);
     assert.equal(await ui(panel+'.querySelector("[data-pve-skeleton-window]")?.valueAsNumber'),skeleton.defaultWindow);
     assert.deepEqual(await ui('[...'+panel+'.querySelectorAll("[data-pve-skeleton-position]")].map(el=>Number(el.value))'),skeleton.defaultTruePositions);
+   }else if(entry.fengmoLive.stage===longche.stageId){
+    assert.match(info,/第一套精英编组.*红、蓝修理呱阵位.*统帅与地面线索/s);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-longche-window]")?.valueAsNumber'),longche.defaultWindow);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-longche-repair]")?.valueAsNumber'),longche.defaultRepairSeconds);
+    assert.equal(await ui(panel+'.querySelector("[data-pve-longche-commander]")?.value'),String(longche.defaultCommander));
    }else assert.equal(await ui(panel+'.querySelector("[data-pve-stock]")'),null);
   }
   await ui('qaEncounterInput("daily","逢魔实战 稀有·土蜘蛛")');
@@ -366,7 +371,7 @@ async function main(){
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5),
    known('dusk-wraith',10020227,5),known('songstress',10020217,6,10,notes),known('mirage',10020218,5,10,notes),
-   known('catfish',10020224,5,10,notes),known('skeleton',10020222,5,10,notes),
+   known('catfish',10020224,5,10,notes),known('skeleton',10020222,5,10,notes),known('longche',10020226,5,10,notes),
    known('snow',100973,5),known('instant',101009,5),known('tianfa',100969,6),known('lbs-rat',101006,5),
    known('liyu',10733004,5),known('secret-team',10701004,5),known('secret-mirror',10710004,5),known('secret-referee',10718011,5),
    known('region',10020215,5,13),known('region-hard',10020216,5),known('orochi',10020228,6),
@@ -1029,6 +1034,27 @@ async function main(){
     const skeletonReport=await run('skeleton',{stageId:25003,groupId:25003,battleMode:3012,skeletonSettings},{skeleton},tactical);
     assert.match(skeletonReport,/击败荒骷髅 · 本队伤害 5,566,778.*真假部下 · 69\.50 秒进场.*4 号位线索 · 测试线索/s);
     assert.match(skeletonReport,/4 号位（假）、2 号位（真）、7 号位（真）.*实际触发惩罚 1 次/s);
+    await encounter('daily','逢魔实战 稀有·胧车');
+    await choose('longche');
+    const repair='document.querySelector("[data-pve-longche-repair]")';
+    assert.equal(await ui(`${repair}.focus();document.activeElement===${repair}&&${repair}.tabIndex===0`),true);
+    const setRepair=value=>ui(`(()=>{const input=${repair};input.value='${value}';input.dispatchEvent(new Event('input'));})()`);
+    await setRepair(0);
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(repair+'.getAttribute("aria-invalid")'),'true');
+    assert.match(await ui(`document.getElementById(${repair}.getAttribute('aria-describedby')).textContent`),/修理时限须为 1 至 150 秒/);
+    await setRepair(45);
+    await ui(`(()=>{const input=document.querySelector('[data-pve-longche-commander]');
+      input.value='151';input.dispatchEvent(new Event('change'));})()`);
+    const longcheSettings={windowSeconds:1200,repairSeconds:45,commanderId:151};
+    const longche={settings:longcheSettings,reason:'boss-defeated',damage:7895200,combatSeconds:400.1,maximumHp:4200000,
+     bossHp:0,papersDefeated:2,groundPapersDefeated:1,clues:[{}],commanderKills:[125,265],groundWaves:[{},{}],
+     phases:[{phase:'slime',seconds:0,bossHp:4200000},{phase:'flee',seconds:71.42,bossHp:3359999},
+      {phase:'repair',seconds:143.34,bossHp:2450000}],
+     repairs:[{seconds:179.28,interrupted:true,timeout:false,remaining:[0,.09],healed:0},
+      {seconds:345.5,interrupted:false,timeout:true,remaining:[.91,.97],healed:504000}]};
+    const longcheReport=await run('longche',{stageId:25002,groupId:25002,battleMode:3006,longcheSettings},{longche},tactical);
+    assert.match(longcheReport,/击败胧车 · 本队伤害 7,895,200.*胧车升空 · 71\.42 秒进场.*大天狗呱.*打断修理.*修理超时.*胧车恢复 504,000 生命/s);
    }
    if(cases.some(entry=>entry.table==='fengmo_band_together_battle'&&entry.key===1)){
     await encounter('event','逢魔乐队 胧车共斗首领');

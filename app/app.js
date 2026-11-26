@@ -209,6 +209,7 @@ function sampleBattleMarkup(samples){
   const mirage=sample.mirage;
   const catfish=sample.catfish;
   const skeleton=sample.skeleton;
+  const longche=sample.longche;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
@@ -288,6 +289,8 @@ function sampleBattleMarkup(samples){
     `本队伤害 ${catfish.damage.toLocaleString('zh-CN')} · 作战 ${catfish.combatSeconds.toFixed(2)} / ${catfish.settings.windowSeconds} 秒`:
    skeleton?`${{'boss-defeated':'击败荒骷髅','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[skeleton.reason]} · `+
     `本队伤害 ${skeleton.damage.toLocaleString('zh-CN')} · 作战 ${skeleton.combatSeconds.toFixed(2)} / ${skeleton.settings.windowSeconds} 秒`:
+   longche?`${{'boss-defeated':'击败胧车','team-defeated':'本队落败','window-expired':'达到计分时限','incomplete':'结算待确认'}[longche.reason]} · `+
+    `本队伤害 ${longche.damage.toLocaleString('zh-CN')} · 作战 ${longche.combatSeconds.toFixed(2)} / ${longche.settings.windowSeconds} 秒`:
    activityScore?`${!sample.completed?'结算待确认':activityScore.timedOut?'达到计分时限':sample.outcome==='win'?'已清场':'未清场'} · `+
     `个人伤害 ${activityScore.damage.toLocaleString('zh-CN')} · 战斗与结算 ${activityScore.combatSeconds.toFixed(2)} 秒`:
    tianfa?`${!sample.completed?'未取得结算':sample.outcome==='win'?'通关':'未通关'} · `+
@@ -417,6 +420,17 @@ function sampleBattleMarkup(samples){
    ${skeleton.votes.length?`<p class="caption">部下击败顺序 · ${skeleton.votes.map(vote=>
     `${vote.position} 号位（${vote.wrong?'假':'真'}）`).join('、')}</p>`:''}
    <p class="caption">误杀后实际触发惩罚 ${skeleton.punishments.length} 次 · 击败纸人 ${skeleton.papersDefeated} 位</p></details>`:'';
+  const longcheStages=longche?(()=>{
+   const source=AtlasFengmoLive.longche;
+   const percent=value=>value.toLocaleString('zh-CN',{style:'percent',maximumFractionDigits:2});
+   return `<details><summary>查看胧车各阶段</summary><ol>${longche.phases.map(phase=>
+    `<li>${source.phases[phase.phase]} · ${phase.seconds.toFixed(2)} 秒进场 · 首领余血 ${percent(phase.bossHp/longche.maximumHp)}</li>`).join('')}</ol>
+   <p class="caption">地面召唤 ${longche.groundWaves.length} 波 · 统帅 ${source.commanders[longche.settings.commanderId]} · 出现线索 ${longche.clues.length} 次 · 击败统帅 ${longche.commanderKills.length} 次</p>
+   ${longche.repairs.length?`<ul>${longche.repairs.map(result=>
+    `<li>${result.seconds.toFixed(2)} 秒 · ${result.interrupted?'打断修理':result.timeout?'修理超时':'修理成功'} ·
+     红、蓝修理呱余血 ${result.remaining.map(percent).join(' / ')}${result.healed?` · 胧车恢复 ${Math.round(result.healed).toLocaleString('zh-CN')} 生命`:''}</li>`).join('')}</ul>`:''}
+   <p class="caption">击败地面纸人 ${longche.groundPapersDefeated} 位 · 击败维修纸人 ${longche.papersDefeated} 位</p></details>`;
+  })():'';
   const towerLife=ghostKingTower?.kind==='boss'?`<div class="caption">敌方余血 · ${esc(ghostKingTower.enemies.map(unit=>
    `${unit.position} 号位 ${unit.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})}`).join(' · '))}
    ${sample.completed&&ghostKingTower.enemies.some(unit=>unit.remainingHp>0)?
@@ -436,7 +450,7 @@ function sampleBattleMarkup(samples){
    return `<li>${esc(name)} · 原版实体 ${unit.level} 级 · 速度 ${unit.speed.toFixed(2)} · `+
     `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}</li>`;
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}</li>`;
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}</li>`;
  }).join('');
 }
 
