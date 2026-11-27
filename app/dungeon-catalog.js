@@ -2054,6 +2054,7 @@
     appendGuildDinnerDetails(destination, entry, groups);
     showBreakthrough(destination, entry, groups);
     showDojoGuardian(destination, entry, groups);
+    showDojoDefense(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
     const asuraMounted=showAsuraBattle(destination, entry, groups)||showAsuraDepths(destination, entry, groups, monsters);
     const chapterChallengeMounted=showChapterChallenge(destination,entry,groups,monsters,chapterDifficulties);
@@ -2391,6 +2392,18 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
       version:source.resourceVersion,label:entry.title,memberCount:5,waveCount:1,
       codeStageId:source.codeStageId,dojoGuardian:guardian});
+  }
+
+  function showDojoDefense(destination, entry, groups) {
+    const source=AtlasDojoDefense;
+    if(entry.table!=='battle_mode_routes'||Number(entry.key)!==source.battleMode||!matchesOpeningSource(source))return;
+    const get=table=>groups.find(group=>group.ref.table===table)?.row;
+    const code=get('team_assist_stage'),scene=get('Combinesceneinfo');
+    if(groups[0].row?.scene_class!=='JiejieTuPoGym2Scene'||scene?.id!==source.sceneId||
+      code?.id!==source.stageId||code.ss_num!==source.memberCount||code.yys_num!==1)return;
+    destination.append(node('p','逐波填写已知防守阵容。守方按原版自动行为出战，进攻方沿用同一套配装，由原版引擎处理恢复和换波。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.sceneId,battleMode:source.battleMode,
+      version:source.resourceVersion,label:entry.title,memberCount:source.memberCount,codeStageId:source.stageId,dojoDefense:true});
   }
 
   function showDreamTrial(destination, entry, groups) {

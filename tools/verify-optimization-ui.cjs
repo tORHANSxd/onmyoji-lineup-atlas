@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -468,7 +468,7 @@ async function main(){
   const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
    known('chapter-challenge',1001001,5),known('breakthrough-attack',10020201,5),known('breakthrough-defense',10020201,5,13),
-   known('dojo-guardian',10020203,5),
+   known('dojo-guardian',10020203,5),known('dojo-defense',10020203,5,13),
    known('secret-race',10700011,5),known('crevice',10020211,5),
    known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
@@ -537,6 +537,15 @@ async function main(){
      assert.deepEqual(plan.defender.members.map(member=>member.hero.heroId),ids.slice(0,5));
      assert.ok(plan.defender.members.every(member=>member.souls.length===6));
      assert.equal(plan.attackPartySize,expected.battleMode===4001?3:undefined);
+    }
+    if(expected.battleMode===4003){
+     assert.equal(plan.dojoDefense.leader,true);
+     assert.equal(plan.dojoDefense.partySize,2);
+     const [first,second]=plan.dojoDefense.waves;
+     assert.deepEqual(plan.dojoDefense.waves.map(wave=>wave.onmyoji.heroId),[13,10]);
+     assert.deepEqual(first.members.map(member=>member.hero.heroId),ids.slice(0,5));
+     assert.deepEqual(second.members.map(member=>member.hero.heroId),[ids[1],ids[2],ids[4]]);
+     assert.deepEqual(second.omittedSlots,[2,5]);
     }
     calls.push(options.seed);
     if(!live)return {...sample,...options,...response};
@@ -622,6 +631,36 @@ async function main(){
      {outcome:'loss',wavesCleared:0,dojoGuardian:{damage:3600,startHp:100000,remainingHp:96400,combatSeconds:20,
       settlementWaitSeconds:0,timedOut:true,defeated:false}});
     assert.match(summary,/达到模拟时限 · 本队伤害 3,600 · 入场生命 100,000 · 剩余生命 96,400/s);
+   }
+   if(cases.some(entry=>entry.table==='battle_mode_routes'&&Number(entry.key)===4003&&entry.refs.some(ref=>ref.table==='Combinesceneinfo'))){
+    await encounter('guild','道馆 结界师与馆主 4003');
+    const leader='document.querySelector("[data-pve-dojo-leader]")';
+    const party='document.querySelector("[data-pve-attack-party]")';
+    const waveList='document.querySelector("[data-pve-dojo-wave-list]")';
+    const open='document.querySelector("[data-pve-dojo-add-wave]")';
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.equal(await ui(waveList+'.querySelector("[data-dojo-omissions]").hidden'),true);
+    await ui(`${leader}.value='leader';${leader}.dispatchEvent(new Event('change'));
+     ${party}.value='2';${party}.dispatchEvent(new Event('change'));${open}.click();`);
+    assert.equal(await ui(waveList+'.children.length'),2);
+    assert.equal(await ui(waveList+'.children[1].contains(document.activeElement)'),true);
+    await ui(`for(const [i,id] of ['dojo-defense','dojo-guardian'].entries()){
+     const f=${waveList}.children[i].querySelector('[data-dojo-lineup]');
+     f.value='qa-known-'+id;f.dispatchEvent(new Event('change'));
+    }
+    const second=${waveList}.children[1];
+    for(const slot of [2,5]){
+     const field=second.querySelector('[data-dojo-omit][value="'+slot+'"]');field.checked=true;
+     field.dispatchEvent(new Event('change',{bubbles:true}));
+    }`);
+    const wave=(wave,actor,members,omittedSlots)=>({wave,outcome:'win',attackHp:[1,2,3,4,5,6],endAttackHp:[1,2,3,4,5,6],
+     attackOrbs:4,defenseOrbs:4,refereeSpeed:95,refereeTurns:0,omittedSlots,
+     defense:[actor,...members].map((id,position)=>({id,position:position+1,souls:position?6:0,hp:5000}))});
+    const dojoDefense={leader:true,attackParty:[[5,6],[2,3,4]],waves:[
+     wave(1,13,ids.slice(0,5),[]),wave(2,10,[ids[1],ids[2],ids[4]],[2,5])]};
+    const summary=await run('dojo-guardian',{stageId:10020203,groupId:100,battleMode:4003},
+     {dojoDefense,waveCount:2,wavesCleared:2});
+    assert.match(summary,/通过所选防守 · 馆主 · 2 人进攻 · 已击破 2 \/ 2 波.*第 2 波 · 击破.*已跳过原 2、5 号位/s);
    }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');

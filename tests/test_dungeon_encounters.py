@@ -19,6 +19,8 @@ class EncounterIndexTests(unittest.TestCase):
                                            "scene_engine": "JiejieTuPoGym2BossScene"}]],
             "pve_stage_data": [["40051", {"id": "40051", "name": "道馆守护·神龙", "groupid": 40051}]],
             "BattleMonstersInfo": [[40051, {"ID": 40051, "resindex": 40051}]],
+            "Combinesceneinfo": [[100, {"id": 100, "battlesceneinfo": 402}]],
+            "BattleScenesInfo": [[402, {"ID": 402}]],
             "Constant": [[3750, {"value": [40]}], [3762, {"value": [30]}], [3793, {"value": [4]}]],
             "team_assist_stage": [[10020203, {"name": "道馆"}]],
             "dg_guardian": [[1, {"monster_hp_delta": [3600, 4200, 3600, 500]}]],
@@ -38,6 +40,8 @@ class EncounterIndexTests(unittest.TestCase):
             self.assertEqual(row["family"], "guild")
         self.assertIn(("dg_timer_buff", 12), {(ref["table"], ref["key"]) for ref in defense["refs"]})
         self.assertIn(("dg_flaglevel_new", 1), {(ref["table"], ref["key"]) for ref in defense["refs"]})
+        self.assertIn(("Combinesceneinfo", 100), {(ref["table"], ref["key"]) for ref in defense["refs"]})
+        self.assertIn(("BattleScenesInfo", 402), {(ref["table"], ref["key"]) for ref in defense["refs"]})
         self.assertIn(("pve_stage_data", "40051"), {(ref["table"], str(ref["key"])) for ref in guardians["refs"]})
         refs = {(ref["table"], ref["key"]) for ref in stage["refs"]}
         self.assertIn(("battle_mode_routes", 4004), refs)

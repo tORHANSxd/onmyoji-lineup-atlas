@@ -91,9 +91,55 @@
 
  const busy=()=>!!(job?.running||stopping);
  const active=run=>job===run&&pane===run.pane&&!run.cancelled&&DATA===run.data&&usesDungeonInventory(run)&&
-  (!run.defenseInventory||STATE.accounts.includes(run.defenseInventory));
+  (!run.defenseInventory||STATE.accounts.includes(run.defenseInventory))&&
+  (!run.dojoWaves||run.dojoWaves.every(wave=>STATE.accounts.includes(wave.inventory)));
  const ready=()=>runtime?.available&&runtime.resourceVersion===pane.version&&
   (runtime.battleModes??[3]).includes(pane.battleMode??3);
+
+ function addDojoWave(view,focus){
+  const row=document.createElement('li');
+  row.innerHTML=`<fieldset class="pve-reserve">
+   <legend></legend>
+   <div class="actions">
+    <label class="pve-lineup-field">防守阵容 <select data-dojo-lineup></select></label>
+    <label class="pve-lineup-field">防守账号 <select data-dojo-account></select></label>
+    <button class="secondary" type="button" data-dojo-remove>移除本波</button>
+   </div>
+   <fieldset data-dojo-omissions><legend>已被击败的防守式神站位</legend><div class="actions">${[2,3,4,5,6].map(slot=>
+    `<label><input data-dojo-omit type="checkbox" value="${slot}"> ${slot} 号位</label>`).join('')}</div></fieldset>
+  </fieldset>`;
+  const field=name=>row.querySelector(`[data-dojo-${name}]`);
+  const wave={row,legend:row.querySelector('legend'),lineup:field('lineup'),inventory:field('account'),
+   omitField:field('omissions'),omitted:[...row.querySelectorAll('[data-dojo-omit]')],remove:field('remove')};
+  view.dojoWaves.push(wave);
+  view.dojoWaveList.append(row);
+  row.onchange=()=>{if(job&&!busy())job.notice=null;update();};
+  wave.remove.onclick=()=>{
+   if(pane!==view||runeBusy()||view.dojoWaves.length<2)return;
+   const index=view.dojoWaves.indexOf(wave);
+   view.dojoWaves.splice(index,1);
+   row.remove();
+   if(job)job.notice=null;
+   update();
+   (view.dojoWaves[index]??view.dojoWaves.at(-1)).lineup.focus();
+  };
+  if(focus){update();wave.lineup.focus();}
+ }
+
+ function readDojoWaves(available){
+  const actor=account(),leader=pane.dojoLeader.value==='leader';
+  const lineups=available.map(({id,title})=>[id,title]);
+  const inventories=STATE.accounts.filter(item=>item.id!==actor?.id)
+   .map(({id,name,server})=>[id,[name,server].filter(Boolean).join(' · ')]);
+  return pane.dojoWaves.map(wave=>{
+   updateSelect(wave.lineup,lineups,'选择已知防守阵容');
+   updateSelect(wave.inventory,inventories,'使用当前账号');
+   return {lineup:available.find(item=>item.id===wave.lineup.value),
+    inventory:wave.inventory.value?STATE.accounts.find(item=>item.id===wave.inventory.value):actor,
+    omittedSlots:leader?wave.omitted.filter(field=>field.checked).map(field=>Number(field.value)):[]};
+  });
+ }
+
  function readArtifact(pane){
   const id=Number(pane.artifactChoice.value),amount=pane.artifactAmount.valueAsNumber;
   const rule=pane.artifactOptions.find(row=>row.id===id);
@@ -142,7 +188,23 @@
    pane.attackPartyPositions.textContent=slots.map((positions,i)=>
     `${i===0?'队长':'队员 '+(i+1)} · ${positions.join('、')} 号位`).join('；');
   }
-  const defenseReady=!pane.breakthrough||!!pane.defenseLineup.value;
+  let defenseReady=!pane.breakthrough||!!pane.defenseLineup.value;
+  if(pane.dojoDefense){
+   const leader=pane.dojoLeader.value==='leader';
+   pane.dojoLeader.disabled=blocked;
+   pane.dojoAddWave.disabled=blocked||!available.length;
+   const waves=readDojoWaves(available);
+   pane.dojoWaves.forEach((wave,i)=>{
+    wave.legend.textContent=`第 ${i+1} 波`;
+    wave.lineup.disabled=blocked||!available.length;
+    wave.inventory.disabled=blocked||!hasAccount;
+    wave.omitField.hidden=!leader;
+    wave.omitField.disabled=blocked||!leader;
+    wave.remove.disabled=blocked||waves.length===1;
+    wave.remove.setAttribute('aria-label',`移除第 ${i+1} 波`);
+   });
+   defenseReady=waves.every(wave=>wave.lineup&&wave.inventory&&AtlasDojoDefense.validOmissions(wave.omittedSlots,leader));
+  }
   const reserve=orochiReserve(selected,account());
   pane.reserve=reserve;
   const capture=pane.captureItem?.value?{itemId:Number(pane.captureItem.value),cards:pane.captureCards.map(field=>Number(field.value))}:null;
@@ -392,7 +454,7 @@
    !supported?(runtime?.reason||(runtime?.available?'本机运行时不支持此版本或战斗模式。':'正在核对本机复跑资料…')):
    !hasAccount?'先导入并选择库存账号。':
    blocked?'已有原版复跑或正在停止，请等待其结束。':
-   available.length&&!defenseReady?'请选择要交手的防守阵容。':
+   available.length&&!defenseReady?(pane.dojoDefense?'为每波选择防守阵容，馆主波次须保留至少一位式神。':'请选择要交手的防守阵容。'):
    selected.length&&reserve&&!reserve.ready?reserve.hint:
    !captureReady?'请选择三个不同的出战式神位置。':
    !eventReady?'前行步数应为大于或等于 0 的整数。':
@@ -417,7 +479,7 @@
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
-   selected.length?`已选 ${selected.length} 套已知${pane.breakthrough?'进攻':''}阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
+   selected.length?`已选 ${selected.length} 套已知${pane.breakthrough||pane.dojoDefense?'进攻':''}阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
    available.length?'从下拉列表选择，或先在阵容库勾选对应阵容。':'阵容库暂无可用于此副本的完整阵容。请先解析或手动制作阵容码。';
  }
 
@@ -458,7 +520,7 @@
    <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive||config.spiderNormal?' id="pve-spider-live-status"':
     config.skeleton?' id="pve-skeleton-status"':config.catfish?' id="pve-catfish-status"':config.mirage?' id="pve-mirage-status"':''} data-pve-status role="status"></p>
    <div class="actions">
-    <label class="pve-lineup-field">${config.breakthrough?'进攻阵容':'已知阵容'} <select data-pve-lineup></select></label>
+    <label class="pve-lineup-field">${config.breakthrough||config.dojoDefense?'进攻阵容':'已知阵容'} <select data-pve-lineup></select></label>
     ${config.trialEligible?`<label class="pve-lineup-field">试炼式神位置 <select data-pve-trial>
     <option value="">自动识别唯一可选式神</option>
     ${Array.from({length:config.memberCount},(_,i)=>`<option value="${i+1}">阵容中第 ${i+1} 位式神</option>`).join('')}
@@ -469,7 +531,7 @@
     config.mirage?' aria-describedby="pve-mirage-status"':''} data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
-   ${config.breakthroughParty?`<fieldset class="pve-reserve"><legend>进攻编组</legend><div class="actions">
+   ${config.breakthroughParty||config.dojoDefense?`<fieldset class="pve-reserve"><legend>进攻编组</legend><div class="actions">
     <label class="pve-lineup-field">进攻人数 <select data-pve-attack-party><option value="1">单人</option>
      <option value="2">双人</option><option value="3">三人</option></select></label>
     <output class="caption" data-pve-attack-party-positions></output>
@@ -478,6 +540,13 @@
     <label class="pve-lineup-field">防守阵容 <select data-pve-defense-lineup></select></label>
     <label class="pve-lineup-field">防守账号库存 <select data-pve-defense-account></select></label>
    </div><p class="caption">防守使用阵容的式神、阴阳师和御魂。结界皮肤、寮加成、防守契灵和守护使用空配置。</p></fieldset>`:''}
+   ${config.dojoDefense?`<fieldset class="pve-reserve"><legend>防守顺序</legend>
+    <label class="pve-lineup-field">挑战对象 <select data-pve-dojo-leader><option value="defender">结界师</option>
+     <option value="leader">馆主</option></select></label>
+    <ol class="dungeon-battle-list" data-pve-dojo-wave-list></ol>
+    <button class="secondary" type="button" data-pve-dojo-add-wave>添加防守波次</button>
+    <p class="caption">离线使用默认道馆条件。馆主波次可以标记已被击败的防守式神。</p>
+   </fieldset>`:''}
    ${config.journeyHard?`<div class="actions">
     <label class="pve-lineup-field">祝福层数 <input data-pve-journey-blessings type="number" value="0" min="0" step="1" required></label>
     <label class="pve-lineup-field">战斗时限（秒） <input data-pve-journey-deadline type="number" min="1" step="1" required></label>
@@ -796,6 +865,7 @@
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
    defenseLineup:part('defense-lineup'),defenseAccount:part('defense-account'),
    attackParty:part('attack-party'),attackPartyPositions:part('attack-party-positions'),
+   dojoLeader:part('dojo-leader'),dojoWaveList:part('dojo-wave-list'),dojoAddWave:part('dojo-add-wave'),dojoWaves:[],
    asuraFields:part('asura-fields'),asuraLevel:part('asura-level'),asuraHp:part('asura-hp'),asuraEnrage:part('asura-enrage'),
    asuraSkills:all('asura-skill'),asuraKeys:all('asura-key'),asuraTowers:all('asura-tower'),asuraHint:part('asura-hint'),
    asuraDepthSlots:all('asura-depth-slot'),asuraDepthDamage:all('asura-depth-damage'),
@@ -831,7 +901,7 @@
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.defenseLineup,pane.defenseAccount,pane.attackParty,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
+  for(const field of [pane.lineup,pane.defenseLineup,pane.defenseAccount,pane.attackParty,pane.dojoLeader,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,pane.mirageTrait,
    pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.longcheTrait,
@@ -843,6 +913,15 @@
    if(job&&!busy())job.notice=null;
    update();
   };
+  if(pane.dojoDefense){
+   const view=pane;
+   addDojoWave(view,false);
+   view.dojoAddWave.onclick=()=>{
+    if(pane!==view||runeBusy())return;
+    if(job)job.notice=null;
+    addDojoWave(view,true);
+   };
+  }
   for(const field of [pane.eventMoves,pane.trainingMasks,pane.journeyDeadline,pane.journeyBlessings,pane.dojoGuardianHp,pane.dojoGuardianWindow,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.mirageWindow,pane.mirageGeneral,pane.mirageWeekly,
@@ -1138,6 +1217,7 @@
     {useStageActor:!!run.pane.replacementActor});
    if(run.defender)plan.defender=run.defender;
    if(run.attackPartySize)plan.attackPartySize=run.attackPartySize;
+   if(run.dojoDefense)plan.dojoDefense=run.dojoDefense;
    let trialSlot;
    if(run.pane.trialEligible){
     const eligible=plan.members.map(({hero},i)=>run.pane.trialEligible.includes(Number(hero.heroId))?i+1:0).filter(Boolean);
@@ -1231,7 +1311,11 @@
   const defenseLineup=pane.breakthrough&&available.find(item=>item.id===pane.defenseLineup.value);
   const defenseInventory=pane.breakthrough&&(pane.defenseAccount.value?
    STATE.accounts.find(item=>item.id===pane.defenseAccount.value):inventory);
-  if(!selected.length||pane.breakthrough&&(!defenseLineup||!defenseInventory)||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
+  const dojoWaves=pane.dojoDefense?readDojoWaves(available):null;
+  const leader=pane.dojoLeader?.value==='leader';
+  if(!selected.length||pane.breakthrough&&(!defenseLineup||!defenseInventory)||
+     dojoWaves?.some(wave=>!wave.lineup||!wave.inventory||!AtlasDojoDefense.validOmissions(wave.omittedSlots,leader))||
+     reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
      pane.urdtgTraining&&!pane.trainingSettings||pane.journeyHard&&!pane.journeySettings||pane.dojoGuardian&&!pane.dojoGuardianSettings||pane.yinYangDrums&&!pane.yinYangSettings||
      pane.asura&&!pane.asuraSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
@@ -1246,7 +1330,8 @@
   }:null;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    defenseInventory,
-   attackPartySize:pane.attackParty?Number(pane.attackParty.value):null,
+   attackPartySize:pane.breakthroughParty?Number(pane.attackParty.value):null,
+   dojoWaves,
    journeyHard:pane.journeySettings,
    dojoGuardianSettings:pane.dojoGuardianSettings,
    trainingSettings:pane.trainingSettings,
@@ -1285,6 +1370,27 @@
     }
     const {onmyoji,members}=AtlasRuneLineup.selectedTeam(defenseLineup,result,defenseInventory,next.data.gameConfig,next.pveMemberCount);
     next.defender={onmyoji,members};
+   }
+   if(dojoWaves){
+    const waves=[],partySize=Number(next.pane.attackParty.value);
+    for(const [i,wave] of dojoWaves.entries()){
+     next.message=`正在精算第 ${i+1} 波防守阵容「${wave.lineup.title}」…`;
+     update();
+     const membersByPosition=wave.lineup.members.filter(member=>member.occupied!==false&&member.kind==='shikigami')
+      .sort((a,b)=>a.index-b.index);
+     const defeated=new Set(wave.omittedSlots.map(slot=>membersByPosition[slot-2]));
+     const lineup={...wave.lineup,members:wave.lineup.members.filter(member=>!defeated.has(member))};
+     const result=await solveInventoryLineup(lineup,next,undefined,wave.inventory);
+     if(!active(next))return;
+     if(!result.ready){
+      next.notice=`第 ${i+1} 波防守${result.proof?.state==='infeasible'?'库存无法满足所选阵容。':'阵容有库存条件待核对。'}`;
+      return;
+     }
+     const {onmyoji,members}=AtlasRuneLineup.selectedTeam(lineup,result,wave.inventory,next.data.gameConfig,
+      next.pveMemberCount-defeated.size);
+     waves.push({onmyoji,members,omittedSlots:wave.omittedSlots});
+    }
+    next.dojoDefense={leader,partySize,waves};
    }
    if(isWaveMode(next.pane.battleMode)){
     for(let i=0;i<selected.length&&active(next);i+=4)await originalRelay(next,selected.slice(i,i+4));

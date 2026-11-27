@@ -633,7 +633,9 @@ def encounter_index(source, load_rows):
                     links.append(rule_reference("daoguanzhenrongyushe_tips", "道馆备选阵容规则"))
                 rows.extend((("Constant", 3762, "单段时间配置"), ("Constant", 3793, "换波鬼火配置"),
                              ("Constant", 4312, "进攻加成配置"), ("languageDataEx", "dg_tips_58", "馆主后续防守规则"),
-                             ("languageDataEx", "dg_tips_60", "助威规则"), ("languageDataEx", "dg_tips_62", "上阵阶段退出规则")))
+                             ("languageDataEx", "dg_tips_60", "助威规则"), ("languageDataEx", "dg_tips_62", "上阵阶段退出规则"),
+                             ("Combinesceneinfo", BREAKTHROUGH_SCENE, "默认攻防场景"),
+                             ("BattleScenesInfo", 402, "默认攻防站位")))
                 tables = (("dg_guardian", "道馆等级修正"), ("dg_buff", "道馆购买加成"),
                           ("dg_enchance", "防守词条"), ("dg_rank", "道馆档位与奖励"),
                           ("dg_stage_buff", "阶段加成"), ("dg_timer_buff", "计时加成"),

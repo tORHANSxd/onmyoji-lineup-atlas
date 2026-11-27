@@ -224,6 +224,7 @@ function sampleBattleMarkup(samples){
   const depths=sample.asuraDepths;
   const breakthrough=sample.breakthrough;
   const dojoGuardian=sample.dojoGuardian;
+  const dojoDefense=sample.dojoDefense;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
   const secretActor=sample.secretActor;
@@ -381,6 +382,7 @@ function sampleBattleMarkup(samples){
    spider?`${sample.completed?describeBattle(sample):'本机复跑达到运行时限，结算待核对'} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
     `战斗 ${spider.combatSeconds.toFixed(2)} 秒`+
     (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):
+   dojoDefense?`${!sample.completed?'结算待确认':sample.outcome==='win'?'通过所选防守':'进攻落败'} · ${dojoDefense.leader?'馆主':'结界师'} · ${dojoDefense.attackParty.length} 人进攻 · 已击破 ${sample.wavesCleared} / ${sample.waveCount} 波`:
    dojoGuardian?`${!sample.completed?'结算待确认':dojoGuardian.defeated?'击破守护兽':dojoGuardian.timedOut?'达到模拟时限':'进攻落败'} · `+
     `本队伤害 ${dojoGuardian.damage.toLocaleString('zh-CN')} · 入场生命 ${dojoGuardian.startHp.toLocaleString('zh-CN')} · `+
     `剩余生命 ${Math.round(dojoGuardian.remainingHp).toLocaleString('zh-CN')} · 作战 ${dojoGuardian.combatSeconds.toFixed(2)} 秒`+
@@ -419,6 +421,14 @@ function sampleBattleMarkup(samples){
      const name=DATA.gameConfig.heroes[unit.id]?.name??String(unit.id);
      return `<li>${esc(name)} · ${unit.level} 级 · 攻击 ${Math.round(unit.attack)} · 生命 ${Math.round(unit.hp)} · 速度 ${unit.speed.toFixed(2)} · ${unit.souls} 件御魂</li>`;
     }).join('')}</ol>`).join('')}</details>`:'';
+  const dojoWaves=dojoDefense?`<details><summary>查看逐波防守与换波生命</summary><ol>${dojoDefense.waves.map(wave=>{
+   const hp=values=>values.map(value=>Math.round(value).toLocaleString('zh-CN')).join(' / ');
+   const names=wave.defense.map(unit=>DATA.gameConfig.heroes[unit.id]?.name??String(unit.id)).join('、');
+   return `<li>第 ${wave.wave} 波 · ${wave.outcome==='win'?'击破':wave.outcome==='loss'?'落败':'结算待确认'} · 开场鬼火 ${wave.attackOrbs} / ${wave.defenseOrbs}
+    ${wave.refereeSpeed?` · 裁判速度 ${wave.refereeSpeed} · 行动 ${wave.refereeTurns??0} 次`:''}
+    <div class="caption">防守 ${esc(names)}${wave.omittedSlots.length?` · 已跳过原 ${wave.omittedSlots.join('、')} 号位`:''}</div>
+    <div class="caption">进攻生命 ${hp(wave.attackHp)}${wave.endAttackHp?` → ${hp(wave.endAttackHp)}`:''}</div></li>`;
+  }).join('')}</ol></details>`:'';
   const mirrors=mirror?.units.length?`<details><summary>第 ${mirror.wave} 波 · 镜像阵容</summary><ol>${mirror.units.map(unit=>{
    const name=DATA.gameConfig.heroes[unit.monsterId]?.name??unit.monsterId;
    const skills=unit.soulSkills.map(([id,level])=>`${id}（${level} 级）`).join('、');
@@ -555,7 +565,7 @@ function sampleBattleMarkup(samples){
   const depthsHp=depths?`<details><summary>查看各敌位本场伤害与余血</summary><ul>${depths.enemies.map(enemy=>
    `<li>${enemy.position} 号位 · 入场 ${BigInt(enemy.startingHp).toLocaleString('zh-CN')} · 余血 ${BigInt(enemy.remainingHp).toLocaleString('zh-CN')} · 本场伤害 ${enemy.damage.toLocaleString('zh-CN')}</li>`).join('')}
    </ul>${depths.omittedPositions.length?`<p class="caption">本场已省略先前击败的敌位 ${depths.omittedPositions.join('、')}</p>`:''}</details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${matchup}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}${spiderNormalStages}${depthsHp}</li>`;
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${matchup}${dojoWaves}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}${spiderNormalStages}${depthsHp}</li>`;
  }).join('');
 }
 
