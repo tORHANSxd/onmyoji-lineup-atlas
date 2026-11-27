@@ -43,6 +43,7 @@ const chajiMap=require('../app/chaji-map.js');
 const chajiSide=require('../app/chaji-side.js');
 const chajiStory=require('../app/chaji-story.js');
 const splyjTower=require('../app/splyj-tower.js');
+const genjiSource=require('../app/genji-invention.js');
 const gtwBossSource=require('../app/gtw-boss.js');
 const gtwHunt=require('../app/gtw-hunt.js');
 const socialPlay=require('../app/social-play.js');
@@ -89,6 +90,7 @@ const engines={
  [chajiStory.special.battleMode]:chajiStory.special.engine,
  [splyjTower.battleMode]:splyjTower.engine,
  [splyjTower.boss.battleMode]:splyjTower.boss.engine,
+ [genjiSource.battleMode]:genjiSource.engine,
  [gtwBossSource.battleMode]:gtwBossSource.engine,
  ...Object.fromEntries(gtwHunt.modes.map(mode=>[mode,gtwHunt.engine])),
  [socialPlay.battleMode]:socialPlay.engine,
@@ -1427,7 +1429,7 @@ function validDojoDefenseReport(report,settings){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,socialParty,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,gtwEventId,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,socialParty,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,genjiInvention,gtwEventId,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const qinfeiSide=battleMode===3?mapBoss.qinfeiSideBattles[stageId]:null;
  const pveDeadline=report?.pveDeadline;
@@ -1475,6 +1477,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (chajiStory.modes[battleMode]&&!chajiStory.validReport(report))||
     (battleMode===splyjTower.battleMode&&!splyjTower.validReport(report,splyjBuff))||
     (battleMode===splyjTower.boss.battleMode&&!splyjTower.boss.validReport(report,splyjBuff))||
+    (battleMode===genjiSource.battleMode&&!genjiSource.validReport(report,genjiInvention,rounds[0]))||
     (gtwBoss&&!gtwBossSource.validReport(report,gtwBoss))||
     (gtwHunt.modes.includes(battleMode)&&!gtwHunt.validReport(report,gtwEventId))||
     (battleMode===socialPlay.battleMode&&!socialPlay.validReport(report,socialParty))||
@@ -1593,6 +1596,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(await has('chaji_story_stage.py')?[chajiStory.fixed.battleMode,chajiStory.special.battleMode]:[]),
      ...(await has('splyj_tower_stage.py')?[splyjTower.battleMode]:[]),
      ...(await has('splyj_tower_stage.py')&&await has('splyj_boss_stage.py')?[splyjTower.boss.battleMode]:[]),
+     ...(await has('genji_invention_stage.py')?[genjiSource.battleMode]:[]),
      ...(await has('gtw_boss_stage.py')?[gtwBossSource.battleMode]:[]),
      ...(await has('gtw_hunt_stage.py')?gtwHunt.modes:[]),
      ...(await has('social_play_stage.py')?[socialPlay.battleMode]:[]),
@@ -1603,12 +1607,12 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,socialParty,tianfaTeam=false,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,gtwEventId,forest,tenBonuses,bandScores,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,socialParty,tianfaTeam=false,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,genjiInvention,gtwEventId,forest,tenBonuses,bandScores,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
    const isSocialPlay=battleMode===socialPlay.battleMode;
-   const maxMembers=[fengmoYanwu.battleMode,songstress.battleMode,orochi.battleMode,tianfa.battleMode,socialPlay.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
+   const maxMembers=[fengmoYanwu.battleMode,songstress.battleMode,orochi.battleMode,tianfa.battleMode,socialPlay.battleMode,genjiSource.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
    const jiStage=jiBoss.entry(stageId);
    const forestStage=jiForest.entry(stageId);
    const yanmoStage=yanmo.practice(stageId);
@@ -1701,6 +1705,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('寒山断祟复跑需要对应的原版难度和五位自有式神');
    if(splyjBuff!==undefined&&(!(isSplyjBoss||battleMode===splyjTower.battleMode)||!splyjTower.validBuff(splyjBuff)))
     throw Error('请选择执火燎原的一种可选心火加成');
+   const genjiStage=genjiSource.entry(stageId),isGenji=battleMode===genjiSource.battleMode;
+   if(battleMode===3&&genjiStage||isGenji&&(!genjiStage||groupId!==stageId||resourceVersion!==genjiSource.resourceVersion||
+      !genjiSource.validSettings(genjiInvention,plan.members.length))||!isGenji&&genjiInvention!==undefined)
+    throw Error('源氏秘造挑战需要对应的原版关卡、试炼式神和五位辅助式神');
    if(battleMode===jiBoss.battleMode&&(!jiStage?.available||groupId!==stageId||plan.members.length!==5||
      jiBoss.resourceVersion!==resourceVersion))throw Error('四时归焉复跑需要已核验的原版关卡和五位自有式神');
    const isGtwBoss=battleMode===gtwBossSource.battleMode,gtwStage=gtwBossSource.stages[stageId];
@@ -1953,7 +1961,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const input=JSON.stringify(plan),suitInput=JSON.stringify(suits);
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
    const deadlineMs=isDojoDefense?90000+30000*plan.dojoDefense.waves.length:
-    battleMode===shanFeng.battleMode?175000:
+    battleMode===shanFeng.battleMode||isGenji?175000:
     battleMode===jiBoss.battleMode?205000:
     chajiSideMode||storyMode?100000+(chajiSideMode??storyMode).deadlineSeconds*100:
     (battleMode===chajiBoss.battleMode||battleMode===chajiMap.battleMode||battleMode===splyjTower.battleMode||isSplyjBoss)?120000:
@@ -1979,6 +1987,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(isDojoGuardian)args.push('--dojo-guardian',JSON.stringify(dojoGuardian));
     if(isGtwBoss)args.push('--gtw-boss',JSON.stringify(gtwBoss));
     if(splyjBuff!==undefined)args.push('--splyj-buff',String(splyjBuff));
+    if(isGenji){
+     args.push('--genji-lead',String(genjiInvention.leadSlot));
+     if(genjiInvention.finalAt!==null)args.push('--genji-final',String(genjiInvention.finalAt));
+     if(genjiInvention.buff!==null)args.push('--genji-buff',String(genjiInvention.buff));
+    }
     if(gtwEventId!==undefined)args.push('--gtw-event',String(gtwEventId));
     if(urdtgTraining)args.push('--urdtg-training',String(urdtgTraining.skillLevel),String(urdtgTraining.masks));
     if(friendChallenge)args.push('--friend-challenge',String(friendChallenge.bossId),String(friendChallenge.difficulty));
@@ -2023,7 +2036,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(qinfeiBoss)args.push('--qinfei-profile',String(qinfeiBoss.raidId),String(qinfeiBoss.difficulty),'--window-seconds',String(qinfeiBoss.windowSeconds));
     if(tianfaTeam)args.push('--tianfa-team');
     if(socialParty>1)args.push('--social-party',String(socialParty));
-    const expected={battleMode,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,socialParty,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,gtwEventId,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings,
+    const expected={battleMode,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,socialParty,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,genjiInvention,gtwEventId,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null};
     async function runStage(stageId,groupId,extra=[]){
      const output=path.join(dir,`battle-${stageId}.json`);

@@ -2093,6 +2093,7 @@
     const chajiSideMounted=showChajiSide(destination,entry,groups);
     const chajiStoryMounted=showChajiStory(destination,entry,groups);
     const splyjMounted=showSplyjBattle(destination,entry,groups);
+    const genjiMounted=showGenjiInvention(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2237,7 +2238,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!chajiStoryMounted&&!splyjMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!chajiStoryMounted&&!splyjMounted&&!genjiMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2493,6 +2494,42 @@
       '第二阶段 · 入场生命低于全服配置上限的 50%。','caption'));
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
       memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title,gtwBoss:stage});
+    return true;
+  }
+
+  function showGenjiInvention(destination,entry,groups){
+    const source=AtlasGenjiInvention,row=groups[0].row;
+    const stageId=entry.table==='pve_stage_data'?Number(entry.key):entry.table==='team_invent_stage'?row?.battle_id:0;
+    const route=source.entry(stageId);
+    if(!route)return false;
+    const get=(table,id)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===id)?.row;
+    const profile=get('team_invent_stage',route.id),stage=get('pve_stage_data',stageId);
+    const formation=get('BattleMonstersInfo',stageId),registration=get('battle_team_routes',source.battleMode);
+    const trial=get('hero',source.systemTrial);
+    const buffs=source.buffs.map(id=>get('asura_develop',id));
+    if(!matchesOpeningSource(source)||profile?.battle_id!==stageId||stage?.groupid!==stageId||
+       stage.battleTime!==source.deadlineSeconds||formation?.resindex!==source.sceneId||
+       formation.MonstersInfos?.length!==1||formation.MonstersInfos[0]?.length!==route.enemies||
+       registration?.engine_class!==source.engine.name||registration.route_sha256!==source.teamRouteSHA256||
+       get('asura_load',source.activityId)?.load_max!==1||!trial?.name||
+       buffs.some((buff,index)=>buff?.id!==source.buffs[index]||buff.activity_id!==source.activityId||buff.max_lv!==1)){
+      destination.append(node('p','本机资料与已核验的源氏秘造挑战不匹配。','caption'));
+      return true;
+    }
+    const host=node('div'),label=node('label','试炼式神来源 ','pve-lineup-field'),choice=node('select');
+    choice.append(new Option('阵容内的自有式神','owned'),new Option(`活动试用 · ${trial.name}`,'system'));
+    label.append(choice);
+    destination.append(node('p',profile.battle_tips,'caption'),
+      node('p','以最终一击回合伤害计分，奖励门槛为 30 万、50 万、80 万。','caption'),label,host);
+    const render=()=>{
+      const systemTrial=choice.value==='system';
+      host.replaceChildren();
+      window.AtlasPveWorkbench?.mount(host,{stageId,groupId:stageId,battleMode:source.battleMode,
+        memberCount:systemTrial?5:6,waveCount:1,version:source.resourceVersion,label:`源氏秘造挑战 · ${profile.name}`,
+        genji:{systemTrial,buffs}});
+    };
+    choice.onchange=render;
+    render();
     return true;
   }
 

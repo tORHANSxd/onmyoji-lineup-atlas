@@ -38,6 +38,7 @@ from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 from social_play_stage import SOCIAL_PLAY_ACTIVITY, SOCIAL_PLAY_BUFFS, SOCIAL_PLAY_MODE, SOCIAL_PLAY_TICKET
 from splyj_boss_stage import (SPLYJ_BOSS_ACTIVITY, SPLYJ_BOSS_MARK, SPLYJ_BOSS_MODE, SPLYJ_BOSS_STAGES,
                               SPLYJ_MIRROR_SKILL)
+from genji_invention_stage import GENJI_ACTIVITY, GENJI_BUFFS, GENJI_MODE, GENJI_STAGES, GENJI_SYSTEM_TRIAL
 from splyj_tower_stage import (SPLYJ_ACTIVITY, SPLYJ_ASSIST, SPLYJ_ASSIST_HERO, SPLYJ_BATTLE_SKILLS, SPLYJ_TOWER_ACTIVITY,
                                SPLYJ_TOWER_FLOORS, SPLYJ_TOWER_MODE, SPLYJ_TOWER_STAGES)
 from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
@@ -122,6 +123,8 @@ SPLYJ_TOWER_NAME = "执火燎原 · 擎火拾阶"
 SPLYJ_TOWER_BY_STAGE = dict(zip(map(str, SPLYJ_TOWER_STAGES), SPLYJ_TOWER_FLOORS))
 SPLYJ_BOSS_NAME = "执火燎原 · 寒山断祟"
 SPLYJ_BOSS_BY_STAGE = {str(stage): difficulty for difficulty, stage in enumerate(SPLYJ_BOSS_STAGES, 1)}
+GENJI_NAME = "源氏秘造挑战"
+GENJI_BY_STAGE = {str(stage): node for node, stage in enumerate(GENJI_STAGES, 1)}
 CHAJI_SIDE_ENTRIES = {
     "pve_stage_data": {str(stage): stage for stage in CHAJI_SIDE_NAMES},
     "normal_battle_config": CHAJI_SIDE_MODES,
@@ -148,6 +151,7 @@ ROOTS = {
     "pve_stage_data": ("battle", "通用 PvE 关卡"),
     "normal_battle_config": ("battle", "战斗模式默认规则"),
     "splyj_boss": ("event", SPLYJ_BOSS_NAME),
+    "team_invent_stage": ("event", GENJI_NAME),
     "dungeon_rune": ("daily", "御魂"),
     "map_boss": ("daily", "地图首领入口"),
     **{f"dojo{year}_bbbl_{suffix}": ("event", description) for year in (2025, 2026)
@@ -963,6 +967,30 @@ def encounter_index(source, load_rows):
             rows = [("social_play_color", row.get("id"), "混合所得颜色"),
                     ("reward", row.get("reward_id"), "调色奖励")]
             rows.extend(("social_play_color", color, "所需颜色") for color in row.get("recipe", ()))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+        genji_id = (GENJI_BY_STAGE.get(numeric_key(row.get("id"))) if name == "pve_stage_data"
+                    else row.get("id") if name == "team_invent_stage" else None)
+        genji_root = (name == "activity" and row.get("id") == GENJI_ACTIVITY
+                      or name == "normal_battle_config" and row.get("battleMode") == GENJI_MODE
+                      or name == "battle_team_routes" and row.get("battleMode") == GENJI_MODE)
+        if genji_id or genji_root:
+            rows = [("activity", GENJI_ACTIVITY, "当期开放日期"),
+                    ("battle_team_routes", GENJI_MODE, "原版最终一击引擎"),
+                    ("normal_battle_config", GENJI_MODE, "战斗默认设置"),
+                    ("team_invent_const", 102, "当期试用雪御前的原版属性"),
+                    ("team_invent_const", 32, "当期战斗加成"),
+                    ("hero", GENJI_SYSTEM_TRIAL, "试用雪御前"),
+                    ("asura_load", GENJI_ACTIVITY, "加成槽位")]
+            rows.extend(("asura_develop", buff, "可选战斗加成") for buff in GENJI_BUFFS)
+            links.append(rule_reference("yuanshimizao_tips1", "当期挑战规则、奖励与排名"))
+            for event in ([genji_id] if genji_id else GENJI_BY_STAGE.values()):
+                _, profile = table("team_invent_stage").get(numeric_key(event), (None, {}))
+                stage = profile.get("battle_id")
+                rows.extend((("team_invent_stage", event, "首领机制与伤害分档"),
+                             ("pve_stage_data", stage, "原版 PvE 关卡"),
+                             ("BattleMonstersInfo", stage, "原版敌方编组")))
+                rows.extend(("reward", reward, "伤害档位奖励") for field in ("pass_reward", "score_reward")
+                            for _, reward in profile.get(field, ()))
             links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         splyj_floor = (SPLYJ_TOWER_BY_STAGE.get(numeric_key(row.get("id"))) if name == "pve_stage_data"
                        else row.get("id") if name == "activity_tower_floor" and row.get("act_id") == SPLYJ_TOWER_ACTIVITY else None)
@@ -2265,6 +2293,7 @@ def encounter_index(source, load_rows):
             splyj_activity = (table_name == "activity" and key in (SPLYJ_ACTIVITY, SPLYJ_TOWER_ACTIVITY)
                               and "activity_tower_floor" in manifests)
             splyj_boss_activity = table_name == "activity" and key == SPLYJ_BOSS_ACTIVITY and "splyj_boss" in manifests
+            genji_activity = table_name == "activity" and key == GENJI_ACTIVITY and "team_invent_stage" in manifests
             tower_activity = table_name == "activity" and key in tower_floors_by_activity
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
@@ -2273,7 +2302,7 @@ def encounter_index(source, load_rows):
                     and not ten_activity and not dream_activity and not asura_activity and not asura_layer
                     and not shanfeng_activity and not ji_activity and not gtw_activity and not tower_activity and not gtw_run_activity
                     and not social_activity and not yanmo_activity and not chaji_activity and not chaji_map_activity
-                    and not chaji_story_activity and not splyj_activity and not splyj_boss_activity):
+                    and not chaji_story_activity and not splyj_activity and not splyj_boss_activity and not genji_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -2623,6 +2652,16 @@ def encounter_index(source, load_rows):
                     or table_name == "stake_boss" and key == SPLYJ_BOSS_MARK):
                 entry_family, entry_kind = "event", SPLYJ_BOSS_NAME
                 title = f"{entry_kind} · " + ("开放配置" if splyj_boss_activity else "原版玩法配置")
+            genji_id = (GENJI_BY_STAGE.get(numeric_key(key)) if table_name == "pve_stage_data"
+                        else key if table_name == "team_invent_stage" else None)
+            if genji_id:
+                _, profile = table("team_invent_stage").get(numeric_key(genji_id), (None, {}))
+                if profile:
+                    entry_family, entry_kind = "event", GENJI_NAME
+                    title = f"{entry_kind} · {profile['name']} · {profile['battle_id']}"
+            if genji_activity:
+                entry_family, entry_kind = "event", GENJI_NAME
+                title = f"{entry_kind} · 2026 年 11 月开放配置"
             story_key = numeric_key(key) if table_name == "pve_stage_data" else None
             chaji_plot = chaji_plots.get(story_key)
             if chaji_story_activity or table_name in CHAJI_STORY_TABLES or chaji_plot:

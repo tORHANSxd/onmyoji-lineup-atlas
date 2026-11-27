@@ -203,6 +203,11 @@
    const selectedBuff=pane.splyjBuffs.find(({id})=>id===Number(pane.splyjBuff.value));
    pane.splyjBuffHint.textContent=selectedBuff?.desc??'本次只带固定心火加成。';
   }
+  if(pane.genji){
+   const buff=pane.genji.buffs.find(row=>row.id===Number(pane.genjiBuff.value));
+   pane.genjiHint.textContent=buff?.desc_template??'可选一个活动加成。最终一击时间留空时按原版倒计时触发。';
+   for(const field of [pane.genjiLead,pane.genjiFinal,pane.genjiBuff].filter(Boolean))field.disabled=running||blocked;
+  }
   let defenseReady=!pane.breakthrough||!!pane.defenseLineup.value;
   if(pane.dojoDefense){
    const leader=pane.dojoLeader.value==='leader';
@@ -476,7 +481,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!defenseReady||!!reserve&&!reserve.ready||!captureReady||!eventReady||!trainingReady||!stateReady||!coinsReady||!journeyReady||!dojoGuardianReady||!!gtwBossError||!asuraReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!defenseReady||!!reserve&&!reserve.ready||!captureReady||!eventReady||!trainingReady||!stateReady||!coinsReady||!journeyReady||!dojoGuardianReady||!!gtwBossError||!asuraReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady||pane.genjiFinal&&!pane.genjiFinal.checkValidity();
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -602,6 +607,17 @@
       step="1" value="${gtwBoss.windowLimit}" aria-describedby="pve-gtw-settings-hint" required></label>
     </div>
     <p class="caption" role="status" id="pve-gtw-settings-hint" data-pve-gtw-hint></p>
+   </fieldset>`:''}
+   ${config.genji?`<fieldset class="pve-reserve"><legend>最终一击</legend><div class="actions">
+    ${config.genji.systemTrial?'':`<label class="pve-lineup-field">试炼式神 <select data-pve-genji-lead>
+     ${Array.from({length:6},(_,i)=>`<option value="${i+1}">阵容中第 ${i+1} 位式神</option>`).join('')}
+    </select></label>`}
+    <label class="pve-lineup-field">开战后第几秒请求 <input type="number" data-pve-genji-final min="0"
+     max="${AtlasGenjiInvention.deadlineSeconds-1}" step="1" placeholder="原版倒计时"></label>
+    <label class="pve-lineup-field">战斗加成 <select data-pve-genji-buff aria-describedby="pve-genji-hint">
+     <option value="">无</option>${config.genji.buffs.map(row=>`<option value="${row.id}">${esc(row.skill_name)}</option>`).join('')}
+    </select></label></div>
+    <p class="caption" id="pve-genji-hint" data-pve-genji-hint role="status"></p>
    </fieldset>`:''}
    ${config.splyjBuffs?`<fieldset class="pve-reserve"><legend>心火加成</legend>
     <p class="caption">${esc(config.splyjBuffs[0].name)}（固定） · ${esc(config.splyjBuffs[0].desc)}</p>
@@ -929,6 +945,7 @@
    dojoGuardianHp:part('dojo-guardian-hp'),dojoGuardianWindow:part('dojo-guardian-window'),
    gtwFields:part('gtw-fields'),gtwHp:part('gtw-hp'),gtwWindow:part('gtw-window'),gtwHint:part('gtw-hint'),
    splyjBuff:part('splyj-buff'),splyjBuffHint:part('splyj-buff-hint'),
+   genjiLead:part('genji-lead'),genjiFinal:part('genji-final'),genjiBuff:part('genji-buff'),genjiHint:part('genji-hint'),
    yinYangDrums:part('yinyang-drums'),yinYangDeadline:part('yinyang-deadline'),yinYangBuffChoice:part('yinyang-buff'),
    addYinYangBuff:part('add-yinyang-buff'),yinYangBuffList:part('yinyang-buff-list'),yinYangBuffIds:[],
    towerConditions:part('tower-conditions'),towerBlessingRows:all('tower-blessing-row'),
@@ -958,8 +975,9 @@
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
+  if(pane.genjiFinal)pane.genjiFinal.oninput=update;
   for(const field of [pane.lineup,pane.defenseLineup,pane.defenseAccount,pane.attackParty,pane.socialParty,pane.dojoLeader,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
-   pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,pane.splyjBuff,
+   pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,pane.splyjBuff,pane.genjiBuff,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,pane.mirageTrait,
    pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.longcheTrait,
    ...pane.longcheOrder,pane.spiderLiveTrait,pane.spiderNormalWeakPart].filter(Boolean))field.onchange=()=>{
@@ -1269,6 +1287,7 @@
     ...(run.dojoGuardianSettings?{dojoGuardian:run.dojoGuardianSettings}:{}),
     ...(run.gtwBossSettings?{gtwBoss:run.gtwBossSettings}:{}),
     ...(run.splyjBuff?{splyjBuff:run.splyjBuff}:{}),
+    ...(run.genjiInvention?{genjiInvention:run.genjiInvention}:{}),
     ...(run.pane.gtwEventId?{gtwEventId:run.pane.gtwEventId}:{}),
     ...(forest?{forest}:{}),
     ...(tenBonuses?.length?{tenBonuses}:{}),
@@ -1443,7 +1462,7 @@
  }
 
  async function run(){
-  if(!pane||runeBusy()||!account()||!ready())return;
+  if(!pane||runeBusy()||!account()||!ready()||pane.genjiFinal&&!pane.genjiFinal.checkValidity())return;
   const available=knownLineups(),selected=selectedForReplay(available);
   const inventory=account(),reserve=orochiReserve(selected,inventory);
   const defenseLineup=pane.breakthrough&&available.find(item=>item.id===pane.defenseLineup.value);
@@ -1475,6 +1494,8 @@
    dojoGuardianSettings:pane.dojoGuardianSettings,
    gtwBossSettings:pane.gtwBossSettings,
    splyjBuff:Number(pane.splyjBuff?.value)||undefined,
+   genjiInvention:pane.genji?{leadSlot:Number(pane.genjiLead?.value??0),
+    finalAt:pane.genjiFinal.value===''?null:pane.genjiFinal.valueAsNumber,buff:Number(pane.genjiBuff.value)||null}:null,
    trainingSettings:pane.trainingSettings,
    asuraSettings:pane.asuraSettings,
    yinyangBoss:pane.yinYangSettings?{...pane.yinYangSettings,buffIds:pane.yinYangSettings.buffIds.slice()}:null,
@@ -1566,7 +1587,8 @@
     const score=huntScores.get(row);
     if(score){
      const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
-     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths||row.samples[0].shanFeng||row.samples[0].jiBoss||row.samples[0].gtwBoss||row.samples[0].chajiBoss||row.samples[0].splyjBoss?
+     const result=row.samples[0].genjiInvention?'最终一击计分':
+      row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths||row.samples[0].shanFeng||row.samples[0].jiBoss||row.samples[0].gtwBoss||row.samples[0].chajiBoss||row.samples[0].splyjBoss?
       '限时计分':cleared?'均清场':'含未清场样本';
      row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${result} · 平均伤害 ${damageText(score.average)} · `+
       `单场最高 ${damageText(score.max)} · 最低 ${damageText(score.min)}`;

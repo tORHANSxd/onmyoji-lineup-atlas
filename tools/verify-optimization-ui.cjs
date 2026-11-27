@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6058,6059,6086,6089,6092,8238,9547,9548,9549,9550,9551,9552,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,1290,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6058,6059,6086,6089,6092,8238,9547,9548,9549,9550,9551,9552,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -679,6 +679,22 @@ async function main(){
     await ui('qaEncounterInput("event",'+JSON.stringify(pick(3340022))+')');
     await until(panel+'.textContent.includes("困难编组的首领技能")');
     assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='team_invent_stage'&&entry.key===3)){
+    await encounter('event','源氏秘造挑战 team_invent_stage 无极剑垒 116006');
+    assert.match(await ui(panel+'.textContent'),/暴击率低于100%.*最终一击回合伤害计分/s);
+    const source='[...document.querySelectorAll("#client-dungeons-encounter-detail select")].find(el=>el.querySelector("option[value=system]"))';
+    await ui(source+'.value="system";'+source+'.dispatchEvent(new Event("change"))');
+    const final='document.querySelector("[data-pve-genji-final]")',buff='document.querySelector("[data-pve-genji-buff]")';
+    await ui(final+'.value="35";'+final+'.dispatchEvent(new Event("input"));'+
+     buff+'.value="98555";'+buff+'.dispatchEvent(new Event("change"))');
+    assert.match(await ui(panel+'.textContent'),/最终一击造成的首段伤害增加20万/);
+    assert.match(await run('chaji-boss',{stageId:116006,groupId:116006,battleMode:1290,
+     genjiInvention:{leadSlot:0,finalAt:35,buff:98555}},
+     {wavesCleared:0,genjiInvention:{damage:273382,rewardTier:0,triggerSeconds:35.02,autoTriggered:false}}),
+     /最终一击计分.*最终一击伤害 273,382.*未达到奖励门槛.*请求触发 35\.02 秒/s);
+    await encounter('event','源氏秘造挑战 pve_stage_data 初试之兵 116004');
+    assert.equal(await ui('document.querySelector("[data-pve-genji-lead]").options.length'),6);
    }
    if(cases.some(entry=>entry.table==='activity_tower_floor'&&entry.key===666)){
     await encounter('event','擎火拾阶 activity_tower_floor 困难 9637273');
