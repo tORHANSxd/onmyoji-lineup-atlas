@@ -520,6 +520,12 @@ python tools/build-superghost-routes.py data/dungeon-catalog <脚本索引JSON> 
 
 同一份真实库存以种子 0、伤害下限复跑，七关在 180 秒窗口均取得原版结算，首领均存活。第一天在 30 秒窗口取得 287,209 首领伤害，含结算用时 33.34 秒。另用受控状态核对提前清场和本队落败，前者计一波通关，后者保留原版计分结算但计零波。
 
+### 初翎山风超鬼王 · 历练成王
+
+原表 `super_ghost6_pve` 保留 16 关历练和成王三天的六个编组。历练分为软弱之缚、急躁之举、冷漠之心和孤独之意，每类四关。目录按开放顺序显示前置关卡、各级技能、敌位、首通奖励和体力消耗。原版规则要求在 180 秒内清场。通关各类最后一关会卸除成王的对应首领技能。
+
+成王每天有两套编组，原版活动分简单和困难，单场 180 秒，累计三日最高伤害用于奖励。目录保留每日开放时段、首领奖励档位，以及第二天首领生命判定门槛和第三天开场生命比例。关卡链接到模式 660 的 `SuperGhostNewPVEScene`，实际脚本是 `SpShanFengHardEngine`。引擎用固定的 40 级活动角色，并读取服务器下发的潜能、技能与特攻状态。当前可查阅静态配置，活动阵容复跑待接入。
+
 ```powershell
 & $YuqiPython tools/verify-pve-stage.py --mode 341 --stage 1 --historical-ghost-window 30 --seed 0 --minimum-damage --runtime <本地运行时JSON> --team <库存配装JSON> --suit-index <御魂套装JSON> --output <战报JSON>
 ```

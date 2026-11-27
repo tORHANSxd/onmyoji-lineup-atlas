@@ -11,6 +11,52 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_shanfeng_trials_and_scoring_variants_use_the_original_activity_route(self):
+        trials = {1: {"title": "软弱之缚", "type": 1, "battle_id": "3340001", "skill_id": 62000},
+                  2: {"title": "软弱之缚", "type": 1, "battle_id": "3340002", "skill_id": 62000, "pre_id": 1},
+                  17: {"title": "成王day1-3", "type": 5, "final_battle_id_day1": ["3340017", "3340018"],
+                       "final_battle_id_day2": ["3340019", "3340020"], "final_battle_id_day3": ["3340021", "3340022"]}}
+        stages = (3340001, 3340002, *range(3340017, 3340023))
+        tables = {
+            "super_ghost6_pve": [[key, {"id": key, **row}] for key, row in trials.items()],
+            "battle_mode_routes": [[660, {"battleMode": 660, "mode_symbol": "MODE_SUPER_GHOST_SHAN_FENG_HARD",
+                                         "scene_engine": "SpShanFengHardEngine"}]],
+            "battle_team_routes": [[660, {"battleMode": 660, "can_single_fight": True}]],
+            "pve_stage_data": [[str(stage), {"id": str(stage), "groupid": stage}] for stage in stages],
+            "BattleMonstersInfo": [[stage, {"ID": stage}] for stage in stages],
+            "Combinesceneinfo": [[11032, {"id": 11032}]],
+            "activity": [[1757, {"id": 1757}]],
+            "super_ghost6_constant": [[key, {"value": [1]}] for key in (5, 6, 7, 10, 11, 16, 17, 18)],
+            "super_ghost6_pve_reward": [[1, {"damage": [200000]}], [2, {"damage": [10, 100]}]],
+            "system_rule_dsc": [["spshanfeng_ghost_pve", {"rule_dsc": "历练清场，成王计分"}]],
+            "skill": [[{"$tuple": [62000, level, -1]}, {"desc": "历练机制"}] for level in (1, 2)],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "event",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(row["table"], row["key"]): row for row in index["entries"]}
+
+        def refs(table, key):
+            return [(ref["table"], ref["key"]) for ref in entries[table, key]["refs"] if ref["found"]]
+
+        self.assertIn(("super_ghost6_pve", 1), refs("super_ghost6_pve", 2))
+        self.assertIn(("skill", {"$tuple": [62000, 2, -1]}), refs("super_ghost6_pve", 2))
+        self.assertIn(("super_ghost6_constant", 16), refs("pve_stage_data", "3340002"))
+        self.assertIn(("BattleMonstersInfo", 3340002), refs("super_ghost6_pve", 2))
+        self.assertIn(("battle_team_routes", 660), refs("pve_stage_data", "3340021"))
+        self.assertIn(("system_rule_dsc", "spshanfeng_ghost_pve"), refs("pve_stage_data", "3340021"))
+        self.assertEqual([int(key) for table, key in refs("super_ghost6_pve", 17) if table == "pve_stage_data"],
+                         list(range(3340017, 3340023)))
+        self.assertIn(("super_ghost6_constant", 6), refs("pve_stage_data", "3340019"))
+        self.assertNotIn(("super_ghost6_constant", 5), refs("pve_stage_data", "3340019"))
+        self.assertIn(("super_ghost6_constant", 5), refs("pve_stage_data", "3340021"))
+        self.assertIn(("super_ghost6_pve_reward", 1), refs("pve_stage_data", "3340021"))
+        self.assertIn(("super_ghost6_pve", 17), refs("activity", 1757))
+        self.assertIn("成王 · 第 3 日", entries["pve_stage_data", "3340021"]["title"])
+        unresolved = [(row["table"], row["key"], ref["table"], ref["key"]) for row in index["entries"]
+                      for ref in row["refs"] if not ref["found"]]
+        self.assertFalse(unresolved)
+
     def test_dojo_guardian_and_defender_modes_keep_their_own_rules(self):
         tables = {
             "battle_mode_routes": [[4003, {"battleMode": 4003, "mode_symbol": "MODE_JIEJIE_TUPO_GYM2",

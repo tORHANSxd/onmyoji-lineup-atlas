@@ -1595,6 +1595,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      resourceVersion!==dojoDefenseSource.resourceVersion):plan.dojoDefense!==undefined)
     throw Error('道馆连续挑战需要原版入口、进攻阵容和有序的已知防守阵容');
    if(battleMode===3&&stageId===dojoDefenseSource.stageId)throw Error('道馆防守需要使用原版连续挑战入口');
+   if(battleMode===3&&stageId>=3340001&&stageId<=3340022)throw Error('历练成王需要使用原版活动战斗入口');
    if(battleMode===3&&dreamTrial.heroId(stageId))throw Error('梦境试炼需要使用原版固定阵容入口');
    const asuraStage=asuraBoss.entry(stageId)??asuraBoss.depthEntry(stageId), isAsura=Object.hasOwn(asuraBoss.engines,battleMode);
    if(isAsura?(!asuraStage||asuraStage.battleMode!==battleMode||groupId!==stageId||plan.members.length!==5||

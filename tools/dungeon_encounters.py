@@ -61,6 +61,13 @@ DREAM_RULES = (("dream_self_tips", "幻游问梦开放与资源规则"),
 ASURA_RULES = (("asura_final_boss", "决战开放与全服规则"), ("asura_huanying", "帝释天降临与幻影结界"),
                ("asura_boss", "终末之战伤害奖励与狂暴规则"), ("asura_tegong", "式神特攻解锁规则"))
 ASURA_MAP_WORK = {1: "据点战斗", 2: "凝罪塔", 3: "派遣", 4: "捐赠"}
+SHANFENG_MODE = 660
+SHANFENG_FINAL_ACTIVITY = 1757
+SHANFENG_PVE = "super_ghost6_pve"
+SHANFENG_RULES = (("spshanfeng_ghost_pve", "历练与成王规则"),
+                  ("spshanfeng_ghost_develop", "活动角色潜能规则"),
+                  ("spshanfeng_ghost_rank", "成王排行规则"))
+SHANFENG_DAY_RULES = {1: (), 2: ((6, "第二日首领生命判定门槛"),), 3: ((5, "第三日首领开场生命比例"),)}
 
 
 ROOTS = {
@@ -125,6 +132,7 @@ ROOTS = {
     "xinghen_battle": ("daily", "彼世逢魔"),
     "SuperGhost_mission": ("event", "超鬼王"),
     "SuperGhost_bossmission": ("event", "超鬼王首领挑战"),
+    SHANFENG_PVE: ("event", "初翎山风超鬼王 · 历练成王"),
     "super_ghost_hjs_special_attack": ("event", "超鬼王特攻日期"),
     "super_ghost_hjs_special_attack_group": ("event", "超鬼王特攻式神"),
     "journey_hardbattle": ("event", "京畿净化首领挑战"),
@@ -439,6 +447,21 @@ def encounter_index(source, load_rows):
     urdtg_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("urdtg_dungeon_battle").values()}
     urdtg_events_by_battle = {}
     dream_heroes_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("dream_act_hero").values()}
+    shanfeng_by_config, shanfeng_by_stage, shanfeng_tiers = {}, {}, {}
+    shanfeng_chapters = Counter()
+    for key, row in sorted(table(SHANFENG_PVE).values(), key=lambda pair: pair[1]["id"]):
+        title = row["title"]
+        if "battle_id" in row:
+            shanfeng_chapters[row["type"]] += 1
+            tier = shanfeng_tiers[numeric_key(key)] = shanfeng_chapters[row["type"]]
+            battles = [(row["battle_id"], f"历练 · {title} · 第 {tier} 关")]
+        else:
+            battles = [(stage, f"成王 · 第 {day} 日 · 编组 {variant}")
+                       for day in SHANFENG_DAY_RULES
+                       for variant, stage in enumerate(row.get(f"final_battle_id_day{day}", ()), 1)]
+        shanfeng_by_config[numeric_key(key)] = battles
+        for stage, label in battles:
+            shanfeng_by_stage[numeric_key(stage)] = (row, label)
     asura_depth_by_stage = {numeric_key(row.get("battle_id")): (dest, key)
                             for dest in ASURA_DEPTH_TABLES for key, row in table(dest).values()}
     asura_cells_by_work = {}
@@ -651,6 +674,52 @@ def encounter_index(source, load_rows):
             ]
             rows.extend(("dg_guardian", key, "守护兽生命修正") for key, _ in table("dg_guardian").values())
             links.extend(ref for dest, ref_key, label in rows if (ref := relation(dest, ref_key, label, False)))
+        shanfeng_stage = shanfeng_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
+        shanfeng_route = name == "battle_mode_routes" and row.get("battleMode") == SHANFENG_MODE
+        if name == SHANFENG_PVE or shanfeng_stage or shanfeng_route:
+            if not shanfeng_route:
+                links.append(relation("battle_mode_routes", SHANFENG_MODE, "原版历练成王入口", True))
+            links.extend(ref for dest, key, label in (
+                ("battle_team_routes", SHANFENG_MODE, "原版单人战斗入口"),
+                ("hero", 1454, "活动固定出战角色"),
+                ("super_ghost6_constant", 7, "活动角色编号与等级"),
+                ("super_ghost6_constant", 18, "引擎敌方编组区间"),
+            ) if (ref := relation(dest, key, label, False)))
+            links.extend(rule_reference(key, label) for key, label in SHANFENG_RULES if key in rules or key in tips)
+            if shanfeng_route:
+                links.extend(relation(SHANFENG_PVE, config, "历练成王关卡配置", False)
+                             for config, _ in table(SHANFENG_PVE).values())
+            else:
+                config = shanfeng_stage[0] if shanfeng_stage else row
+                config_key = numeric_key(config["id"])
+                if name == SHANFENG_PVE:
+                    links.extend(relation("pve_stage_data", stage, label, True) for stage, label in shanfeng_by_config[config_key])
+                else:
+                    links.append(relation(SHANFENG_PVE, config["id"], "关卡开放与首通规则", True))
+                rows = [("reward", config.get("first_reward_id"), "原表首通奖励")]
+                if "battle_id" in config:
+                    rows.extend(((SHANFENG_PVE, config.get("pre_id"), "前置历练"),
+                                 ("super_ghost6_constant", 16, "历练清场时限")))
+                    skill = config.get("skill_id")
+                    if skill:
+                        rows.append(("skill", {"$tuple": [skill, shanfeng_tiers[config_key], -1]}, "对应等级的历练机制"))
+                else:
+                    rows.extend((("activity", SHANFENG_FINAL_ACTIVITY, "成王开放日期"),
+                                 ("super_ghost6_constant", 10, "每日开放时刻"),
+                                 ("super_ghost6_constant", 11, "每日关闭时刻"),
+                                 ("super_ghost6_constant", 17, "各日单场计分时限"),
+                                 ("super_ghost6_pve_reward", 1, "累计最高伤害奖励"),
+                                 ("super_ghost6_pve_reward", 2, "排行奖励档位")))
+                    for day, conditions in SHANFENG_DAY_RULES.items():
+                        if not shanfeng_stage or any(numeric_key(stage) == numeric_key(row.get("id"))
+                                                      for stage in config.get(f"final_battle_id_day{day}", ())):
+                            rows.extend(("super_ghost6_constant", key, label) for key, label in conditions)
+                links.extend(ref for dest, key, label in rows if (ref := relation(dest, key, label, False)))
+        if name == "activity" and row.get("id") == SHANFENG_FINAL_ACTIVITY and shanfeng_by_config:
+            links.extend(ref for dest, key, label in (
+                ("battle_mode_routes", SHANFENG_MODE, "原版历练成王入口"),
+                (SHANFENG_PVE, 17, "成王三日关卡配置"),
+            ) if (ref := relation(dest, key, label, False)))
         if name == "dream_act_hero":
             battle = row.get("battle_id")
             links.extend(ref for dest, key, label in (
@@ -1561,7 +1630,7 @@ def encounter_index(source, load_rows):
             family, kind = "event", "京畿净化战斗参数"
         # The four resource tables are registered separately from the normal
         # fight panel's journey_normalbattle lookup. A numeric match is insufficient.
-        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle"} else [
+        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle", SHANFENG_PVE} else [
             field for field in BATTLE_ID_FIELDS if field in manifest["fields"]
         ]
         for key, row in load_rows(table_name):
@@ -1583,11 +1652,12 @@ def encounter_index(source, load_rows):
             ten_activity = table_name == "activity" and key in TEN_ACTIVITY_LINKS
             dream_activity = table_name == "activity" and key == DREAM_ACTIVITY
             asura_activity = table_name == "activity" and key in {ASURA_ACTIVITY, ASURA_PHASE}
+            shanfeng_activity = table_name == "activity" and key == SHANFENG_FINAL_ACTIVITY and bool(shanfeng_by_config)
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not dinner_route and not linked_battles and not row.get("monsterWaves")
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
-                    and not ten_activity and not dream_activity and not asura_activity and not asura_layer):
+                    and not ten_activity and not dream_activity and not asura_activity and not asura_layer and not shanfeng_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -1847,6 +1917,18 @@ def encounter_index(source, load_rows):
                     entry_family, entry_kind, title = "guild", "道馆", "道馆 · 结界师与馆主"
                 if key == DOJO_GUARDIAN_MODE:
                     entry_family, entry_kind, title = "guild", "道馆", "道馆 · 守护兽"
+                if key == SHANFENG_MODE:
+                    entry_family, entry_kind = ROOTS[SHANFENG_PVE]
+                    title = f"{entry_kind} · 原版战斗入口"
+            if shanfeng_activity or table_name == SHANFENG_PVE or table_name == "pve_stage_data" and numeric_key(key) in shanfeng_by_stage:
+                entry_family, entry_kind = ROOTS[SHANFENG_PVE]
+                if shanfeng_activity:
+                    title = "初翎山风超鬼王 · 成王开放时间"
+                elif table_name == SHANFENG_PVE:
+                    battles = shanfeng_by_config[numeric_key(key)]
+                    title = f"初翎山风超鬼王 · {battles[0][1] if 'battle_id' in row else '成王 · 三日挑战配置'}"
+                else:
+                    title = f"初翎山风超鬼王 · {shanfeng_by_stage[numeric_key(key)][1]} · {key}"
             if table_name == "pve_stage_data" and int(numeric_key(key) or 0) in DOJO_GUARDIAN_STAGES:
                 entry_family, entry_kind = "guild", "道馆守护"
             if dream_activity:

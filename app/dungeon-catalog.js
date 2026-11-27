@@ -113,6 +113,9 @@
     hunling_weak_soul: '契灵收服缘分',
     SuperGhost_bossmission: '超鬼王历史首领挑战',
     super_ghost_boss_accumulate_reward: '超鬼王累计奖励',
+    super_ghost6_pve: '初翎山风超鬼王历练成王',
+    super_ghost6_constant: '历练成王原版参数',
+    super_ghost6_pve_reward: '成王伤害与排名奖励',
     rpg_chapter: '剧情副本章节',
     team_assist_stage: '阵容码副本目录',
     monster: '怪物属性与免疫',
@@ -200,6 +203,10 @@
       minus_fatigue:'疲劳参数',spec_skill:'任务表词条',gk_list:'敌方编组',score_mul:'积分系数',help_mul:'协战系数'},
     SuperGhost_bossmission: {challenge_time:'历史挑战时限',begin_time:'开放时间',end_time:'结束时间',
       cost:'入场消耗',first_rewardid:'首次奖励编号',rewardid:'奖励编号',gk_list:'敌方编组'},
+    super_ghost6_pve: {unlock_time:'解锁时间',cost_num:'体力消耗',pre_id:'前置关卡',first_reward_id:'首通奖励编号',
+      skill_id:'历练机制技能编号',battle_id:'历练关卡',final_battle_id_day1:'成王第一日编组',
+      final_battle_id_day2:'成王第二日编组',final_battle_id_day3:'成王第三日编组'},
+    super_ghost6_pve_reward: {damage:'伤害或排行档位',reward_id:'各档奖励编号'},
     super_ghost_hjs_special_attack: {begin_time:'特攻开始时间',end_time:'特攻结束时间',hero_group:'特攻分组'},
     super_ghost_hjs_special_attack_group: {hero_list:'特攻式神 ID',value:'攻防加成系数',desc:'原版增益说明'},
     hunling_base: {battle_tips:'共鸣规则',shoufu_tips:'首领机制'},
@@ -2207,6 +2214,8 @@
       const spiritRoute=matchesOpeningSource(hunling)?hunling.routes[stageId]:null;
       const practice=Object.values(window.AtlasTuzhizhuPractice?.modes??{}).some(mode=>mode.groupId===stageId);
       if(practice)destination.append(node('p','请在「逢魔木桩练习」中选择普通入口或极词条，再按对应原版引擎复跑。','caption'));
+      else if(entry.refs.some(ref=>ref.table==='super_ghost6_pve'))
+        destination.append(node('p','历练成王采用独立的活动角色和结算规则。可查阅对应编组及原版规则，活动复跑待接入。','caption'));
       else if(window.AtlasGuildCrevice.routes[stageId])mountCreviceWindow(destination,stageId,row,formation);
       else if(AtlasJourneyHard.routes[stageId])destination.append(node('p','从关联的京畿净化首领挑战入口填写祝福和时限。','caption'));
       else if(window.AtlasFengmoLive?.isLiveStage(stageId))destination.append(node('p','此编组用于逢魔实战。集结、评级与联机战报条件见逢魔实战入口。','caption'));

@@ -1801,6 +1801,8 @@ def main():
         parser.error("--urdtg-training requires the original tournament training mode")
     if args.pve_deadline is not None and (args.mode != 3 or not 1 <= args.pve_deadline <= 10800):
         parser.error("A PvE table deadline requires mode 3 and a value in the supported client range")
+    if args.mode == 3 and 3340001 <= args.stage <= 3340022:
+        parser.error("Shan Feng trials require their original activity battle mode")
     if (args.mode in MAP_BOSS_MODES) != (args.map_boss_players is not None):
         parser.error("Map boss replay requires the number of players")
     if args.map_boss_players is not None and not party_positions(args.mode, args.map_boss_players):
