@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,1290,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6058,6059,6086,6089,6092,8238,9547,9548,9549,9550,9551,9552,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1042,1121,1290,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6058,6059,6086,6089,6092,8238,9547,9548,9549,9550,9551,9552,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -1053,6 +1053,32 @@ async function main(){
     assert.match(await run('qiling-group',{stageId:1,groupId:810002,battleMode:1041,qilingWindow:{windowSeconds:37,startingHp:123456}},
       {outcome:'loss',wavesCleared:0,qilingCollective:{reason:'window-expired',damage:23456,remainingHp:100000,combatSeconds:37,windowSeconds:37}}),
       /单场最高 23,456.*达到计分时限.*共享生命剩余 100,000/s);
+    const operation='document.querySelector("[data-qiling-operation]")';
+    const item='document.querySelector("[data-pve-capture-item]")';
+    const cards='document.querySelectorAll("[data-pve-capture-card]")';
+    await ui(operation+'.value="capture";'+operation+'.dispatchEvent(new Event("change"))');
+    await choose('qiling-group');
+    assert.equal(await ui(start+'.textContent'),'校验收服选择');
+    assert.equal(await ui(item+'.value'),'777802');
+    await ui(cards+'[1].value="1";'+cards+'[1].dispatchEvent(new Event("change"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(cards+'[1].value="2";'+cards+'[1].dispatchEvent(new Event("change"))');
+    assert.equal(await ui(start+'.disabled'),false);
+    let sent=0;
+    mockPve=async (plan,options)=>{
+     sent+=1;
+     assert.deepEqual(options,{stageId:1,groupId:810006,battleMode:1042,seed:0,damageFloor:false,
+      qilingCatch:{itemId:777802,cards:[1,2,3]}});
+     assert.equal(plan.members.length,5);
+     return {...options,completed:false,outcome:'unknown',qilingCatch:{state:'awaiting-server',success:null,itemId:777802,
+      cards:plan.members.slice(0,3).map(({hero},i)=>({slot:i+1,heroId:Number(hero.heroId),recommended:false}))}};
+    };
+    await ui(start+'.click()');
+    await until(status+'.textContent.includes("通过原版选卡校验")');
+    assert.equal(sent,1);
+    assert.match(await ui(reports+'.textContent'),/万象式盘.*收服结果由游戏服务器结算/);
+    await ui(operation+'.value="battle";'+operation+'.dispatchEvent(new Event("change"))');
+    assert.equal(await ui(qilingTime+'.value'),'37');
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&Number(entry.key)===6140011)){
     await encounter('guild','6140011 狭间暗域');

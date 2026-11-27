@@ -228,7 +228,7 @@
   const reserve=orochiReserve(selected,account());
   pane.reserve=reserve;
   const capture=pane.captureItem?.value?{itemId:Number(pane.captureItem.value),cards:pane.captureCards.map(field=>Number(field.value))}:null;
-  const captureReady=!capture||new Set(capture.cards).size===3;
+  const captureReady=pane.qilingCatch?AtlasQiLingGroupCapture.validSelection(capture):!capture||new Set(capture.cards).size===3;
   const moves=pane.eventMoves?.valueAsNumber;
   const eventReady=!pane.eventMoves||Number.isSafeInteger(moves)&&moves>=0;
   const training=pane.urdtgTraining?{skillLevel:Number(pane.trainingSkill.value),masks:pane.trainingMasks.valueAsNumber}:null;
@@ -551,7 +551,7 @@
   const section=document.createElement('section');
   section.className='encounter-source';
   section.innerHTML=`<h4>模拟已知阵容</h4>
-   <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${seeds.length} 个采样种子${config.scoreWindowSeconds?
+   <p class="caption">${esc(config.label||'通用 PvE 模式 3')} · ${config.memberCount} 位式神 · ${config.qilingCatch?'原版选卡校验':seeds.length+' 个采样种子'}${config.scoreWindowSeconds?
     ` · ${config.retreat||config.qilingWindow||config.creviceWindow||config.ghostSettings||config.historicalGhostWindow?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
    <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive||config.spiderNormal?' id="pve-spider-live-status"':
     config.skeleton?' id="pve-skeleton-status"':config.catfish?' id="pve-catfish-status"':config.mirage?' id="pve-mirage-status"':''} data-pve-status role="status"></p>
@@ -570,7 +570,7 @@
     <button class="secondary" type="button"${config.longche?' aria-describedby="pve-longche-status"':
     config.spiderLive||config.spiderNormal?' aria-describedby="pve-spider-live-status"':
     config.skeleton?' aria-describedby="pve-skeleton-status"':config.catfish?' aria-describedby="pve-catfish-status"':
-    config.mirage?' aria-describedby="pve-mirage-status"':''} data-pve-start>开始离线模拟</button>
+    config.mirage?' aria-describedby="pve-mirage-status"':''} data-pve-start>${config.qilingCatch?'校验收服选择':'开始离线模拟'}</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
    ${config.breakthroughParty||config.dojoDefense?`<fieldset class="pve-reserve"><legend>进攻编组</legend><div class="actions">
@@ -921,9 +921,9 @@
     ${Array.from({length:4},(_,i)=>`<label class="pve-lineup-field">备选式神 ${i+1} <select data-pve-reserve-member></select></label>`).join('')}
    </fieldset>`:''}
    ${config.captureItems?`<fieldset class="pve-reserve">
-    <legend>收服模拟</legend>
-    <label class="pve-lineup-field">式盘 <select data-pve-capture-item><option value="">只挑战至虚弱</option>
-    ${Object.entries(config.captureItems).map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join('')}</select></label>
+    <legend>${config.qilingCatch?'选择式盘和出战式神':'收服模拟'}</legend>
+    <label class="pve-lineup-field">式盘 <select data-pve-capture-item>${config.qilingCatch?'':'<option value="">只挑战至虚弱</option>'}
+    ${Object.entries(config.captureItems).map(([id,name])=>`<option value="${esc(id)}"${config.qilingCatch&&id==='777802'?' selected':''}>${esc(name)}</option>`).join('')}</select></label>
     <div class="pve-capture-fields" data-pve-capture-fields hidden>
     ${[1,2,3].map(slot=>`<label class="pve-lineup-field">结契式神 ${slot}<select data-pve-capture-card>
      ${[1,2,3,4,5].map(index=>`<option value="${index}" ${index===slot?'selected':''}>阵容中第 ${index} 位式神</option>`).join('')}</select></label>`).join('')}
@@ -1218,7 +1218,7 @@
  function addRow(run,title){
   const el=document.createElement('li');
   el.innerHTML=`<strong>${esc(title)}</strong><span data-state></span>
-   <details hidden><summary>查看采样战报</summary><ul class="dungeon-stock-samples"></ul></details>`;
+   <details hidden><summary>${run.pane.qilingCatch?'查看收服选择':'查看采样战报'}</summary><ul class="dungeon-stock-samples"></ul></details>`;
   const row={el,state:el.querySelector('[data-state]'),details:el.querySelector('details'),
    report:el.querySelector('ul'),samples:[],verdict:'unknown',index:run.rows.length+1};
   if(run.pane.splyjBuffs){
@@ -1246,19 +1246,19 @@
  }
 
  async function replay(run,row,plan,trialSlot){
-  const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings,historicalGhostWindow,
+  const {stageId,groupId,battleMode,retreat,region,qilingWindow,qilingCatch,creviceWindow,ghostSettings,historicalGhostWindow,
    mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,dojoArea,forest,tenBonuses,bandScores,devilFeastHp}=run.pane;
   const scoring=isDamageMode(battleMode,stageId),target=waveTarget(battleMode);
   const scripted=battleMode===AtlasChajiStory.special.battleMode;
   const orochi=battleMode===AtlasTrueOrochi.battleMode;
-  for(const seed of seeds){
+  for(const seed of qilingCatch?[0]:seeds){
    if(!active(run))return;
-   run.message=`正在复跑第 ${row.index} 套 · 种子 ${seed}`;
+   run.message=qilingCatch?`正在校验第 ${row.index} 套阵容的收服选择`:`正在复跑第 ${row.index} 套 · 种子 ${seed}`;
    update();
    let report;
    run.native=true;
-   try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:true,...(battleMode?{battleMode}:{}),
-    ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{capture:run.capture}:{}),...(qilingWindow?{qilingWindow}:{}),
+   try{report=await api.runPve(plan,{stageId,groupId,seed,damageFloor:!qilingCatch,...(battleMode?{battleMode}:{}),
+    ...(retreat?{retreat}:{}),...(region?{region}:{}),...(run.capture?{[qilingCatch?'qilingCatch':'capture']:run.capture}:{}),...(qilingWindow?{qilingWindow}:{}),
     ...(run.journeyHard?{journeyHard:run.journeyHard}:{}),...(creviceWindow?{creviceWindow}:{}),...(ghostSettings?{ghostSettings}:{}),
     ...(run.yinyangBoss?{yinyangBoss:run.yinyangBoss}:{}),
     ...(run.towerSettings?{towerSettings:run.towerSettings}:{}),
@@ -1299,6 +1299,14 @@
    if(!active(run))return;
    row.samples.push(report);
    row.details.hidden=false;
+   if(qilingCatch){
+    row.report.innerHTML=sampleBattleMarkup(row.samples);
+    if(report.qilingCatch?.state==='awaiting-server'){
+     row.verdict='prepared';
+     row.state.textContent='原版已校验式盘和选卡';
+    }else row.state.textContent='未取得原版收服校验';
+    return;
+   }
    if(scoring&&row.samples.length===1&&AtlasRuneCandidate.damageResult([report]))
     showScoreInstructions(row,plan,run.data.gameConfig,run.pane.battleMode);
    row.report.innerHTML=sampleBattleMarkup(row.samples);
@@ -1472,7 +1480,8 @@
   const leader=pane.dojoLeader?.value==='leader';
   if(!selected.length||pane.breakthrough&&(!defenseLineup||!defenseInventory)||
      dojoWaves?.some(wave=>!wave.lineup||!wave.inventory||!AtlasDojoDefense.validOmissions(wave.omittedSlots,leader))||
-     reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
+     reserve&&!reserve.ready||pane.qilingCatch&&!AtlasQiLingGroupCapture.validSelection(pane.capture)||
+     pane.capture&&new Set(pane.capture.cards).size!==3||
      pane.urdtgTraining&&!pane.trainingSettings||pane.journeyHard&&!pane.journeySettings||pane.dojoGuardian&&!pane.dojoGuardianSettings||pane.yinYangDrums&&!pane.yinYangSettings||
      pane.asura&&!pane.asuraSettings||pane.gtwBoss&&!pane.gtwBossSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
@@ -1561,6 +1570,11 @@
     await original(next,lineup);
    }
    if(!active(next))return;
+   if(next.pane.qilingCatch){
+    const count=next.rows.filter(row=>row.verdict==='prepared').length;
+    next.notice=count?`${count} 套阵容通过原版选卡校验。实际收服由游戏服务器结算。`:'所选阵容尚未通过收服校验，请查看详情。';
+    return;
+   }
    const hunting=isDamageMode(next.pane.battleMode,next.pane.stageId),target=waveTarget(next.pane.battleMode);
    const scripted=next.pane.battleMode===AtlasChajiStory.special.battleMode;
    const passed=next.rows.filter(row=>row.verdict==='pass'||(hunting||target)&&row.verdict==='scored');

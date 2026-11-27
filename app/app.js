@@ -188,6 +188,12 @@ function waveEngineSeconds(wave){
 }
 function sampleBattleMarkup(samples){
  return samples.map(sample=>{
+  if(sample.qilingCatch){
+   const capture=sample.qilingCatch,source=AtlasQiLingGroupCapture;
+   const names=capture.cards.map(({heroId,recommended})=>
+    (DATA.gameConfig.heroes[heroId]?.name||`式神 ${heroId}`)+(recommended?'（原版推荐）':''));
+   return `<li>${esc([source.items[capture.itemId],names.join('、'),'收服结果由游戏服务器结算'].join(' · '))}</li>`;
+  }
   const time=sample.completed&&Number.isFinite(sample.engineSeconds)?` · 引擎全程 ${sample.engineSeconds.toFixed(2)} 秒`:'';
   const waves=(sample.monsterHealth||[]).flatMap(wave=>{
    const seconds=waveEngineSeconds(wave);

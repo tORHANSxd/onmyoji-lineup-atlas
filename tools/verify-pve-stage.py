@@ -68,7 +68,7 @@ def replay(args, runtime, work):
                                 SPECIAL_NIAN_MODE, MapBossReplay, MeituanReplay, NianReplay, QinfeiFoodReplay,
                                 QinfeiSideReplay, entry_for_stage,
                                 party_positions, qinfei_food_profile)
-    from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupReplay
+    from qiling_group_stage import QILING_GROUP_CATCH_MODE, QILING_GROUP_MODE, QILING_GROUP_REPLAY_SECONDS, QiLingGroupCatch, QiLingGroupReplay
     from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_STAGE, QINFEI_BOSS_REPLAY_SECONDS, QinfeiBossRaid
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
@@ -130,6 +130,7 @@ def replay(args, runtime, work):
     orochi = args.mode == OROCHI_MODE
     hunling = args.mode in HUNLING_MODES
     qiling = args.mode == QILING_GROUP_MODE
+    qiling_catch = args.mode == QILING_GROUP_CATCH_MODE
     crevice = args.mode == CREVICE_MODE
     superghost = args.mode == SUPERGHOST_MODE
     historical_ghost = args.mode == HISTORICAL_GHOST_MODE
@@ -322,6 +323,14 @@ def replay(args, runtime, work):
             raise ValueError("The special story needs five owned shikigami")
         story = ChajiStoryReplay(args.mode, args.stage)
         engine, group, const = story.engine, story.group, story.const
+        group_id, wave_count = group["ID"], 1
+    elif qiling_catch:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Collective Hunling capture requires the last five shikigami")
+        catch = QiLingGroupCatch(args.stage, args.qiling_catch_item, args.qiling_catch_cards, heroes)
+        engine, group, const = catch.engine, catch.group, catch.const
         group_id, wave_count = group["ID"], 1
     elif genji_invention:
         from DynamicConfigData import DATA_HERO
@@ -884,6 +893,8 @@ def replay(args, runtime, work):
         route = "splyj-boss-original-practice"
     elif genji_invention:
         route = "genji-invention-original"
+    elif qiling_catch:
+        route = "qiling-collective-capture-client"
     elif yanmo:
         route = "yanmo-trial-original-solo" if yanmo_trial else "yanmo-practice-original-solo"
     elif breakthrough:
@@ -1179,6 +1190,8 @@ def replay(args, runtime, work):
         formation_matches = splyj.matches(avatar)
     elif genji_invention:
         formation_matches = genji.matches(avatar)
+    elif qiling_catch:
+        formation_matches = catch.matches(avatar)
     elif yanmo:
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6]
@@ -1359,6 +1372,15 @@ def replay(args, runtime, work):
     band_handoff = False
     while engine.battleState != const.BattleState.BS_OVER and time.monotonic() < deadline:
         engine.update()
+        if qiling_catch:
+            if host.oracle.unsupported:
+                raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
+            if catch.prepare(controller):
+                selection_checked = True
+                break
+            if engine.now_time() - start > 30:
+                break
+            continue
         if gtw_boss:
             gtw_replay.update()
         if breakthrough:
@@ -1597,6 +1619,9 @@ def replay(args, runtime, work):
         report["genjiInvention"] = genji.report(completed, outcome)
         report["formationsVerified"] = 1
         report["wavesCleared"] = 0
+    if qiling_catch:
+        report["qilingCatch"] = catch.report()
+        report["formationsVerified"] = 1
     if yanmo:
         if verified_waves != {0}:
             raise RuntimeError("The original Yanmo formation was not verified")
@@ -1921,7 +1946,7 @@ def main():
     from fengmo_spider_normal_stage import SPIDER_NORMAL_MODE, SPIDER_NORMAL_STAGE, valid_spider_normal_settings
     from laolao_fusion_stage import LAOLAO_FUSION_MODE, LAOLAO_FUSION_STAGE, FUSION_WALL_SECONDS, valid_fusion_settings
     from pve_clock import pve_wall_seconds
-    from qiling_group_stage import QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
+    from qiling_group_stage import QILING_GROUP_CATCH_MODE, QILING_GROUP_CATCH_STAGES, QILING_GROUP_MODE, QILING_GROUP_LIMIT, QILING_GROUP_REPLAY_SECONDS
     from qinfei_boss_stage import (QINFEI_BOSS_MAX_WINDOW, QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES,
                                    QINFEI_BOSS_REPLAY_SECONDS, QINFEI_BOSS_STAGE)
     from regional_boss_stage import REGION_MODES
@@ -1947,7 +1972,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *JI_FOREST_MODES, CHAJI_BOSS_MODE, CHAJI_MAP_MODE, *CHAJI_SIDE_MODES, *CHAJI_STORY_MODES, SPLYJ_TOWER_MODE, SPLYJ_BOSS_MODE, GENJI_MODE, YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE, SOCIAL_PLAY_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, QILING_GROUP_CATCH_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *JI_FOREST_MODES, CHAJI_BOSS_MODE, CHAJI_MAP_MODE, *CHAJI_SIDE_MODES, *CHAJI_STORY_MODES, SPLYJ_TOWER_MODE, SPLYJ_BOSS_MODE, GENJI_MODE, YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE, SOCIAL_PLAY_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--splyj-buff", type=int, choices=SPLYJ_OPTIONAL_BUFFS)
     parser.add_argument("--genji-lead", type=int, choices=range(7))
@@ -1994,6 +2019,8 @@ def main():
     parser.add_argument("--capture-item", type=int, choices=CAPTURE_ITEMS)
     parser.add_argument("--capture-cards", type=int, nargs=3, choices=range(1, 6))
     parser.add_argument("--qiling-window", type=int)
+    parser.add_argument("--qiling-catch-item", type=int, choices=CAPTURE_ITEMS)
+    parser.add_argument("--qiling-catch-cards", type=int, nargs=3, choices=range(1, 6))
     parser.add_argument("--qiling-hp", type=int)
     parser.add_argument("--crevice-window", type=int)
     parser.add_argument("--ghost-settings", type=json.loads)
@@ -2218,6 +2245,12 @@ def main():
         parser.error("A collective Hunling replay needs a valid scoring window and starting HP")
     if args.mode != QILING_GROUP_MODE and args.qiling_hp is not None:
         parser.error("Starting shared HP is only available for a collective Hunling replay")
+    if (args.mode == QILING_GROUP_CATCH_MODE
+            and (args.qiling_catch_item is None or len(set(args.qiling_catch_cards or ())) != 3 or args.minimum_damage)
+            or args.mode != QILING_GROUP_CATCH_MODE
+            and (args.qiling_catch_item is not None or args.qiling_catch_cards is not None)
+            or args.mode == 3 and args.stage in QILING_GROUP_CATCH_STAGES):
+        parser.error("Choose the original collective Hunling capture route, item and three distinct cards")
     if (args.mode == CREVICE_MODE) != (args.crevice_window is not None) or (
             args.crevice_window is not None and not 1 <= args.crevice_window <= CREVICE_TIME):
         parser.error("The Guild Crevice replay needs a 1 to 180 second window")

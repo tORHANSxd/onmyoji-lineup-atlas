@@ -666,6 +666,10 @@ def encounter_index(source, load_rows):
             links.append(relation("activity_offline_lbs_mass", keys[0], f"活动地点（同活动共 {len(keys)} 处）", False))
         return links
     hunling_routes = {str(stage_id): row for stage_id, row in (*exploration_stages(), *challenge_stages())}
+    hunling_catch_configs = {}
+    for key, row in table("hunling_boss").values():
+        if row.get("fuben_id") == 1 and row.get("catch_battle_id"):
+            hunling_catch_configs.setdefault(numeric_key(row["catch_battle_id"]), []).append(key)
     hunling_codes = {row["search_id"]: key for key, row in table("team_assist_stage").values()
                      if isinstance(row.get("name"), str) and row["name"].startswith("契灵")}
     shilian_exams = {row.get("dao"): key for key, row in table("shilian_event_exam").values()}
@@ -2054,6 +2058,10 @@ def encounter_index(source, load_rows):
             links.extend(ref for key in row.get("mark_list", ())
                          if (ref := relation("hunling_mark", key, "可获得术印", False)))
             spirit = row.get("hunling_id")
+            if row.get("fuben_id") == 1 and row.get("catch_battle_id"):
+                refs = [("hunling_prop", item, "可选式盘") for item in CAPTURE_ITEMS]
+                refs.append(("hunling_weak_soul", spirit, "客户端推荐式神"))
+                links.extend(ref for dest, target, label in refs if (ref := relation(dest, target, label, False)))
             if type(spirit) is int and (code := relation("team_assist_stage", hunling_codes.get(38000 + spirit - 100), "集结首领阵容码目录", False)):
                 links.append(code)
             passive = row.get("skills")
@@ -2061,6 +2069,9 @@ def encounter_index(source, load_rows):
                 skill = relation("skill", level_one_skill(passive[0]), "集结战斗队伍专属技能", False)
                 if skill:
                     links.append(skill)
+        if name == "pve_stage_data" and (configs := hunling_catch_configs.get(numeric_key(row.get("id")))):
+            links.extend(ref for key in configs
+                         if (ref := relation("hunling_boss", key, "对应的契灵集结收服入口", False)))
         panel_field = PANEL_RULE_FIELDS.get(name)
         if panel_field:
             field, label = panel_field

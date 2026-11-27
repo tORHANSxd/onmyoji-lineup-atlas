@@ -1,11 +1,15 @@
 """Replay the original collective Hunling engine with one local participant."""
 
 from math import isclose, isfinite
+from hunling_stage import CAPTURE_ITEMS
 
 
 QILING_GROUP_MODE = 1041
 QILING_GROUP_LIMIT = 1800
 QILING_GROUP_REPLAY_SECONDS = 220
+QILING_GROUP_CATCH_MODE = 1042
+QILING_GROUP_CATCH_STAGES = range(810006, 810010)
+QILING_GROUP_CATCH_SCENE = 800007
 
 
 def group_encounter(config_id):
@@ -22,6 +26,64 @@ def group_encounter(config_id):
             or len(group["MonstersInfos"][0]) != 1 or group["MonstersInfos"][0][0][0] != 1):
         raise ValueError("Unexpected collective Hunling encounter data")
     return QiLingGroupBossBattleEngine, config, group, const
+
+
+class QiLingGroupCatch:
+    """Run the client's post-battle item and roster checks up to server confirmation."""
+
+    def __init__(self, config_id, item, slots, heroes):
+        from battleengine.engine.QiLingGroupBossCatchEngine import QiLingGroupBossCatchEngine
+        from DynamicConfigData import BattleMonstersInfo, DATA_HUNLING_PROP, DATA_HUNLING_WEAK_SOUL, DATA_PVE_STAGE_DATA
+
+        _, self.config, battle, self.const = group_encounter(config_id)
+        self.config_id, self.item, self.slots = config_id, item, slots
+        stage = self.config["catch_battle_id"]
+        spirit = self.config["hunling_id"]
+        self.group = BattleMonstersInfo.data[DATA_PVE_STAGE_DATA.data[str(stage)]["groupid"]]
+        waves = self.group["MonstersInfos"]
+        if (stage not in QILING_GROUP_CATCH_STAGES or self.group["ID"] != stage
+                or self.group["resindex"] != QILING_GROUP_CATCH_SCENE or len(waves) != 1
+                or waves[0] != battle["MonstersInfos"][0] or self.config["star"] != 6
+                or item not in CAPTURE_ITEMS or DATA_HUNLING_PROP.data[item]["prop_id"] != item):
+            raise ValueError("The original collective Hunling capture configuration differs")
+        self.enemy = tuple(waves[0][0][:3])
+        self.recommended = set(DATA_HUNLING_WEAK_SOUL.data[spirit]["weak_hero_ids"])
+        roster = [{"herouid": alias, "hero_id": hero["heroId"], "awake": hero["awake"], "star": hero["star"],
+                   "level": hero["level"], "skinid": 0} for alias, hero in heroes.items()]
+        self.engine = QiLingGroupBossCatchEngine({
+            "pve_data_flag": str(stage), "fuben_id": self.config["fuben_id"], "hero_uids": roster,
+            "battle_info": {"hunling_id": spirit, "capture_prop_num": {str(item): 1}},
+        })
+        self.engine.battleMode = QILING_GROUP_CATCH_MODE
+        self.cards = None
+
+    def matches(self, avatar):
+        return (self.engine.monstergroup == self.group["ID"] and self.engine.combineSceneInfoId == QILING_GROUP_CATCH_SCENE
+                and self.engine.yys_herodata is not None and avatar.hasYYS and not avatar.ssPosIndexList
+                and set(self.engine.ss_herodatas) == {f"member-{slot}" for slot in range(1, 6)})
+
+    def prepare(self, controller):
+        engine = self.engine
+        if engine.capture_engine_stage == engine.ES_BOSS_WEAK:
+            engine.op_use_capture_prop(controller, str(self.item))
+        if engine.capture_engine_stage != engine.ES_SELECT_SHOW_HERO:
+            return False
+        enemy = engine.getEntity(engine.monster_boss_uid)
+        cards = [f"member-{slot}" for slot in self.slots]
+        if (enemy is None or (enemy.posIndex, enemy.protoid, enemy.AttrComp.level) != self.enemy
+                or str(engine.used_capture_currency_id) != str(self.item) or engine.check_hero_uid_list(cards) != -1):
+            raise RuntimeError("The original collective Hunling client did not validate the capture")
+        self.cards = [{"slot": slot, "heroId": engine.ss_herodatas[alias].heroId,
+                       "recommended": engine.ss_herodatas[alias].heroId in self.recommended}
+                      for slot, alias in zip(self.slots, cards)]
+        return True
+
+    def report(self):
+        if not self.cards:
+            raise RuntimeError("The original collective Hunling capture did not reach card selection")
+        return {"configId": self.config_id, "spiritId": self.config["hunling_id"], "enemyId": self.enemy[1],
+                "star": self.config["star"], "itemId": self.item, "cards": self.cards,
+                "markIds": list(self.config["mark_list"]), "state": "awaiting-server", "success": None}
 
 
 class QiLingGroupReplay:

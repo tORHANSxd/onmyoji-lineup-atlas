@@ -1519,12 +1519,21 @@
     render();
   }
 
-  function mountQiLingWindow(block,stageId){
+  function mountQiLingWindow(block,stageId,profile){
     const source=window.AtlasQiLingGroups;
+    const catchSource=window.AtlasQiLingGroupCapture;
     if(!matchesOpeningSource(source))return;
     const route=source.routes[stageId];
     if(!route)return;
+    const capture=catchSource.entry(stageId);
+    const captureAvailable=matchesOpeningSource(catchSource)&&profile?.id===stageId&&
+      profile.hunling_id===route.spiritId&&profile.star===6&&profile.catch_battle_id===capture?.groupId;
     const fields=node('div','','actions'),workbench=node('div');
+    const operation=node('select'),operationLabel=node('label','契灵集结玩法 ','pve-lineup-field');
+    operation.dataset.qilingOperation='';
+    operation.append(new Option('战斗伤害','battle'));
+    if(captureAvailable)operation.append(new Option('战后收服校验','capture'));
+    operationLabel.append(operation);
     const input=(label,marker,max,value,placeholder='')=>{
       const field=node('label',label,'pve-lineup-field'),control=document.createElement('input');
       Object.assign(control,{type:'number',min:'1',max:String(max),step:'1',value,placeholder});
@@ -1535,9 +1544,22 @@
     const length=input('计分窗口（秒）','qilingWindow',source.windowLimit,String(source.windowLimit));
     const hp=input('开场剩余生命','qilingHp',Math.floor(route.maxHp),'','默认满血');
     const skill=AtlasGame.skill(DATA.gameConfig,route.skillId,1,0)?.name||`技能 ${route.skillId}`;
-    block.append(node('p',`共享生命上限 ${openingNumber.format(route.maxHp)} · ${skill}作用于${route.skillTargets===1?'阴阳师':'本队阴阳师和式神'}`,'caption'),
-      fields,node('p','使用一队已知阵容，伤害只计入本队。','caption'),workbench);
+    const hint=node('p','','caption');
+    const battleInfo=node('p',`共享生命上限 ${openingNumber.format(route.maxHp)} · ${skill}作用于${route.skillTargets===1?'阴阳师':'本队阴阳师和式神'}`,'caption');
+    block.append(operationLabel,battleInfo,fields,hint,workbench);
     const render=()=>{
+      const isCapture=captureAvailable&&operation.value==='capture';
+      fields.hidden=isCapture;
+      battleInfo.hidden=isCapture;
+      hint.textContent=isCapture?'用最后一场集结的阵容选择一个式盘和三位式神。可离线核对选卡，收服结果由游戏服务器返回。':
+       '使用一队已知阵容，伤害只计入本队。';
+      if(isCapture){
+        workbench.replaceChildren();
+        window.AtlasPveWorkbench?.mount(workbench,{stageId,groupId:capture.groupId,battleMode:catchSource.battleMode,
+          memberCount:5,waveCount:1,version:catchSource.resourceVersion,codeStageId:route.codeStageId,
+          qilingCatch:true,captureItems:catchSource.items,label:`契灵集结 · ${route.name} · 战后收服`});
+        return;
+      }
       if(!length.value||!length.checkValidity()||!hp.checkValidity()){
         window.AtlasPveWorkbench?.unmount();
         workbench.replaceChildren(node('p',!length.value||!length.checkValidity()?`计分窗口请输入 1 至 ${source.windowLimit.toLocaleString('zh-CN')} 秒的整数。`:
@@ -1550,6 +1572,7 @@
         memberCount:5,waveCount:1,qilingWindow,scoreWindowSeconds:windowSeconds,version:source.resourceVersion,
         codeStageId:route.codeStageId,label:`契灵集结 · ${route.name} · 个人伤害`});
     };
+    operation.addEventListener('change',render);
     length.addEventListener('change',render);hp.addEventListener('change',render);
     render();
   }
@@ -2094,6 +2117,9 @@
     const chajiStoryMounted=showChajiStory(destination,entry,groups);
     const splyjMounted=showSplyjBattle(destination,entry,groups);
     const genjiMounted=showGenjiInvention(destination,entry,groups);
+    const qilingCatchStage=entry.table==='pve_stage_data'&&AtlasQiLingGroupCapture.isCatchStage(Number(entry.key));
+    if(qilingCatchStage)
+      destination.append(node('p','可从关联的契灵集结首领配置打开「战后收服校验」。','caption'));
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2218,7 +2244,7 @@
           label:sixRealmsEvent?'六道之门 · 途中战斗':'六道之门 · 单场首领试炼'});
       }
     }
-    if(entry.table==='hunling_boss')mountQiLingWindow(destination,Number(entry.key));
+    if(entry.table==='hunling_boss')mountQiLingWindow(destination,Number(entry.key),groups[0].row);
     const orochi=AtlasTrueOrochi;
     if(entry.table==='map_boss'&&Number(entry.key)===orochi.stageId&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion&&
        groups.filter(group=>group.ref.table==='pve_stage_data'&&group.row).length===orochi.floorCount){
@@ -2238,7 +2264,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!chajiStoryMounted&&!splyjMounted&&!genjiMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!chajiStoryMounted&&!splyjMounted&&!genjiMounted&&!qilingCatchStage&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;

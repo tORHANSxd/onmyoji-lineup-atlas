@@ -59,6 +59,7 @@ const resourceEncounters=require('../app/resource-encounters.js');
 const orochi=require('../app/true-orochi.js');
 const hunling=require('../app/hunling-encounters.js');
 const qilingGroups=require('../app/qiling-group-openings.js');
+const qilingCapture=require('../app/qiling-group-capture.js');
 const sixRealms=require('../app/six-realms-exams.js');
 const {firstExperience}=resourceEncounters;
 const storyExplorationMode=1000;
@@ -112,6 +113,7 @@ const engines={
  1031:{name:'HunlingNormalBattleEngine',route:'hunling-regional-exploration',sha256:'bb053a93fe3ed2cea06443be58cfc7e45c80be6f34d057bdd32aca29abda70a1'},
  1032:{name:'HunlingBossBattleEngine',route:'hunling-personal-challenge',sha256:'e50f9324358819f76562dece05379f15d7def294d83c2eb327da798fc2e15813'},
  [qilingGroups.battleMode]:{name:'QiLingGroupBossBattleEngine',route:'qiling-collective-local-window',sha256:qilingGroups.engineSHA256},
+ [qilingCapture.battleMode]:qilingCapture.engine,
  3023:{name:'LBSWorldBossXEngine',route:'regional-boss-hard-scenario',sha256:'a4268deb478a53610e6ef6e23e833f3bf18d2be826f7cd703aaca7e1a54df38f'},
  [fengmoYanwu.battleMode]:{name:'FengMoEquipBattleEngine',route:'fengmo-yanwu-solo',sha256:fengmoYanwu.engineSHA256},
  [fengmoBand.battleMode]:fengmoBand.engine,
@@ -1429,7 +1431,7 @@ function validDojoDefenseReport(report,settings){
  });
 }
 
-function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,socialParty,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,genjiInvention,gtwEventId,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}){
+function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingCatch,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,socialParty,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,genjiInvention,gtwEventId,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const qinfeiSide=battleMode===3?mapBoss.qinfeiSideBattles[stageId]:null;
  const pveDeadline=report?.pveDeadline;
@@ -1525,6 +1527,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===orochi.battleMode&&!validOrochiReport(report,rounds[0]))||
     (hunlingRoute&&!validHunlingReport(report,hunlingRoute,capture))||
     (qilingEntry&&!validQiLingReport(report,qilingEntry,qilingWindow,rounds[0]))||
+    (battleMode===qilingCapture.battleMode&&!qilingCapture.validReport(report,qilingCatch,rounds[0]))||
     (creviceRoute&&!validCreviceReport(report,creviceRoute,creviceWindow))||
     (ghostRoute&&!validSuperGhostReport(report,ghostRoute,ghostSettings,rounds[0]))||
     (historicalGhostRoute&&!validHistoricalGhostReport(report,historicalGhostRoute,historicalGhostWindow))||
@@ -1575,7 +1578,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(feast&&fusionAvailable?[fusion.battleMode]:[]),...(duskAvailable?[duskWraith.battleMode]:[]),...(songAvailable?[songstress.battleMode]:[]),...(mirageAvailable?[mirage.battleMode,mirageX.battleMode]:[]),...(catfishAvailable?[catfish.battleMode,catfishX.battleMode]:[]),...(skeletonAvailable?[skeleton.battleMode,skeletonX.battleMode]:[]),...(longcheAvailable?[longche.battleMode,longcheX.battleMode]:[]),...(spiderLiveAvailable?[spiderLive.battleMode]:[]),
      ...(spiderNormalAvailable&&spiderLiveAvailable?[spiderNormal.battleMode]:[]),
      ...(spider?Object.keys(tuzhizhuPractice.modes).map(Number):[]),...(trueOrochi?[orochi.battleMode]:[]),
-     ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode]:[]),...(shilian?sixRealmsModes:[]),
+     ...(spirit?hunling.battleModes:[]),...(qiling?[qilingGroups.battleMode,qilingCapture.battleMode]:[]),...(shilian?sixRealmsModes:[]),
      ...(generalSoul?Object.keys(activityScore.modes).map(Number):[]),...(journey?[journeyHard.battleMode,yinYang.battleMode]:[]),...(tianfaAvailable?[tianfa.battleMode]:[]),
      ...(crevice?[guildCrevice.battleMode]:[]),...(ghost?[superGhost.battleMode,superGhost.historicalBattleMode]:[]),
      ...(mapBossAvailable?mapBoss.battleModes:[]),...(qinfeiAvailable&&retreat?[qinfei.battleMode]:[]),
@@ -1607,7 +1610,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
   },
-  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,socialParty,tianfaTeam=false,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,genjiInvention,gtwEventId,forest,tenBonuses,bandScores,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}={}){
+  async run(plan,{battleMode=3,stageId,groupId,seed,damageFloor=false,retreat,region,capture,qilingCatch,qilingWindow,sixRealmsEvent,trialSlot,sixRealmsState,journeyHard:journeySettings,creviceWindow,ghostSettings,historicalGhostWindow,mapBossPlayers,socialParty,tianfaTeam=false,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,genjiInvention,gtwEventId,forest,tenBonuses,bandScores,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}={}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
@@ -1782,6 +1785,11 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===qilingGroups.battleMode&&(qilingGroups.resourceVersion!==resourceVersion||qilingEntry?.groupId!==groupId||
       plan.members.length!==5||!validQiLingWindow(qilingWindow,qilingEntry))||qilingWindow!==undefined&&!qilingEntry)
     throw Error('契灵集结需要合法的首领、计分窗口、开场生命和五位自有式神');
+   const catchEntry=battleMode===qilingCapture.battleMode?qilingCapture.entry(stageId):null;
+   if(battleMode===qilingCapture.battleMode&&(!catchEntry||catchEntry.groupId!==groupId||plan.members.length!==5||
+      qilingCapture.resourceVersion!==resourceVersion||damageFloor||!qilingCapture.validSelection(qilingCatch))||
+      qilingCatch!==undefined&&!catchEntry||battleMode===3&&qilingCapture.isCatchStage(stageId))
+    throw Error('契灵集结收服需要对应的首领、最后一次阵容、式盘和三个不同的出战位置');
    if(battleMode===fengmoYanwu.battleMode&&(fengmoYanwu.resourceVersion!==resourceVersion||stageId!==groupId||
       plan.members.length!==fengmoYanwu.routes[stageId]?.memberCount))throw Error('当前配装与逢魔演武单人上阵人数不一致');
    if(battleMode===3&&Object.hasOwn(fengmoYanwu.routes,stageId))throw Error('逢魔演武需要使用原版活动计分入口');
@@ -2028,6 +2036,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      args.push('--qiling-window',String(qilingWindow.windowSeconds));
      if(qilingWindow.startingHp!==undefined)args.push('--qiling-hp',String(qilingWindow.startingHp));
     }
+    if(catchEntry)args.push('--qiling-catch-item',String(qilingCatch.itemId),'--qiling-catch-cards',...qilingCatch.cards.map(String));
     if(creviceRoute)args.push('--crevice-window',String(creviceWindow));
     if(ghostRoute)args.push('--ghost-settings',JSON.stringify(ghostSettings));
     if(historicalGhostRoute)args.push('--historical-ghost-window',String(historicalGhostWindow));
@@ -2036,7 +2045,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     if(qinfeiBoss)args.push('--qinfei-profile',String(qinfeiBoss.raidId),String(qinfeiBoss.difficulty),'--window-seconds',String(qinfeiBoss.windowSeconds));
     if(tianfaTeam)args.push('--tianfa-team');
     if(socialParty>1)args.push('--social-party',String(socialParty));
-    const expected={battleMode,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,socialParty,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,genjiInvention,gtwEventId,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings,
+    const expected={battleMode,seed,input,suitInput,damageFloor,rounds,resource,hunlingRoute,capture,qilingCatch,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,socialParty,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,dojoGuardian,gtwBoss,splyjBuff,genjiInvention,gtwEventId,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings,
      retreat:battleMode===306?retreat:null,region:regionModes.includes(battleMode)?region:null};
     async function runStage(stageId,groupId,extra=[]){
      const output=path.join(dir,`battle-${stageId}.json`);
