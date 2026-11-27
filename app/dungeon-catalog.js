@@ -2215,7 +2215,7 @@
       const practice=Object.values(window.AtlasTuzhizhuPractice?.modes??{}).some(mode=>mode.groupId===stageId);
       if(practice)destination.append(node('p','请在「逢魔木桩练习」中选择普通入口或极词条，再按对应原版引擎复跑。','caption'));
       else if(entry.refs.some(ref=>ref.table==='super_ghost6_pve'))
-        destination.append(node('p','历练成王采用独立的活动角色和结算规则。可查阅对应编组及原版规则，活动复跑待接入。','caption'));
+        showShanFengBattle(destination,entry,row,formation,groups);
       else if(window.AtlasGuildCrevice.routes[stageId])mountCreviceWindow(destination,stageId,row,formation);
       else if(AtlasJourneyHard.routes[stageId])destination.append(node('p','从关联的京畿净化首领挑战入口填写祝福和时限。','caption'));
       else if(window.AtlasFengmoLive?.isLiveStage(stageId))destination.append(node('p','此编组用于逢魔实战。集结、评级与联机战报条件见逢魔实战入口。','caption'));
@@ -2380,6 +2380,23 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.sceneId,battleMode,
       version:source.resourceVersion,label:entry.title,memberCount:source.memberCount,waveCount:1,
       codeStageId:source.stageId,breakthrough:true,breakthroughParty:guild});
+  }
+
+  function showShanFengBattle(destination,entry,row,formation,groups){
+    const source=AtlasShanFeng,stageId=Number(entry.key),stage=source.stage(stageId);
+    if(!stage){
+      destination.append(node('p','困难编组的首领技能会随历练进度改变。可查阅敌方编组，进度条件待接入。','caption'));
+      return;
+    }
+    const route=groups.find(({ref})=>ref.table==='battle_mode_routes'&&ref.key===source.battleMode)?.row;
+    if(!matchesOpeningSource(source)||route?.scene_engine!==source.engine.name||row?.shishentotal!==5||
+      row.groupid!==stageId||formation?.row?.resindex!==stage.sceneId||formation.row.MonstersInfos?.length!==1)return;
+    destination.append(node('p',stage.day?
+      '成王简单挑战 · 180 秒内按原版伤害结算。使用 40 级活动山风的基础状态，潜能、额外技能与特攻均为零。':
+      '历练 · 180 秒内清场获胜。使用 40 级活动山风的基础状态，潜能、额外技能与特攻均为零。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,waveCount:1,
+      battleMode:source.battleMode,version:source.resourceVersion,label:entry.title,replacementActor:source.actor,
+      scoreWindowSeconds:stage.day?source.deadlineSeconds:undefined});
   }
 
   function showDojoGuardian(destination, entry, groups) {

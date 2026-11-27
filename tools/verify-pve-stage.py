@@ -58,6 +58,7 @@ def replay(args, runtime, work):
     from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_STAGE, QINFEI_BOSS_REPLAY_SECONDS, QinfeiBossRaid
     from regional_boss_stage import REGION_HARD_MODE, REGION_MODE, REGION_MODES, RegionalBossReplay, regional_boss_stage
     from resource_stage import RESOURCE_MODE, RESOURCE_STAGE_NAMES, ROUTES
+    from shanfeng_stage import SHANFENG_MODE, SHANFENG_WALL_SECONDS, ShanFengReplay
     from shilian_routes import SHILIAN_EVENT_MODE, SHILIAN_EXAM_MODE, SHILIAN_MODES
     from shilian_stage import ArtifactReplay, MoonTrial, REPLAY_SECONDS as SHILIAN_REPLAY_SECONDS, guard_battle_input, shilian_stage, verify_opening, verify_run_state
     from superghost_stage import HISTORICAL_GHOST_MODE, SUPERGHOST_MODE, SUPERGHOST_WALL_SECONDS, HistoricalGhostReplay, SuperGhostReplay
@@ -91,6 +92,7 @@ def replay(args, runtime, work):
     asura = args.mode in ASURA_MODES
     asura_depth = args.mode == ASURA_DEPTH_MODE
     asura_replay = None
+    shanfeng = args.mode == SHANFENG_MODE
     breakthrough = None
     dojo_guardian = None
     dojo_defense = None
@@ -161,7 +163,7 @@ def replay(args, runtime, work):
     else:
         actor, fighters, inventory, choices = selected_team(
             plan, suits, member_limit=6 if yanwu or shilian or tianfa or songstress else 5,
-            select_actor=not (ten_boss or urdtg_train) and (args.mode != 266 or "onmyoji" in plan))
+            select_actor=not (ten_boss or urdtg_train or shanfeng) and (args.mode != 266 or "onmyoji" in plan))
         heroes = {**fighters, "selected-onmyoji": actor} if actor else dict(fighters)
         if shilian:
             choices.pop("selected-onmyoji")
@@ -201,6 +203,15 @@ def replay(args, runtime, work):
             engine, group, const, asura_replay = asura_depth_battle(args.stage, args.asura)
         else:
             engine, group, const, asura_replay = asura_battle(args.mode, args.stage, args.asura)
+        group_id, wave_count = group["ID"], len(group["MonstersInfos"])
+    elif shanfeng:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Shan Feng trials require five owned shikigami")
+        shanfeng_replay = ShanFengReplay(modules, args.stage)
+        engine, group, const = shanfeng_replay.engine, shanfeng_replay.group, shanfeng_replay.const
+        actor = heroes["selected-onmyoji"] = stage_actor_placeholder()
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
     elif args.mode in (BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE):
         from DynamicConfigData import DATA_HERO
@@ -673,7 +684,7 @@ def replay(args, runtime, work):
     player = preset_player(heroes, actors, actor_id) if relay or orochi else {"heroes": heroes, "yysid": actor_id}
     if shilian and args.shilian_state and args.shilian_state.get("guard"):
         player["behind_spirit_info"] = guard_battle_input(args.shilian_state["guard"])
-    spirit = None if relay or orochi or shilian or ten_boss or recruited_explore or urdtg_train or secret_actor_config else plan.get("spirit")
+    spirit = None if relay or orochi or shilian or ten_boss or recruited_explore or urdtg_train or shanfeng or secret_actor_config else plan.get("spirit")
     if spirit is not None:
         from AttrCalc import HunlingAttrCalc
         from DynamicConfigData import DATA_HUNLING_ATTR, DATA_HUNLING_BASE, DATA_HUNLING_MARK
@@ -705,6 +716,8 @@ def replay(args, runtime, work):
         route = "asura-final-personal-score" if engine.is_boss else "asura-tower-solo"
     elif asura_depth:
         route = "asura-depths-shared-hp"
+    elif shanfeng:
+        route = "shan-feng-base-state"
     elif breakthrough:
         route = breakthrough.route
     elif dojo_guardian:
@@ -1045,6 +1058,7 @@ def replay(args, runtime, work):
 
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else QINFEI_BOSS_REPLAY_SECONDS if qinfei_boss
                       else DOJO_GUARDIAN_WALL_SECONDS if dojo_guardian
+                      else SHANFENG_WALL_SECONDS if shanfeng
                       else dojo_defense_wall_seconds(wave_count) if dojo_defense
                       else BAND_TOGETHER_WALL_SECONDS if band_together
                       else DEVIL_FEAST_WALL_SECONDS if devil_feast
@@ -1256,6 +1270,8 @@ def replay(args, runtime, work):
             secret_actor_report = check_secret_actor(engine, controller, secret_actor_config)
         if ten_boss_replay:
             ten_boss_replay.verify_actor(controller)
+        if shanfeng:
+            shanfeng_replay.check_actor(controller)
         if explore_replay:
             if urdtg_explore or urdtg_train:
                 explore_replay.record_selection(owned=urdtg_train)
@@ -1303,6 +1319,9 @@ def replay(args, runtime, work):
         report["breakthrough"] = breakthrough.report()
         report["formationsVerified"] = 1
         report["wavesCleared"] = int(completed and outcome == "win")
+    if shanfeng:
+        report["shanFeng"] = shanfeng_replay.report()
+        report["formationsVerified"] = len(shanfeng_replay.waves)
     if dojo_guardian:
         report["dojoGuardian"] = dojo_guardian.report(completed, outcome)
         if instructions:
@@ -1567,6 +1586,7 @@ def replay(args, runtime, work):
 
 def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from shanfeng_stage import SHANFENG_MODE, SHANFENG_STAGES, SHANFENG_WALL_SECONDS, is_shanfeng_stage
     from devil_feast_stage import (DEVIL_FEAST_BOSSES, DEVIL_FEAST_MODE, DEVIL_FEAST_STAGES, DEVIL_FEAST_WALL_SECONDS,
                                   LAOLAO_MODE, LAOLAO_STAGES, LAOLAO_WALL_SECONDS, TOWER_MODE, TOWER_WALL_SECONDS,
                                   tower_stage_kind, valid_laolao_settings, valid_tower_settings)
@@ -1627,7 +1647,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--asura", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
@@ -1801,8 +1821,10 @@ def main():
         parser.error("--urdtg-training requires the original tournament training mode")
     if args.pve_deadline is not None and (args.mode != 3 or not 1 <= args.pve_deadline <= 10800):
         parser.error("A PvE table deadline requires mode 3 and a value in the supported client range")
-    if args.mode == 3 and 3340001 <= args.stage <= 3340022:
+    if args.mode == 3 and is_shanfeng_stage(args.stage):
         parser.error("Shan Feng trials require their original activity battle mode")
+    if args.mode == SHANFENG_MODE and args.stage not in SHANFENG_STAGES:
+        parser.error("Shan Feng replay requires a verified base-state encounter")
     if (args.mode in MAP_BOSS_MODES) != (args.map_boss_players is not None):
         parser.error("Map boss replay requires the number of players")
     if args.map_boss_players is not None and not party_positions(args.mode, args.map_boss_players):
@@ -1866,6 +1888,7 @@ def main():
         dojo_waves = json.loads(args.team.read_bytes())["dojoDefense"]["waves"]
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
                         DOJO_GUARDIAN_WALL_SECONDS + 20 if args.mode == DOJO_GUARDIAN_MODE else
+                        SHANFENG_WALL_SECONDS + 20 if args.mode == SHANFENG_MODE else
                         dojo_defense_wall_seconds(len(dojo_waves)) + 20 if args.mode == DOJO_DEFENDER_MODE else
                         DEVIL_FEAST_WALL_SECONDS + 20 if args.mode == DEVIL_FEAST_MODE else
                         TOWER_WALL_SECONDS + 20 if args.mode == TOWER_MODE else

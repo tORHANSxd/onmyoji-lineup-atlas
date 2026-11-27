@@ -17,9 +17,10 @@
   (common?require('./devil-feast.js'):root.AtlasDevilFeast).fusion,
   common?require('./fengmo-live.js'):root.AtlasFengmoLive,
   common?require('./asura-boss.js'):root.AtlasAsuraBoss,
-  common?require('./dojo-guardian.js'):root.AtlasDojoGuardian);
+  common?require('./dojo-guardian.js'):root.AtlasDojoGuardian,
+  common?require('./shanfeng.js'):root.AtlasShanFeng);
  if(common)module.exports=api;else root.AtlasRuneCandidate=api;
-})(globalThis,function(G,R,S,yanwu,band,qiling,crevice,ghost,qinfei,dojo,forest,tenBoss,generalSoul,yinYang,fusion,fengmoLive,asuraBoss,dojoGuardian){
+})(globalThis,function(G,R,S,yanwu,band,qiling,crevice,ghost,qinfei,dojo,forest,tenBoss,generalSoul,yinYang,fusion,fengmoLive,asuraBoss,dojoGuardian,shanFeng){
 'use strict';
 
 const mainAttrs={attack_rate:'atk_per',crit_rate:'critical_rate',crit_damage:'critical_pow',speed:'spd',
@@ -105,7 +106,7 @@ async function hun13Templates(row,data){
 }
 
 function pveGoalMet(report,battleMode){
- if(damageMode(battleMode)){
+ if(damageMode(battleMode,report.stageId)){
   const damage=personalScore(report)?.damage;
   return Number.isSafeInteger(damage)&&damage>0;
  }
@@ -117,12 +118,12 @@ function pveGoalMet(report,battleMode){
 
 const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.fengmoBand??report.fengmoBandTogether??report.qilingCollective??report.guildCrevice??
  report.superGhost??report.historicalSuperGhost??report.qinfeiBoss??report.dojoArea??report.dojoGuardian??report.guildForest??
- report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore??report.yinyangBoss??report.laolaoFusion??report.duskWraith??report.songstress??report.mirage??report.catfish??report.skeleton??report.skeletonX??report.longche??report.spiderLive??report.spiderNormal??report.asuraBattle??report.asuraDepths;
-const damageMode=mode=>mode===2000||mode===306||mode===yanwu.battleMode||mode===band.battleMode||mode===band.together.battleMode||mode===qiling.battleMode||
+ report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore??report.yinyangBoss??report.laolaoFusion??report.duskWraith??report.songstress??report.mirage??report.catfish??report.skeleton??report.skeletonX??report.longche??report.spiderLive??report.spiderNormal??report.asuraBattle??report.asuraDepths??report.shanFeng;
+const damageMode=(mode,stageId)=>mode===2000||mode===306||mode===yanwu.battleMode||mode===band.battleMode||mode===band.together.battleMode||mode===qiling.battleMode||
  mode===crevice.battleMode||mode===ghost.battleMode||mode===ghost.historicalBattleMode||mode===qinfei.battleMode||mode===dojo.battleMode||mode===dojoGuardian.battleMode||
  mode===forest.battleMode||mode===tenBoss.battleMode||mode===yinYang.battleMode||mode===fusion.battleMode||mode===asuraBoss.finalMode||mode===asuraBoss.depthMode||
  mode===fengmoLive.duskWraith.battleMode||mode===fengmoLive.songstress.battleMode||mode===fengmoLive.mirage.battleMode||mode===fengmoLive.mirageX.battleMode||mode===fengmoLive.catfish.battleMode||mode===fengmoLive.catfishX.battleMode||mode===fengmoLive.skeleton.battleMode||mode===fengmoLive.skeletonX.battleMode||mode===fengmoLive.longche.battleMode||mode===fengmoLive.longcheX.battleMode||mode===fengmoLive.spiderLive.battleMode||mode===fengmoLive.spiderNormal.battleMode||
- Object.hasOwn(generalSoul.modes,mode);
+ Object.hasOwn(generalSoul.modes,mode)||mode===shanFeng.battleMode&&Boolean(shanFeng.stage(stageId)?.day);
 const creditedDamage=report=>report.asuraBattle?report.asuraBattle.damage>=asuraBoss.rewardMinimum:
  !report.guildHunt||report.outcome==='win';
 
@@ -321,6 +322,7 @@ function readScoreInstructions(notes){
 
 async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeStageId,codeLabel,region}){
  const seeds=S.baseSampleSeeds;
+ const scoring=damageMode(battleMode,stageId);
  const instructions=scoreInstructions(row.plan.tactics);
  const matchesRegion=report=>{
   if(![3004,3023].includes(battleMode))return true;
@@ -334,13 +336,13 @@ async function pveTemplate(row,data,{stageId,groupId,battleMode,waveCount,codeSt
  };
  if(!Number.isSafeInteger(waveCount)||waveCount<1||row.samples.length!==seeds.length||!row.samples.every((report,index)=>
   report.battleMode===battleMode&&report.stageId===stageId&&report.groupId===groupId&&report.seed===seeds[index]&&
-  report.completed&&(damageMode(battleMode)?creditedDamage(report):report.outcome==='win')&&
+  report.completed&&(scoring?creditedDamage(report):report.outcome==='win')&&
   report.waveCount===waveCount&&pveGoalMet(report,battleMode)&&matchesRegion(report)&&
-  (!instructions||damageMode(battleMode)&&scoreInstructions(personalScore(report)?.tactics)===instructions)))
+  (!instructions||scoring&&scoreInstructions(personalScore(report)?.tactics)===instructions)))
   throw Error('完成本关的全部采样复跑后才可生成此阵容码');
  if(!row.panels?.every(Boolean)||row.plan.members.some(member=>member.souls.length!==6))
   throw Error('御魂条件需要每位式神穿齐六个位置并能够计算面板');
- return draft(row,data,codeStageId,codeLabel,row.samples.length,damageMode(battleMode)?'取得有效个人伤害结算':'通关');
+ return draft(row,data,codeStageId,codeLabel,row.samples.length,scoring?'取得有效个人伤害结算':'通关');
 }
 
 async function draft(row,{gameConfig:game,suits:suitIndex},sceneId,label,samples,outcome='通关'){

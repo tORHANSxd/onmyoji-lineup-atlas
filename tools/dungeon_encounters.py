@@ -21,6 +21,7 @@ from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIV
                             QINFEI_FOOD_MODE, QINFEI_FOOD_STAGES, QINFEI_FOODS, QINFEI_SIDE_STAGES, QINFEI_STATIC_STAGES, SEAL_MODE,
                             SPECIAL_NIAN_MODE, SPECIAL_NIAN_STAGES, is_fragment_entry)
 from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES, QINFEI_BOSS_STAGE
+from shanfeng_stage import SHANFENG_MODE
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
 from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EXPLORATION_STAGES,
@@ -61,7 +62,6 @@ DREAM_RULES = (("dream_self_tips", "幻游问梦开放与资源规则"),
 ASURA_RULES = (("asura_final_boss", "决战开放与全服规则"), ("asura_huanying", "帝释天降临与幻影结界"),
                ("asura_boss", "终末之战伤害奖励与狂暴规则"), ("asura_tegong", "式神特攻解锁规则"))
 ASURA_MAP_WORK = {1: "据点战斗", 2: "凝罪塔", 3: "派遣", 4: "捐赠"}
-SHANFENG_MODE = 660
 SHANFENG_FINAL_ACTIVITY = 1757
 SHANFENG_PVE = "super_ghost6_pve"
 SHANFENG_RULES = (("spshanfeng_ghost_pve", "历练与成王规则"),
@@ -456,9 +456,9 @@ def encounter_index(source, load_rows):
             tier = shanfeng_tiers[numeric_key(key)] = shanfeng_chapters[row["type"]]
             battles = [(row["battle_id"], f"历练 · {title} · 第 {tier} 关")]
         else:
-            battles = [(stage, f"成王 · 第 {day} 日 · 编组 {variant}")
+            battles = [(stage, f"成王 · 第 {day} 日 · {difficulty}")
                        for day in SHANFENG_DAY_RULES
-                       for variant, stage in enumerate(row.get(f"final_battle_id_day{day}", ()), 1)]
+                       for difficulty, stage in zip(("简单", "困难"), row.get(f"final_battle_id_day{day}", ()))]
         shanfeng_by_config[numeric_key(key)] = battles
         for stage, label in battles:
             shanfeng_by_stage[numeric_key(stage)] = (row, label)

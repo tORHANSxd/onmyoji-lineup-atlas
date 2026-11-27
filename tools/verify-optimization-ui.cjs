@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -470,7 +470,7 @@ async function main(){
    known('chapter-challenge',1001001,5),known('breakthrough-attack',10020201,5),known('breakthrough-defense',10020201,5,13),
    known('dojo-guardian',10020203,5),known('dojo-defense',10020203,5,13),
    known('secret-race',10700011,5),known('crevice',10020211,5),
-   known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
+   known('superghost',100942,5),known('superghost-five',100943,5),known('shan-feng',null,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5,10,notes),
    known('spider-normal',10020220,5,10,notes),
@@ -661,6 +661,20 @@ async function main(){
     const summary=await run('dojo-guardian',{stageId:10020203,groupId:100,battleMode:4003},
      {dojoDefense,waveCount:2,wavesCleared:2});
     assert.match(summary,/通过所选防守 · 馆主 · 2 人进攻 · 已击破 2 \/ 2 波.*第 2 波 · 击破.*已跳过原 2、5 号位/s);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&Number(entry.key)===3340021&&entry.refs.some(ref=>ref.table==='super_ghost6_pve'))){
+    const pick=key=>'初翎山风超鬼王 pve_stage_data '+key;
+    const shanFeng={actor:{id:1454,level:40,position:1},day:0,deadlineSeconds:180,timedOut:false,damage:220380,combatSeconds:15.04};
+    await encounter('event',pick(3340001));
+    assert.match(await ui(panel+'.textContent'),/180 秒内清场获胜.*40 级活动山风/s);
+    assert.match(await run('shan-feng',{stageId:3340001,groupId:3340001,battleMode:660},{shanFeng},undefined,null),/通过 6 个采样种子.*原版判胜/s);
+    await encounter('event',pick(3340021));
+    assert.match(await run('shan-feng',{stageId:3340021,groupId:3340021,battleMode:660},{
+     outcome:'loss',wavesCleared:0,shanFeng:{...shanFeng,day:3,timedOut:true,damage:6649070,combatSeconds:180},
+    },undefined,null),/6 \/ 6 场有效结算.*本场伤害 6,649,070/s);
+    await ui('qaEncounterInput("event",'+JSON.stringify(pick(3340022))+')');
+    await until(panel+'.textContent.includes("困难编组的首领技能")');
+    assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');

@@ -1106,7 +1106,7 @@
  async function replay(run,row,plan,trialSlot){
   const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings,historicalGhostWindow,
    mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,dojoArea,forest,tenBonuses,bandScores,devilFeastHp}=run.pane;
-  const scoring=isDamageMode(battleMode),relay=isWaveMode(battleMode);
+  const scoring=isDamageMode(battleMode,stageId),relay=isWaveMode(battleMode);
   const orochi=battleMode===AtlasTrueOrochi.battleMode;
   for(const seed of seeds){
    if(!active(run))return;
@@ -1172,7 +1172,7 @@
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
-   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge)?.timedOut===true;
+   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge??report.shanFeng)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
@@ -1252,7 +1252,7 @@
     row.state.textContent='阵容码的阴阳师与本场指定阴阳师不同';
     return;
    }
-   const scoring=isDamageMode(run.pane.battleMode);
+   const scoring=isDamageMode(run.pane.battleMode,run.pane.stageId);
    const tactics=scoring&&Number(lineup.gameSceneId)===run.pane.codeStageId&&AtlasRuneCandidate.readScoreInstructions(lineup.notes);
    await replay(run,row,tactics?{...plan,tactics}:plan,trialSlot);
   }catch(error){
@@ -1399,7 +1399,7 @@
     await original(next,lineup);
    }
    if(!active(next))return;
-   const hunting=isDamageMode(next.pane.battleMode),relay=isWaveMode(next.pane.battleMode);
+   const hunting=isDamageMode(next.pane.battleMode,next.pane.stageId),relay=isWaveMode(next.pane.battleMode);
    const passed=next.rows.filter(row=>row.verdict==='pass'||(hunting||relay)&&row.verdict==='scored');
    const timing=hunting?null:AtlasRuneCandidate.commonSampleTiming(passed);
    const huntScores=new Map(hunting?passed.map(row=>[row,AtlasRuneCandidate.damageResult(row.samples)]):[]);
@@ -1423,7 +1423,7 @@
     const score=huntScores.get(row);
     if(score){
      const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
-     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths?
+     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths||row.samples[0].shanFeng?
       '限时计分':cleared?'均清场':'含未清场样本';
      row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${result} · 平均伤害 ${damageText(score.average)} · `+
       `单场最高 ${damageText(score.max)} · 最低 ${damageText(score.min)}`;
