@@ -90,7 +90,8 @@
  }
 
  const busy=()=>!!(job?.running||stopping);
- const active=run=>job===run&&pane===run.pane&&!run.cancelled&&DATA===run.data&&usesDungeonInventory(run);
+ const active=run=>job===run&&pane===run.pane&&!run.cancelled&&DATA===run.data&&usesDungeonInventory(run)&&
+  (!run.defenseInventory||STATE.accounts.includes(run.defenseInventory));
  const ready=()=>runtime?.available&&runtime.resourceVersion===pane.version&&
   (runtime.battleModes??[3]).includes(pane.battleMode??3);
  function readArtifact(pane){
@@ -128,6 +129,14 @@
    pane.options=options;
   }
   const selected=selectedForReplay(available);
+  if(pane.breakthrough){
+   updateSelect(pane.defenseLineup,available.map(({id,title})=>[id,title]),'选择已知防守阵容');
+   updateSelect(pane.defenseAccount,STATE.accounts.filter(item=>item.id!==account()?.id)
+    .map(({id,name,server})=>[id,[name,server].filter(Boolean).join(' · ')]),'使用当前账号');
+   pane.defenseLineup.disabled=blocked||!available.length;
+   pane.defenseAccount.disabled=blocked||!hasAccount;
+  }
+  const defenseReady=!pane.breakthrough||!!pane.defenseLineup.value;
   const reserve=orochiReserve(selected,account());
   pane.reserve=reserve;
   const capture=pane.captureItem?.value?{itemId:Number(pane.captureItem.value),cards:pane.captureCards.map(field=>Number(field.value))}:null;
@@ -358,7 +367,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!!reserve&&!reserve.ready||!captureReady||!eventReady||!trainingReady||!stateReady||!coinsReady||!journeyReady||!asuraReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!defenseReady||!!reserve&&!reserve.ready||!captureReady||!eventReady||!trainingReady||!stateReady||!coinsReady||!journeyReady||!asuraReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -366,6 +375,7 @@
    !supported?(runtime?.reason||(runtime?.available?'本机运行时不支持此版本或战斗模式。':'正在核对本机复跑资料…')):
    !hasAccount?'先导入并选择库存账号。':
    blocked?'已有原版复跑或正在停止，请等待其结束。':
+   available.length&&!defenseReady?'请选择要交手的防守阵容。':
    selected.length&&reserve&&!reserve.ready?reserve.hint:
    !captureReady?'请选择三个不同的出战式神位置。':
    !eventReady?'前行步数应为大于或等于 0 的整数。':
@@ -389,7 +399,7 @@
    !stateReady?'生命上限应在 0% 至 100% 之间。':
    !coinsReady?'万相铃应为大于或等于 0 的整数。':
    job?.notice?job.notice:
-   selected.length?`已选 ${selected.length} 套已知阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
+   selected.length?`已选 ${selected.length} 套已知${pane.breakthrough?'进攻':''}阵容，将使用当前账号库存${isWaveMode(pane.battleMode)?'按勾选顺序接力':'复跑'}。`:
    available.length?'从下拉列表选择，或先在阵容库勾选对应阵容。':'阵容库暂无可用于此副本的完整阵容。请先解析或手动制作阵容码。';
  }
 
@@ -430,7 +440,7 @@
    <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive||config.spiderNormal?' id="pve-spider-live-status"':
     config.skeleton?' id="pve-skeleton-status"':config.catfish?' id="pve-catfish-status"':config.mirage?' id="pve-mirage-status"':''} data-pve-status role="status"></p>
    <div class="actions">
-    <label class="pve-lineup-field">已知阵容 <select data-pve-lineup></select></label>
+    <label class="pve-lineup-field">${config.breakthrough?'进攻阵容':'已知阵容'} <select data-pve-lineup></select></label>
     ${config.trialEligible?`<label class="pve-lineup-field">试炼式神位置 <select data-pve-trial>
     <option value="">自动识别唯一可选式神</option>
     ${Array.from({length:config.memberCount},(_,i)=>`<option value="${i+1}">阵容中第 ${i+1} 位式神</option>`).join('')}
@@ -441,6 +451,10 @@
     config.mirage?' aria-describedby="pve-mirage-status"':''} data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
+   ${config.breakthrough?`<fieldset class="pve-reserve"><legend>防守方</legend><div class="actions">
+    <label class="pve-lineup-field">防守阵容 <select data-pve-defense-lineup></select></label>
+    <label class="pve-lineup-field">防守账号库存 <select data-pve-defense-account></select></label>
+   </div><p class="caption">防守使用阵容的式神、阴阳师和御魂。结界皮肤、寮加成、防守契灵和守护使用空配置。</p></fieldset>`:''}
    ${config.journeyHard?`<div class="actions">
     <label class="pve-lineup-field">祝福层数 <input data-pve-journey-blessings type="number" value="0" min="0" step="1" required></label>
     <label class="pve-lineup-field">战斗时限（秒） <input data-pve-journey-deadline type="number" min="1" step="1" required></label>
@@ -751,6 +765,7 @@
   const part=name=>section.querySelector(`[data-pve-${name}]`);
   const all=name=>[...section.querySelectorAll(`[data-pve-${name}]`)];
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
+   defenseLineup:part('defense-lineup'),defenseAccount:part('defense-account'),
    asuraFields:part('asura-fields'),asuraLevel:part('asura-level'),asuraHp:part('asura-hp'),asuraEnrage:part('asura-enrage'),
    asuraSkills:all('asura-skill'),asuraKeys:all('asura-key'),asuraTowers:all('asura-tower'),asuraHint:part('asura-hint'),
    asuraDepthSlots:all('asura-depth-slot'),asuraDepthDamage:all('asura-depth-damage'),
@@ -785,7 +800,7 @@
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
+  for(const field of [pane.lineup,pane.defenseLineup,pane.defenseAccount,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,pane.mirageTrait,
    pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.longcheTrait,
@@ -1089,6 +1104,7 @@
     row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码培养和技能复跑。普攻等级缺失时使用客户端最低等级。</p>');
    const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount,
     {useStageActor:!!run.pane.replacementActor});
+   if(run.defender)plan.defender=run.defender;
    let trialSlot;
    if(run.pane.trialEligible){
     const eligible=plan.members.map(({hero},i)=>run.pane.trialEligible.includes(Number(hero.heroId))?i+1:0).filter(Boolean);
@@ -1177,9 +1193,12 @@
 
  async function run(){
   if(!pane||runeBusy()||!account()||!ready())return;
-  const selected=selectedForReplay(knownLineups());
+  const available=knownLineups(),selected=selectedForReplay(available);
   const inventory=account(),reserve=orochiReserve(selected,inventory);
-  if(!selected.length||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
+  const defenseLineup=pane.breakthrough&&available.find(item=>item.id===pane.defenseLineup.value);
+  const defenseInventory=pane.breakthrough&&(pane.defenseAccount.value?
+   STATE.accounts.find(item=>item.id===pane.defenseAccount.value):inventory);
+  if(!selected.length||pane.breakthrough&&(!defenseLineup||!defenseInventory)||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
      pane.urdtgTraining&&!pane.trainingSettings||pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
      pane.asura&&!pane.asuraSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
@@ -1193,6 +1212,7 @@
    id:Number(pane.guardChoice.value),level:Number(pane.guardLevel.value),breakthrough:pane.guardBreakthrough.checked,
   }:null;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
+   defenseInventory,
    journeyHard:pane.journeySettings,
    trainingSettings:pane.trainingSettings,
    asuraSettings:pane.asuraSettings,
@@ -1219,6 +1239,18 @@
   if(focus)pane.stop.focus();
   renderDungeonSelection();
   try{
+   if(defenseLineup){
+    next.message=`正在精算防守阵容「${defenseLineup.title}」…`;
+    update();
+    const result=await solveInventoryLineup(defenseLineup,next,undefined,defenseInventory);
+    if(!active(next))return;
+    if(!result.ready){
+     next.notice=result.proof?.state==='infeasible'?'防守账号库存无法满足所选阵容。':'防守阵容有库存条件待核对。';
+     return;
+    }
+    const {onmyoji,members}=AtlasRuneLineup.selectedTeam(defenseLineup,result,defenseInventory,next.data.gameConfig,next.pveMemberCount);
+    next.defender={onmyoji,members};
+   }
    if(isWaveMode(next.pane.battleMode)){
     for(let i=0;i<selected.length&&active(next);i+=4)await originalRelay(next,selected.slice(i,i+4));
    }else for(const lineup of selected){

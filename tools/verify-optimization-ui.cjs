@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -467,7 +467,7 @@ async function main(){
   const notes='资源 0.0.816，6 场离线结算。我方伤害取下限。阴阳师普攻 1 级。开场操作。入场前把第1位式神设为自动普攻。手动开场，首动普攻首领后切自动。红标首领。绿标第3位式神。全分支待验证。';
   const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
-   known('chapter-challenge',1001001,5),
+   known('chapter-challenge',1001001,5),known('breakthrough-attack',10020201,5),known('breakthrough-defense',10020201,5,13),
    known('secret-race',10700011,5),known('crevice',10020211,5),
    known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
@@ -531,6 +531,11 @@ async function main(){
     assert.deepEqual(plan.tactics,tactics);
     const souls=plan.members.flatMap(row=>row.souls.map(q=>q.id));
     assert.equal(new Set(souls).size,6*count);
+    if(expected.battleMode===4000){
+     assert.equal(plan.defender.onmyoji.heroId,13);
+     assert.deepEqual(plan.defender.members.map(member=>member.hero.heroId),ids.slice(0,5));
+     assert.ok(plan.defender.members.every(member=>member.souls.length===6));
+    }
     calls.push(options.seed);
     if(!live)return {...sample,...options,...response};
     const report=await pve.run(plan,options);
@@ -570,6 +575,20 @@ async function main(){
    await until(status+'.textContent.includes("未通过本次采样")');
    assert.deepEqual(libraryOrder,[13,10]);
    await ui('selectedLineups.clear();renderSelection()');
+   if(cases.some(entry=>entry.table==='battle_mode_routes'&&entry.key===4000)){
+    await encounter('daily','个人结界突破 battle_mode_routes 4000');
+    const defense='document.querySelector("[data-pve-defense-lineup]")';
+    const defenseAccount='document.querySelector("[data-pve-defense-account]")';
+    assert.equal(await ui(start+'.disabled'),true);
+    assert.deepEqual(await ui('[...'+defense+'.options].map(item=>item.value).filter(id=>id.startsWith("qa-known-"))'),
+     ['qa-known-breakthrough-attack','qa-known-breakthrough-defense']);
+    assert.equal(await ui(defenseAccount+'.selectedOptions[0].textContent'),'使用当前账号');
+    await ui(defense+'.value="qa-known-breakthrough-defense";'+defense+'.dispatchEvent(new Event("change"))');
+    const lineup=actor=>[actor,...ids.slice(0,5)].map((id,i)=>({id,level:i?40:60,attack:2500,hp:24000,speed:128,souls:i?6:0}));
+    const breakthrough={attack:lineup(10),defense:lineup(13),referee:{level:8,speed:130,turns:2}};
+    assert.match(await run('breakthrough-attack',{stageId:10020201,groupId:100,battleMode:4000},{breakthrough}),
+     /进攻胜利 · 鲤鱼旗裁判 8 档 · 速度 130 · 行动 2 次.*查看攻防开场面板/s);
+   }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');
     const difficulty='document.querySelector("[data-friend-difficulty]")';

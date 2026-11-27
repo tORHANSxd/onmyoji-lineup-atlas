@@ -7,6 +7,7 @@ from dojo_area_stage import DOJO_AREA_TEAM
 from dream_trial_stage import DREAM_TRIAL_MODE
 from asura_boss_stage import ASURA_ACTIVITY, ASURA_PHASE, ASURA_STAGES
 from asura_depth_stage import ASURA_DEPTH_LAYERS, ASURA_DEPTH_TABLES, ASURA_DEPTH_TEAM
+from breakthrough_stage import BREAKTHROUGH_MODE, BREAKTHROUGH_SCENE, BREAKTHROUGH_STAGE
 from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
 from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
@@ -597,6 +598,19 @@ def encounter_index(source, load_rows):
                          if (ref := relation("Constant", key, label, False)))
             links.extend(relation("guild_dinner_monster", key, "料理筹备目标", False)
                          for key, _ in sorted(table("guild_dinner_monster").values()))
+        if name == "battle_mode_routes" and row.get("mode_symbol") == "MODE_JIEJIE_TUPO_SINGLE":
+            if "jiejietupo_tips" in rules or "jiejietupo_tips" in tips:
+                links.append(rule_reference("jiejietupo_tips", "个人与阴阳寮突破规则"))
+            links.extend(ref for dest, ref_key, label in (
+                ("team_assist_stage", BREAKTHROUGH_STAGE, "阵容码目标"),
+                ("Combinesceneinfo", BREAKTHROUGH_SCENE, "默认结界战斗场景"),
+                ("BattleScenesInfo", 402, "默认站位"),
+                ("Constant", 2065, "鲤鱼旗裁判开关"),
+                ("currency", 900024, "结界挑战券"),
+                ("currency", 900016, "挑战奖励勋章"),
+            ) if (ref := relation(dest, ref_key, label, False)))
+            for dest, label in (("dg_flaglevel", "裁判档位"), ("dg_flagmodify", "裁判回合效果")):
+                links.extend(relation(dest, ref_key, label, False) for ref_key, _ in sorted(table(dest).values()))
         if name == "dream_act_hero":
             battle = row.get("battle_id")
             links.extend(ref for dest, key, label in (
@@ -1785,6 +1799,8 @@ def encounter_index(source, load_rows):
                     title = f"地域鬼王极难 · {title}"
                 if key == DREAM_TRIAL_MODE:
                     entry_family, entry_kind, title = "event", "幻游问梦", "幻游问梦 · 梦境试炼原版入口"
+                if key == BREAKTHROUGH_MODE:
+                    entry_family, entry_kind, title = "daily", "结界突破", "个人结界突破"
             if dream_activity:
                 entry_family, entry_kind, title = "event", "幻游问梦", "幻游问梦 · 活动开放与玩法规则"
             if asura_activity:

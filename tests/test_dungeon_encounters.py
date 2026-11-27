@@ -11,6 +11,27 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_personal_breakthrough_links_rules_without_a_fixed_pve_formation(self):
+        tables = {
+            "battle_mode_routes": [[4000, {"battleMode": 4000, "mode_symbol": "MODE_JIEJIE_TUPO_SINGLE",
+                                           "scene_engine": "JiejieTuPoSingleEngine"}]],
+            "system_rule_dsc": [["jiejietupo_tips", {"rule_dsc": "个人结界突破"}]],
+            "team_assist_stage": [[10020201, {"id": 10020201, "ss_num": 5, "yys_num": 1}]],
+            "Combinesceneinfo": [[100, {"id": 100, "battlesceneinfo": 402}]],
+            "BattleScenesInfo": [[402, {"id": 402}]],
+            "Constant": [[2065, {"id": 2065, "value": [1]}]],
+            "dg_flaglevel": [[8, {"level": 60, "referee_speed": 130}]],
+            "dg_flagmodify": [[30, {"dmg_add": 10}]],
+            "currency": [[900024, {"name": "结界挑战券"}], [900016, {"name": "勋章"}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, lambda name: tables[name])
+        entry = next(row for row in index["entries"] if row["table"] == "battle_mode_routes")
+        self.assertEqual((entry["family"], entry["kind"], entry["title"]), ("daily", "结界突破", "个人结界突破"))
+        self.assertEqual({(ref["table"], ref["key"]) for ref in entry["refs"]},
+                         {(name, key) for name, rows in tables.items() if name != "battle_mode_routes" for key, _ in rows})
+
     def test_asura_depth_links_each_tile_by_play_type_and_keeps_donation_out_of_battle(self):
         tables = {
             "asura_map": [[42, {"id": 42, "activity_id": 7080, "work": 20001, "event": 40001, "rely": [43]}],

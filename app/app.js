@@ -222,6 +222,7 @@ function sampleBattleMarkup(samples){
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const asura=sample.asuraBattle;
   const depths=sample.asuraDepths;
+  const breakthrough=sample.breakthrough;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
   const secretActor=sample.secretActor;
@@ -379,6 +380,7 @@ function sampleBattleMarkup(samples){
    spider?`${sample.completed?describeBattle(sample):'本机复跑达到运行时限，结算待核对'} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
     `战斗 ${spider.combatSeconds.toFixed(2)} 秒`+
     (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):
+   breakthrough?`${!sample.completed?'结算待确认':sample.outcome==='win'?'进攻胜利':'防守胜利'} · 鲤鱼旗裁判 ${breakthrough.referee.level} 档 · 速度 ${breakthrough.referee.speed} · 行动 ${breakthrough.referee.turns} 次`:
    relay?`${sample.completed?'结算':'结算待确认'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 波 · `+
     relay.teams.map(team=>`第 ${team.team} 队在第 ${team.startWave} 波上场`).join('，')+(relay.leftAfterLastTeam?' · 已用完所选队伍':''):
    orochi?`${!sample.completed?'原版结算待确认':sample.outcome==='win'?'十层通关':'未通关'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 层`+
@@ -402,6 +404,12 @@ function sampleBattleMarkup(samples){
   const roster=orochi?`<details><summary>查看各层出战与生命上限</summary><ol>${orochi.starts.map(({floor,lineup})=>
    `<li>第 ${floor} 层 · ${lineup.map(unit=>`${esc(DATA.gameConfig.heroes[unit.id]?.name||String(unit.id))} · ${Math.round(unit.hp)}/${Math.round(unit.maxHp)}`).join('，')}</li>`
   ).join('')}</ol></details>`:'';
+  const matchup=breakthrough?`<details><summary>查看攻防开场面板</summary>${
+   [['进攻',breakthrough.attack],['防守',breakthrough.defense]].map(([label,units])=>
+    `<h5>${label}</h5><ol>${units.map(unit=>{
+     const name=DATA.gameConfig.heroes[unit.id]?.name??String(unit.id);
+     return `<li>${esc(name)} · ${unit.level} 级 · 攻击 ${Math.round(unit.attack)} · 生命 ${Math.round(unit.hp)} · 速度 ${unit.speed.toFixed(2)} · ${unit.souls} 件御魂</li>`;
+    }).join('')}</ol>`).join('')}</details>`:'';
   const mirrors=mirror?.units.length?`<details><summary>第 ${mirror.wave} 波 · 镜像阵容</summary><ol>${mirror.units.map(unit=>{
    const name=DATA.gameConfig.heroes[unit.monsterId]?.name??unit.monsterId;
    const skills=unit.soulSkills.map(([id,level])=>`${id}（${level} 级）`).join('、');
@@ -538,7 +546,7 @@ function sampleBattleMarkup(samples){
   const depthsHp=depths?`<details><summary>查看各敌位本场伤害与余血</summary><ul>${depths.enemies.map(enemy=>
    `<li>${enemy.position} 号位 · 入场 ${BigInt(enemy.startingHp).toLocaleString('zh-CN')} · 余血 ${BigInt(enemy.remainingHp).toLocaleString('zh-CN')} · 本场伤害 ${enemy.damage.toLocaleString('zh-CN')}</li>`).join('')}
    </ul>${depths.omittedPositions.length?`<p class="caption">本场已省略先前击败的敌位 ${depths.omittedPositions.join('、')}</p>`:''}</details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}${spiderNormalStages}${depthsHp}</li>`;
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${matchup}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}${spiderNormalStages}${depthsHp}</li>`;
  }).join('');
 }
 

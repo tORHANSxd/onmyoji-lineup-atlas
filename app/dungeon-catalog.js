@@ -546,7 +546,7 @@
 
   function encounterKind(entry) {
     return entry.fengmoLive||['阴界之门入口','妖气封印','现世鬼王','现世妖约·策划鼠','秘境鬼王',
-      '妖灵退治群体战','妖灵退治单体战','鬼王来袭','姥姥火挑战'].includes(entry.kind)||
+      '妖灵退治群体战','妖灵退治单体战','鬼王来袭','姥姥火挑战','结界突破'].includes(entry.kind)||
       entry.table==='pve_stage_data'&&['daily','guild'].includes(entry.family)?entry.kind:titles[entry.table]||entry.kind;
   }
 
@@ -2052,6 +2052,7 @@
     if (token !== stage.token) return;
     destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
     appendGuildDinnerDetails(destination, entry, groups);
+    showBreakthrough(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
     const asuraMounted=showAsuraBattle(destination, entry, groups)||showAsuraDepths(destination, entry, groups, monsters);
     const chapterChallengeMounted=showChapterChallenge(destination,entry,groups,monsters,chapterDifficulties);
@@ -2348,6 +2349,20 @@
     }
     if (row.food_id === 10001) section.append(node('p', '四周年活动料理。开放和领取状态以游戏内为准。', 'caption'));
     destination.append(section);
+  }
+
+  function showBreakthrough(destination, entry, groups) {
+    const source=window.AtlasBreakthrough;
+    if(entry.table!=='battle_mode_routes'||Number(entry.key)!==source.battleMode||!matchesOpeningSource(source))return;
+    const get=table=>groups.find(group=>group.ref.table===table)?.row;
+    const code=get('team_assist_stage'),scene=get('Combinesceneinfo');
+    if(get('battle_mode_routes')?.scene_engine!==source.engine.name||code?.id!==source.stageId||
+      code.ss_num!==source.memberCount||code.yys_num!==1||scene?.id!==source.sceneId||
+      scene.battlesceneinfo!==source.layoutId||get('Constant')?.value?.[0]!==1)return;
+    destination.append(node('p','指定已知的进攻和防守阵容。使用默认结界场景、原版防守自动行为和鲤鱼旗裁判。阵容库存来自已导入的账号。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.sceneId,battleMode:source.battleMode,
+      version:source.resourceVersion,label:'个人结界突破',memberCount:source.memberCount,waveCount:1,
+      codeStageId:source.stageId,breakthrough:true});
   }
 
   function showDreamTrial(destination, entry, groups) {

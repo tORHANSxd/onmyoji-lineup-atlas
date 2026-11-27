@@ -31,6 +31,7 @@ const urdtgExplore=require('../app/urdtg-explore.js');
 const urdtgTrain=urdtgExplore.training;
 const dreamTrial=require('../app/dream-trial.js');
 const asuraBoss=require('../app/asura-boss.js');
+const breakthrough=require('../app/breakthrough.js');
 const tianfa=require('../app/tianfa.js');
 const journeyHard=require('../app/journey-hard.js');
 const yinYang=journeyHard.boss;
@@ -58,6 +59,7 @@ const engines={
  [urdtgTrain.battleMode]:urdtgTrain.engine,
  [dreamTrial.battleMode]:dreamTrial.engine,
  ...asuraBoss.engines,
+ [breakthrough.battleMode]:breakthrough.engine,
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  [storyExplorationMode]:{name:'TeamFbEngine',route:'story-exploration-solo',sha256:'35ec64c1f9d84913a748971711635906034bb36fe9d48005193be8d6c775bbd2'},
  [friendChallengeMode]:{name:'FriendFbEngine',route:'chapter-shikigami-challenge',sha256:'70b5b28c85d9d364b3800415b1c05aa7e5fbc5aa2cd102a28b440d2c1155dde6'},
@@ -1330,6 +1332,25 @@ function validAsuraDepthReport(report,settings,plan){
   Number.isSafeInteger(damage)&&data.damage===damage;
 }
 
+function validBreakthroughReport(report,plan){
+ const data=report.breakthrough;
+ if(!data||report.sceneId!==breakthrough.sceneId||report.waveCount!==1||report.formationsVerified!==1||
+    report.wavesCleared!==Number(report.outcome==='win'))return false;
+ const matchesSide=(rows,team)=>{
+  const expected=[{hero:team.onmyoji,souls:[]},...team.members];
+  return Array.isArray(rows)&&rows.length===expected.length&&rows.every((row,i)=>{
+   const {hero,souls}=expected[i];
+   return row?.position===i+1&&row.id===Number(hero.heroId)&&row.level===hero.level&&row.star===hero.star&&
+    row.awake===hero.awake&&row.souls===souls.length&&
+    [row.attack,row.hp,row.speed].every(value=>Number.isFinite(value)&&value>0);
+  });
+ };
+ const {level,speed,turns}=data.referee??{};
+ const expectedLevel=1+[25,30,35,40,45,50,55].filter(limit=>plan.defender.onmyoji.level>=limit).length;
+ return level===expectedLevel&&speed===50+level*10&&Number.isSafeInteger(turns)&&turns>=0&&
+  matchesSide(data.attack,plan)&&matchesSide(data.defense,plan.defender);
+}
+
 function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,damageFloor,rounds,retreat,region,resource,hunlingRoute,capture,qilingEntry,qilingWindow,sixRealmsRoute,sixRealmsEvent,trialSlot,sixRealmsState,journeyRoute,journeySettings,creviceRoute,creviceWindow,ghostRoute,ghostSettings,historicalGhostRoute,historicalGhostWindow,mapBossRoute,mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,urdtgTraining,asura,dojoArea,forest,tenBonuses,devilFeastHp,yinyangBoss,towerSettings,laolaoSettings,fusionSettings,duskSettings,songWindowSeconds,mirageSettings,catfishSettings,skeletonSettings,skeletonXSettings,longcheSettings,spiderLiveSettings,spiderNormalSettings}){
  const secret=battleMode===266?secretOpenings.floors[stageId]:null;
  const qinfeiSide=battleMode===3?mapBoss.qinfeiSideBattles[stageId]:null;
@@ -1364,6 +1385,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
    report.sceneId!==sixRealmsRoute.sceneId||report.waveCount!==1));
  if(report?.resourceVersion!==resourceVersion||report.route!==engine.route||report.engineClass!==engine.name||
     report.engineSHA256!==engine.sha256||report.battleMode!==battleMode||report.stageId!==stageId||report.groupId!==groupId||
+    (battleMode===breakthrough.battleMode&&!validBreakthroughReport(report,rounds[0]))||
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
     (yuling&&(report.sceneId!==yuling.sceneId||report.waveCount!==1||report.formationsVerified!==1||invalidYuling))||
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
@@ -1468,7 +1490,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(yanwu&&tenExploreAvailable&&await has('urdtg_explore.py')?[urdtgExplore.battleMode,urdtgTrain.battleMode]:[]),
      ...(await has('dream_trial_stage.py')?[dreamTrial.battleMode]:[]),
      ...(await has('asura_boss_stage.py')?[asuraBoss.finalMode,asuraBoss.towerMode]:[]),
-     ...(await has('asura_depth_stage.py')?[asuraBoss.depthMode]:[])]};
+     ...(await has('asura_depth_stage.py')?[asuraBoss.depthMode]:[]),
+     ...(await has('breakthrough_stage.py')?[breakthrough.battleMode]:[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -1497,6 +1520,14 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('式神挑战需要原版首领、有效难度和五位自有式神');
    if(fixedDream&&(dreamTrial.resourceVersion!==resourceVersion||!dreamTrial.heroId(stageId)||stageId!==groupId))
     throw Error('梦境试炼需要已核验的原版固定阵容关卡');
+   const personalBreakthrough=battleMode===breakthrough.battleMode;
+   const defense=plan.defender;
+   if(personalBreakthrough?(!defense||Object.keys(defense).length!==2||!defense.onmyoji||
+     !Array.isArray(defense.members)||defense.members.length!==breakthrough.memberCount||
+     plan.members.length!==breakthrough.memberCount||stageId!==breakthrough.stageId||groupId!==breakthrough.sceneId||
+     resourceVersion!==breakthrough.resourceVersion):defense!==undefined)
+    throw Error('个人结界突破需要原版场景和两套完整的五式神阵容');
+   if(battleMode===3&&stageId===breakthrough.stageId)throw Error('个人结界突破需要使用原版攻防入口');
    if(battleMode===3&&dreamTrial.heroId(stageId))throw Error('梦境试炼需要使用原版固定阵容入口');
    const asuraStage=asuraBoss.entry(stageId)??asuraBoss.depthEntry(stageId), isAsura=Object.hasOwn(asuraBoss.engines,battleMode);
    if(isAsura?(!asuraStage||asuraStage.battleMode!==battleMode||groupId!==stageId||plan.members.length!==5||
