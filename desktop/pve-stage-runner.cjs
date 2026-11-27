@@ -38,6 +38,7 @@ const shanFeng=require('../app/shanfeng.js');
 const jiBoss=require('../app/ji-boss.js');
 const gtwBossSource=require('../app/gtw-boss.js');
 const gtwHunt=require('../app/gtw-hunt.js');
+const socialPlay=require('../app/social-play.js');
 const tianfa=require('../app/tianfa.js');
 const journeyHard=require('../app/journey-hard.js');
 const yinYang=journeyHard.boss;
@@ -72,6 +73,7 @@ const engines={
  [jiBoss.battleMode]:jiBoss.engine,
  [gtwBossSource.battleMode]:gtwBossSource.engine,
  ...Object.fromEntries(gtwHunt.modes.map(mode=>[mode,gtwHunt.engine])),
+ [socialPlay.battleMode]:socialPlay.engine,
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  [storyExplorationMode]:{name:'TeamFbEngine',route:'story-exploration-solo',sha256:'35ec64c1f9d84913a748971711635906034bb36fe9d48005193be8d6c775bbd2'},
  [friendChallengeMode]:{name:'FriendFbEngine',route:'chapter-shikigami-challenge',sha256:'70b5b28c85d9d364b3800415b1c05aa7e5fbc5aa2cd102a28b440d2c1155dde6'},
@@ -1448,6 +1450,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===jiBoss.battleMode&&!jiBoss.validReport(report,rounds[0]))||
     (gtwBoss&&!gtwBossSource.validReport(report,gtwBoss))||
     (gtwHunt.modes.includes(battleMode)&&!gtwHunt.validReport(report,gtwEventId))||
+    (battleMode===socialPlay.battleMode&&!socialPlay.validReport(report))||
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
     (yuling&&(report.sceneId!==yuling.sceneId||report.waveCount!==1||report.formationsVerified!==1||invalidYuling))||
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
@@ -1557,6 +1560,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(await has('ji_boss_stage.py')?[jiBoss.battleMode]:[]),
      ...(await has('gtw_boss_stage.py')?[gtwBossSource.battleMode]:[]),
      ...(await has('gtw_hunt_stage.py')?gtwHunt.modes:[]),
+     ...(await has('social_play_stage.py')?[socialPlay.battleMode]:[]),
      ...(await has('breakthrough_stage.py')?Object.keys(breakthrough.routes).map(Number):[]),
      ...(await has('dojo_guardian_stage.py')?[dojoGuardianSource.battleMode]:[]),
      ...(await has('dojo_defense_stage.py')?[dojoDefenseSource.battleMode]:[])]};
@@ -1568,7 +1572,8 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(current)throw Error('已有库存复跑正在运行');
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
-   const maxMembers=[fengmoYanwu.battleMode,songstress.battleMode,orochi.battleMode,tianfa.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
+   const isSocialPlay=battleMode===socialPlay.battleMode;
+   const maxMembers=[fengmoYanwu.battleMode,songstress.battleMode,orochi.battleMode,tianfa.battleMode,socialPlay.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
    const jiStage=jiBoss.entry(stageId);
    const stageActor=battleMode===tenBoss.battleMode||battleMode===urdtgTrain.battleMode||battleMode===shanFeng.battleMode||
     battleMode===jiBoss.battleMode&&jiStage?.actor||
@@ -1578,7 +1583,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const validPlan=fixedDream?plan&&Object.getPrototypeOf(plan)===Object.prototype&&
     (Object.keys(plan).length===0||Object.keys(plan).length===1&&plan.manualBasic===true):
     explore?explore.validPlan(plan):Array.isArray(rounds)&&rounds.length>=1&&rounds.length<=4&&
-    rounds.every(row=>row&&(stageActor||row.onmyoji)&&Array.isArray(row.members)&&
+    rounds.every(row=>row&&(stageActor||isSocialPlay||row.onmyoji)&&Array.isArray(row.members)&&
      row.members.length>=minMembers&&row.members.length<=maxMembers&&validTactics(row,battleMode));
    if(!Number.isInteger(battleMode)||!Object.hasOwn(engines,battleMode)||!positive(stageId)||!positive(groupId)||!Number.isSafeInteger(seed)||seed<0||seed>=10000||
       typeof damageFloor!=='boolean'||!validPlan||!validTactics(plan,battleMode))
@@ -1627,7 +1632,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('决猎庭院复跑需要对应阶段的入场生命、有效计分时长和五位自有式神');
    const isGtwHunt=gtwHunt.modes.includes(battleMode);
    if(battleMode===3&&gtwHunt.ownsStage(stageId))throw Error('彷徨猎场与诡城歧事需要使用原版战斗入口');
-   if(battleMode===3&&stageId>=310001&&stageId<=310028)throw Error('四时序战需要使用原版战斗入口');
+   if(battleMode===3&&socialPlay.stage(stageId))throw Error('四时序战需要使用原版战斗入口');
+   if(isSocialPlay&&(!socialPlay.stage(stageId)||stageId!==groupId||socialPlay.resourceVersion!==resourceVersion||
+      plan.members.length!==socialPlay.positions.length||Object.keys(plan).length!==1))
+    throw Error('四时序战单人复跑需要六位式神和对应的原版关卡');
    if(isGtwHunt?(!gtwHunt.route(battleMode,stageId,gtwEventId)||groupId!==stageId||plan.members.length!==5||
      gtwHunt.resourceVersion!==resourceVersion):gtwEventId!==undefined)
     throw Error('请选择匹配的彷徨猎场或诡城歧事原版关卡和五位自有式神');

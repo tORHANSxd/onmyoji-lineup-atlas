@@ -36,6 +36,7 @@ def replay(args, runtime, work):
     from guild_forest_stage import FOREST_MODE, FOREST_STAGES, ForestReplay, forest_stage
     from gtw_boss_stage import GTW_BOSS_MODE, GTW_BOSS_WALL_SECONDS, GtwBossReplay
     from gtw_hunt_stage import GTW_HUNT_MODES, GTW_HUNT_SECONDS, GTW_HUNT_WALL_SECONDS, gtw_hunt_stage
+    from social_play_stage import SOCIAL_PLAY_MODE, SOCIAL_PLAY_SECONDS, SOCIAL_PLAY_SLOTS, social_play_stage, verify_social_selection
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RaidDamageWindow
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_WALL_SECONDS, JI_STORY_ACTOR_STAGE, JiBossReplay
@@ -99,6 +100,7 @@ def replay(args, runtime, work):
     ji_boss = args.mode == JI_BOSS_MODE
     gtw_boss = args.mode == GTW_BOSS_MODE
     gtw_hunt = args.mode in GTW_HUNT_MODES
+    social_play = args.mode == SOCIAL_PLAY_MODE
     ji_story_actor = ji_boss and args.stage == JI_STORY_ACTOR_STAGE
     breakthrough = None
     dojo_guardian = None
@@ -169,8 +171,9 @@ def replay(args, runtime, work):
         heroes = {**fighters, **{alias: profile for alias, (profile, _) in actors.items()}}
     else:
         actor, fighters, inventory, choices = selected_team(
-            plan, suits, member_limit=6 if yanwu or shilian or tianfa or songstress else 5,
-            select_actor=not (ten_boss or urdtg_train or shanfeng or ji_story_actor) and (args.mode != 266 or "onmyoji" in plan))
+            plan, suits, member_limit=6 if yanwu or shilian or tianfa or songstress or social_play else 5,
+            select_actor=not (ten_boss or urdtg_train or shanfeng or ji_story_actor or social_play)
+            and (args.mode != 266 or "onmyoji" in plan))
         heroes = {**fighters, "selected-onmyoji": actor} if actor else dict(fighters)
         if shilian:
             choices.pop("selected-onmyoji")
@@ -245,6 +248,14 @@ def replay(args, runtime, work):
             raise ValueError("This hunt or story encounter needs five owned shikigami")
         engine, group, const, gtw_route = gtw_hunt_stage(args.mode, args.stage, args.gtw_event)
         gtw_clock = NativePveClock(engine, GTW_HUNT_SECONDS)
+        group_id, wave_count = group["ID"], 1
+    elif social_play:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 6 or set(plan) != {"members"}:
+            raise ValueError("Four Seasons Challenge needs exactly six shikigami")
+        engine, group, const, social_route = social_play_stage(args.stage)
+        social_clock = NativePveClock(engine, SOCIAL_PLAY_SECONDS)
         group_id, wave_count = group["ID"], 1
     elif args.mode in (BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE):
         from DynamicConfigData import DATA_HERO
@@ -713,7 +724,7 @@ def replay(args, runtime, work):
     if any(hero["heroId"] not in DATA_HERO.data for hero in heroes.values()):
         raise ValueError("Unknown inventory character")
 
-    actor_id = 0 if fixed_dream else rounds[0]["id"] if relay else actor["heroId"]
+    actor_id = 0 if fixed_dream or social_play else rounds[0]["id"] if relay else actor["heroId"]
     player = preset_player(heroes, actors, actor_id) if relay or orochi else {"heroes": heroes, "yysid": actor_id}
     if shilian and args.shilian_state and args.shilian_state.get("guard"):
         player["behind_spirit_info"] = guard_battle_input(args.shilian_state["guard"])
@@ -757,6 +768,8 @@ def replay(args, runtime, work):
         route = "gtw-boss-local-shared-hp"
     elif gtw_hunt:
         route = "gtw-hunt-original-solo"
+    elif social_play:
+        route = "social-play-original-solo"
     elif breakthrough:
         route = breakthrough.route
     elif dojo_guardian:
@@ -970,7 +983,7 @@ def replay(args, runtime, work):
             secret_mirror_replay = SecretMirrorReplay(engine, const)
         if setup := secret_mechanic(stage):
             secret_mechanic_replay = SecretMechanicReplay(engine, controller, const, setup)
-    if story_exploration or friend_challenge or fixed_dream or gtw_hunt or args.mode == 266:
+    if story_exploration or friend_challenge or fixed_dream or gtw_hunt or social_play or args.mode == 266:
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
 
         def verify_spawn():
@@ -978,7 +991,7 @@ def replay(args, runtime, work):
             if not 0 <= wave < wave_count:
                 raise RuntimeError("Unexpected original wave index")
             observed = []
-            if story_exploration or fixed_dream or gtw_hunt:
+            if story_exploration or fixed_dream or gtw_hunt or social_play:
                 expected = [(pos, level, proto) for pos, proto, level, *_ in group["MonstersInfos"][wave]]
                 mirror_units = []
             elif friend_challenge:
@@ -1027,6 +1040,9 @@ def replay(args, runtime, work):
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6]
                              and not engine.develop_skill_info and not engine.develop_level)
+    elif social_play:
+        formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
+                             and not avatar.hasYYS and avatar.ssPosIndexList == SOCIAL_PLAY_SLOTS)
     elif qinfei_boss:
         formation_matches = raid.matches()
     elif retreat:
@@ -1131,6 +1147,7 @@ def replay(args, runtime, work):
                       else pve_wall_seconds(args.pve_deadline))
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
+    social_auto = False
     equipped_spirit = None
     instructions = None
     trial_hero = None
@@ -1245,6 +1262,10 @@ def replay(args, runtime, work):
             artifact_replay.update(fighting)
         if host.oracle.unsupported:
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
+        if social_play and not social_auto and engine.battleState == const.BattleState.BS_STARTED:
+            if not controller.isAuto:
+                raise RuntimeError("The original Four Seasons engine did not start in automatic mode")
+            social_auto = True
         if regional_replay and regional_replay.eligible is False:
             break
         if yanwu_replay:
@@ -1330,6 +1351,8 @@ def replay(args, runtime, work):
         if fixed_dream:
             dream_roster = verify_dream_roster(engine, controller, fixed_hero)
         verify_selected_equipment()
+        if social_play:
+            verify_social_selection(engine, controller)
         if breakthrough and not breakthrough.guild:
             breakthrough.verify_selection(controllers)
         for current in controllers:
@@ -1385,6 +1408,12 @@ def replay(args, runtime, work):
         if verified_waves != {0}:
             raise RuntimeError("The original hunt did not create its verified formation")
         report["gtwHunt"] = {**gtw_route, **gtw_clock.report(outcome)}
+        report["formationsVerified"] = 1
+    if social_play:
+        if verified_waves != {0} or not social_auto:
+            raise RuntimeError("The original Four Seasons formation or automatic mode was not verified")
+        report["socialPlay"] = {**social_route, **social_clock.report(outcome),
+                                "positions": avatar.ssPosIndexList, "automatic": social_auto}
         report["formationsVerified"] = 1
     if dojo_guardian:
         report["dojoGuardian"] = dojo_guardian.report(completed, outcome)
@@ -1654,7 +1683,7 @@ def main():
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_STAGES, JI_BOSS_SUPPORTED, JI_BOSS_WALL_SECONDS
     from gtw_boss_stage import GTW_BOSS_MODE, GTW_BOSS_STAGES, GTW_BOSS_WALL_SECONDS, valid_gtw_settings
     from gtw_hunt_stage import GTW_HUNT_MODE, GTW_HUNT_MODES, GTW_HUNT_STAGES, GTW_HUNT_WALL_SECONDS, GTW_UNLINKED_STAGE
-    from social_play_stage import SOCIAL_PLAY_STAGES
+    from social_play_stage import SOCIAL_PLAY_MODE, SOCIAL_PLAY_STAGES
     from devil_feast_stage import (DEVIL_FEAST_BOSSES, DEVIL_FEAST_MODE, DEVIL_FEAST_STAGES, DEVIL_FEAST_WALL_SECONDS,
                                   LAOLAO_MODE, LAOLAO_STAGES, LAOLAO_WALL_SECONDS, TOWER_MODE, TOWER_WALL_SECONDS,
                                   tower_stage_kind, valid_laolao_settings, valid_tower_settings)
@@ -1715,7 +1744,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, SOCIAL_PLAY_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--gtw-boss", type=json.loads)
     parser.add_argument("--gtw-event", type=int)
@@ -1908,6 +1937,8 @@ def main():
         parser.error("The hunt and story formations require their original activity battle modes")
     if args.mode == 3 and args.stage in SOCIAL_PLAY_STAGES:
         parser.error("Four Seasons Challenge requires its original battle entrance")
+    if args.mode == SOCIAL_PLAY_MODE and args.stage not in SOCIAL_PLAY_STAGES:
+        parser.error("Choose one of the 28 original Four Seasons Challenge stages")
     gtw_story = args.mode in GTW_HUNT_MODES and args.mode != GTW_HUNT_MODE
     if ((gtw_story != (args.gtw_event is not None)) or (gtw_story and args.gtw_event < 1)
             or (args.mode in GTW_HUNT_MODES and GTW_HUNT_STAGES.get(args.stage) != args.mode)):

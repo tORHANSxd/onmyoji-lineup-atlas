@@ -2084,8 +2084,7 @@
     const jiBossMounted=showJiBoss(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
-    const socialStage=isSocialPlayStage(entry);
-    if(socialStage)appendSocialPlayRules(destination,groups);
+    const socialStage=showSocialPlay(destination,entry,groups);
     showDojoDefense(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
     const asuraMounted=showAsuraBattle(destination, entry, groups)||showAsuraDepths(destination, entry, groups, monsters);
@@ -2321,18 +2320,24 @@
     }
   }
 
-  function isSocialPlayStage(entry) {
-    const id=Number(entry.key);
-    return entry.table==='social_play_stage'||entry.table==='pve_stage_data'&&id>=310001&&id<=310028;
-  }
-
-  function appendSocialPlayRules(destination, groups) {
+  function showSocialPlay(destination, entry, groups) {
+    const source=AtlasSocialPlay;
+    if(entry.table!=='social_play_stage'&&(entry.table!=='pve_stage_data'||!source.stage(Number(entry.key))))return false;
     const related=table=>groups.find(({ref})=>ref.table===table)?.row;
     const stage=related('social_play_stage'), battle=related('normal_battle_config');
-    if(!stage||!battle)return;
+    if(!stage||!battle)return true;
     destination.append(node('p',`第 ${stage.day} 日第 ${stage.level} 关 · ${battle.halt_time} 秒 · 六位式神 · 强制自动战斗`,'caption'));
     const buffs=groups.filter(({ref,row})=>ref.table==='buff'&&row?.buffDesc);
     if(buffs.length)destination.append(node('p',buffs.map(({ref,row})=>`${ref.label} · ${row.buffDesc}`).join(' ｜ '),'caption'));
+    const expected=source.stage(stage.stage_id),pve=related('pve_stage_data'),formation=related('BattleMonstersInfo');
+    if(!matchesOpeningSource(source)||!expected||stage.id!==expected.levelId||stage.day!==expected.day||
+       stage.level!==expected.level||pve?.groupid!==stage.stage_id||formation?.resindex!==source.sceneId||
+       formation.MonstersInfos?.length!==1||formation.MonstersInfos[0].length!==source.positions.length||
+       related('battle_mode_routes')?.scene_engine!==source.engine.name||battle.halt_time!==source.deadlineSeconds)return true;
+    window.AtlasPveWorkbench?.mount(destination,{stageId:stage.stage_id,groupId:pve.groupid,battleMode:source.battleMode,
+      memberCount:source.positions.length,waveCount:1,version:source.resourceVersion,noOnmyoji:true,
+      label:'四时序战 · 单人复跑'});
+    return true;
   }
 
   function appendGuildDinnerDetails(destination, entry, groups) {

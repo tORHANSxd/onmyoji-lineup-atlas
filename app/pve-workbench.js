@@ -19,7 +19,7 @@
      !C.hasParsedContent(lineup)||!C.shikigamiRequirementsComplete(lineup))return false;
   const members=lineup.members.filter(member=>member.occupied!==false);
   const actors=members.filter(member=>member.kind==='onmyoji').length;
-  return members.length===config.memberCount+actors&&(config.replacementActor?actors<=1:actors===1)&&
+  return members.length===config.memberCount+actors&&(config.replacementActor||config.noOnmyoji?actors<=1:actors===1)&&
    members.filter(member=>member.kind==='shikigami').length===config.memberCount&&
    (!config.trialEligible||members.some(member=>config.trialEligible.includes(Number(member.shikigamiId))));
  }
@@ -1202,7 +1202,7 @@
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
-   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge??report.shanFeng??report.jiBoss??report.gtwHunt)?.timedOut===true;
+   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge??report.shanFeng??report.jiBoss??report.gtwHunt??report.socialPlay)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
@@ -1239,12 +1239,14 @@
     row.state.textContent=row.verdict==='infeasible'?'库存精算已证明原码约束无解':'库存精算仍有条件待核对';
     return;
    }
-   if(run.pane.replacementActor)
+   if(run.pane.noOnmyoji)
+    row.details.insertAdjacentHTML('beforeend','<p class="caption">关卡由六位式神作战。培养、御魂和自动技能按所选阵容复跑。</p>');
+   else if(run.pane.replacementActor)
     row.details.insertAdjacentHTML('beforeend','<p class="caption">原版在阴阳师位使用关卡指定角色。式神培养、御魂和自动技能按所选阵容复跑。</p>');
    else if(!run.pane.trialEligible)
     row.details.insertAdjacentHTML('beforeend','<p class="caption">阴阳师按原码培养和技能复跑。普攻等级缺失时使用客户端最低等级。</p>');
    const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount,
-    {useStageActor:!!run.pane.replacementActor});
+    {useStageActor:!!(run.pane.replacementActor||run.pane.noOnmyoji)});
    if(run.defender)plan.defender=run.defender;
    if(run.attackPartySize)plan.attackPartySize=run.attackPartySize;
    if(run.dojoDefense)plan.dojoDefense=run.dojoDefense;

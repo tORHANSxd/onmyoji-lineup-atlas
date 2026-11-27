@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,926,933,934,935,936,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -746,11 +746,12 @@ async function main(){
     assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='social_play_stage'&&entry.key===28)){
-    await ui('qaEncounterInput("event","四时序战关卡 310028")');
-    await until(panel+'.textContent.includes("六位式神 · 强制自动战斗")');
+    await encounter('event','四时序战关卡 310028');
     assert.match(await ui(panel+'.textContent'),/第 7 日第 4 关 · 180 秒.*2 人组队增益.*30%.*3 人组队增益.*40%/s);
     assert.match(await ui(panel+'.textContent'),/首通奖励.*150174/s);
-    assert.equal(await ui(start+'===null'),true);
+    assert.match(await run('tianfa',{stageId:310028,groupId:310028,battleMode:938},
+     {socialPlay:{timedOut:false,combatSeconds:11.94}},undefined,null,6),
+     /已清场.*战斗至结算 11\.94 秒/s);
    }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');
