@@ -45,6 +45,13 @@
     asura_p2_config: '天魔归来决战关卡',
     asura_phase_time: '天魔归来活动阶段',
     asura_const: '天魔归来原版常量',
+    asura_map: '天魔归来深渊地格',
+    asura_play_type1: '天魔归来据点战斗',
+    asura_play_type2: '天魔归来凝罪塔战斗',
+    asura_play_type3: '天魔归来深渊派遣',
+    asura_play_type4: '天魔归来深渊捐赠',
+    asura_guilty_tower: '天魔归来深渊收益',
+    asura_scene: '天魔归来深渊地图场景',
     guild_fake_god_event: '青森之秘事件',
     guild_fake_god_map: '青森之秘地格',
     guild_fake_god_route: '青森之秘路线',
@@ -178,6 +185,13 @@
   const journeyBossFields = {hero_id: '首领编号', reward: '奖励编号', time: '时限参数', unlocked: '解锁参数'};
   const tableFields = {
     asura_p2_config:{desc:'原版机制说明',cost:'消耗配置',tower_buff:'结界或幻影机制技能 ID',crazy_boss_buff:'狂暴技能 ID'},
+    asura_map:{x:'横坐标',y:'纵坐标',work:'玩法编号',event:'事件编号'},
+    asura_play_type1:{cost:'行军消耗'},
+    asura_play_type2:{cost:'行军消耗',recover_count:'共生恢复时间（秒）',recover_rate:'共生恢复比例'},
+    asura_play_type3:{cost:'行军消耗',need:'派遣所需累计数值',element:'元素配置',mvp_hero:'额外加成式神'},
+    asura_play_type4:{cost:'行军消耗',need:'所需捐赠量',reward:'原表奖励编号'},
+    asura_guilty_tower:{loot_efficiency:'基础战利品收益',extra_count:'额外收益系数',stage1:'进度目标一',stage2:'进度目标二',
+      stage3:'进度目标三',stage4:'进度目标四',stage5:'进度目标五'},
     dream_act_battle_cond:{desc:'原版胜负条件',cond_type:'条件类型',param1:'回合上限'},
     dream_act_stage:{desc:'睡眠阶段'},
     urdtg_event:{pre_id:'前置事件',unlock_time:'解锁时间',task_desc:'任务目标',params:'事件参数'},
@@ -2039,7 +2053,7 @@
     destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
     appendGuildDinnerDetails(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
-    const asuraMounted=showAsuraBattle(destination, entry, groups);
+    const asuraMounted=showAsuraBattle(destination, entry, groups)||showAsuraDepths(destination, entry, groups, monsters);
     const chapterChallengeMounted=showChapterChallenge(destination,entry,groups,monsters,chapterDifficulties);
     showSuperGhost(destination,entry,groups[0]);
     if(entry.table==='story_room'&&state.index.resourceVersion===AtlasRuneLineup.resourceVersion){
@@ -2216,7 +2230,7 @@
       else if (entry.refs.some(ref=>ref.table==='map_boss')) destination.append(node('p','对应玩法的入场与结算条件见关联的地图首领入口。','caption'));
       else if(entry.refs.some(ref=>ref.table==='story_room'))
         destination.append(node('p','打开关联的探索战斗点，可按该点的原版进场规则复跑。','caption'));
-      else if(window.AtlasAsuraBoss?.entry(stageId)){
+      else if(window.AtlasAsuraBoss?.entry(stageId)||window.AtlasAsuraBoss?.depthEntry(stageId)){
         if(!asuraMounted)destination.append(node('p','天魔归来复跑需要对应的活动规则、编组与原版入口。','caption'));
       }
       else if(entry.refs.some(ref=>ref.table==='BattleMonstersInfo'&&!ref.found))
@@ -2366,6 +2380,46 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId:route.stageId,groupId:battle.groupid,battleMode:route.battleMode,
       version:source.resourceVersion,label:route.name,memberCount:5,waveCount:1,asura:route,
       scoreWindowSeconds:route.final?source.deadlineSeconds:null});
+    return true;
+  }
+
+  function showAsuraDepths(destination, entry, groups, monsters) {
+    const source=window.AtlasAsuraBoss;
+    if(!['activity','asura_guilty_tower','asura_map','asura_play_type1','asura_play_type2','pve_stage_data'].includes(entry.table)||
+      entry.table==='pve_stage_data'&&!source?.depthEntry(Number(entry.key)))return false;
+    if(!matchesOpeningSource(source)||!Object.entries(source.depthTableSHA256).every(([name,hash])=>
+      state.index.tables.find(table=>table.name===name)?.source?.marshalSHA256===hash))return false;
+    const get=table=>groups.find(group=>group.ref.table===table)?.row;
+    const layer=get('asura_guilty_tower');
+    if(layer&&['activity','asura_guilty_tower'].includes(entry.table)&&['八火狱','十寒狱','无间狱'].includes(layer.title)){
+      const section=node('section','','encounter-source');
+      section.append(node('h4','本层地图'));
+      for(const [label,kind] of [['所有地格',''],['据点战斗','据点战斗'],['凝罪塔','凝罪塔'],['派遣','派遣'],['捐赠','捐赠']]){
+        const button=node('button',label,'secondary');
+        button.type='button';
+        button.onclick=()=>{
+          el('encounter-family').value='event';
+          const query=el('encounter-query');
+          query.value=[layer.title,'深渊地格',kind].filter(Boolean).join(' ');
+          filterEncounters();
+          query.focus();
+        };
+        section.append(button);
+      }
+      destination.append(section);
+    }
+    if(!['asura_map','asura_play_type1','asura_play_type2','pve_stage_data'].includes(entry.table))return false;
+    const config=get('asura_play_type1')??get('asura_play_type2'), stage=get('pve_stage_data');
+    const formation=groups.find(group=>group.ref.table==='BattleMonstersInfo'&&group.ref.key===stage?.groupid);
+    const route=source.depthEntry(config?.battle_id);
+    const cell=entry.table==='asura_map'?get('asura_map'):null;
+    if(!route||stage?.groupid!==route.stageId||formation?.row?.resindex!==route.sceneId||formation.waves.length!==1||
+      get('battle_team_routes')?.battleMode!==source.depthMode||cell&&cell.work!==config.id)return false;
+    const enemies=formation.waves[0].map(({position,id})=>({position,name:rowTitle(monsters.get(id))||`怪物 ${id}`}));
+    destination.append(node('p','原版按参战敌位的本场伤害结算。可从完整编组开始，也可按已知地格进度指定仍存活的敌人。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:route.stageId,groupId:stage.groupid,battleMode:source.depthMode,
+      memberCount:5,waveCount:1,label:cell?`深渊地格 ${cell.id}`:`${route.tower?'凝罪塔':'据点战斗'} ${config.id}`,
+      version:source.resourceVersion,asura:{...route,cellId:cell?.id??null,enemies},scoreWindowSeconds:source.deadlineSeconds});
     return true;
   }
 

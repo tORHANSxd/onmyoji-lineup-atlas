@@ -69,6 +69,7 @@ def replay(args, runtime, work):
                                UrDtgBattleReplay, urdtg_explore_stage, urdtg_train_stage)
     from dream_trial_stage import DREAM_TRIAL_MODE, dream_basic_attack, dream_trial, verify_dream_roster
     from asura_boss_stage import ASURA_MODES, ASURA_STAGES, asura_battle
+    from asura_depth_stage import ASURA_DEPTH_MODE, ASURA_DEPTH_STAGES, asura_depth_battle
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
@@ -85,6 +86,7 @@ def replay(args, runtime, work):
     friend_challenge = args.mode == FRIEND_CHALLENGE_MODE
     fixed_dream = args.mode == DREAM_TRIAL_MODE
     asura = args.mode in ASURA_MODES
+    asura_depth = args.mode == ASURA_DEPTH_MODE
     asura_replay = None
     relay = args.mode == UNDERWORLD_MODE
     orochi = args.mode == OROCHI_MODE
@@ -184,12 +186,15 @@ def replay(args, runtime, work):
 
         engine, stage, group, dream_condition, fixed_hero, const = dream_trial(args.stage)
         group_id, wave_count = stage["groupid"], len(group["MonstersInfos"])
-    elif asura:
+    elif asura or asura_depth:
         from DynamicConfigData import DATA_HERO
 
         if len(fighters) != 5:
             raise ValueError("The Asura battle requires five owned shikigami")
-        engine, group, const, asura_replay = asura_battle(args.mode, args.stage, args.asura)
+        if asura_depth:
+            engine, group, const, asura_replay = asura_depth_battle(args.stage, args.asura)
+        else:
+            engine, group, const, asura_replay = asura_battle(args.mode, args.stage, args.asura)
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
     elif qinfei_boss:
         from battleengine.engine.QinfeiBossEngine import const
@@ -603,8 +608,8 @@ def replay(args, runtime, work):
             raise ValueError("The Yin Yang Defence boss requires its original activity route")
         if args.stage in SCORE_STAGES:
             raise ValueError("This activity requires its dedicated original score battle engine")
-        if args.stage in ASURA_STAGES:
-            raise ValueError("Asura phase two requires its original battle entrance")
+        if args.stage in ASURA_STAGES or args.stage in ASURA_DEPTH_STAGES:
+            raise ValueError("Asura requires its original battle entrance")
         if args.stage in (*TIANFA_STAGES, TIANFA_LOBBY_STAGE):
             raise ValueError("Tianfa requires its dedicated original battle engine")
         if args.stage in CREVICE_STAGES:
@@ -665,6 +670,8 @@ def replay(args, runtime, work):
         route = "dream-trial-fixed-roster"
     elif asura:
         route = "asura-final-personal-score" if engine.is_boss else "asura-tower-solo"
+    elif asura_depth:
+        route = "asura-depths-shared-hp"
     elif recruited_explore:
         avatar.defaultHeros = [exploration_uid(avatar, hero) for hero, _ in plan["members"]]
         route = "urdtg-map-exploration" if urdtg_explore else "ten-anniversary-exploration"
@@ -964,7 +971,7 @@ def replay(args, runtime, work):
     elif friend_challenge:
         formation_matches = (engine.fbId == group_id and engine.combineSceneInfoId == group["sceneId"]
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
-    elif asura:
+    elif asura_replay:
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
     elif fixed_dream:
@@ -1009,7 +1016,7 @@ def replay(args, runtime, work):
                       else SHILIAN_REPLAY_SECONDS if shilian else TIANFA_REPLAY_SECONDS if tianfa
                       else QINFEI_FOOD_CHAIN_SECONDS if qinfei_food and args.qinfei_food_next
                       else SPECIAL_NIAN_WALL_SECONDS if args.mode == SPECIAL_NIAN_MODE else 130 if relay
-                      else 155 if asura
+                      else 155 if asura_replay
                       else pve_wall_seconds(args.pve_deadline))
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
@@ -1416,10 +1423,13 @@ def replay(args, runtime, work):
                                 "control": "manual-basic" if dream_manual else "automatic", "manualAttacks": dream_actions}
         report["formationsVerified"] = len(verified_waves)
     if asura_replay:
-        report["asuraBattle"] = asura_replay.report(completed, [actor_id, *(hero["heroId"] for hero in fighters.values())])
+        entry = asura_replay.report(completed, [actor_id, *(hero["heroId"] for hero in fighters.values())])
+        report["asuraDepths" if asura_depth else "asuraBattle"] = entry
         report["formationsVerified"] = 1
-        if engine.is_boss:
-            report["wavesCleared"] = int(report["asuraBattle"]["bossDefeated"])
+        if asura_depth:
+            report["wavesCleared"] = int(entry["cleared"])
+        elif engine.is_boss:
+            report["wavesCleared"] = int(entry["bossDefeated"])
     if spider_replay:
         report["tuzhizhuPractice"] = spider_replay.report(report["outcome"])
     if retreat:
@@ -1532,6 +1542,7 @@ def main():
     from urdtg_explore import URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE
     from dream_trial_stage import DREAM_TRIAL_MODE
     from asura_boss_stage import ASURA_MODES
+    from asura_depth_stage import ASURA_DEPTH_MODE
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS
     from underworld_stage import UNDERWORLD_MODE
@@ -1540,7 +1551,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--asura", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
@@ -1593,7 +1604,7 @@ def main():
     parser.add_argument("--shilian-moves", type=int)
     parser.add_argument("--shilian-state", type=json.loads)
     args = parser.parse_args()
-    if (args.mode in ASURA_MODES) != (args.asura is not None):
+    if (args.mode in (*ASURA_MODES, ASURA_DEPTH_MODE)) != (args.asura is not None):
         parser.error("Asura replay requires its original phase settings")
     if args.stage <= 0 or not 0 <= args.seed < 10000:
         parser.error("--stage must be positive and --seed must be between 0 and 9999")

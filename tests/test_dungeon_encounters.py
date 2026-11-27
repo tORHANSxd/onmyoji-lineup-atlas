@@ -11,6 +11,35 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_asura_depth_links_each_tile_by_play_type_and_keeps_donation_out_of_battle(self):
+        tables = {
+            "asura_map": [[42, {"id": 42, "activity_id": 7080, "work": 20001, "event": 40001, "rely": [43]}],
+                         [43, {"id": 43, "activity_id": 7080, "work": 40001, "event": 30100}]],
+            "asura_play_type2": [[20001, {"id": 20001, "battle_id": 602007}]],
+            "asura_play_type4": [[40001, {"id": 40001, "need": 12000000}]],
+            "asura_event_type4": [[40001, {"id": 40001, "name": "凝罪塔"}]],
+            "asura_guilty_tower": [[7080, {"activity_id": 7080, "title": "八火狱"}]],
+            "asura_const": [[13, {"value": [240]}]],
+            "battle_team_routes": [[186, {"battleMode": 3341}]],
+            "pve_stage_data": [["602007", {"id": "602007", "groupid": 602007}]],
+            "BattleMonstersInfo": [[602007, {"resindex": 42117}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        catalog = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        rows = {(row["table"], row["key"]): row for row in catalog["entries"]}
+
+        def refs(table, key):
+            return {(ref["table"], ref["key"]) for ref in rows[table, key]["refs"]}
+
+        self.assertEqual(rows["asura_map", 42]["title"], "天魔归来 · 八火狱 · 深渊地格 42 · 凝罪塔")
+        self.assertTrue({("asura_event_type4", 40001), ("asura_map", 43), ("asura_play_type2", 20001),
+                         ("pve_stage_data", "602007"), ("battle_team_routes", 186)}.issubset(refs("asura_map", 42)))
+        self.assertIn(("asura_play_type4", 40001), refs("asura_map", 43))
+        self.assertNotIn(("pve_stage_data", "602007"), refs("asura_map", 43))
+        self.assertIn(("asura_map", 42), refs("asura_play_type2", 20001))
+        self.assertIn(("asura_play_type2", 20001), refs("pve_stage_data", "602007"))
+
     def test_asura_phase_two_uses_different_original_entrances_for_score_and_towers(self):
         tables = {
             "activity": [[7041, {"id": 7041, "name": "第二阶段"}]],

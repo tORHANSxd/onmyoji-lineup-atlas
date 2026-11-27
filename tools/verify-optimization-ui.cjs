@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3342,3344,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -1383,6 +1383,26 @@ async function main(){
     await until('document.querySelector("[data-explore-status]").textContent.includes("6 / 6 个采样种子通关")',30000);
     assert.deepEqual(seen,[0,1,2,3,7,42]);
     assert.match(await ui('document.querySelector("[data-explore-results]").textContent'),/万风钧落 2 级 · 天狗面具 125 个 · 2 位招募式神.*天狗面具增伤生效/s);
+   }
+   if(cases.some(entry=>entry.table==='asura_map'&&entry.key===42&&entry.refs.some(ref=>ref.table==='pve_stage_data'))){
+    await ui('qaEncounterInput("event","八火狱 地图与玩法 asura_guilty_tower")');
+    await until(panel+'.textContent.includes("本层地图")');
+    await ui(`[...${panel}.querySelectorAll('button')].find(button=>button.textContent==='所有地格').click()`);
+    assert.match(await ui('$("client-dungeons-encounter-count").textContent'),/540 条/);
+    await encounter('event','八火狱 深渊地格 42 凝罪塔');
+    await choose('superghost-five');
+    const slots='[...document.querySelectorAll("[data-pve-asura-depth-slot]")]';
+    const damage='document.querySelector("[data-pve-asura-depth-damage]")';
+    assert.equal(await ui(slots+'.length'),6);
+    await ui(`${slots}.forEach(slot=>{slot.checked=false;});${damage}.dispatchEvent(new Event('input',{bubbles:true}))`);
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(`${slots}[0].checked=true;${damage}.value='28300402781713';${damage}.dispatchEvent(new Event('input',{bubbles:true}))`);
+    await until(start+'?.disabled===false');
+    const asura={level:0,skills:[],specialKeys:[],cellId:42,enemies:[[1,'28300402781713']]};
+    const asuraDepths={deadlineSeconds:240,timedOut:false,cleared:true,damage:15000,combatSeconds:12.60,
+     omittedPositions:[2,3,4,5,6],enemies:[{position:1,startingHp:'15001',remainingHp:'0',damage:15000}]};
+    assert.match(await run('superghost-five',{stageId:602007,groupId:602007,battleMode:3341,asura},
+     {asuraDepths}),/已清场.*本场伤害 15,000.*1 号位 · 入场 15,001 · 余血 0.*本场已省略先前击败的敌位/s);
    }
    if(cases.some(entry=>entry.table==='asura_p2_config'&&entry.key===7)){
     await encounter('event','终末之战 asura_p2_config 7');

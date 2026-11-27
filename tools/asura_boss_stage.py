@@ -12,8 +12,7 @@ ASURA_ACTIVITY = 7022
 
 def asura_battle(mode, stage_id, settings):
     from battleengine.engine.AsuraBossEngine import AsuraBossEngine, const
-    from DynamicConfigData import (BattleMonstersInfo, DATA_ASURA_BUFF, DATA_ASURA_CONST, DATA_ASURA_EVENT_2,
-                                   DATA_ASURA_P2_CONFIG, DATA_ASURA_SA_HERO_CONFIG, DATA_PVE_STAGE_DATA)
+    from DynamicConfigData import BattleMonstersInfo, DATA_ASURA_CONST, DATA_ASURA_P2_CONFIG, DATA_PVE_STAGE_DATA
 
     index = ASURA_STAGES.get(stage_id)
     final = index == 7
@@ -28,21 +27,8 @@ def asura_battle(mode, stage_id, settings):
     fields = {"level", "skills", "specialKeys"}
     if final:
         fields |= {"enrage", "activeTowers", "bossHp"}
-    if type(settings) is not dict or settings.keys() != fields:
-        raise ValueError("Invalid Asura replay settings")
-    level, skills, keys = settings["level"], settings["skills"], settings["specialKeys"]
-    skill_costs = {row["skill_id"]: row["use"] for row in DATA_ASURA_EVENT_2.data.values()}
-    valid_keys = {row["key"] for row in DATA_ASURA_SA_HERO_CONFIG.data.values()}
-    if (type(level) is not int or not 0 <= level <= 2**53 - 1
-            or not valid_selection(skills, skill_costs) or not valid_selection(keys, valid_keys)):
-        raise ValueError("Invalid Asura spirit or special-attack settings")
-    slots = sum(row["sprit"] for row in DATA_ASURA_BUFF.data.values() if row["level"] <= level)
-    used_slots = sum(skill_costs[skill] for skill in skills)
-    if used_slots > slots:
-        raise ValueError("The Asura spirit skills exceed the available slots")
-
-    data = {"pve_data_flag": str(stage_id), "tower_index": index - 1, "is_boss": final,
-            "help_heroes": keys, "player_buffs": skills, "level": level}
+    spirit, slots, used_slots = asura_spirit_settings(settings, fields)
+    data = {"pve_data_flag": str(stage_id), "tower_index": index - 1, "is_boss": final, **spirit}
     deadline = None
     monster_skills = [phase["tower_buff"]]
     if final:
@@ -66,6 +52,24 @@ def asura_battle(mode, stage_id, settings):
 def valid_selection(values, allowed):
     return (type(values) is list and len(values) <= len(allowed)
             and all(type(value) is int and value in allowed for value in values) and len(set(values)) == len(values))
+
+
+def asura_spirit_settings(settings, fields):
+    from DynamicConfigData import DATA_ASURA_BUFF, DATA_ASURA_EVENT_2, DATA_ASURA_SA_HERO_CONFIG
+
+    if type(settings) is not dict or settings.keys() != fields:
+        raise ValueError("Invalid Asura replay settings")
+    level, skills, keys = settings["level"], settings["skills"], settings["specialKeys"]
+    skill_costs = {row["skill_id"]: row["use"] for row in DATA_ASURA_EVENT_2.data.values()}
+    valid_keys = {row["key"] for row in DATA_ASURA_SA_HERO_CONFIG.data.values()}
+    if (type(level) is not int or not 0 <= level <= 2**53 - 1
+            or not valid_selection(skills, skill_costs) or not valid_selection(keys, valid_keys)):
+        raise ValueError("Invalid Asura spirit or special-attack settings")
+    slots = sum(row["sprit"] for row in DATA_ASURA_BUFF.data.values() if row["level"] <= level)
+    used_slots = sum(skill_costs[skill] for skill in skills)
+    if used_slots > slots:
+        raise ValueError("The Asura spirit skills exceed the available slots")
+    return {"help_heroes": keys, "player_buffs": skills, "level": level}, slots, used_slots
 
 
 class AsuraSettlement:

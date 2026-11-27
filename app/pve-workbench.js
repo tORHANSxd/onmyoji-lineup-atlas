@@ -150,12 +150,15 @@
   if(pane.journeyDeadline)for(const field of [pane.journeyDeadline,pane.journeyBlessings])field.disabled=blocked;
   const checked=fields=>fields.filter(field=>field.checked).map(field=>Number(field.value));
   const asura=pane.asura?{level:pane.asuraLevel.valueAsNumber,skills:checked(pane.asuraSkills),specialKeys:checked(pane.asuraKeys),
+   ...(pane.asura.depths?{cellId:pane.asura.cellId,enemies:pane.asuraDepthSlots.flatMap((slot,i)=>slot.checked?
+    [[Number(slot.value),pane.asuraDepthDamage[i].value.trim()||'0']]:[])}:{}),
    ...(pane.asura.final?{enrage:pane.asuraEnrage.checked,activeTowers:checked(pane.asuraTowers),bossHp:pane.asuraHp.value.trim()||null}:{})}:null;
   const asuraReady=!asura||asuraBoss.validSettings(asura,pane.asura);
   pane.asuraSettings=asuraReady?asura:null;
   if(asura){
    pane.asuraFields.disabled=blocked;
    pane.asuraHint.textContent=`灵神体槽位 ${asuraBoss.usedSlots(asura.skills)} / ${asuraBoss.slotCount(asura.level)}`;
+   pane.asuraDepthDamage.forEach((field,index)=>{field.disabled=!pane.asuraDepthSlots[index].checked;});
   }
   const yinYangSettings=pane.yinYangDrums?{remainingDrums:pane.yinYangDrums.valueAsNumber,buffIds:pane.yinYangBuffIds}:null;
   const yinYangReady=!yinYangSettings||yinYang.validSettings(yinYangSettings);
@@ -368,7 +371,7 @@
    !eventReady?'前行步数应为大于或等于 0 的整数。':
    !trainingReady?`天狗面具须为 0 至 ${AtlasUrDtgExplore.maxMasks} 的整数。`:
    !journeyReady?'请填写正整数战斗时限和非负整数祝福层数。':
-   !asuraReady?'请核对灵神体等级、技能占用槽位和首领入场生命。':
+   !asuraReady?(pane.asura?.depths?'请至少保留一个敌位，并核对此前伤害和灵神体槽位。':'请核对灵神体等级、技能占用槽位和首领入场生命。'):
    !towerReady?'请核对百妖退治的挑战条件。':
    !laolaoReady?'请核对信仰之佑层数。':
    !fusionReady?'请核对合魂共享生命和计分时长。':
@@ -459,6 +462,14 @@
     ${config.asura.final?`<p id="pve-asura-hp-hint" class="caption">留空使用原版满生命。按要复跑的对局选择仍存活的圣帝幻影。</p>
      <div class="actions">${asuraBoss.entries.filter(row=>!row.final).map(row=>`<label class="pve-tower-toggle">
       <input type="checkbox" data-pve-asura-tower value="${row.index}"> ${esc(row.name)}</label>`).join('')}</div>`:''}
+    ${config.asura.depths?`<details><summary>敌方共享生命与存活站位</summary>
+     <p class="caption">取消勾选已击败的敌位。此前伤害留空时从满生命开始。</p>
+     <div class="pve-tower-hp-fields">${config.asura.enemies.map(({position,name})=>`<div>
+      <label class="pve-tower-toggle"><input type="checkbox" data-pve-asura-depth-slot value="${position}" checked>
+       ${position} 号位 · ${esc(name)}</label>
+      <label class="pve-lineup-field">此前累计伤害 <input data-pve-asura-depth-damage type="text" inputmode="numeric"
+       aria-label="敌方 ${position} 号位此前累计伤害" placeholder="0"></label>
+     </div>`).join('')}</div></details>`:''}
     <details><summary>灵神体技能</summary><div class="actions">
      ${asuraBoss.skills.map(([id,name,cost])=>`<label class="pve-tower-toggle"><input type="checkbox" data-pve-asura-skill value="${id}">
      ${esc(name)} · ${cost} 槽</label>`).join('')}</div></details>
@@ -742,6 +753,7 @@
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
    asuraFields:part('asura-fields'),asuraLevel:part('asura-level'),asuraHp:part('asura-hp'),asuraEnrage:part('asura-enrage'),
    asuraSkills:all('asura-skill'),asuraKeys:all('asura-key'),asuraTowers:all('asura-tower'),asuraHint:part('asura-hint'),
+   asuraDepthSlots:all('asura-depth-slot'),asuraDepthDamage:all('asura-depth-damage'),
    trainingSkill:part('training-skill'),trainingMasks:part('training-masks'),
    journeyDeadline:part('journey-deadline'),journeyBlessings:part('journey-blessings'),
    yinYangDrums:part('yinyang-drums'),yinYangDeadline:part('yinyang-deadline'),yinYangBuffChoice:part('yinyang-buff'),
@@ -1238,7 +1250,8 @@
     const score=huntScores.get(row);
     if(score){
      const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
-     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle?'限时计分':cleared?'均清场':'含未清场样本';
+     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths?
+      '限时计分':cleared?'均清场':'含未清场样本';
      row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${result} · 平均伤害 ${damageText(score.average)} · `+
       `单场最高 ${damageText(score.max)} · 最低 ${damageText(score.min)}`;
      continue;

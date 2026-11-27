@@ -6,6 +6,7 @@ from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM, LAOLAO_FUS
 from dojo_area_stage import DOJO_AREA_TEAM
 from dream_trial_stage import DREAM_TRIAL_MODE
 from asura_boss_stage import ASURA_ACTIVITY, ASURA_PHASE, ASURA_STAGES
+from asura_depth_stage import ASURA_DEPTH_LAYERS, ASURA_DEPTH_TABLES, ASURA_DEPTH_TEAM
 from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
 from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
@@ -57,6 +58,7 @@ DREAM_RULES = (("dream_self_tips", "幻游问梦开放与资源规则"),
                ("dream_act_self_guide_tips3", "解梦规则"))
 ASURA_RULES = (("asura_final_boss", "决战开放与全服规则"), ("asura_huanying", "帝释天降临与幻影结界"),
                ("asura_boss", "终末之战伤害奖励与狂暴规则"), ("asura_tegong", "式神特攻解锁规则"))
+ASURA_MAP_WORK = {1: "据点战斗", 2: "凝罪塔", 3: "派遣", 4: "捐赠"}
 
 
 ROOTS = {
@@ -133,6 +135,12 @@ ROOTS = {
     "dream_act_hero": ("event", "幻游问梦 · 梦境试炼"),
     "asura_p2_config": ("event", "天魔归来 · 帝释天决战"),
     "asura_phase_time": ("event", "天魔归来 · 活动阶段"),
+    "asura_map": ("event", "天魔归来 · 深渊地格"),
+    "asura_play_type1": ("event", "天魔归来 · 深渊据点战斗"),
+    "asura_play_type2": ("event", "天魔归来 · 深渊凝罪塔"),
+    "asura_play_type3": ("event", "天魔归来 · 深渊派遣"),
+    "asura_play_type4": ("event", "天魔归来 · 深渊捐赠"),
+    "asura_guilty_tower": ("event", "天魔归来 · 深渊层数"),
 }
 
 JOURNEY_BATTLE_VARIANTS = {
@@ -429,6 +437,13 @@ def encounter_index(source, load_rows):
     urdtg_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("urdtg_dungeon_battle").values()}
     urdtg_events_by_battle = {}
     dream_heroes_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("dream_act_hero").values()}
+    asura_depth_by_stage = {numeric_key(row.get("battle_id")): (dest, key)
+                            for dest in ASURA_DEPTH_TABLES for key, row in table(dest).values()}
+    asura_cells_by_work = {}
+    for key, row in table("asura_map").values():
+        if row.get("work"):
+            asura_cells_by_work.setdefault(row["work"], []).append(key)
+    asura_scene_by_layer = {row.get("activity_id"): key for key, row in table("asura_scene").values()}
     for key, row in table("urdtg_event").values():
         params = row.get("params")
         if row.get("type") in (1, 2) and params:
@@ -634,6 +649,44 @@ def encounter_index(source, load_rows):
         if name == "asura_phase_time" and row.get("phase_activity_id"):
             if ref := relation("activity", row["phase_activity_id"], "阶段对应的活动开放期", False):
                 links.append(ref)
+        if name == "asura_map":
+            play, event = row.get("work", 0), row.get("event", 0)
+            layer = row.get("activity_id")
+            work_table = f"asura_play_type{play // 10000}"
+            links.extend(ref for dest, key, label in (
+                (work_table, play, "地格玩法配置"), (f"asura_event_type{event // 10000}", event, "地格事件与规则"),
+                ("asura_guilty_tower", layer, "所属深渊层规则"),
+                ("asura_map", row.get("real_id") or None, "原表关联地格"),
+            ) if key and (ref := relation(dest, key, label, False)))
+            if work_table in ASURA_DEPTH_TABLES:
+                _, room = table(work_table).get(numeric_key(play), (None, {}))
+                links.extend(ref for dest, key, label in (
+                    ("pve_stage_data", room.get("battle_id"), "本地格的原版战斗"),
+                    ("battle_team_routes", ASURA_DEPTH_TEAM, "原版深渊战斗入口"),
+                ) if (ref := relation(dest, key, label, False)))
+            links.extend(ref for cell in row.get("rely", ()) if (ref := relation("asura_map", cell, "凝罪塔前置地格", False)))
+        if name.startswith("asura_play_type"):
+            links.extend(relation("asura_map", cell, "使用该配置的地格", False)
+                         for cell in sorted(asura_cells_by_work.get(row.get("id"), ())))
+            if name in ASURA_DEPTH_TABLES:
+                links.extend(ref for dest, key, label in (
+                    ("pve_stage_data", row.get("battle_id"), "原版战斗关卡"),
+                    ("battle_team_routes", ASURA_DEPTH_TEAM, "原版深渊战斗入口"),
+                    ("asura_const", 13, "单场计分时限"),
+                ) if (ref := relation(dest, key, label, False)))
+        if name == "pve_stage_data" and (depths := asura_depth_by_stage.get(numeric_key(row.get("id")))):
+            links.extend(ref for dest, key, label in ((*depths, "原版深渊玩法配置"),
+                ("battle_team_routes", ASURA_DEPTH_TEAM, "原版深渊战斗入口"))
+                if (ref := relation(dest, key, label, False)))
+        if name == "asura_guilty_tower" or name == "activity" and row.get("id") in ASURA_DEPTH_LAYERS:
+            layer = row.get("activity_id", row.get("id"))
+            links.extend(ref for dest, key, label in (
+                ("asura_guilty_tower", layer, "凝罪塔与收益进度"), ("activity", layer, "深渊层开放期"),
+                ("asura_scene", asura_scene_by_layer.get(layer), "深渊地图与场景"),
+            ) if (ref := relation(dest, key, label, False)))
+        if name == "activity" and row.get("id") == ASURA_ACTIVITY:
+            links.extend(ref for layer in ASURA_DEPTH_LAYERS
+                         if (ref := relation("asura_guilty_tower", layer, "深渊探索层数", False)))
         if name == "activity" and row.get("id") in {ASURA_ACTIVITY, ASURA_PHASE}:
             links.extend(rule_reference(key, label) for key, label in ASURA_RULES if key in rules)
             links.extend(ref for phase in range(1, 8) if (ref := relation("asura_phase_time", phase, "原版活动阶段", False)))
@@ -1476,10 +1529,11 @@ def encounter_index(source, load_rows):
             ten_activity = table_name == "activity" and key in TEN_ACTIVITY_LINKS
             dream_activity = table_name == "activity" and key == DREAM_ACTIVITY
             asura_activity = table_name == "activity" and key in {ASURA_ACTIVITY, ASURA_PHASE}
+            asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not dinner_route and not linked_battles and not row.get("monsterWaves")
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
-                    and not ten_activity and not dream_activity and not asura_activity):
+                    and not ten_activity and not dream_activity and not asura_activity and not asura_layer):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -1736,12 +1790,26 @@ def encounter_index(source, load_rows):
             if asura_activity:
                 entry_family, entry_kind = "event", "天魔归来"
                 title = "天魔归来 · " + ("帝释天决战开放与规则" if key == ASURA_PHASE else "主活动与决战规则")
+            if asura_layer or table_name == "asura_guilty_tower":
+                entry_family, entry_kind = "event", "天魔归来 · 深渊层数"
+                title = f"天魔归来 · {ASURA_DEPTH_LAYERS.get(key, title)}" + (" · 开放配置" if asura_layer else " · 地图与玩法")
+            if table_name == "asura_map":
+                layer = ASURA_DEPTH_LAYERS.get(row.get("activity_id"), "深渊探索")
+                play = ASURA_MAP_WORK.get(row.get("work", 0) // 10000, "地形")
+                title = f"天魔归来 · {layer} · 深渊地格 {key} · {play}"
+            if table_name.startswith("asura_play_type"):
+                play = ASURA_MAP_WORK[int(table_name[-1])]
+                detail = f" · {row['battle_id']}" if table_name in ASURA_DEPTH_TABLES else ""
+                title = f"天魔归来 · 深渊{play} · 配置 {key}{detail}"
             if table_name in {"asura_p2_config", "asura_phase_time"}:
                 title = f"天魔归来 · {title}"
             if table_name == "pve_stage_data" and (index := ASURA_STAGES.get(int(numeric_key(key) or 0))):
                 _, phase = table("asura_p2_config").get(str(index), (None, {}))
                 if phase:
                     title = f"天魔归来 · {name(phase)} · {key}"
+            if table_name == "pve_stage_data" and (depths := asura_depth_by_stage.get(numeric_key(key))):
+                play = ASURA_MAP_WORK[int(depths[0][-1])]
+                title = f"天魔归来 · 深渊{play} · {title} · {key}"
             if table_name == "dream_act_hero":
                 title = f"幻游问梦 · {row['name']} · {row['nightmare_name']}"
             if table_name == "pve_stage_data" and (dream_hero := dream_heroes_by_stage.get(numeric_key(key))):

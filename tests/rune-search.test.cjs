@@ -25,6 +25,18 @@ test('天魔归来保留共享生命整数精度、原版槽位和终末之战�
  assert.equal(R.damageResult(samples).credited,1);
 });
 
+test('天魔归来深渊使用站位伤害结算并允许省略先前击败的敌人',()=>{
+ const route=asuraBoss.depthEntry(602007);
+ const settings={level:0,skills:[],specialKeys:[],cellId:42,enemies:[[1,'28300402781713'],[5,'0']]};
+ assert.equal(asuraBoss.validSettings(settings,route),true);
+ assert.equal(asuraBoss.validSettings({...settings,enemies:[]},route),false);
+ assert.equal(asuraBoss.validSettings({...settings,enemies:[[1,'0'],[1,'100']]},route),false);
+ assert.equal(asuraBoss.validSettings({...settings,enemies:[[1,28300402781713]]},route),false);
+ assert.equal(asuraBoss.validSettings({...settings,cellId:1621},route),false);
+ assert.equal(R.damageMode(route.battleMode),true);
+ assert.equal(R.damageResult([{completed:true,outcome:'win',wavesCleared:0,asuraDepths:{damage:15000}}]).credited,1);
+});
+
 test('日轮之陨的单波胜利算通过，误报三波视为结算异常',()=>{
  const reports=baseSampleSeeds.map(seed=>({seed,completed:true,outcome:'win',engineSeconds:21,wavesCleared:1}));
  assert.equal(R.passed(reports,1004),true);

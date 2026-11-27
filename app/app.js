@@ -221,6 +221,7 @@ function sampleBattleMarkup(samples){
   const spiderNormal=sample.spiderNormal;
   const activityScore=sample.generalSoulTrial??sample.activityScore;
   const asura=sample.asuraBattle;
+  const depths=sample.asuraDepths;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
   const secretActor=sample.secretActor;
@@ -265,7 +266,9 @@ function sampleBattleMarkup(samples){
   })??[];
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
-  const outcome=asura?.deadlineSeconds?`${!sample.completed?'结算待确认':asura.bossDefeated?'击破帝释天':asura.timedOut?'达到计分时限':'原版结算'} · `+
+  const outcome=depths?`${!sample.completed?'结算待确认':depths.cleared?'已清场':depths.timedOut?'达到计分时限 · 敌方仍存活':'原版结算 · 未清场'} · `+
+   `本场伤害 ${depths.damage.toLocaleString('zh-CN')} · 交战 ${depths.combatSeconds.toFixed(2)} 秒 / 限时 ${depths.deadlineSeconds} 秒`:
+   asura?.deadlineSeconds?`${!sample.completed?'结算待确认':asura.bossDefeated?'击破帝释天':asura.timedOut?'达到计分时限':'原版结算'} · `+
    `个人伤害 ${asura.damage.toLocaleString('zh-CN')} · 剩余生命 ${BigInt(asura.remainingHp).toLocaleString('zh-CN')} · `+
    `交战 ${asura.combatSeconds.toFixed(2)} 秒 / 限时 ${asura.deadlineSeconds} 秒`+
    (asura.damage<AtlasAsuraBoss.rewardMinimum?' · 未达到伤害奖励门槛':''):
@@ -532,7 +535,10 @@ function sampleBattleMarkup(samples){
     `攻击 ${Math.round(unit.attack).toLocaleString('zh-CN')} · 生命 ${Math.round(unit.hp).toLocaleString('zh-CN')}`+
     (activityPartyData.maskRecipients?.includes(unit.id)?' · 天狗面具增伤生效':'')+'</li>';
   }).join('')}</ol></details>`:'';
-  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}${spiderNormalStages}</li>`;
+  const depthsHp=depths?`<details><summary>查看各敌位本场伤害与余血</summary><ul>${depths.enemies.map(enemy=>
+   `<li>${enemy.position} 号位 · 入场 ${BigInt(enemy.startingHp).toLocaleString('zh-CN')} · 余血 ${BigInt(enemy.remainingHp).toLocaleString('zh-CN')} · 本场伤害 ${enemy.damage.toLocaleString('zh-CN')}</li>`).join('')}
+   </ul>${depths.omittedPositions.length?`<p class="caption">本场已省略先前击败的敌位 ${depths.omittedPositions.join('、')}</p>`:''}</details>`:'';
+  return `<li>种子 ${esc(sample.seed)} · ${esc(outcome+mechanic+time)}${life}${towerLife}${special}${waves.length?`<div class="caption">敌方进场计时 · ${esc(waves.join(' · '))}</div>`:''}${roster}${mirrors}${bossStages}${activityParty}${fusionStages}${duskStages}${songStages}${mirageStages}${catfishStages}${skeletonStages}${longcheStages}${spiderLiveStages}${spiderNormalStages}${depthsHp}</li>`;
  }).join('');
 }
 
