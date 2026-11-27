@@ -21,9 +21,10 @@
   common?require('./shanfeng.js'):root.AtlasShanFeng,
   common?require('./ji-boss.js'):root.AtlasJiBoss,
   common?require('./gtw-boss.js'):root.AtlasGtwBoss,
-  common?require('./chaji-boss.js'):root.AtlasChajiBoss);
+  common?require('./chaji-boss.js'):root.AtlasChajiBoss,
+  (common?require('./splyj-tower.js'):root.AtlasSplyjTower).boss);
  if(common)module.exports=api;else root.AtlasRuneCandidate=api;
-})(globalThis,function(G,R,S,yanwu,band,qiling,crevice,ghost,qinfei,dojo,forest,tenBoss,generalSoul,yinYang,fusion,fengmoLive,asuraBoss,dojoGuardian,shanFeng,jiBoss,gtwBoss,chajiBoss){
+})(globalThis,function(G,R,S,yanwu,band,qiling,crevice,ghost,qinfei,dojo,forest,tenBoss,generalSoul,yinYang,fusion,fengmoLive,asuraBoss,dojoGuardian,shanFeng,jiBoss,gtwBoss,chajiBoss,splyjBoss){
 'use strict';
 
 const mainAttrs={attack_rate:'atk_per',crit_rate:'critical_rate',crit_damage:'critical_pow',speed:'spd',
@@ -121,14 +122,14 @@ function pveGoalMet(report,battleMode){
 
 const personalScore=report=>report.guildHunt??report.guildRetreat??report.fengmoYanwu??report.fengmoBand??report.fengmoBandTogether??report.qilingCollective??report.guildCrevice??
  report.superGhost??report.historicalSuperGhost??report.qinfeiBoss??report.dojoArea??report.dojoGuardian??report.guildForest??
- report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore??report.yinyangBoss??report.laolaoFusion??report.duskWraith??report.songstress??report.mirage??report.catfish??report.skeleton??report.skeletonX??report.longche??report.spiderLive??report.spiderNormal??report.asuraBattle??report.asuraDepths??report.shanFeng??report.jiBoss??report.gtwBoss??report.chajiBoss;
+ report.tenAnniversaryBoss??report.generalSoulTrial??report.activityScore??report.yinyangBoss??report.laolaoFusion??report.duskWraith??report.songstress??report.mirage??report.catfish??report.skeleton??report.skeletonX??report.longche??report.spiderLive??report.spiderNormal??report.asuraBattle??report.asuraDepths??report.shanFeng??report.jiBoss??report.gtwBoss??report.chajiBoss??report.splyjBoss;
 const damageMode=(mode,stageId)=>mode===2000||mode===306||mode===yanwu.battleMode||mode===band.battleMode||mode===band.together.battleMode||mode===qiling.battleMode||
  mode===crevice.battleMode||mode===ghost.battleMode||mode===ghost.historicalBattleMode||mode===qinfei.battleMode||mode===dojo.battleMode||mode===dojoGuardian.battleMode||
  mode===forest.battleMode||mode===tenBoss.battleMode||mode===yinYang.battleMode||mode===fusion.battleMode||mode===asuraBoss.finalMode||mode===asuraBoss.depthMode||
  mode===fengmoLive.duskWraith.battleMode||mode===fengmoLive.songstress.battleMode||mode===fengmoLive.mirage.battleMode||mode===fengmoLive.mirageX.battleMode||mode===fengmoLive.catfish.battleMode||mode===fengmoLive.catfishX.battleMode||mode===fengmoLive.skeleton.battleMode||mode===fengmoLive.skeletonX.battleMode||mode===fengmoLive.longche.battleMode||mode===fengmoLive.longcheX.battleMode||mode===fengmoLive.spiderLive.battleMode||mode===fengmoLive.spiderNormal.battleMode||
  Object.hasOwn(generalSoul.modes,mode)||mode===shanFeng.battleMode&&Boolean(shanFeng.stage(stageId)?.day)||
  mode===jiBoss.battleMode&&Boolean(jiBoss.entry(stageId)?.hard)||mode===gtwBoss.battleMode||
- mode===chajiBoss.battleMode&&Boolean(chajiBoss.entry(stageId)?.scored);
+ mode===chajiBoss.battleMode&&Boolean(chajiBoss.entry(stageId)?.scored)||mode===splyjBoss.battleMode;
 const creditedDamage=report=>report.asuraBattle?report.asuraBattle.damage>=asuraBoss.rewardMinimum:
  !report.guildHunt||report.outcome==='win';
 

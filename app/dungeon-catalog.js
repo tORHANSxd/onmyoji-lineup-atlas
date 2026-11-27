@@ -2092,7 +2092,7 @@
     const chajiMapMounted=showChajiMap(destination,entry,groups);
     const chajiSideMounted=showChajiSide(destination,entry,groups);
     const chajiStoryMounted=showChajiStory(destination,entry,groups);
-    const splyjTowerMounted=showSplyjTower(destination,entry,groups);
+    const splyjMounted=showSplyjBattle(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2237,7 +2237,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!chajiStoryMounted&&!splyjTowerMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!chajiStoryMounted&&!splyjMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2496,30 +2496,51 @@
     return true;
   }
 
-  function showSplyjTower(destination,entry,groups){
+  function showSplyjBattle(destination,entry,groups){
     const source=AtlasSplyjTower;
-    const stageId=entry.table==='pve_stage_data'?Number(entry.key):
-      entry.table==='activity_tower_floor'?groups[0].row?.battle_id:0;
-    const route=source.entry(stageId);
-    if(!route)return false;
+    const row=groups[0].row,stageId=entry.table==='pve_stage_data'?Number(entry.key):
+      entry.table==='activity_tower_floor'?row?.battle_id:entry.table==='splyj_boss'?Number(row?.pve_battle_flag):0;
+    const boss=source.boss.entry(stageId),route=source.entry(stageId);
+    if(!route&&!boss)return false;
     const get=(table,id)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===id)?.row;
-    const floor=get('activity_tower_floor',route.floorId),activity=get('activity_tower_act',source.activityId);
+    const mode=boss?source.boss:source;
+    const floor=route&&get('activity_tower_floor',route.floorId),activity=get('activity_tower_act',source.activityId);
+    const profile=boss&&get('splyj_boss',boss.difficulty),stake=boss&&get('stake_boss',source.boss.stakeId);
     const stage=get('pve_stage_data',stageId),formation=get('BattleMonstersInfo',stageId);
-    const rules=get('normal_battle_config',source.battleMode),assist=get('normal_battle_assist_hero',source.assistConfig);
+    const rules=get('normal_battle_config',mode.battleMode),assist=get('normal_battle_assist_hero',source.assistConfig);
     const helper=get('hero',source.assistId);
-    if(!matchesOpeningSource(source)||activity?.act_id!==source.activityId||floor?.act_id!==source.activityId||
-       floor.battle_id!==stageId||floor.tower_layer!==route.layer||stage?.groupid!==stageId||stage.shishentotal!==5||
-       formation?.resindex!==source.sceneId||formation.MonstersInfos?.length!==1||formation.MonstersInfos[0].length!==6||
+    const skillRows=Object.entries(source.skillMap).map(([id,skillId])=>({
+      id:Number(id),skillId,row:get('asura_develop',Number(id)),mapping:get('normal_battle_develop_skill',Number(id))}));
+    const fixed=get('splyj_const',source.sourceSlots.fixed)?.value,extras=get('splyj_const',source.sourceSlots.optional)?.value;
+    const activeBuffs=get('asura_load',source.activityId)?.load_max===1&&fixed?.length===1&&fixed[0]===source.fixedBuff&&
+      extras?.length===source.optionalBuffs.length&&extras.every((id,i)=>id===source.optionalBuffs[i])&&
+      skillRows.every(({id,skillId,row,mapping})=>row?.id===id&&row.activity_id===source.activityId&&
+        row.default_unlock===1&&row.max_lv===1&&mapping?.battle_skill_id===skillId);
+    const linked=boss?stake?.team_battle_type===mode.battleMode&&profile?.lv===boss.difficulty&&
+      Number(profile.pve_battle_flag)===stageId&&formation?.MonstersInfos?.[0]?.[0]?.[1]===boss.enemyId:
+      activity?.act_id===source.activityId&&floor?.act_id===source.activityId&&
+      floor.battle_id===stageId&&floor.tower_layer===route.layer;
+    if(!matchesOpeningSource(mode)||!linked||!activeBuffs||stage?.groupid!==stageId||stage.shishentotal!==5||
+       formation?.resindex!==mode.sceneId||formation.MonstersInfos?.length!==1||formation.MonstersInfos[0].length!==(boss?1:6)||
        rules?.halt_time!==source.deadlineSeconds||rules.group_battle!==false||rules.replace_yys_id!==0||rules.save_round_hp!==false||
+       (boss&&(rules.show_total_damage!==true||rules.real_time_sync_dmg!==true))||
        rules.assist_hero_list?.length!==1||rules.assist_hero_list[0]!==source.assistConfig||
        assist?.hero_id!==source.assistId||assist.pos_index!==101||assist.is_god_mode!==1||assist.can_control!==0||!helper?.name){
-      destination.append(node('p','本机资料与已核验的擎火拾阶战斗配置不匹配。','caption'));
+      destination.append(node('p','本机资料与已核验的执火燎原战斗配置不匹配。','caption'));
       return true;
     }
-    const label=`擎火拾阶 · ${floor.name}`;
-    destination.append(node('p',`${floor.name} · 原版时限 ${source.deadlineSeconds} 秒 · 固定助战 ${helper.name}（无敌、不可手动控制）`,'caption'));
-    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
-      memberCount:5,waveCount:1,version:source.resourceVersion,label});
+    const difficulty=boss?profile.lv_name:floor.name;
+    const label=`${boss?'寒山断祟':'擎火拾阶'} · ${difficulty}`;
+    destination.append(node('p',`${difficulty} · 原版时限 ${source.deadlineSeconds} 秒 · 固定助战 ${helper.name}（无敌、不可手动控制）`,'caption'));
+    if(boss){
+      const mirror=groups.find(({ref})=>ref.table==='skill'&&ref.key?.$tuple?.[0]===mode.mirrorSkillId&&
+        ref.key.$tuple[1]===boss.mirrorSkillLevel)?.row;
+      destination.append(node('p',`${profile.boss_name} · 离线练习按原版单场伤害结算`,'caption'));
+      if(mirror?.combatDesc||mirror?.desc)destination.append(node('p',mirror.combatDesc||mirror.desc,'caption'));
+    }
+    const splyjBuffs=skillRows.map(({id,row})=>({id,name:row.skill_name,desc:row.desc_template}));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:mode.battleMode,
+      memberCount:5,waveCount:1,version:source.resourceVersion,label,splyjBuffs});
     return true;
   }
 

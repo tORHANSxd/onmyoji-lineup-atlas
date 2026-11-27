@@ -198,6 +198,11 @@
    pane.socialPartyPositions.textContent=positions.map((slots,i)=>`玩家 ${i+1} · ${slots.join('、')} 号位`).join(' ｜ ')+
     (rate?` · 增伤和减伤各 ${Math.round(rate*100)}%`:'');
   }
+  if(pane.splyjBuff){
+   pane.splyjBuff.disabled=blocked;
+   const selectedBuff=pane.splyjBuffs.find(({id})=>id===Number(pane.splyjBuff.value));
+   pane.splyjBuffHint.textContent=selectedBuff?.desc??'本次只带固定心火加成。';
+  }
   let defenseReady=!pane.breakthrough||!!pane.defenseLineup.value;
   if(pane.dojoDefense){
    const leader=pane.dojoLeader.value==='leader';
@@ -598,6 +603,14 @@
     </div>
     <p class="caption" role="status" id="pve-gtw-settings-hint" data-pve-gtw-hint></p>
    </fieldset>`:''}
+   ${config.splyjBuffs?`<fieldset class="pve-reserve"><legend>心火加成</legend>
+    <p class="caption">${esc(config.splyjBuffs[0].name)}（固定） · ${esc(config.splyjBuffs[0].desc)}</p>
+    <label class="pve-lineup-field">额外加成 <select data-pve-splyj-buff aria-describedby="pve-splyj-buff-hint">
+     <option value="">无额外加成</option>
+     ${config.splyjBuffs.slice(1).map(({id,name})=>`<option value="${id}">${esc(name)}</option>`).join('')}
+    </select></label>
+    <p class="caption" id="pve-splyj-buff-hint" data-pve-splyj-buff-hint role="status"></p>
+   </fieldset>`:''}
    ${config.urdtgTraining?`<fieldset class="pve-reserve"><legend>赛事训练条件</legend><div class="actions">
     <label class="pve-lineup-field">万风钧落等级 <select data-pve-training-skill>
      <option value="1">1 级</option><option value="2">2 级</option><option value="3">3 级</option>
@@ -915,6 +928,7 @@
    journeyDeadline:part('journey-deadline'),journeyBlessings:part('journey-blessings'),
    dojoGuardianHp:part('dojo-guardian-hp'),dojoGuardianWindow:part('dojo-guardian-window'),
    gtwFields:part('gtw-fields'),gtwHp:part('gtw-hp'),gtwWindow:part('gtw-window'),gtwHint:part('gtw-hint'),
+   splyjBuff:part('splyj-buff'),splyjBuffHint:part('splyj-buff-hint'),
    yinYangDrums:part('yinyang-drums'),yinYangDeadline:part('yinyang-deadline'),yinYangBuffChoice:part('yinyang-buff'),
    addYinYangBuff:part('add-yinyang-buff'),yinYangBuffList:part('yinyang-buff-list'),yinYangBuffIds:[],
    towerConditions:part('tower-conditions'),towerBlessingRows:all('tower-blessing-row'),
@@ -945,7 +959,7 @@
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
   for(const field of [pane.lineup,pane.defenseLineup,pane.defenseAccount,pane.attackParty,pane.socialParty,pane.dojoLeader,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
-   pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
+   pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,pane.splyjBuff,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,pane.mirageTrait,
    pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.longcheTrait,
    ...pane.longcheOrder,pane.spiderLiveTrait,pane.spiderNormalWeakPart].filter(Boolean))field.onchange=()=>{
@@ -1189,6 +1203,10 @@
    <details hidden><summary>查看采样战报</summary><ul class="dungeon-stock-samples"></ul></details>`;
   const row={el,state:el.querySelector('[data-state]'),details:el.querySelector('details'),
    report:el.querySelector('ul'),samples:[],verdict:'unknown',index:run.rows.length+1};
+  if(run.pane.splyjBuffs){
+   const names=run.pane.splyjBuffs.filter(({id})=>id===AtlasSplyjTower.fixedBuff||id===run.splyjBuff).map(({name})=>name);
+   row.details.insertAdjacentHTML('beforebegin',`<p class="caption">心火加成 ${esc(names.join('、'))}</p>`);
+  }
   if(run.pane.towerContinue)row.report.onclick=event=>{
    const button=event.target.closest('[data-tower-carry]');
    if(!button||runeBusy()||pane!==run.pane)return;
@@ -1250,6 +1268,7 @@
     ...(dojoArea?{dojoArea}:{}),
     ...(run.dojoGuardianSettings?{dojoGuardian:run.dojoGuardianSettings}:{}),
     ...(run.gtwBossSettings?{gtwBoss:run.gtwBossSettings}:{}),
+    ...(run.splyjBuff?{splyjBuff:run.splyjBuff}:{}),
     ...(run.pane.gtwEventId?{gtwEventId:run.pane.gtwEventId}:{}),
     ...(forest?{forest}:{}),
     ...(tenBonuses?.length?{tenBonuses}:{}),
@@ -1455,6 +1474,7 @@
    journeyHard:pane.journeySettings,
    dojoGuardianSettings:pane.dojoGuardianSettings,
    gtwBossSettings:pane.gtwBossSettings,
+   splyjBuff:Number(pane.splyjBuff?.value)||undefined,
    trainingSettings:pane.trainingSettings,
    asuraSettings:pane.asuraSettings,
    yinyangBoss:pane.yinYangSettings?{...pane.yinYangSettings,buffIds:pane.yinYangSettings.buffIds.slice()}:null,
@@ -1546,7 +1566,7 @@
     const score=huntScores.get(row);
     if(score){
      const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
-     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths||row.samples[0].shanFeng||row.samples[0].jiBoss||row.samples[0].gtwBoss||row.samples[0].chajiBoss?
+     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths||row.samples[0].shanFeng||row.samples[0].jiBoss||row.samples[0].gtwBoss||row.samples[0].chajiBoss||row.samples[0].splyjBoss?
       '限时计分':cleared?'均清场':'含未清场样本';
      row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${result} · 平均伤害 ${damageText(score.average)} · `+
       `单场最高 ${damageText(score.max)} · 最低 ${damageText(score.min)}`;

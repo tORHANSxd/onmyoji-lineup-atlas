@@ -226,6 +226,7 @@ function sampleBattleMarkup(samples){
   const jiBoss=sample.jiBoss;
   const gtwBoss=sample.gtwBoss;
   const chajiBoss=sample.chajiBoss;
+  const splyjBoss=sample.splyjBoss;
   const timedBattle=sample.gtwHunt??sample.socialPlay??sample.jiForest??sample.yanmoPractice??sample.yanmoTrial??
    sample.chajiMap??sample.chajiDrill??sample.splyjTower;
   const socialBuff=sample.socialPlay?.buffRate;
@@ -285,6 +286,8 @@ function sampleBattleMarkup(samples){
    chajiBoss?`${!sample.completed?'结算待确认':chajiBoss.timedOut?'达到原版时限':sample.wavesCleared?'已清场':chajiBoss.scored?'伤害已结算':'未清场'} · `+
    `战斗至结算 ${chajiBoss.combatSeconds.toFixed(2)} 秒 · 本场伤害 ${chajiBoss.damage.toLocaleString('zh-CN')}`+
    (chajiBoss.tasks.length?` · 额外任务 ${chajiBoss.tasks.filter(task=>task.result===2).length} / ${chajiBoss.tasks.length}`:''):
+   splyjBoss?`${!sample.completed?'结算待确认':splyjBoss.cleared?'已清场':splyjBoss.timedOut?'达到原版时限 · 首领仍存活':'伤害已结算 · 首领仍存活'} · `+
+   `本场伤害 ${splyjBoss.damage.toLocaleString('zh-CN')} · 原版计分用时 ${splyjBoss.usedSeconds} / ${splyjBoss.deadlineSeconds} 秒`:
    timedBattle?`${!sample.completed?'结算待确认':timedBattle.timedOut?'达到原版时限':sample.wavesCleared?'已清场':'未清场'} · `+
    `战斗至结算 ${timedBattle.combatSeconds.toFixed(2)} 秒`+
    (socialBuff?` · ${sample.socialPlay.partyPositions.length} 人组队 · 增伤和减伤各 ${Math.round(socialBuff*100)}%`:'')+

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6058,6086,6089,6092,8238,9547,9548,9549,9550,9551,9552,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6058,6059,6086,6089,6092,8238,9547,9548,9549,9550,9551,9552,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -683,11 +683,24 @@ async function main(){
    if(cases.some(entry=>entry.table==='activity_tower_floor'&&entry.key===666)){
     await encounter('event','擎火拾阶 activity_tower_floor 困难 9637273');
     assert.match(await ui(panel+'.textContent'),/困难 · 原版时限 180 秒 · 固定助战 天火命铃彦姬（无敌、不可手动控制）/);
-    assert.match(await run('chaji-boss',{stageId:9637273,groupId:9637273,battleMode:6058},
-     {engineSeconds:82.92,splyjTower:{timedOut:false,combatSeconds:71.82,rounds:29}}),
-     /通过 6 个采样种子.*已清场.*71\.82 秒 · 我方 29 回合/s);
+    const buff='document.querySelector("[data-pve-splyj-buff]")';
+    assert.match(await ui(panel+'.textContent'),/暴溢（固定）.*燃魂.*助愈.*助伤/s);
+    await ui(buff+'.value="533004";'+buff+'.dispatchEvent(new Event("change"))');
+    assert.match(await ui(panel+'.textContent'),/助战式神造成的伤害提升100%/);
+    assert.match(await run('chaji-boss',{stageId:9637273,groupId:9637273,battleMode:6058,splyjBuff:533004},
+     {engineSeconds:59.38,splyjTower:{timedOut:false,combatSeconds:48.28,rounds:15}}),
+     /通过 6 个采样种子.*心火加成 暴溢、助伤.*已清场.*48\.28 秒 · 我方 15 回合/s);
     await encounter('event','擎火拾阶 pve_stage_data 简单 9637271');
     assert.match(await ui(panel+'.textContent'),/简单 · 原版时限 180 秒 · 固定助战 天火命铃彦姬/);
+   }
+   if(cases.some(entry=>entry.table==='splyj_boss'&&entry.key===4)){
+    await encounter('event','寒山断祟 splyj_boss 寂灭 40132');
+    assert.match(await ui(panel+'.textContent'),/离线练习按原版单场伤害结算.*召唤5轮镜像.*免疫单体伤害/s);
+    assert.match(await run('chaji-boss',{stageId:40132,groupId:40132,battleMode:6059},
+     {engineSeconds:192.06,wavesCleared:0,splyjBoss:{cleared:false,timedOut:true,usedSeconds:180,deadlineSeconds:180,damage:20803144}}),
+     /6 \/ 6 场有效结算 · 限时计分.*达到原版时限 · 首领仍存活 · 本场伤害 20,803,144 · 原版计分用时 180 \/ 180 秒/s);
+    await encounter('event','寒山断祟 pve_stage_data 暮暝 40129');
+    assert.match(await ui(panel+'.textContent'),/召唤2轮镜像/);
    }
    if(cases.some(entry=>entry.table==='sp_chaji_plot'&&entry.key===3)){
     await ui('qaEncounterInput("event","月曜新章 道满的手下 sp_chaji_plot 3")');

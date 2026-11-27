@@ -36,7 +36,9 @@ from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES, QINFEI_BOS
 from shanfeng_stage import SHANFENG_MODE
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 from social_play_stage import SOCIAL_PLAY_ACTIVITY, SOCIAL_PLAY_BUFFS, SOCIAL_PLAY_MODE, SOCIAL_PLAY_TICKET
-from splyj_tower_stage import (SPLYJ_ACTIVITY, SPLYJ_ASSIST, SPLYJ_ASSIST_HERO, SPLYJ_TOWER_ACTIVITY,
+from splyj_boss_stage import (SPLYJ_BOSS_ACTIVITY, SPLYJ_BOSS_MARK, SPLYJ_BOSS_MODE, SPLYJ_BOSS_STAGES,
+                              SPLYJ_MIRROR_SKILL)
+from splyj_tower_stage import (SPLYJ_ACTIVITY, SPLYJ_ASSIST, SPLYJ_ASSIST_HERO, SPLYJ_BATTLE_SKILLS, SPLYJ_TOWER_ACTIVITY,
                                SPLYJ_TOWER_FLOORS, SPLYJ_TOWER_MODE, SPLYJ_TOWER_STAGES)
 from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
 from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EXPLORATION_STAGES,
@@ -118,6 +120,8 @@ CHAJI_STORY_TABLES = {"sp_chaji_plot", "sp_chaji_event_plot"}
 CHAJI_SPECIAL_KEYS = frozenset(map(str, CHAJI_SPECIAL_STAGES))
 SPLYJ_TOWER_NAME = "执火燎原 · 擎火拾阶"
 SPLYJ_TOWER_BY_STAGE = dict(zip(map(str, SPLYJ_TOWER_STAGES), SPLYJ_TOWER_FLOORS))
+SPLYJ_BOSS_NAME = "执火燎原 · 寒山断祟"
+SPLYJ_BOSS_BY_STAGE = {str(stage): difficulty for difficulty, stage in enumerate(SPLYJ_BOSS_STAGES, 1)}
 CHAJI_SIDE_ENTRIES = {
     "pve_stage_data": {str(stage): stage for stage in CHAJI_SIDE_NAMES},
     "normal_battle_config": CHAJI_SIDE_MODES,
@@ -143,6 +147,7 @@ GTW_STORY_RULES = (("spgtw_pt_main_tip", "剧目、骰子与战斗规则"),
 ROOTS = {
     "pve_stage_data": ("battle", "通用 PvE 关卡"),
     "normal_battle_config": ("battle", "战斗模式默认规则"),
+    "splyj_boss": ("event", SPLYJ_BOSS_NAME),
     "dungeon_rune": ("daily", "御魂"),
     "map_boss": ("daily", "地图首领入口"),
     **{f"dojo{year}_bbbl_{suffix}": ("event", description) for year in (2025, 2026)
@@ -964,14 +969,27 @@ def encounter_index(source, load_rows):
         splyj_activity = (name == "activity" and row.get("id") in (SPLYJ_ACTIVITY, SPLYJ_TOWER_ACTIVITY)
                           or name == "activity_tower_act" and row.get("act_id") == SPLYJ_TOWER_ACTIVITY)
         splyj_mode = name == "normal_battle_config" and row.get("battleMode") == SPLYJ_TOWER_MODE
-        if splyj_floor or splyj_activity or splyj_mode:
+        splyj_boss = (SPLYJ_BOSS_BY_STAGE.get(numeric_key(row.get("id"))) if name == "pve_stage_data"
+                      else row.get("id") if name == "splyj_boss" else None)
+        splyj_boss_root = (name == "activity" and row.get("id") in (SPLYJ_ACTIVITY, SPLYJ_BOSS_ACTIVITY)
+                           or name == "normal_battle_config" and row.get("battleMode") == SPLYJ_BOSS_MODE
+                           or name == "stake_boss" and row.get("boss_id") == SPLYJ_BOSS_MARK)
+        if splyj_floor or splyj_activity or splyj_mode or splyj_boss or splyj_boss_root:
             rows = [("activity", SPLYJ_ACTIVITY, "执火燎原开放时间"),
-                    ("activity", SPLYJ_TOWER_ACTIVITY, "擎火拾阶开放时间"),
-                    ("activity_tower_act", SPLYJ_TOWER_ACTIVITY, "挑战消耗及额外奖励次数"),
-                    ("normal_battle_config", SPLYJ_TOWER_MODE, "原版战斗时限"),
                     ("normal_battle_assist_hero", SPLYJ_ASSIST, "固定助战规则"),
-                    ("hero", SPLYJ_ASSIST_HERO, "固定助战天火命铃彦姬")]
-            links.append(rule_reference("sp_lingyanji_pata_tips", "难度解锁和道具消耗"))
+                    ("hero", SPLYJ_ASSIST_HERO, "固定助战天火命铃彦姬"),
+                    ("asura_load", SPLYJ_TOWER_ACTIVITY, "心火加成可选槽位"),
+                    ("splyj_const", 29, "固定心火加成"), ("splyj_const", 28, "可选心火加成")]
+            links.append(rule_reference("sp_lingyanji_buff_tips", "心火加成选择规则"))
+            for buff, skill in SPLYJ_BATTLE_SKILLS.items():
+                rows.extend((("asura_develop", buff, "活动加成说明"),
+                             ("normal_battle_develop_skill", buff, "活动加成到战斗技能的映射"),
+                             ("skill", level_one_skill(skill), "原版活动加成技能")))
+            if splyj_floor or splyj_activity or splyj_mode:
+                rows.extend((("activity", SPLYJ_TOWER_ACTIVITY, "擎火拾阶开放时间"),
+                             ("activity_tower_act", SPLYJ_TOWER_ACTIVITY, "挑战消耗及额外奖励次数"),
+                             ("normal_battle_config", SPLYJ_TOWER_MODE, "原版战斗时限")))
+                links.append(rule_reference("sp_lingyanji_pata_tips", "难度解锁和道具消耗"))
             if splyj_activity or splyj_mode:
                 rows.extend(("activity_tower_floor", floor, "擎火拾阶难度") for floor in SPLYJ_TOWER_FLOORS)
                 links.append(rule_reference("sp_lingyanji_main_tips", "执火燎原玩法"))
@@ -985,6 +1003,20 @@ def encounter_index(source, load_rows):
                              ("BattleMonstersInfo", stage, "原版敌方编组"),
                              ("reward", floor.get("act_ticket_reward"), "神宫信物挑战奖励"),
                              ("reward", floor.get("sushi_reward"), "雪域秘卷挑战奖励")))
+            if splyj_boss or splyj_boss_root:
+                rows.extend((("activity", SPLYJ_BOSS_ACTIVITY, "寒山断祟开放时间"),
+                             ("stake_boss", SPLYJ_BOSS_MARK, "原版次数、体力与奖励配置"),
+                             ("normal_battle_config", SPLYJ_BOSS_MODE, "原版时限及伤害结算")))
+                links.append(rule_reference("sp_lingyanji_boss_tips", "挑战次数、奖励和排行榜限制"))
+            if splyj_boss_root:
+                rows.extend(("splyj_boss", difficulty, "文车妖妃挑战难度") for difficulty in SPLYJ_BOSS_BY_STAGE.values())
+            if splyj_boss:
+                _, profile = table("splyj_boss").get(numeric_key(splyj_boss), (None, {}))
+                stage = profile.get("pve_battle_flag")
+                rows.extend((("splyj_boss", splyj_boss, "原版首领难度"),
+                             ("pve_stage_data", stage, "原版关卡与已知阵容模拟"),
+                             ("BattleMonstersInfo", stage, "原版敌方编组"),
+                             ("skill", {"$tuple": [SPLYJ_MIRROR_SKILL, 5 - splyj_boss, -1]}, "本难度镜像机制")))
             links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         chaji_story_key = numeric_key(row.get("id")) if name == "pve_stage_data" else None
         chaji_plot = chaji_plots.get(chaji_story_key)
@@ -2232,6 +2264,7 @@ def encounter_index(source, load_rows):
             chaji_story_activity = table_name == "activity" and key == CHAJI_STORY_ACTIVITY and bool(chaji_plots)
             splyj_activity = (table_name == "activity" and key in (SPLYJ_ACTIVITY, SPLYJ_TOWER_ACTIVITY)
                               and "activity_tower_floor" in manifests)
+            splyj_boss_activity = table_name == "activity" and key == SPLYJ_BOSS_ACTIVITY and "splyj_boss" in manifests
             tower_activity = table_name == "activity" and key in tower_floors_by_activity
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
@@ -2240,7 +2273,7 @@ def encounter_index(source, load_rows):
                     and not ten_activity and not dream_activity and not asura_activity and not asura_layer
                     and not shanfeng_activity and not ji_activity and not gtw_activity and not tower_activity and not gtw_run_activity
                     and not social_activity and not yanmo_activity and not chaji_activity and not chaji_map_activity
-                    and not chaji_story_activity and not splyj_activity):
+                    and not chaji_story_activity and not splyj_activity and not splyj_boss_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -2579,6 +2612,17 @@ def encounter_index(source, load_rows):
                     or table_name == "normal_battle_config" and key == SPLYJ_TOWER_MODE):
                 entry_family, entry_kind = "event", SPLYJ_TOWER_NAME
                 title = f"{entry_kind} · " + ("开放配置" if splyj_activity else "原版玩法配置")
+            splyj_boss = (SPLYJ_BOSS_BY_STAGE.get(numeric_key(key)) if table_name == "pve_stage_data"
+                          else key if table_name == "splyj_boss" else None)
+            if splyj_boss:
+                _, profile = table("splyj_boss").get(numeric_key(splyj_boss), (None, {}))
+                if profile:
+                    entry_family, entry_kind = "event", SPLYJ_BOSS_NAME
+                    title = f"{entry_kind} · {profile['boss_name']} · {profile['lv_name']} · {profile['pve_battle_flag']}"
+            if (splyj_boss_activity or table_name == "normal_battle_config" and key == SPLYJ_BOSS_MODE
+                    or table_name == "stake_boss" and key == SPLYJ_BOSS_MARK):
+                entry_family, entry_kind = "event", SPLYJ_BOSS_NAME
+                title = f"{entry_kind} · " + ("开放配置" if splyj_boss_activity else "原版玩法配置")
             story_key = numeric_key(key) if table_name == "pve_stage_data" else None
             chaji_plot = chaji_plots.get(story_key)
             if chaji_story_activity or table_name in CHAJI_STORY_TABLES or chaji_plot:
