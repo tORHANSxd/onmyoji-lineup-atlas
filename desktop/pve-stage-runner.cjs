@@ -37,6 +37,7 @@ const dojoDefenseSource=require('../app/dojo-defense.js');
 const shanFeng=require('../app/shanfeng.js');
 const jiBoss=require('../app/ji-boss.js');
 const jiForest=require('../app/ji-forest.js');
+const yanmo=require('../app/yanmo.js');
 const gtwBossSource=require('../app/gtw-boss.js');
 const gtwHunt=require('../app/gtw-hunt.js');
 const socialPlay=require('../app/social-play.js');
@@ -73,6 +74,7 @@ const engines={
  [shanFeng.battleMode]:shanFeng.engine,
  [jiBoss.battleMode]:jiBoss.engine,
  ...Object.fromEntries(jiForest.modes.map(mode=>[mode,jiForest.engine])),
+ [yanmo.battleMode]:yanmo.engine,
  [gtwBossSource.battleMode]:gtwBossSource.engine,
  ...Object.fromEntries(gtwHunt.modes.map(mode=>[mode,gtwHunt.engine])),
  [socialPlay.battleMode]:socialPlay.engine,
@@ -1451,6 +1453,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===shanFeng.battleMode&&!shanFeng.validReport(report))||
     (battleMode===jiBoss.battleMode&&!jiBoss.validReport(report,rounds[0]))||
     (jiForest.modes.includes(battleMode)&&!jiForest.validReport(report))||
+    (battleMode===yanmo.battleMode&&!yanmo.validReport(report))||
     (gtwBoss&&!gtwBossSource.validReport(report,gtwBoss))||
     (gtwHunt.modes.includes(battleMode)&&!gtwHunt.validReport(report,gtwEventId))||
     (battleMode===socialPlay.battleMode&&!socialPlay.validReport(report,socialParty))||
@@ -1562,6 +1565,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(await has('shanfeng_stage.py')?[shanFeng.battleMode]:[]),
      ...(await has('ji_boss_stage.py')?[jiBoss.battleMode]:[]),
      ...(await has('ji_forest_stage.py')?jiForest.modes:[]),
+     ...(await has('yanmo_stage.py')?[yanmo.battleMode]:[]),
      ...(await has('gtw_boss_stage.py')?[gtwBossSource.battleMode]:[]),
      ...(await has('gtw_hunt_stage.py')?gtwHunt.modes:[]),
      ...(await has('social_play_stage.py')?[socialPlay.battleMode]:[]),
@@ -1580,7 +1584,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const maxMembers=[fengmoYanwu.battleMode,songstress.battleMode,orochi.battleMode,tianfa.battleMode,socialPlay.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
    const jiStage=jiBoss.entry(stageId);
    const forestStage=jiForest.entry(stageId);
+   const yanmoStage=yanmo.practice(stageId);
    const stageActor=battleMode===tenBoss.battleMode||battleMode===urdtgTrain.battleMode||battleMode===shanFeng.battleMode||
+    battleMode===yanmo.battleMode||
     battleMode===jiBoss.battleMode&&jiStage?.actor||
     battleMode===266&&secretOpenings.floors[stageId]?.replacement;
    const explore=battleMode===tenExplore.battleMode?tenExplore:battleMode===urdtgExplore.battleMode?urdtgExplore:null;
@@ -1632,6 +1638,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      (!forestStage?.available||forestStage.battleMode!==battleMode||stageId!==groupId||
       plan.members.length!==5||jiForest.resourceVersion!==resourceVersion))
     throw Error('错季之森复跑需要可核验的原版关卡和五位自有式神');
+   if(battleMode===3&&(yanmoStage||yanmo.isTrial(stageId)))throw Error('不朽之目需要使用原版活动战斗入口');
+   if(battleMode===yanmo.battleMode&&(!yanmoStage||groupId!==stageId||
+      plan.members.length!==5||resourceVersion!==yanmo.resourceVersion))
+    throw Error('三途轮回复跑需要原版关卡与五位自有式神');
    if(battleMode===jiBoss.battleMode&&(!jiStage?.available||groupId!==stageId||plan.members.length!==5||
      jiBoss.resourceVersion!==resourceVersion))throw Error('四时归焉复跑需要已核验的原版关卡和五位自有式神');
    const isGtwBoss=battleMode===gtwBossSource.battleMode,gtwStage=gtwBossSource.stages[stageId];

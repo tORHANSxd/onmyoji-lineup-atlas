@@ -35,6 +35,8 @@ from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EX
 from ten_anniversary_boss import TEN_BOSS_ACT, TEN_BOSS_MODE, TEN_BOSS_STAGE, TEN_BOSS_TEAM
 from urdtg_explore import (URDTG_ACTIVITY, URDTG_EXPLORE_MODE, URDTG_MASK_SKILL, URDTG_STAGES, URDTG_TRAIN_ACTIVITY,
                            URDTG_TRAIN_CODE, URDTG_TRAIN_MODE, URDTG_TRAIN_STAGE, URDTG_TRAIN_TEAM)
+from yanmo_stage import (YANMO_ACTIVITY, YANMO_LAMP, YANMO_PRACTICE_MODE, YANMO_PRACTICE_TEAM,
+                         YANMO_REPLACEMENT, YANMO_TRIAL_MODE, YANMO_TRIAL_STAGES, YANMO_TRIAL_TEAM)
 
 
 TOWER_EVENT_SOURCES = {
@@ -83,6 +85,17 @@ JI_FOREST_TABLES = {
     "ji_eliminate": "萤球消除",
 }
 JI_BOSS_RULES = ("yimengsui", "shuangshenli", "sijisheng")
+YANMO_PRACTICE_NAME = "不朽之目 · 三途轮回"
+YANMO_TRIAL_NAME = "不朽之目 · 百鬼乱狱"
+YANMO_RESOURCES = ("金币", "经验", "御魂", "觉醒")
+YANMO_TRIAL_TABLES = {
+    "sp_yanmo_map": "探索地图",
+    "sp_yanmo_event": "地格事件",
+    "sp_yanmo_hero": "招募卡",
+    "sp_yanmo_trial_attr": "招募属性",
+    "sp_yanmo_yucheng_attr": "活动技能养成",
+    "sp_yanmo_second_skill_buff": "活动属性养成",
+}
 GTW_BOSS_NAME = "修罗猎戏 · 决猎庭院"
 GTW_HUNT_NAME = "修罗猎戏 · 彷徨猎场"
 SOCIAL_PLAY_NAME = "四时序战"
@@ -162,6 +175,8 @@ ROOTS = {
     SHANFENG_PVE: ("event", "初翎山风超鬼王 · 历练成王"),
     "shiki_boss": ("event", "化四季 · 四时归焉"),
     **{table: ("event", JI_FOREST_NAME) for table in JI_FOREST_TABLES},
+    "sp_yanmo_xx_fuben": ("event", YANMO_PRACTICE_NAME),
+    **{table: ("event", YANMO_TRIAL_NAME) for table in YANMO_TRIAL_TABLES},
     "activity_tower_act": ("event", "活动塔入场配置"),
     "activity_tower_floor": ("event", "活动塔楼层"),
     "run_group_module": ("event", "诡城歧事剧目"),
@@ -489,6 +504,12 @@ def encounter_index(source, load_rows):
     ji_forest_by_stage = {numeric_key(row[field]): (dest, key, row)
                           for dest, field in (("ji_tower_monster", "fight_id"), ("ji_tower_elite", "fightId"))
                           for key, row in table(dest).values()}
+    yanmo_stages = {numeric_key(row["battle_id"]): (key, row) for key, row in table("sp_yanmo_xx_fuben").values()}
+    yanmo_maps_by_battle = {}
+    for map_id, config in sorted(table("sp_yanmo_map").values()):
+        for cell, event in config.get("map_info", {}).get("$mapping", ()):
+            if event.get("e_type") in (1, 14) and event.get("data", 0) in YANMO_TRIAL_STAGES:
+                yanmo_maps_by_battle.setdefault(numeric_key(event["data"]), []).append((map_id, cell))
     social_stages = {numeric_key(row["stage_id"]): (key, row) for key, row in table("social_play_stage").values()}
     tower_floors_by_activity, gtw_events_by_stage, gtw_events_by_chapter = {}, {}, {}
     for key, row in table("activity_tower_floor").values():
@@ -891,6 +912,73 @@ def encounter_index(source, load_rows):
             rows = [("social_play_color", row.get("id"), "混合所得颜色"),
                     ("reward", row.get("reward_id"), "调色奖励")]
             rows.extend(("social_play_color", color, "所需颜色") for color in row.get("recipe", ()))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+        yanmo_stage = numeric_key(row.get("id")) if name == "pve_stage_data" else None
+        yanmo_practice = yanmo_stages.get(yanmo_stage)
+        yanmo_trial = bool(yanmo_stage and int(yanmo_stage) in YANMO_TRIAL_STAGES and table("sp_yanmo_map"))
+        yanmo_mode = row.get("battleMode") if name == "normal_battle_config" else None
+        yanmo_root = name == "activity" and row.get("id") == YANMO_ACTIVITY and yanmo_stages
+        if (yanmo_root or yanmo_mode in (YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE) or yanmo_practice or yanmo_trial
+                or name in {"sp_yanmo_xx_fuben", *YANMO_TRIAL_TABLES}):
+            rows = [("activity", YANMO_ACTIVITY, "不朽之目活动开放")]
+            if yanmo_root:
+                rows.extend((("normal_battle_config", YANMO_PRACTICE_MODE, "三途轮回战斗入口"),
+                             ("normal_battle_config", YANMO_TRIAL_MODE, "百鬼乱狱战斗入口")))
+                links.append(rule_reference("spyanmo_main_tips", "活动玩法与开放规则"))
+            if yanmo_root or yanmo_mode == YANMO_PRACTICE_MODE or yanmo_practice or name == "sp_yanmo_xx_fuben":
+                rows.extend((("normal_battle_config", YANMO_PRACTICE_MODE, "三途轮回战斗规则"),
+                             ("battle_mode_routes", YANMO_PRACTICE_MODE, "原版战斗场景和引擎"),
+                             ("battle_team_routes", YANMO_PRACTICE_TEAM, "原版组队和单人入口"),
+                             ("normal_battle_yys_replace", YANMO_REPLACEMENT, "固定大夜摩天阎魔"),
+                             ("sp_yanmo_constant", 36, "冥河夜灯额外奖励回合上限"),
+                             ("currency", YANMO_LAMP, "冥河夜灯")))
+                links.extend((rule_reference("spyanmo_pata_tips", "三途轮回开放、消耗与掉落规则"),
+                              rule_reference("spyanmo_yucheng_tips", "大夜摩天阎魔活动养成")))
+                if yanmo_mode == YANMO_PRACTICE_MODE:
+                    rows.extend(("sp_yanmo_xx_fuben", stage_key, "三途轮回关卡") for stage_key, _ in sorted(yanmo_stages.values()))
+                if yanmo_practice or name == "sp_yanmo_xx_fuben":
+                    stage_key, config = yanmo_practice or (row["id"], row)
+                    stage_id = config["battle_id"]
+                    rows.extend((("sp_yanmo_xx_fuben", stage_key, "三途轮回入场与奖励配置"),
+                                 ("pve_stage_data", stage_id, "原版关卡"),
+                                 ("BattleMonstersInfo", stage_id, "原版敌方编组"),
+                                 ("reward", config.get("reward_win"), "战斗奖励"),
+                                 ("reward", config.get("reward_extra"), "额外奖励")))
+            if yanmo_root or yanmo_mode == YANMO_TRIAL_MODE or yanmo_trial or name == "sp_yanmo_map":
+                rows.extend((("normal_battle_config", YANMO_TRIAL_MODE, "百鬼乱狱战斗规则"),
+                             ("battle_mode_routes", YANMO_TRIAL_MODE, "原版战斗场景和引擎"),
+                             ("battle_team_routes", YANMO_TRIAL_TEAM, "原版组队和单人入口"),
+                             ("sp_yanmo_constant", 25, "地格战斗体力消耗"),
+                             ("sp_yanmo_constant", 49, "增益上限")))
+                links.append(rule_reference("spyanmo_ditu_tips01", "百鬼乱狱地图、招募与探索规则"))
+                if yanmo_root or yanmo_mode == YANMO_TRIAL_MODE:
+                    rows.extend(("sp_yanmo_map", key, "百鬼乱狱地图") for key, _ in sorted(table("sp_yanmo_map").values()))
+                if yanmo_mode == YANMO_TRIAL_MODE:
+                    rows.extend(("pve_stage_data", stage, "百鬼乱狱敌方关卡") for stage in YANMO_TRIAL_STAGES)
+                if yanmo_trial:
+                    rows.extend(("sp_yanmo_map", map_id, f"地图 {map_id} · 格 {cell}")
+                                for map_id, cell in yanmo_maps_by_battle.get(yanmo_stage, ()))
+                if name == "sp_yanmo_map":
+                    rows.append(("sp_yanmo_map", row.get("pre_unlock_id") or None, "前置地图"))
+                    rows.extend(("currency", item, "地图道具") for item, _ in row.get("rewards", ()))
+                    cells = row.get("map_info", {}).get("$mapping", ())
+                    rows.extend(("sp_yanmo_event", event_type, "地图地格类型")
+                                for event_type in sorted({event["e_type"] for _, event in cells}))
+                    rows.extend(("pve_stage_data", event["data"], f"格 {cell} · 原版敌方关卡")
+                                for cell, event in cells if event.get("e_type") in (1, 14) and event.get("data") in YANMO_TRIAL_STAGES)
+                    rows.extend(("reward", reward, f"格 {cell} · 可选招募奖励")
+                                for cell, event in cells if event.get("e_type") == 20 for reward in event.get("data", ()))
+            if name == "sp_yanmo_event" and row.get("tips"):
+                if ref := relation(language, row["tips"], "原版地格说明", True):
+                    links.append(ref)
+            if name == "sp_yanmo_hero":
+                suit = row["euqip_set_id"]
+                suit_table = "equip_suit" if numeric_key(suit) in table("equip_suit") else "equip_suit_luandou"
+                rows.extend((("hero", row["hero_id"], "招募式神"),
+                             ("sp_yanmo_trial_attr", row["attr_id"], "招募属性与星级"),
+                             (suit_table, suit, "招募御魂套装")))
+            if name == "sp_yanmo_yucheng_attr":
+                rows.append(("skill", level_one_skill(row.get("skill_id")), "技能原文"))
             links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         ji_boss_stage = ji_boss_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
         ji_forest = ji_forest_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
@@ -1896,7 +1984,7 @@ def encounter_index(source, load_rows):
             family, kind = "event", "京畿净化战斗参数"
         # The four resource tables are registered separately from the normal
         # fight panel's journey_normalbattle lookup. A numeric match is insufficient.
-        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle", SHANFENG_PVE, "shiki_boss", "social_play_stage", *JI_FOREST_TABLES} else [
+        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle", SHANFENG_PVE, "shiki_boss", "social_play_stage", "sp_yanmo_xx_fuben", *JI_FOREST_TABLES} else [
             field for field in BATTLE_ID_FIELDS if field in manifest["fields"]
         ]
         for key, row in load_rows(table_name):
@@ -1923,6 +2011,7 @@ def encounter_index(source, load_rows):
             gtw_activity = table_name == "activity" and key == GTW_BOSS_ACTIVITY and "stake_boss" in manifests
             gtw_run_activity = table_name == "activity" and key == GTW_STORY_ACTIVITY and bool(gtw_events_by_chapter)
             social_activity = table_name == "activity" and key == SOCIAL_PLAY_ACTIVITY and bool(social_stages)
+            yanmo_activity = table_name == "activity" and key == YANMO_ACTIVITY and bool(yanmo_stages)
             tower_activity = table_name == "activity" and key in tower_floors_by_activity
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
@@ -1930,7 +2019,7 @@ def encounter_index(source, load_rows):
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
                     and not ten_activity and not dream_activity and not asura_activity and not asura_layer
                     and not shanfeng_activity and not ji_activity and not gtw_activity and not tower_activity and not gtw_run_activity
-                    and not social_activity):
+                    and not social_activity and not yanmo_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -2246,6 +2335,29 @@ def encounter_index(source, load_rows):
                 title = f"{SOCIAL_PLAY_NAME} · 第 {config['day']} 日第 {config['level']} 关 · {config['stage_id']}"
             if table_name in SOCIAL_PLAY_TABLES:
                 title = " · ".join(filter(None, (SOCIAL_PLAY_NAME, SOCIAL_PLAY_TABLES[table_name], row.get("des"), str(key))))
+            if yanmo_activity:
+                entry_family, entry_kind, title = "event", "不朽之目", "不朽之目 · 活动开放与玩法入口"
+            if table_name == "normal_battle_config" and key in (YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE):
+                entry_family = "event"
+                entry_kind = YANMO_PRACTICE_NAME if key == YANMO_PRACTICE_MODE else YANMO_TRIAL_NAME
+                title = f"{entry_kind} · 原版战斗入口"
+            yanmo_practice = yanmo_stages.get(numeric_key(key)) if table_name == "pve_stage_data" else None
+            if table_name == "sp_yanmo_xx_fuben" or yanmo_practice:
+                _, config = yanmo_practice or (key, row)
+                entry_family, entry_kind = "event", YANMO_PRACTICE_NAME
+                resource = YANMO_RESOURCES[config["battle_type"] - 1]
+                layer = (config["id"] - 1) % 10 + 1
+                title = f"{entry_kind} · {resource} · 第 {layer} 层 · {config['battle_id']}"
+            if table_name == "pve_stage_data" and int(numeric_key(key) or 0) in YANMO_TRIAL_STAGES and table("sp_yanmo_map"):
+                entry_family, entry_kind = "event", YANMO_TRIAL_NAME
+                title = f"{entry_kind} · {title} · {key}"
+            if table_name in YANMO_TRIAL_TABLES:
+                label = YANMO_TRIAL_TABLES[table_name]
+                if table_name == "sp_yanmo_hero":
+                    _, hero = table("hero").get(numeric_key(row["hero_id"]), (None, {}))
+                    title = name(hero)
+                detail = row.get("des") or row.get("note") or title
+                title = " · ".join(filter(None, (YANMO_TRIAL_NAME, label, detail, str(key))))
             if ji_activity:
                 entry_family, entry_kind = ROOTS["shiki_boss"]
                 title = "化四季 · 活动开放与玩法入口"

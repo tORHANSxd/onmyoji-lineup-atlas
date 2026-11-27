@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -502,7 +502,9 @@ async function main(){
   trainingStageActor.members.shift();
   const tenExplore=known('ten-explore',101000,5);
   tenExplore.members=tenExplore.members.filter(member=>[591,379].includes(Number(member.shikigamiId)));
-  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor,tenBossStageActor,trainingStageActor,tenExplore);
+  const yanmo=known('yanmo',null,5);
+  yanmo.members.shift();
+  squads.push(trial,moon,known('six-realms-ineligible',110151,6),stageActorOnly,stageActorWithSlot,jinyujiStageActor,tenBossStageActor,trainingStageActor,tenExplore,yanmo);
   const boot=await ui('JSON.stringify(STATE)');
   const cases=encounterCases;
   const sample={completed:true,outcome:'win',waveCount:1,wavesCleared:1,bouts:3,engineSeconds:18,
@@ -677,6 +679,17 @@ async function main(){
     await ui('qaEncounterInput("event",'+JSON.stringify(pick(3340022))+')');
     await until(panel+'.textContent.includes("困难编组的首领技能")');
     assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='sp_yanmo_xx_fuben'&&entry.key===40)){
+    await encounter('event','三途轮回 sp_yanmo_xx_fuben 602840');
+    assert.match(await ui(panel+'.textContent'),/觉醒 · 第 10 层.*活动指定的大夜摩天阎魔.*10 回合内获胜/s);
+    assert.match(await run('yanmo',{stageId:602840,groupId:602840,battleMode:912},
+     {yanmoPractice:{timedOut:false,combatSeconds:118.58,rounds:18,lampBonusCondition:false}},undefined,null),
+     /战斗至结算 118\.58 秒 · 18 回合 · 未满足冥河夜灯额外奖励回合条件/);
+    await ui('qaEncounterInput("event","百鬼乱狱 pve_stage_data 602851")');
+    await until(panel+'.textContent.includes("招募阵容复跑待接入")');
+    assert.equal(await ui(start+'===null'),true);
+    assert.match(await ui(panel+'.textContent'),/地图 1 · 格/);
    }
    if(cases.some(entry=>entry.table==='ji_tower_monster'&&entry.key===2)){
     await encounter('event','错季之森普通季灵 505001');

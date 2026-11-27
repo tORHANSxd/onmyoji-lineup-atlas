@@ -2087,6 +2087,7 @@
     showDojoGuardian(destination, entry, groups);
     const jiBossMounted=showJiBoss(destination,entry,groups);
     const jiForestMounted=showJiForest(destination,entry,groups);
+    const yanmoMounted=showYanmo(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2231,7 +2232,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2487,6 +2488,38 @@
       '第二阶段 · 入场生命低于全服配置上限的 50%。','caption'));
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
       memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title,gtwBoss:stage});
+    return true;
+  }
+
+  function showYanmo(destination,entry,groups){
+    const source=AtlasYanmo;
+    if(!['sp_yanmo_xx_fuben','pve_stage_data'].includes(entry.table))return false;
+    const stageId=Number(entry.table==='pve_stage_data'?entry.key:groups[0].row?.battle_id);
+    if(source.isTrial(stageId)){
+      destination.append(node('p','百鬼乱狱使用活动招募卡的属性和御魂。可查看此关敌方编组与已关联的原版地格，招募阵容复跑待接入。','caption'));
+      return true;
+    }
+    const stage=source.practice(stageId);
+    if(!stage)return false;
+    const get=(table,key)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===key)?.row;
+    const config=get('sp_yanmo_xx_fuben',stage.entryId),rules=get('normal_battle_config',source.battleMode);
+    const pve=get('pve_stage_data',stageId),formation=get('BattleMonstersInfo',stageId);
+    const route=get('battle_mode_routes',source.battleMode),actor=get('normal_battle_yys_replace',12);
+    if(!matchesOpeningSource(source)||route?.scene_engine!==source.engine.name||
+       route.scene_marshal_sha256!==source.sceneSHA256||config?.battle_id!==stageId||
+       config.battle_type!==stage.resourceType||pve?.groupid!==stageId||pve.shishentotal!==5||pve.battleTime||
+       formation?.resindex!==source.sceneId||formation.MonstersInfos?.length!==1||formation.MonstersInfos[0].length!==6||
+       rules?.halt_time!==0||rules.group_battle!==false||rules.replace_yys_id!==12||
+       actor?.yys_id!==source.actor.id||actor.yys_level!==source.actor.level||actor.yys_star!==source.actor.star||
+       get('sp_yanmo_constant',36)?.value?.[0]!==source.bonusRoundLimit){
+      destination.append(node('p','本机资料与已核验的原版战斗配置不匹配。','caption'));
+      return true;
+    }
+    const label=`三途轮回 · ${stage.resource} · 第 ${stage.layer} 层`;
+    destination.append(node('p','已知阵容的五位式神与活动指定的大夜摩天阎魔作战，使用原版默认活动养成。','caption'));
+    destination.append(node('p',`无战斗时限。使用冥河夜灯挑战时，${source.bonusRoundLimit} 回合内获胜满足额外奖励条件。`,'caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,memberCount:5,
+      waveCount:1,version:source.resourceVersion,label,replacementActor:source.actor});
     return true;
   }
 

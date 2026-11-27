@@ -225,7 +225,7 @@ function sampleBattleMarkup(samples){
   const shanFeng=sample.shanFeng;
   const jiBoss=sample.jiBoss;
   const gtwBoss=sample.gtwBoss;
-  const timedBattle=sample.gtwHunt??sample.socialPlay??sample.jiForest;
+  const timedBattle=sample.gtwHunt??sample.socialPlay??sample.jiForest??sample.yanmoPractice;
   const socialBuff=sample.socialPlay?.buffRate;
   const breakthrough=sample.breakthrough;
   const dojoGuardian=sample.dojoGuardian;
@@ -277,7 +277,8 @@ function sampleBattleMarkup(samples){
   const outcome=timedBattle?`${!sample.completed?'结算待确认':timedBattle.timedOut?'达到原版时限':sample.wavesCleared?'已清场':'未清场'} · `+
    `战斗至结算 ${timedBattle.combatSeconds.toFixed(2)} 秒`+
    (socialBuff?` · ${sample.socialPlay.partyPositions.length} 人组队 · 增伤和减伤各 ${Math.round(socialBuff*100)}%`:'')+
-   (sample.jiForest?.elite?` · 本场伤害 ${sample.jiForest.damage.toLocaleString('zh-CN')}`:''):
+   (sample.jiForest?.elite?` · 本场伤害 ${sample.jiForest.damage.toLocaleString('zh-CN')}`:'')+
+   (sample.yanmoPractice?` · ${sample.yanmoPractice.rounds} 回合 · ${sample.yanmoPractice.lampBonusCondition?'满足':'未满足'}冥河夜灯额外奖励回合条件`:''):
    gtwBoss?`${!sample.completed?'结算待确认':gtwBoss.windowExpired?'达到本地计分时限':gtwBoss.nativeTimedOut?'达到原版时限':'伤害已结算'} · `+
    `${gtwBoss.cleared?'已清场 · ':gtwBoss.defeated?'已击破首领 · ':''}个人伤害 ${gtwBoss.damage.toLocaleString('zh-CN')} · `+
    `首领余血 ${gtwBoss.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})} · `+
