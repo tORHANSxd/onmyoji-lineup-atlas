@@ -546,7 +546,7 @@
 
   function encounterKind(entry) {
     return entry.fengmoLive||['阴界之门入口','妖气封印','现世鬼王','现世妖约·策划鼠','秘境鬼王',
-      '妖灵退治群体战','妖灵退治单体战','鬼王来袭','姥姥火挑战','结界突破'].includes(entry.kind)||
+      '妖灵退治群体战','妖灵退治单体战','鬼王来袭','姥姥火挑战','结界突破','道馆','道馆守护'].includes(entry.kind)||
       entry.table==='pve_stage_data'&&['daily','guild'].includes(entry.family)?entry.kind:titles[entry.table]||entry.kind;
   }
 
@@ -2053,6 +2053,7 @@
     destination.replaceChildren(header, node('p', encounterKind(entry) + ' · ' + encounterKeyLabel(entry), 'caption'));
     appendGuildDinnerDetails(destination, entry, groups);
     showBreakthrough(destination, entry, groups);
+    showDojoGuardian(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
     const asuraMounted=showAsuraBattle(destination, entry, groups)||showAsuraDepths(destination, entry, groups, monsters);
     const chapterChallengeMounted=showChapterChallenge(destination,entry,groups,monsters,chapterDifficulties);
@@ -2193,7 +2194,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2369,6 +2370,27 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.sceneId,battleMode,
       version:source.resourceVersion,label:entry.title,memberCount:source.memberCount,waveCount:1,
       codeStageId:source.stageId,breakthrough:true,breakthroughParty:guild});
+  }
+
+  function showDojoGuardian(destination, entry, groups) {
+    const source=AtlasDojoGuardian,stageId=Number(entry.key),guardian=source.guardians[stageId];
+    if(entry.table==='battle_mode_routes'&&stageId===source.battleMode){
+      destination.append(node('p','从下方选择神龙、白藏主、黑豹或凤凰。每场按原版共享生命规则结算本队伤害。','caption'));
+      return;
+    }
+    if(entry.table!=='pve_stage_data'||!guardian||!matchesOpeningSource(source))return;
+    const get=table=>groups.find(group=>group.ref.table===table)?.row;
+    const route=get('battle_mode_routes'),stage=groups[0].row,formation=get('BattleMonstersInfo'),code=get('team_assist_stage');
+    const offsetRows=groups.filter(group=>group.ref.table==='dg_guardian');
+    const waves=formation?.MonstersInfos;
+    if(route?.scene_class!=='JiejieTuPoGym2BossScene'||stage?.groupid!==stageId||stage.shishentotal!==5||
+      formation?.resindex!==stageId||waves?.length!==1||waves[0]?.length!==1||waves[0][0][1]!==guardian.id||
+      code?.id!==source.codeStageId||code.ss_num!==5||code.yys_num!==1||offsetRows.length!==5||
+      offsetRows.some(({row})=>row?.monster_hp_delta?.[stageId-40051]!==guardian.adjustment))return;
+    destination.append(node('p','共享生命默认从满值开始，可以按已知战报填写本场入场生命。离线模拟只计这套阵容的伤害。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
+      version:source.resourceVersion,label:entry.title,memberCount:5,waveCount:1,
+      codeStageId:source.codeStageId,dojoGuardian:guardian});
   }
 
   function showDreamTrial(destination, entry, groups) {

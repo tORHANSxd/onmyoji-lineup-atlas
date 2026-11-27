@@ -11,6 +11,39 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_dojo_guardian_and_defender_modes_keep_their_own_rules(self):
+        tables = {
+            "battle_mode_routes": [[4003, {"battleMode": 4003, "mode_symbol": "MODE_JIEJIE_TUPO_GYM2",
+                                           "scene_engine": "JiejieTuPoGym2Scene"}],
+                                   [4004, {"battleMode": 4004, "mode_symbol": "MODE_JIEJIE_TUPO_GYM2_BOSS",
+                                           "scene_engine": "JiejieTuPoGym2BossScene"}]],
+            "pve_stage_data": [["40051", {"id": "40051", "name": "道馆守护·神龙", "groupid": 40051}]],
+            "BattleMonstersInfo": [[40051, {"ID": 40051, "resindex": 40051}]],
+            "Constant": [[3750, {"value": [40]}], [3762, {"value": [30]}], [3793, {"value": [4]}]],
+            "team_assist_stage": [[10020203, {"name": "道馆"}]],
+            "dg_guardian": [[1, {"monster_hp_delta": [3600, 4200, 3600, 500]}]],
+            "dg_timer_buff": [[12, {"atk_buffs": [[60, 2]]}]],
+            "dg_flaglevel_new": [[1, {"referee_speed": 90}]],
+            "languageDataEx": [["dg_tips_58", {"cn": "已击败式神不再出现"}]],
+            "system_rule_dsc": [["daoguanzhenrongyushe_tips", {"rule_dsc": "道馆备选阵容"}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "battle",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, lambda name: tables[name])
+        entries = {(row["table"], str(row["key"])): row for row in index["entries"]}
+        defense = entries["battle_mode_routes", "4003"]
+        guardians = entries["battle_mode_routes", "4004"]
+        stage = entries["pve_stage_data", "40051"]
+        for row in (defense, guardians, stage):
+            self.assertEqual(row["family"], "guild")
+        self.assertIn(("dg_timer_buff", 12), {(ref["table"], ref["key"]) for ref in defense["refs"]})
+        self.assertIn(("dg_flaglevel_new", 1), {(ref["table"], ref["key"]) for ref in defense["refs"]})
+        self.assertIn(("pve_stage_data", "40051"), {(ref["table"], str(ref["key"])) for ref in guardians["refs"]})
+        refs = {(ref["table"], ref["key"]) for ref in stage["refs"]}
+        self.assertIn(("battle_mode_routes", 4004), refs)
+        self.assertIn(("Constant", 3750), refs)
+        self.assertNotIn(("Constant", 3762), refs)
+
     def test_breakthrough_modes_link_their_own_rules_without_a_fixed_pve_formation(self):
         tables = {
             "battle_mode_routes": [[4000, {"battleMode": 4000, "mode_symbol": "MODE_JIEJIE_TUPO_SINGLE",

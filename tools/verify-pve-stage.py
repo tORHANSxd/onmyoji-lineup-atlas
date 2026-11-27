@@ -24,6 +24,7 @@ def replay(args, runtime, work):
                                   TOWER_MODE, TOWER_WALL_SECONDS,
                                   DevilFeastReplay, GhostKingTowerReplay, LaolaoChallengeReplay, tower_stage_kind)
     from dojo_area_stage import DOJO_AREA_MODE, DojoAreaReplay, dojo_area_stage, is_dojo_area_stage
+    from dojo_guardian_stage import DOJO_GUARDIAN_MODE, DOJO_GUARDIAN_STAGES, DOJO_GUARDIAN_WALL_SECONDS, DojoGuardianReplay
     from game_resources import sha256
     from fengmo_band_stage import FENGMO_BAND_MODE, FENGMO_BAND_STAGES, FengmoBandReplay
     from fengmo_band_together import (BAND_ONLINE_STAGES, BAND_TOGETHER_MODE, BAND_TOGETHER_STAGES,
@@ -90,6 +91,7 @@ def replay(args, runtime, work):
     asura_depth = args.mode == ASURA_DEPTH_MODE
     asura_replay = None
     breakthrough = None
+    dojo_guardian = None
     relay = args.mode == UNDERWORLD_MODE
     orochi = args.mode == OROCHI_MODE
     hunling = args.mode in HUNLING_MODES
@@ -204,6 +206,15 @@ def replay(args, runtime, work):
         breakthrough = BreakthroughMatch(args.mode, args.stage, plan, suits, fighters, actor)
         engine, const = breakthrough.engine, breakthrough.const
         group_id, wave_count = BREAKTHROUGH_SCENE, 1
+    elif args.mode == DOJO_GUARDIAN_MODE:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("The dojo guardian requires five owned shikigami")
+        dojo_guardian = DojoGuardianReplay(args.stage, args.dojo_guardian)
+        engine, const = dojo_guardian.engine, dojo_guardian.const
+        group = dojo_guardian.group
+        group_id, wave_count = group["ID"], 1
     elif qinfei_boss:
         from battleengine.engine.QinfeiBossEngine import const
         from DynamicConfigData import DATA_HERO
@@ -618,6 +629,8 @@ def replay(args, runtime, work):
             raise ValueError("This activity requires its dedicated original score battle engine")
         if args.stage in ASURA_STAGES or args.stage in ASURA_DEPTH_STAGES:
             raise ValueError("Asura requires its original battle entrance")
+        if args.stage in DOJO_GUARDIAN_STAGES:
+            raise ValueError("Dojo guardians require the original shared HP battle entrance")
         if args.stage in (*TIANFA_STAGES, TIANFA_LOBBY_STAGE):
             raise ValueError("Tianfa requires its dedicated original battle engine")
         if args.stage in CREVICE_STAGES:
@@ -684,6 +697,8 @@ def replay(args, runtime, work):
         route = "asura-depths-shared-hp"
     elif breakthrough:
         route = breakthrough.route
+    elif dojo_guardian:
+        route = "dojo-guardian-shared-hp"
     elif recruited_explore:
         avatar.defaultHeros = [exploration_uid(avatar, hero) for hero, _ in plan["members"]]
         route = "urdtg-map-exploration" if urdtg_explore else "ten-anniversary-exploration"
@@ -939,6 +954,9 @@ def replay(args, runtime, work):
     if breakthrough:
         formation_matches = engine.combineSceneInfoId == group_id and (
             breakthrough.guild or avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
+    elif dojo_guardian:
+        formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group_id
+                             and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
     elif qinfei_boss:
         formation_matches = raid.matches()
     elif retreat:
@@ -1012,6 +1030,7 @@ def replay(args, runtime, work):
         engine.op_sceneLoaded(current)
 
     replay_seconds = (PRACTICE_REPLAY_SECONDS if spider else 220 if retreat else QINFEI_BOSS_REPLAY_SECONDS if qinfei_boss
+                      else DOJO_GUARDIAN_WALL_SECONDS if dojo_guardian
                       else BAND_TOGETHER_WALL_SECONDS if band_together
                       else DEVIL_FEAST_WALL_SECONDS if devil_feast
                       else TOWER_WALL_SECONDS if ghost_king_tower
@@ -1049,7 +1068,7 @@ def replay(args, runtime, work):
             boss = raid.boss["protoId"]
         elif spider_live or spider_normal:
             boss = group["MonstersInfos"][0][1][1]
-        elif yanwu or qiling or activity_score or songstress or dusk_wraith or mirage or catfish or skeleton or longche:
+        elif yanwu or qiling or activity_score or songstress or dusk_wraith or mirage or catfish or skeleton or longche or dojo_guardian:
             boss = group["MonstersInfos"][0][0][1]
         else:
             boss = stage["monsters"][0][0]
@@ -1102,6 +1121,8 @@ def replay(args, runtime, work):
         engine.update()
         if breakthrough:
             breakthrough.observe_referee()
+        if dojo_guardian:
+            dojo_guardian.update()
         if dream_manual and dream_basic_attack(engine, controller, const, dream_manual):
             dream_actions += 1
         if asura_replay:
@@ -1263,6 +1284,12 @@ def replay(args, runtime, work):
               "engineSeconds": round(engine.now_time() - start, 6), "spirit": equipped_spirit}
     if breakthrough:
         report["breakthrough"] = breakthrough.report()
+        report["formationsVerified"] = 1
+        report["wavesCleared"] = int(completed and outcome == "win")
+    if dojo_guardian:
+        report["dojoGuardian"] = dojo_guardian.report(completed, outcome)
+        if instructions:
+            report["dojoGuardian"].update(instructions.report())
         report["formationsVerified"] = 1
         report["wavesCleared"] = int(completed and outcome == "win")
     if underworld:
@@ -1525,6 +1552,7 @@ def main():
     from fengmo_band_stage import FENGMO_BAND_MODE
     from fengmo_band_together import BAND_TOGETHER_MODE, BAND_TOGETHER_STAGES, BAND_TOGETHER_WALL_SECONDS
     from dojo_area_stage import DOJO_AREA_ACTIVITY, DOJO_AREA_MODE
+    from dojo_guardian_stage import DOJO_GUARDIAN_MODE, DOJO_GUARDIAN_STAGES, DOJO_GUARDIAN_WALL_SECONDS
     from map_boss_stage import (MODES as MAP_BOSS_MODES, QINFEI_FOOD_CHAIN_SECONDS, QINFEI_FOOD_MODE,
                                 SPECIAL_NIAN_MODE, party_positions, qinfei_food_sequence)
     from fengmo_yanwu_stage import FENGMO_YANWU_MODE
@@ -1577,7 +1605,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--asura", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
@@ -1597,6 +1625,7 @@ def main():
     parser.add_argument("--band-score", type=int)
     parser.add_argument("--band-carry", type=int, nargs=2, metavar=("DAMAGE", "BUFF_LEVEL"))
     parser.add_argument("--dojo-area", type=int, nargs=3, metavar=("YEAR", "PLAY", "REGION_STATE"))
+    parser.add_argument("--dojo-guardian", type=json.loads)
     parser.add_argument("--forest-event", type=int)
     parser.add_argument("--ten-bonuses", type=int, nargs="+", choices=TEN_OPTIONAL_BONUSES, default=[])
     parser.add_argument("--map-boss-players", type=int, choices=(1, 2, 3))
@@ -1737,6 +1766,9 @@ def main():
             parser.error("Eight-Hundred Tanuki requires a configured cell and supported region state")
     elif args.dojo_area is not None:
         parser.error("Eight-Hundred Tanuki settings only apply to its original battle mode")
+    if (args.mode == DOJO_GUARDIAN_MODE) != (args.dojo_guardian is not None) or (
+            args.mode == DOJO_GUARDIAN_MODE and args.stage not in DOJO_GUARDIAN_STAGES):
+        parser.error("Dojo guardian settings require one of the original four shared HP battles")
     if (args.mode == STORY_EXPLORATION_MODE) != (args.story_room is not None) or args.story_room is not None and args.story_room < 1:
         parser.error("--story-room must name an original battle point in exploration mode")
     if (args.mode == FRIEND_CHALLENGE_MODE) != (args.friend_challenge is not None):
@@ -1804,6 +1836,7 @@ def main():
     runtime = json.loads(args.runtime.read_text(encoding="utf-8-sig"))
     sys.path.insert(1, runtime["gameTools"])
     watchdog_seconds = (PRACTICE_REPLAY_SECONDS + 20 if args.mode in PRACTICE_MODES else
+                        DOJO_GUARDIAN_WALL_SECONDS + 20 if args.mode == DOJO_GUARDIAN_MODE else
                         DEVIL_FEAST_WALL_SECONDS + 20 if args.mode == DEVIL_FEAST_MODE else
                         TOWER_WALL_SECONDS + 20 if args.mode == TOWER_MODE else
                         LAOLAO_WALL_SECONDS + 20 if args.mode == LAOLAO_MODE else

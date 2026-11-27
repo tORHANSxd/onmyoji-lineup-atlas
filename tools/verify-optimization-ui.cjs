@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -468,6 +468,7 @@ async function main(){
   const tactical={manualOpening:true,redBoss:true,greenSlot:3,autoMode:{slot:1,mode:'basic'}};
   const squads=[known('story',1001001,3),known('story-other',1001002,3,13),known('awake',10023001,5),known('secret',10701011,5),
    known('chapter-challenge',1001001,5),known('breakthrough-attack',10020201,5),known('breakthrough-defense',10020201,5,13),
+   known('dojo-guardian',10020203,5),
    known('secret-race',10700011,5),known('crevice',10020211,5),
    known('superghost',100942,5),known('superghost-five',100943,5),known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
@@ -606,6 +607,21 @@ async function main(){
     const summary=await run('breakthrough-attack',{stageId:10020201,groupId:100,battleMode:4001},{breakthrough});
     assert.match(summary,/进攻胜利 · 3 人进攻.*队长 · 阴阳师 1 号位，式神 3 号位/s);
     assert.doesNotMatch(summary,/鲤鱼旗裁判/);
+   }
+   if(cases.some(entry=>entry.table==='pve_stage_data'&&Number(entry.key)===40051&&entry.refs.some(ref=>ref.key===4004))){
+    await encounter('guild','道馆守护 神龙 40051');
+    const hp='document.querySelector("[data-pve-dojo-guardian-hp]")';
+    const time='document.querySelector("[data-pve-dojo-guardian-window]")';
+    assert.equal(await ui(hp+'.max'),'46598400');
+    await choose('dojo-guardian');
+    await ui(hp+'.value="46598401";'+hp+'.dispatchEvent(new Event("input"))');
+    assert.equal(await ui(start+'.disabled'),true);
+    await ui(hp+'.value="100000";'+time+'.value="20";'+time+'.dispatchEvent(new Event("input"))');
+    const dojoGuardian={hp:100000,windowSeconds:20};
+    const summary=await run('dojo-guardian',{stageId:40051,groupId:40051,battleMode:4004,dojoGuardian},
+     {outcome:'loss',wavesCleared:0,dojoGuardian:{damage:3600,startHp:100000,remainingHp:96400,combatSeconds:20,
+      settlementWaitSeconds:0,timedOut:true,defeated:false}});
+    assert.match(summary,/达到模拟时限 · 本队伤害 3,600 · 入场生命 100,000 · 剩余生命 96,400/s);
    }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');

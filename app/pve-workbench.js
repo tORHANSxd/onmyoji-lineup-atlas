@@ -163,6 +163,17 @@
    Number.isSafeInteger(journeyHard.blessingCount)&&journeyHard.blessingCount>=0;
   pane.journeySettings=journeyReady?journeyHard:null;
   if(pane.journeyDeadline)for(const field of [pane.journeyDeadline,pane.journeyBlessings])field.disabled=blocked;
+  const dojoGuardian=pane.dojoGuardian?{
+   hp:pane.dojoGuardianHp.value===''&&!pane.dojoGuardianHp.validity.badInput?null:pane.dojoGuardianHp.valueAsNumber,
+   windowSeconds:pane.dojoGuardianWindow.valueAsNumber,
+  }:null;
+  const dojoGuardianReady=!dojoGuardian||AtlasDojoGuardian.validSettings(dojoGuardian,pane.dojoGuardian);
+  pane.dojoGuardianSettings=dojoGuardianReady?dojoGuardian:null;
+  if(dojoGuardian){
+   pane.dojoGuardianHp.disabled=pane.dojoGuardianWindow.disabled=blocked;
+   pane.dojoGuardianHp.setAttribute('aria-invalid',String(!pane.dojoGuardianHp.checkValidity()));
+   pane.dojoGuardianWindow.setAttribute('aria-invalid',String(!pane.dojoGuardianWindow.checkValidity()));
+  }
   const checked=fields=>fields.filter(field=>field.checked).map(field=>Number(field.value));
   const asura=pane.asura?{level:pane.asuraLevel.valueAsNumber,skills:checked(pane.asuraSkills),specialKeys:checked(pane.asuraKeys),
    ...(pane.asura.depths?{cellId:pane.asura.cellId,enemies:pane.asuraDepthSlots.flatMap((slot,i)=>slot.checked?
@@ -373,7 +384,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!defenseReady||!!reserve&&!reserve.ready||!captureReady||!eventReady||!trainingReady||!stateReady||!coinsReady||!journeyReady||!asuraReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!defenseReady||!!reserve&&!reserve.ready||!captureReady||!eventReady||!trainingReady||!stateReady||!coinsReady||!journeyReady||!dojoGuardianReady||!asuraReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -387,6 +398,7 @@
    !eventReady?'前行步数应为大于或等于 0 的整数。':
    !trainingReady?`天狗面具须为 0 至 ${AtlasUrDtgExplore.maxMasks} 的整数。`:
    !journeyReady?'请填写正整数战斗时限和非负整数祝福层数。':
+   !dojoGuardianReady?`入场生命须在 1 至 ${pane.dojoGuardian.maxHp.toLocaleString('zh-CN')}，模拟时长须为 1 至 ${AtlasDojoGuardian.maxWindow} 秒的整数。`:
    !asuraReady?(pane.asura?.depths?'请至少保留一个敌位，并核对此前伤害和灵神体槽位。':'请核对灵神体等级、技能占用槽位和首领入场生命。'):
    !towerReady?'请核对百妖退治的挑战条件。':
    !laolaoReady?'请核对信仰之佑层数。':
@@ -469,6 +481,12 @@
    ${config.journeyHard?`<div class="actions">
     <label class="pve-lineup-field">祝福层数 <input data-pve-journey-blessings type="number" value="0" min="0" step="1" required></label>
     <label class="pve-lineup-field">战斗时限（秒） <input data-pve-journey-deadline type="number" min="1" step="1" required></label>
+   </div>`:''}
+   ${config.dojoGuardian?`<div class="actions">
+    <label class="pve-lineup-field">入场共享生命 <input data-pve-dojo-guardian-hp type="number" min="1"
+     max="${config.dojoGuardian.maxHp}" step="1" placeholder="满值 ${config.dojoGuardian.maxHp.toLocaleString('zh-CN')}"></label>
+    <label class="pve-lineup-field">离线模拟时长（秒） <input data-pve-dojo-guardian-window
+     type="number" min="1" max="${AtlasDojoGuardian.maxWindow}" step="1" value="120" required></label>
    </div>`:''}
    ${config.urdtgTraining?`<fieldset class="pve-reserve"><legend>赛事训练条件</legend><div class="actions">
     <label class="pve-lineup-field">万风钧落等级 <select data-pve-training-skill>
@@ -783,6 +801,7 @@
    asuraDepthSlots:all('asura-depth-slot'),asuraDepthDamage:all('asura-depth-damage'),
    trainingSkill:part('training-skill'),trainingMasks:part('training-masks'),
    journeyDeadline:part('journey-deadline'),journeyBlessings:part('journey-blessings'),
+   dojoGuardianHp:part('dojo-guardian-hp'),dojoGuardianWindow:part('dojo-guardian-window'),
    yinYangDrums:part('yinyang-drums'),yinYangDeadline:part('yinyang-deadline'),yinYangBuffChoice:part('yinyang-buff'),
    addYinYangBuff:part('add-yinyang-buff'),yinYangBuffList:part('yinyang-buff-list'),yinYangBuffIds:[],
    towerConditions:part('tower-conditions'),towerBlessingRows:all('tower-blessing-row'),
@@ -824,7 +843,7 @@
    if(job&&!busy())job.notice=null;
    update();
   };
-  for(const field of [pane.eventMoves,pane.trainingMasks,pane.journeyDeadline,pane.journeyBlessings,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
+  for(const field of [pane.eventMoves,pane.trainingMasks,pane.journeyDeadline,pane.journeyBlessings,pane.dojoGuardianHp,pane.dojoGuardianWindow,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.mirageWindow,pane.mirageGeneral,pane.mirageWeekly,
    pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,pane.catfishWeekly,
@@ -1042,6 +1061,7 @@
     ...(run.trainingSettings?{urdtgTraining:run.trainingSettings}:{}),
     ...(run.asuraSettings?{asura:run.asuraSettings}:{}),
     ...(dojoArea?{dojoArea}:{}),
+    ...(run.dojoGuardianSettings?{dojoGuardian:run.dojoGuardianSettings}:{}),
     ...(forest?{forest}:{}),
     ...(tenBonuses?.length?{tenBonuses}:{}),
     ...(bandScores?{bandScores}:{}),
@@ -1212,7 +1232,7 @@
   const defenseInventory=pane.breakthrough&&(pane.defenseAccount.value?
    STATE.accounts.find(item=>item.id===pane.defenseAccount.value):inventory);
   if(!selected.length||pane.breakthrough&&(!defenseLineup||!defenseInventory)||reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
-     pane.urdtgTraining&&!pane.trainingSettings||pane.journeyHard&&!pane.journeySettings||pane.yinYangDrums&&!pane.yinYangSettings||
+     pane.urdtgTraining&&!pane.trainingSettings||pane.journeyHard&&!pane.journeySettings||pane.dojoGuardian&&!pane.dojoGuardianSettings||pane.yinYangDrums&&!pane.yinYangSettings||
      pane.asura&&!pane.asuraSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
      pane.duskWindow&&!pane.duskSettings||pane.songWindow&&!pane.songWindowSeconds||pane.mirageWindow&&!pane.mirageSettings||
@@ -1228,6 +1248,7 @@
    defenseInventory,
    attackPartySize:pane.attackParty?Number(pane.attackParty.value):null,
    journeyHard:pane.journeySettings,
+   dojoGuardianSettings:pane.dojoGuardianSettings,
    trainingSettings:pane.trainingSettings,
    asuraSettings:pane.asuraSettings,
    yinyangBoss:pane.yinYangSettings?{...pane.yinYangSettings,buffIds:pane.yinYangSettings.buffIds.slice()}:null,

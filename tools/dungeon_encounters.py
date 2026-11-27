@@ -8,6 +8,7 @@ from dream_trial_stage import DREAM_TRIAL_MODE
 from asura_boss_stage import ASURA_ACTIVITY, ASURA_PHASE, ASURA_STAGES
 from asura_depth_stage import ASURA_DEPTH_LAYERS, ASURA_DEPTH_TABLES, ASURA_DEPTH_TEAM
 from breakthrough_stage import BREAKTHROUGH_MODE, BREAKTHROUGH_SCENE, BREAKTHROUGH_STAGE, GUILD_BREAKTHROUGH_MODE
+from dojo_guardian_stage import DOJO_CODE_STAGE, DOJO_DEFENDER_MODE, DOJO_GUARDIAN_MODE, DOJO_GUARDIAN_STAGES
 from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENGMO_BAND_STAGES, FENGMO_BAND_TEAM
 from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
@@ -617,6 +618,36 @@ def encounter_index(source, load_rows):
                     rows.extend((dest, ref_key, label) for ref_key, _ in sorted(table(dest).values()))
             else:
                 rows.append(("currency", 900017, "阴阳寮勋章"))
+            links.extend(ref for dest, ref_key, label in rows if (ref := relation(dest, ref_key, label, False)))
+        if name == "battle_mode_routes" and row.get("battleMode") in (DOJO_DEFENDER_MODE, DOJO_GUARDIAN_MODE):
+            guardian = row["battleMode"] == DOJO_GUARDIAN_MODE
+            other_mode = DOJO_DEFENDER_MODE if guardian else DOJO_GUARDIAN_MODE
+            rows = [("team_assist_stage", DOJO_CODE_STAGE, "道馆阵容码目标"),
+                    ("battle_mode_routes", other_mode, "关联的道馆阶段")]
+            if guardian:
+                rows.append(("Constant", 3750, "守护兽战进攻加成"))
+                rows.extend(("pve_stage_data", stage, "守护兽关卡") for stage in DOJO_GUARDIAN_STAGES)
+                tables = (("dg_guardian", "守护兽生命修正"),)
+            else:
+                if "daoguanzhenrongyushe_tips" in rules or "daoguanzhenrongyushe_tips" in tips:
+                    links.append(rule_reference("daoguanzhenrongyushe_tips", "道馆备选阵容规则"))
+                rows.extend((("Constant", 3762, "单段时间配置"), ("Constant", 3793, "换波鬼火配置"),
+                             ("Constant", 4312, "进攻加成配置"), ("languageDataEx", "dg_tips_58", "馆主后续防守规则"),
+                             ("languageDataEx", "dg_tips_60", "助威规则"), ("languageDataEx", "dg_tips_62", "上阵阶段退出规则")))
+                tables = (("dg_guardian", "道馆等级修正"), ("dg_buff", "道馆购买加成"),
+                          ("dg_enchance", "防守词条"), ("dg_rank", "道馆档位与奖励"),
+                          ("dg_stage_buff", "阶段加成"), ("dg_timer_buff", "计时加成"),
+                          ("dg_flaglevel_new", "裁判档位"), ("dg_flagmodify_new", "裁判回合效果"))
+            for dest, label in tables:
+                rows.extend((dest, key, label) for key, _ in table(dest).values())
+            links.extend(ref for dest, ref_key, label in rows if (ref := relation(dest, ref_key, label, False)))
+        if name == "pve_stage_data" and int(numeric_key(row.get("id")) or 0) in DOJO_GUARDIAN_STAGES:
+            rows = [
+                ("battle_mode_routes", DOJO_GUARDIAN_MODE, "原版道馆守护入口"),
+                ("team_assist_stage", DOJO_CODE_STAGE, "道馆阵容码目标"),
+                ("Constant", 3750, "守护兽战进攻加成"),
+            ]
+            rows.extend(("dg_guardian", key, "守护兽生命修正") for key, _ in table("dg_guardian").values())
             links.extend(ref for dest, ref_key, label in rows if (ref := relation(dest, ref_key, label, False)))
         if name == "dream_act_hero":
             battle = row.get("battle_id")
@@ -1810,6 +1841,12 @@ def encounter_index(source, load_rows):
                     entry_family, entry_kind, title = "daily", "结界突破", "个人结界突破"
                 if key == GUILD_BREAKTHROUGH_MODE:
                     entry_family, entry_kind, title = "guild", "结界突破", "阴阳寮结界突破"
+                if key == DOJO_DEFENDER_MODE:
+                    entry_family, entry_kind, title = "guild", "道馆", "道馆 · 结界师与馆主"
+                if key == DOJO_GUARDIAN_MODE:
+                    entry_family, entry_kind, title = "guild", "道馆", "道馆 · 守护兽"
+            if table_name == "pve_stage_data" and int(numeric_key(key) or 0) in DOJO_GUARDIAN_STAGES:
+                entry_family, entry_kind = "guild", "道馆守护"
             if dream_activity:
                 entry_family, entry_kind, title = "event", "幻游问梦", "幻游问梦 · 活动开放与玩法规则"
             if asura_activity:

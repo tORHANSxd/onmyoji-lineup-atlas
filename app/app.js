@@ -223,6 +223,7 @@ function sampleBattleMarkup(samples){
   const asura=sample.asuraBattle;
   const depths=sample.asuraDepths;
   const breakthrough=sample.breakthrough;
+  const dojoGuardian=sample.dojoGuardian;
   const tianfa=sample.tianfa;
   const protectedUnits=sample.secretProtection?.settlement;
   const secretActor=sample.secretActor;
@@ -380,6 +381,10 @@ function sampleBattleMarkup(samples){
    spider?`${sample.completed?describeBattle(sample):'本机复跑达到运行时限，结算待核对'} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
     `战斗 ${spider.combatSeconds.toFixed(2)} 秒`+
     (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):
+   dojoGuardian?`${!sample.completed?'结算待确认':dojoGuardian.defeated?'击破守护兽':dojoGuardian.timedOut?'达到模拟时限':'进攻落败'} · `+
+    `本队伤害 ${dojoGuardian.damage.toLocaleString('zh-CN')} · 入场生命 ${dojoGuardian.startHp.toLocaleString('zh-CN')} · `+
+    `剩余生命 ${Math.round(dojoGuardian.remainingHp).toLocaleString('zh-CN')} · 作战 ${dojoGuardian.combatSeconds.toFixed(2)} 秒`+
+    (dojoGuardian.settlementWaitSeconds>0?` · 结算等待 ${dojoGuardian.settlementWaitSeconds.toFixed(2)} 秒`:''):
    breakthrough?`${!sample.completed?'结算待确认':sample.outcome==='win'?'进攻胜利':'防守胜利'} · `+
     (breakthrough.attackParty?`${breakthrough.attackParty.length} 人进攻`:
      `鲤鱼旗裁判 ${breakthrough.referee.level} 档 · 速度 ${breakthrough.referee.speed} · 行动 ${breakthrough.referee.turns} 次`):
