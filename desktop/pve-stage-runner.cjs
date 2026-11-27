@@ -41,6 +41,7 @@ const yanmo=require('../app/yanmo.js');
 const chajiBoss=require('../app/chaji-boss.js');
 const chajiMap=require('../app/chaji-map.js');
 const chajiSide=require('../app/chaji-side.js');
+const chajiStory=require('../app/chaji-story.js');
 const gtwBossSource=require('../app/gtw-boss.js');
 const gtwHunt=require('../app/gtw-hunt.js');
 const socialPlay=require('../app/social-play.js');
@@ -83,6 +84,8 @@ const engines={
  [chajiMap.battleMode]:chajiMap.engine,
  [chajiSide.drill.battleMode]:chajiSide.drill.engine,
  [chajiSide.rift.battleMode]:chajiSide.rift.engine,
+ [chajiStory.fixed.battleMode]:chajiStory.fixed.engine,
+ [chajiStory.special.battleMode]:chajiStory.special.engine,
  [gtwBossSource.battleMode]:gtwBossSource.engine,
  ...Object.fromEntries(gtwHunt.modes.map(mode=>[mode,gtwHunt.engine])),
  [socialPlay.battleMode]:socialPlay.engine,
@@ -1466,6 +1469,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===chajiBoss.battleMode&&!chajiBoss.validReport(report))||
     (battleMode===chajiMap.battleMode&&!chajiMap.validReport(report))||
     (chajiSide.modes[battleMode]&&!chajiSide.validReport(report))||
+    (chajiStory.modes[battleMode]&&!chajiStory.validReport(report))||
     (gtwBoss&&!gtwBossSource.validReport(report,gtwBoss))||
     (gtwHunt.modes.includes(battleMode)&&!gtwHunt.validReport(report,gtwEventId))||
     (battleMode===socialPlay.battleMode&&!socialPlay.validReport(report,socialParty))||
@@ -1581,6 +1585,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(await has('chaji_boss_stage.py')?[chajiBoss.battleMode]:[]),
      ...(await has('chaji_map_stage.py')?[chajiMap.battleMode]:[]),
      ...(await has('chaji_side_stage.py')?[chajiSide.drill.battleMode,chajiSide.rift.battleMode]:[]),
+     ...(await has('chaji_story_stage.py')?[chajiStory.fixed.battleMode,chajiStory.special.battleMode]:[]),
      ...(await has('gtw_boss_stage.py')?[gtwBossSource.battleMode]:[]),
      ...(await has('gtw_hunt_stage.py')?gtwHunt.modes:[]),
      ...(await has('social_play_stage.py')?[socialPlay.battleMode]:[]),
@@ -1603,6 +1608,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const chajiStage=chajiBoss.entry(stageId);
    const chajiMapStage=chajiMap.entry(stageId);
    const chajiSideStage=chajiSide.entry(stageId),chajiSideMode=chajiSide.modes[battleMode];
+   const storyStage=chajiStory.entry(stageId),storyMode=chajiStory.modes[battleMode];
    const stageActor=battleMode===tenBoss.battleMode||battleMode===urdtgTrain.battleMode||battleMode===shanFeng.battleMode||
     battleMode===yanmo.battleMode||
     battleMode===jiBoss.battleMode&&jiStage?.actor||
@@ -1612,6 +1618,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const isYanmoTrial=battleMode===yanmo.trial.battleMode;
    const validPlan=fixedDream?plan&&Object.getPrototypeOf(plan)===Object.prototype&&
     (Object.keys(plan).length===0||Object.keys(plan).length===1&&plan.manualBasic===true):
+    storyMode===chajiStory.fixed?!!plan&&Object.getPrototypeOf(plan)===Object.prototype&&Object.keys(plan).length===0:
     isYanmoTrial?yanmo.trial.validPlan(plan):
     explore?explore.validPlan(plan):Array.isArray(rounds)&&rounds.length>=1&&rounds.length<=4&&
     rounds.every(row=>row&&(stageActor||isSocialPlay||row.onmyoji)&&Array.isArray(row.members)&&
@@ -1673,6 +1680,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===3&&chajiSideStage||chajiSideMode&&
       (chajiSideStage!==chajiSideMode||groupId!==stageId||plan.members.length!==5||resourceVersion!==chajiSide.resourceVersion))
     throw Error('阵练演武和时间裂缝需要对应的原版关卡和五位自有式神');
+   if(battleMode===3&&storyStage||storyMode&&
+      (storyMode!==storyStage||groupId!==stageId||resourceVersion!==chajiStory.resourceVersion||
+       storyMode===chajiStory.special&&plan.members.length!==5))
+    throw Error('月曜永恒剧情战需要匹配的原版关卡和出战阵容');
    if(battleMode===jiBoss.battleMode&&(!jiStage?.available||groupId!==stageId||plan.members.length!==5||
      jiBoss.resourceVersion!==resourceVersion))throw Error('四时归焉复跑需要已核验的原版关卡和五位自有式神');
    const isGtwBoss=battleMode===gtwBossSource.battleMode,gtwStage=gtwBossSource.stages[stageId];
@@ -1927,7 +1938,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const deadlineMs=isDojoDefense?90000+30000*plan.dojoDefense.waves.length:
     battleMode===shanFeng.battleMode?175000:
     battleMode===jiBoss.battleMode?205000:
-    chajiSideMode?100000+chajiSideMode.deadlineSeconds*100:
+    chajiSideMode||storyMode?100000+(chajiSideMode??storyMode).deadlineSeconds*100:
     (battleMode===chajiBoss.battleMode||battleMode===chajiMap.battleMode)?120000:
     isGtwBoss?175000:
     isGtwHunt?200000:

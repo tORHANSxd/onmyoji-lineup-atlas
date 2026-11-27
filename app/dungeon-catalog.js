@@ -2091,6 +2091,7 @@
     const chajiMounted=showChajiBoss(destination,entry,groups);
     const chajiMapMounted=showChajiMap(destination,entry,groups);
     const chajiSideMounted=showChajiSide(destination,entry,groups);
+    const chajiStoryMounted=showChajiStory(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2235,7 +2236,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!chajiStoryMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2491,6 +2492,41 @@
       '第二阶段 · 入场生命低于全服配置上限的 50%。','caption'));
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
       memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title,gtwBoss:stage});
+    return true;
+  }
+
+  function showChajiStory(destination,entry,groups){
+    const source=AtlasChajiStory,row=groups[0].row;
+    const stageId=entry.table==='pve_stage_data'?Number(entry.key):
+      entry.table==='sp_chaji_plot'&&row?.type===2?Number(row.params):0;
+    const route=source.entry(stageId);
+    if(!route)return false;
+    const get=(table,id)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===id)?.row;
+    const fixed=route===source.fixed;
+    const pve=get('pve_stage_data',stageId),formation=get('BattleMonstersInfo',stageId);
+    const rules=get('normal_battle_config',route.battleMode),team=get('battle_team_routes',route.teamRoute);
+    const plot=get('sp_chaji_plot',source.plots[stageId]),drama=get('DramaHeroInfo',stageId);
+    const nativeCast=drama?.heroIds?.filter(Boolean)??[];
+    const linked=fixed?plot?.params===String(stageId)&&plot.type===2&&drama?.autoStartCombat===1&&
+      nativeCast.length===source.cast.length&&nativeCast.every((hero,i)=>hero[0]===source.cast[i]&&hero[1]===40&&hero[2]===6&&hero[3]===1):
+      get('sp_chaji_const',34)?.value?.includes(stageId);
+    if(!matchesOpeningSource(source)||!linked||pve?.groupid!==stageId||formation?.resindex!==route.sceneId||
+       formation.MonstersInfos?.length!==1||formation.MonstersInfos[0].length!==(fixed?6:1)||
+       rules?.halt_time!==route.deadlineSeconds||rules.group_battle!==false||
+       team?.engine_class!==route.engine.name||team.can_single_fight!==true){
+      destination.append(node('p','本机资料与已核验的原版剧情战不匹配。','caption'));
+      return true;
+    }
+    const config={stageId,groupId:stageId,battleMode:route.battleMode,memberCount:5,waveCount:1,
+      version:source.resourceVersion,label:plot?.title??entry.title};
+    if(fixed){
+      const cast=source.cast.map(id=>get('hero',id)?.name).filter(Boolean);
+      destination.append(node('p',`原版固定阵容 · ${cast.join('、')} · 原版时限 ${route.deadlineSeconds} 秒`,'caption'));
+      window.AtlasPveWorkbench?.mountChajiStory(destination,config);
+    }else{
+      destination.append(node('p','用已知阵容复跑。首领保留至少 1 点生命，原版剧情按落败结算。','caption'));
+      window.AtlasPveWorkbench?.mount(destination,config);
+    }
     return true;
   }
 

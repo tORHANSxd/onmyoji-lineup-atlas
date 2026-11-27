@@ -275,7 +275,10 @@ function sampleBattleMarkup(samples){
   })??[];
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
-  const outcome=sample.chajiRift?`${!sample.completed?'结算待确认':sample.chajiRift.timedOut?'达到原版时限':'原版已结算'} · `+
+  const outcome=sample.chajiStory?`${!sample.completed?'结算待确认':sample.chajiStory.scriptDefeat?'剧情触发判负':
+   sample.chajiStory.timedOut?'达到原版时限':sample.wavesCleared?'已清场':'原版判负'} · `+
+   `战斗至结算 ${sample.chajiStory.combatSeconds.toFixed(2)} 秒`:
+   sample.chajiRift?`${!sample.completed?'结算待确认':sample.chajiRift.timedOut?'达到原版时限':'原版已结算'} · `+
    `清轮 ${sample.wavesCleared} / ${sample.waveCount} · 战斗至结算 ${sample.chajiRift.combatSeconds.toFixed(2)} 秒`+
    (sample.chajiRift.firstDeathWave?` · 第 ${sample.chajiRift.firstDeathWave} 轮首次减员`:''):
    chajiBoss?`${!sample.completed?'结算待确认':chajiBoss.timedOut?'达到原版时限':sample.wavesCleared?'已清场':chajiBoss.scored?'伤害已结算':'未清场'} · `+

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9547,9548,9549,9551,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9547,9548,9549,9550,9551,9552,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -679,6 +679,25 @@ async function main(){
     await ui('qaEncounterInput("event",'+JSON.stringify(pick(3340022))+')');
     await until(panel+'.textContent.includes("困难编组的首领技能")');
     assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='sp_chaji_plot'&&entry.key===3)){
+    await ui('qaEncounterInput("event","月曜新章 道满的手下 sp_chaji_plot 3")');
+    const fixedStart='document.querySelector("[data-chaji-story-start]")';
+    await until(fixedStart+'?.disabled===false');
+    assert.match(await ui(panel+'.textContent'),/原版固定阵容 · 泷夜叉姬、卑弥呼/);
+    mockPve=async (plan,options)=>{
+     assert.deepEqual(plan,{});
+     assert.deepEqual(options,{stageId:9808001,groupId:9808001,battleMode:9552,seed:0,damageFloor:true});
+     return {...sample,...options,chajiStory:{fixed:true,timedOut:false,combatSeconds:13.52}};
+    };
+    await ui(fixedStart+'.click()');
+    await until(panel+'.textContent.includes("原版胜利")');
+    assert.match(await ui(panel+'.textContent'),/已清场 · 战斗至结算 13\.52 秒/);
+    await encounter('event','日轮之影 道满剧情一 1014101');
+    assert.match(await ui(panel+'.textContent'),/首领保留至少 1 点生命.*剧情按落败结算/);
+    const result=await run('chaji-boss',{stageId:1014101,groupId:1014101,battleMode:9550},
+     {engineSeconds:155,outcome:'loss',wavesCleared:0,chajiStory:{fixed:false,scriptDefeat:true,timedOut:false,combatSeconds:142.94}});
+    assert.match(result,/6 场原版剧情结算.*剧情触发判负.*142\.94 秒/s);
    }
    if(cases.some(entry=>entry.table==='pve_stage_data'&&Number(entry.key)===1014001&&
      entry.refs.some(ref=>ref.table==='battle_team_routes'&&ref.key===1229))){

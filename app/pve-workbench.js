@@ -1121,6 +1121,26 @@
   });
  }
 
+ function mountChajiStory(target,config){
+  if(!api?.pveStatus)return;
+  cancel(true);
+  const section=document.createElement('section');
+  section.className='encounter-source';
+  section.innerHTML=`<h4>模拟原版固定阵容</h4>
+   <div class="actions">
+    <label class="pve-lineup-field">随机种子 <input data-chaji-story-seed type="number" required min="0" max="9999" step="1" value="0"></label>
+    <button class="secondary" type="button" data-chaji-story-start disabled>开始离线模拟</button>
+    <button class="secondary" type="button" data-chaji-story-stop hidden>停止复跑</button>
+   </div><p class="caption" data-chaji-story-status role="status"></p>
+   <ol class="dungeon-battle-list" data-chaji-story-results></ol>`;
+  const part=name=>section.querySelector(`[data-chaji-story-${name}]`);
+  mountDirectTrial(target,section,config,part,[],()=>({}),'等待复跑。',(row,report)=>{
+   row.state.textContent='已核对原版固定阵容和敌方编组。全随机分支待验证。';
+   row.details.hidden=false;
+   row.report.innerHTML=sampleBattleMarkup([report]);
+  });
+ }
+
  function mountDirectTrial(target,section,config,part,inputs,readPlan,readyMessage,renderResult){
   pane={...config,directTrial:true,start:part('start'),stop:part('stop'),status:part('status'),
    seed:part('seed'),inputs,readPlan,readyMessage,results:part('results')};
@@ -1193,6 +1213,7 @@
   const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings,historicalGhostWindow,
    mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,dojoArea,forest,tenBonuses,bandScores,devilFeastHp}=run.pane;
   const scoring=isDamageMode(battleMode,stageId),target=waveTarget(battleMode);
+  const scripted=battleMode===AtlasChajiStory.special.battleMode;
   const orochi=battleMode===AtlasTrueOrochi.battleMode;
   for(const seed of seeds){
    if(!active(run))return;
@@ -1244,6 +1265,11 @@
     showScoreInstructions(row,plan,run.data.gameConfig,run.pane.battleMode);
    row.report.innerHTML=sampleBattleMarkup(row.samples);
    row.state.textContent=`已复跑 ${row.samples.length} / ${seeds.length} 个种子`;
+   if(scripted){
+    if(report.completed&&report.chajiStory?.fixed===false&&report.outcome==='loss')continue;
+    row.state.textContent=`种子 ${seed} 未取得原版剧情结算，可重试`;
+    return;
+   }
    if(scoring){
     if(AtlasRuneCandidate.damageResult([report]))continue;
     row.state.textContent=`种子 ${seed} 未取得完整伤害战报，可重试`;
@@ -1493,6 +1519,7 @@
    }
    if(!active(next))return;
    const hunting=isDamageMode(next.pane.battleMode,next.pane.stageId),target=waveTarget(next.pane.battleMode);
+   const scripted=next.pane.battleMode===AtlasChajiStory.special.battleMode;
    const passed=next.rows.filter(row=>row.verdict==='pass'||(hunting||target)&&row.verdict==='scored');
    const timing=hunting?null:AtlasRuneCandidate.commonSampleTiming(passed);
    const huntScores=new Map(hunting?passed.map(row=>[row,AtlasRuneCandidate.damageResult(row.samples)]):[]);
@@ -1532,12 +1559,13 @@
       (dominated.has(row)?' · 有备选在回合数与承伤两项上占优':'');
      continue;
     }
-    row.state.textContent=`通过 ${seeds.length} 个采样种子 · ${timeLabel}`;
+    row.state.textContent=`${scripted?`${seeds.length} 场原版剧情结算`:`通过 ${seeds.length} 个采样种子`} · ${timeLabel}`;
    }
    next.pane.results.prepend(...passed.map(row=>row.el));
    next.notice=passed.length?(target?`${passed.length} 套${isWaveMode(next.pane.battleMode)?
     '接力已完成共同采样，按最低清波':'完成共同采样，按最低清轮'}数排序。全随机分支待验证。`:
     hunting?`${passed.length} 套完成共同采样，按窗口内的单场最高伤害排序。全随机分支待验证。`:
+    scripted?`${passed.length} 套已完成原版剧情结算。全随机分支待验证。`:
     next.pane.region?`${passed.length} 套通过采样，优先显示回合数与承伤未被其他阵容同时超越的阵容。全随机分支待验证。`:
     `${passed.length} 套通过采样，已按最慢样本用时排序。全随机分支待验证。`):
     next.rows.some(row=>row.verdict==='unknown')?'部分阵容的库存或结算有待核对，请查看战报。':'所选阵容未通过本次采样。';
@@ -1559,5 +1587,5 @@
   }
  }
 
- window.AtlasPveWorkbench={busy,mount,mountFixedTrial,mountYanmoTrial,unmount,refresh:update,cancel,reset:()=>cancel(true)};
+ window.AtlasPveWorkbench={busy,mount,mountFixedTrial,mountYanmoTrial,mountChajiStory,unmount,refresh:update,cancel,reset:()=>cancel(true)};
 })();
