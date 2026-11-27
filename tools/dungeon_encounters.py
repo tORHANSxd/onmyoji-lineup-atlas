@@ -4,6 +4,7 @@ from collections import Counter
 from functools import cache
 from chaji_boss_stage import (CHAJI_ACTIVITY, CHAJI_ASSIST_CONFIG, CHAJI_ASSIST_HERO, CHAJI_BOSS_ACTIVITY,
                               CHAJI_BOSS_MODE, CHAJI_BOSS_TEAM)
+from chaji_map_stage import CHAJI_MAP_ACTIVITIES, CHAJI_MAP_HARD_SKILL, CHAJI_MAP_MODE, CHAJI_MAP_TEAM
 from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM, LAOLAO_FUSION_MODE, LAOLAO_TEAM, TOWER_TEAM
 from dojo_area_stage import DOJO_AREA_TEAM
 from dream_trial_stage import DREAM_TRIAL_MODE
@@ -102,6 +103,9 @@ CHAJI_BOSS_NAME = "月曜永恒 · 蔽日轮回"
 CHAJI_LEVELS = ("简单", "普通", "困难")
 CHAJI_BOSS_TABLES = {"sp_chaji_boss_config": "首领", "sp_chaji_boss_lv_config": "挑战",
                      "sp_chaji_boss_task_config": "额外任务"}
+CHAJI_MAP_NAME = "月曜永恒 · 日轮之影"
+CHAJI_MAP_TABLES = {"sp_chaji_event": "据点", "sp_chaji_sub_event_battle": "战斗事件",
+                    "sp_chaji_sub_event_mission": "军备授令"}
 GTW_BOSS_NAME = "修罗猎戏 · 决猎庭院"
 GTW_HUNT_NAME = "修罗猎戏 · 彷徨猎场"
 SOCIAL_PLAY_NAME = "四时序战"
@@ -184,6 +188,7 @@ ROOTS = {
     "sp_yanmo_xx_fuben": ("event", YANMO_PRACTICE_NAME),
     **{table: ("event", YANMO_TRIAL_NAME) for table in YANMO_TRIAL_TABLES},
     **{table: ("event", CHAJI_BOSS_NAME) for table in CHAJI_BOSS_TABLES},
+    **{table: ("event", CHAJI_MAP_NAME) for table in CHAJI_MAP_TABLES},
     "activity_tower_act": ("event", "活动塔入场配置"),
     "activity_tower_floor": ("event", "活动塔楼层"),
     "run_group_module": ("event", "诡城歧事剧目"),
@@ -516,6 +521,13 @@ def encounter_index(source, load_rows):
     chaji_tasks_by_boss = {}
     for key, row in sorted(table("sp_chaji_boss_task_config").values()):
         chaji_tasks_by_boss.setdefault(row["boss_id"], []).append(key)
+    chaji_nodes_by_event, chaji_battles_by_stage = {}, {}
+    for key, row in sorted(table("sp_chaji_event").values()):
+        for sub_event in row["sub_event_list"]:
+            chaji_nodes_by_event.setdefault(sub_event, []).append(key)
+    for key, row in sorted(table("sp_chaji_sub_event_battle").values()):
+        for difficulty, stage in enumerate(row["pve_stage_data_id"]):
+            chaji_battles_by_stage.setdefault(numeric_key(stage), []).append((key, difficulty))
     yanmo_maps_by_battle = {}
     for map_id, config in sorted(table("sp_yanmo_map").values()):
         for cell, event in config.get("map_info", {}).get("$mapping", ()):
@@ -923,6 +935,45 @@ def encounter_index(source, load_rows):
             rows = [("social_play_color", row.get("id"), "混合所得颜色"),
                     ("reward", row.get("reward_id"), "调色奖励")]
             rows.extend(("social_play_color", color, "所需颜色") for color in row.get("recipe", ()))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+        map_stage = chaji_battles_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
+        chaji_map_activity = name == "activity" and row.get("id") in CHAJI_MAP_ACTIVITIES and chaji_battles_by_stage
+        chaji_map_rules = name == "normal_battle_config" and row.get("battleMode") == CHAJI_MAP_MODE
+        if chaji_map_activity or chaji_map_rules or map_stage or name in CHAJI_MAP_TABLES:
+            rows = [("activity", CHAJI_MAP_ACTIVITIES[0], "日轮之影开放时间"),
+                    ("normal_battle_config", CHAJI_MAP_MODE, "原版入场和时限"),
+                    ("battle_team_routes", CHAJI_MAP_TEAM, "原版单人引擎"),
+                    ("normal_battle_assist_hero", CHAJI_ASSIST_CONFIG, "原版固定助战")]
+            links.append(rule_reference("sp_longyechaji_zhanchang_tip", "地图推进、事件和寮战利品"))
+            if chaji_map_activity:
+                rows.extend(("activity", activity, "据点阶段开放时间") for activity in CHAJI_MAP_ACTIVITIES[1:])
+                rows.extend(("sp_chaji_event", key, "原版地图据点") for key, _ in sorted(table("sp_chaji_event").values()))
+            if chaji_map_rules:
+                rows.extend(("pve_stage_data", stage, "通用地图战斗编组") for stage in sorted(chaji_battles_by_stage))
+            if name == "sp_chaji_event":
+                rows.extend(("sp_chaji_event", event_id, "前置据点") for event_id in row["pre_event_list"])
+                for event_id in row["sub_event_list"]:
+                    dest = "sp_chaji_sub_event_mission" if numeric_key(event_id) in table("sp_chaji_sub_event_mission") else "sp_chaji_sub_event_battle"
+                    rows.append((dest, event_id, "据点事件"))
+                tip = {1: "sp_longyechaji_yanwu_tip", 2: "sp_longyechaji_liefeng_tip"}.get(row["id"])
+                if tip:
+                    links.append(rule_reference(tip, "玩法说明"))
+            if name in ("sp_chaji_sub_event_battle", "sp_chaji_sub_event_mission"):
+                rows.extend(("sp_chaji_event", key, "所在地图据点") for key in chaji_nodes_by_event.get(row["id"], ()))
+                rows.append(("currency", 9099203, "月曜晷针"))
+            if name == "sp_chaji_sub_event_mission":
+                rows.append(("reward", row["type_ge_reward"], "军备授令奖励"))
+                links.append(rule_reference("sp_longyechaji_weipai_tip", "委派条件与收益"))
+            if name == "sp_chaji_sub_event_battle":
+                for stage, label in zip(row["pve_stage_data_id"], ("简单", "困难")):
+                    rows.append(("pve_stage_data", stage, f"{label}编组与已知阵容模拟"))
+                rows.extend(("reward", target, label) for target, label in zip(row["reward"], ("简单奖励", "困难奖励")))
+                rows.append(("skill", level_one_skill(CHAJI_MAP_HARD_SKILL), "困难专属技能 · 刚毅"))
+            if map_stage:
+                rows.extend(("sp_chaji_sub_event_battle", key, "使用此编组的地图事件") for key, _ in map_stage)
+                if map_stage[0][1] == 1:
+                    rows.append(("skill", level_one_skill(CHAJI_MAP_HARD_SKILL), "困难专属技能 · 刚毅"))
+                links.append(rule_reference("sp_longyechaji_zhandou_tip", "地图战斗消耗和难度规则"))
             links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         chaji_stage = chaji_boss_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
         chaji_activity = name == "activity" and row.get("id") in (CHAJI_ACTIVITY, CHAJI_BOSS_ACTIVITY) and chaji_boss_by_stage
@@ -2062,6 +2113,7 @@ def encounter_index(source, load_rows):
             social_activity = table_name == "activity" and key == SOCIAL_PLAY_ACTIVITY and bool(social_stages)
             yanmo_activity = table_name == "activity" and key == YANMO_ACTIVITY and bool(yanmo_stages)
             chaji_activity = table_name == "activity" and key in (CHAJI_ACTIVITY, CHAJI_BOSS_ACTIVITY) and bool(chaji_boss_by_stage)
+            chaji_map_activity = table_name == "activity" and key in CHAJI_MAP_ACTIVITIES and bool(chaji_battles_by_stage)
             tower_activity = table_name == "activity" and key in tower_floors_by_activity
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
@@ -2069,7 +2121,7 @@ def encounter_index(source, load_rows):
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
                     and not ten_activity and not dream_activity and not asura_activity and not asura_layer
                     and not shanfeng_activity and not ji_activity and not gtw_activity and not tower_activity and not gtw_run_activity
-                    and not social_activity and not yanmo_activity and not chaji_activity):
+                    and not social_activity and not yanmo_activity and not chaji_activity and not chaji_map_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -2385,6 +2437,18 @@ def encounter_index(source, load_rows):
                 title = f"{SOCIAL_PLAY_NAME} · 第 {config['day']} 日第 {config['level']} 关 · {config['stage_id']}"
             if table_name in SOCIAL_PLAY_TABLES:
                 title = " · ".join(filter(None, (SOCIAL_PLAY_NAME, SOCIAL_PLAY_TABLES[table_name], row.get("des"), str(key))))
+            map_stage = chaji_battles_by_stage.get(numeric_key(key)) if table_name == "pve_stage_data" else None
+            if chaji_map_activity or table_name == "normal_battle_config" and key == CHAJI_MAP_MODE:
+                entry_family, entry_kind = "event", CHAJI_MAP_NAME
+                label = {10250: "地图开放", 10141: "初次推进", 10142: "重置阶段"}.get(key, "原版单人战斗入口")
+                title = f"{entry_kind} · {label}"
+            if map_stage:
+                entry_family, entry_kind = "event", CHAJI_MAP_NAME
+                level = ("简单", "困难")[map_stage[0][1]]
+                enemy_name = title.rsplit("—", 1)[-1]
+                title = f"{entry_kind} · {enemy_name} · {level} · {key}"
+            if table_name in CHAJI_MAP_TABLES:
+                title = " · ".join(filter(None, (CHAJI_MAP_NAME, CHAJI_MAP_TABLES[table_name], row.get("name"), str(key))))
             if chaji_activity or table_name == "normal_battle_config" and key == CHAJI_BOSS_MODE:
                 entry_family, entry_kind = "event", CHAJI_BOSS_NAME
                 title = f"{CHAJI_BOSS_NAME} · " + ("活动开放" if chaji_activity else "原版战斗入口")

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9551,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9547,9551,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -679,6 +679,27 @@ async function main(){
     await ui('qaEncounterInput("event",'+JSON.stringify(pick(3340022))+')');
     await until(panel+'.textContent.includes("困难编组的首领技能")');
     assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='sp_chaji_sub_event_battle'&&entry.key===13156)){
+    await encounter('event','日轮之影 sp_chaji_sub_event_battle 13156');
+    const difficulty='document.querySelector("[data-chaji-difficulty]")';
+    assert.equal(await ui(difficulty+'.value'),'6771229');
+    assert.match(await ui(panel+'.textContent'),/简单 · 原版时限 180 秒 · 月曜晷针消耗 1 枚/);
+    assert.match(await run('chaji-boss',{stageId:6771229,groupId:6771229,battleMode:9547},
+     {chajiMap:{hard:false,timedOut:false,combatSeconds:87.28,rounds:33}}),
+     /已清场.*战斗至结算 87\.28 秒 · 我方 33 回合/s);
+    await ui(difficulty+'.value="6772229";'+difficulty+'.dispatchEvent(new Event("change"))');
+    assert.match(await ui(panel+'.textContent'),/困难 · 原版时限 180 秒 · 月曜晷针消耗 5 枚.*刚毅 · 所有友方受到的间接伤害降低80%/s);
+    mockPve=async (plan,options)=>{
+     assert.equal(plan.members.length,5);
+     assert.deepEqual(options,{battleMode:9547,stageId:6772229,groupId:6772229,seed:0,damageFloor:true});
+     return {...sample,...options,outcome:'loss',wavesCleared:0,
+      chajiMap:{hard:true,timedOut:true,combatSeconds:181.18,rounds:74}};
+    };
+    await choose('chaji-boss');
+    await ui(start+'.click()');
+    await until(reports+'.textContent.includes("种子 0 超时")');
+    assert.match(await ui(reports+'.textContent'),/达到原版时限.*我方 74 回合/s);
    }
    if(cases.some(entry=>entry.table==='sp_chaji_boss_lv_config'&&entry.key===15)){
     await encounter('event','蔽日轮回 sp_chaji_boss_lv_config 1014215');

@@ -2089,6 +2089,7 @@
     const jiForestMounted=showJiForest(destination,entry,groups);
     const yanmoMounted=showYanmo(destination,entry,groups);
     const chajiMounted=showChajiBoss(destination,entry,groups);
+    const chajiMapMounted=showChajiMap(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2233,7 +2234,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2489,6 +2490,61 @@
       '第二阶段 · 入场生命低于全服配置上限的 50%。','caption'));
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
       memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title,gtwBoss:stage});
+    return true;
+  }
+
+  function showChajiMap(destination,entry,groups){
+    const subEvent=entry.table==='sp_chaji_sub_event_battle';
+    const source=AtlasChajiMap,stageId=Number(entry.key);
+    if(!subEvent&&(entry.table!=='pve_stage_data'||!source.entry(stageId)))return false;
+    const get=(table,key)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===key)?.row;
+    const route=get('battle_team_routes',source.teamRoute),rules=get('normal_battle_config',source.battleMode);
+    const assist=get('normal_battle_assist_hero',71);
+    const section=node('section'),host=node('div');
+    section.className='encounter-source';
+    destination.append(section);
+    section.append(node('h4','日轮之影战斗'));
+    if(!matchesOpeningSource(source)||route?.engine_class!==source.engine.name||route?.can_single_fight!==true||
+       rules?.halt_time!==source.deadlineSeconds||rules.group_battle!==false||rules.replace_yys_id!==0||
+       rules.save_round_hp!==false||!rules.assist_hero_list?.includes(71)||assist?.hero_id!==11584||assist.pos_index!==101){
+      section.append(node('p','本机资料与已核验的日轮之影战斗配置不匹配。','caption'));
+      return true;
+    }
+    const config=subEvent?groups[0].row:groups.find(({ref,row})=>
+      ref.table==='sp_chaji_sub_event_battle'&&row?.pve_stage_data_id?.includes(String(stageId)))?.row;
+    function mount(id){
+      const stage=source.entry(id),pve=get('pve_stage_data',id),formation=get('BattleMonstersInfo',id);
+      const index=Number(stage?.hard);
+      host.replaceChildren();
+      if(!stage||config?.pve_stage_data_id?.[index]!==String(id)||pve?.groupid!==id||pve.shishentotal!==5||
+         formation?.resindex!==source.sceneId||formation.MonstersInfos?.length!==1||formation.MonstersInfos[0].length!==6){
+        host.append(node('p','本机敌方编组与所选难度不匹配。','caption'));
+        return;
+      }
+      const label=stage.hard?'困难':'简单';
+      host.append(node('p',`${label} · 原版时限 ${source.deadlineSeconds} 秒 · 月曜晷针消耗 ${config.mind_cost[index]} 枚`,'caption'));
+      if(stage.hard){
+        const skill=groups.find(({ref})=>ref.table==='skill'&&ref.key?.$tuple?.[0]===source.hardSkill)?.row;
+        if(skill)host.append(node('p',`${skill.skill_name} · ${skill.combatDesc||skill.desc}`,'caption'));
+      }
+      window.AtlasPveWorkbench?.mount(host,{stageId:id,groupId:id,battleMode:source.battleMode,
+        memberCount:5,waveCount:1,version:source.resourceVersion,label:`日轮之影 · ${label}`});
+    }
+    if(subEvent&&config?.pve_stage_data_id?.length===2){
+      const label=node('label','难度 ','pve-lineup-field'),field=node('select');
+      field.dataset.chajiDifficulty='';
+      field.replaceChildren(...config.pve_stage_data_id.map((id,index)=>new Option(index?'困难':'简单',id)));
+      label.append(field);
+      section.append(label,host);
+      field.addEventListener('change',()=>{
+        window.AtlasPveWorkbench?.unmount();
+        mount(Number(field.value));
+      });
+      mount(Number(field.value));
+    }else{
+      section.append(host);
+      mount(stageId);
+    }
     return true;
   }
 

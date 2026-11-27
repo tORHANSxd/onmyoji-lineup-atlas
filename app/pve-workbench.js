@@ -1260,7 +1260,7 @@
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
-   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge??report.shanFeng??report.jiBoss??report.gtwHunt??report.socialPlay??report.jiForest??report.chajiBoss)?.timedOut===true;
+   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge??report.shanFeng??report.jiBoss??report.gtwHunt??report.socialPlay??report.jiForest??report.chajiBoss??report.chajiMap)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
