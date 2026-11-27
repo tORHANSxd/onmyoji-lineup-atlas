@@ -225,7 +225,7 @@ function sampleBattleMarkup(samples){
   const shanFeng=sample.shanFeng;
   const jiBoss=sample.jiBoss;
   const gtwBoss=sample.gtwBoss;
-  const timedBattle=sample.gtwHunt??sample.socialPlay??sample.jiForest??sample.yanmoPractice;
+  const timedBattle=sample.gtwHunt??sample.socialPlay??sample.jiForest??sample.yanmoPractice??sample.yanmoTrial;
   const socialBuff=sample.socialPlay?.buffRate;
   const breakthrough=sample.breakthrough;
   const dojoGuardian=sample.dojoGuardian;

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -687,9 +687,24 @@ async function main(){
      {yanmoPractice:{timedOut:false,combatSeconds:118.58,rounds:18,lampBonusCondition:false}},undefined,null),
      /战斗至结算 118\.58 秒 · 18 回合 · 未满足冥河夜灯额外奖励回合条件/);
     await ui('qaEncounterInput("event","百鬼乱狱 pve_stage_data 602851")');
-    await until(panel+'.textContent.includes("招募阵容复跑待接入")');
+    const trialStart='document.querySelector("[data-yanmo-start]")';
+    await until(trialStart+'!==null');
     assert.equal(await ui(start+'===null'),true);
     assert.match(await ui(panel+'.textContent'),/地图 1 · 格/);
+    assert.equal(await ui(trialStart+'.disabled'),true);
+    const cards=[1476535,1476467,1476492,1476498,1476512];
+    await ui(`document.querySelectorAll("[data-yanmo-cards] select").forEach((field,i)=>{
+      field.value=String(${JSON.stringify(cards)}[i]);field.dispatchEvent(new Event("change"));
+    })`);
+    await until(trialStart+'?.disabled===false');
+    mockPve=async (plan,options)=>{
+     assert.deepEqual(plan,{cards});
+     assert.deepEqual(options,{stageId:602851,groupId:602851,battleMode:914,seed:0,damageFloor:true});
+     return {...sample,...options,yanmoTrial:{combatSeconds:18.32,timedOut:false}};
+    };
+    await ui(trialStart+'.click()');
+    await until(panel+'.textContent.includes("原版胜利")');
+    assert.match(await ui(panel+'.textContent'),/战斗至结算 18\.32 秒/);
    }
    if(cases.some(entry=>entry.table==='ji_tower_monster'&&entry.key===2)){
     await encounter('event','错季之森普通季灵 505001');

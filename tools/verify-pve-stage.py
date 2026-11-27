@@ -41,7 +41,8 @@ def replay(args, runtime, work):
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RaidDamageWindow
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_WALL_SECONDS, JI_STORY_ACTOR_STAGE, JiBossReplay
     from ji_forest_stage import JI_FOREST_MODES, JI_FOREST_SECONDS, ji_forest_stage
-    from yanmo_stage import YANMO_BONUS_ROUNDS, YANMO_PRACTICE_MODE, verify_yanmo_actor, yanmo_practice_stage
+    from yanmo_stage import (YANMO_ACTIVITY, YANMO_BONUS_ROUNDS, YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE,
+                             YanmoTrial, verify_yanmo_actor, yanmo_practice_stage)
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import (JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, YINYANG_BOSS_STAGE, YINYANG_BOSS_WALL_SECONDS,
                                     JourneyHardReplay, YinYangBossReplay)
@@ -103,7 +104,8 @@ def replay(args, runtime, work):
     gtw_boss = args.mode == GTW_BOSS_MODE
     gtw_hunt = args.mode in GTW_HUNT_MODES
     ji_forest = args.mode in JI_FOREST_MODES
-    yanmo = args.mode == YANMO_PRACTICE_MODE
+    yanmo_trial = args.mode == YANMO_TRIAL_MODE
+    yanmo = args.mode in (YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE)
     social_play = args.mode == SOCIAL_PLAY_MODE
     ji_story_actor = ji_boss and args.stage == JI_STORY_ACTOR_STAGE
     breakthrough = None
@@ -165,7 +167,7 @@ def replay(args, runtime, work):
         if type(plan) is not dict or plan and (plan.keys() != {"manualBasic"} or plan["manualBasic"] is not True):
             raise ValueError("The dream trial uses the fixed character from the original stage")
         actor, heroes, fighters, inventory, choices = None, {}, {}, {}, {}
-    elif recruited_explore:
+    elif recruited_explore or yanmo_trial:
         heroes, fighters, inventory, choices = {}, {}, {}, {}
     elif relay:
         heroes, inventory, actors, rounds = underworld_teams(plan, suits)
@@ -273,9 +275,13 @@ def replay(args, runtime, work):
     elif yanmo:
         from DynamicConfigData import DATA_HERO
 
-        if len(fighters) != 5:
-            raise ValueError("The Yanmo practice requires five owned shikigami")
-        engine, group, const, yanmo_route = yanmo_practice_stage(args.stage)
+        if yanmo_trial:
+            recruit_trial = YanmoTrial(args.stage, plan)
+            engine, group, const = recruit_trial.engine, recruit_trial.group, recruit_trial.const
+        else:
+            if len(fighters) != 5:
+                raise ValueError("The Yanmo practice requires five owned shikigami")
+            engine, group, const, yanmo_route = yanmo_practice_stage(args.stage)
         actor = heroes["selected-onmyoji"] = stage_actor_placeholder()
         yanmo_clock = NativePveClock(engine, None)
         group_id, wave_count = group["ID"], 1
@@ -797,7 +803,7 @@ def replay(args, runtime, work):
     elif ji_forest:
         route = "ji-forest-original-solo"
     elif yanmo:
-        route = "yanmo-practice-original-solo"
+        route = "yanmo-trial-original-solo" if yanmo_trial else "yanmo-practice-original-solo"
     elif breakthrough:
         route = breakthrough.route
     elif dojo_guardian:
@@ -1052,6 +1058,8 @@ def replay(args, runtime, work):
         engine._createNextRoundMons = verify_spawn
     engine._time, engine.delta_time = float(ENGINE_START_SECONDS), .020
     engine.init()
+    if yanmo_trial:
+        recruit_trial.prepare(avatar)
     if breakthrough:
         breakthrough.prepare_defender()
     if party_replay:
@@ -1382,6 +1390,8 @@ def replay(args, runtime, work):
             ji_replay.check_actor(controller, (actor_id, actor["level"], actor["star"]))
         if yanmo:
             yanmo_actor = verify_yanmo_actor(engine, controller, const)
+            if yanmo_trial:
+                yanmo_recruits = recruit_trial.verify_selection(controller)
         if explore_replay:
             if urdtg_explore or urdtg_train:
                 explore_replay.record_selection(owned=urdtg_train)
@@ -1462,10 +1472,14 @@ def replay(args, runtime, work):
     if yanmo:
         if verified_waves != {0}:
             raise RuntimeError("The original Yanmo formation was not verified")
-        yanmo_rounds = engine.lbs_bout_counter
-        report["yanmoPractice"] = {**yanmo_route, **yanmo_clock.report(outcome), "actor": yanmo_actor,
-                                  "rounds": yanmo_rounds, "bonusRoundLimit": YANMO_BONUS_ROUNDS,
-                                  "lampBonusCondition": outcome == "win" and yanmo_rounds <= YANMO_BONUS_ROUNDS}
+        settlement = {**yanmo_clock.report(outcome), "actor": yanmo_actor}
+        if yanmo_trial:
+            report["yanmoTrial"] = {**settlement, "activityId": YANMO_ACTIVITY, "recruits": yanmo_recruits}
+        else:
+            yanmo_rounds = engine.lbs_bout_counter
+            report["yanmoPractice"] = {**yanmo_route, **settlement, "rounds": yanmo_rounds,
+                                       "bonusRoundLimit": YANMO_BONUS_ROUNDS,
+                                       "lampBonusCondition": outcome == "win" and yanmo_rounds <= YANMO_BONUS_ROUNDS}
         report["formationsVerified"] = 1
     if dojo_guardian:
         report["dojoGuardian"] = dojo_guardian.report(completed, outcome)
@@ -1734,7 +1748,7 @@ def main():
     from shanfeng_stage import SHANFENG_MODE, SHANFENG_STAGES, SHANFENG_WALL_SECONDS, is_shanfeng_stage
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_STAGES, JI_BOSS_SUPPORTED, JI_BOSS_WALL_SECONDS
     from ji_forest_stage import JI_FOREST_LAST_PREVIEW, JI_FOREST_MODES, ji_forest_mode
-    from yanmo_stage import YANMO_PRACTICE_MODE, YANMO_PRACTICE_STAGES, YANMO_TRIAL_STAGES
+    from yanmo_stage import YANMO_PRACTICE_MODE, YANMO_PRACTICE_STAGES, YANMO_TRIAL_MODE, YANMO_TRIAL_STAGES
     from gtw_boss_stage import GTW_BOSS_MODE, GTW_BOSS_STAGES, GTW_BOSS_WALL_SECONDS, valid_gtw_settings
     from gtw_hunt_stage import GTW_HUNT_MODE, GTW_HUNT_MODES, GTW_HUNT_STAGES, GTW_HUNT_WALL_SECONDS, GTW_UNLINKED_STAGE
     from social_play_stage import SOCIAL_PLAY_MODE, SOCIAL_PLAY_STAGES
@@ -1798,7 +1812,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *JI_FOREST_MODES, YANMO_PRACTICE_MODE, SOCIAL_PLAY_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *JI_FOREST_MODES, YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE, SOCIAL_PLAY_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--gtw-boss", type=json.loads)
     parser.add_argument("--gtw-event", type=int)
@@ -2000,6 +2014,8 @@ def main():
         parser.error("Yanmo stages require their original activity battle modes")
     if args.mode == YANMO_PRACTICE_MODE and args.stage not in YANMO_PRACTICE_STAGES:
         parser.error("Choose an original Yanmo practice formation")
+    if args.mode == YANMO_TRIAL_MODE and args.stage not in YANMO_TRIAL_STAGES:
+        parser.error("Choose an original Yanmo trial formation")
     if args.mode == SOCIAL_PLAY_MODE and args.stage not in SOCIAL_PLAY_STAGES:
         parser.error("Choose one of the 28 original Four Seasons Challenge stages")
     if args.social_party and args.mode != SOCIAL_PLAY_MODE:

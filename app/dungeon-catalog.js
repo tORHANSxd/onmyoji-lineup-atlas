@@ -2495,15 +2495,41 @@
     const source=AtlasYanmo;
     if(!['sp_yanmo_xx_fuben','pve_stage_data'].includes(entry.table))return false;
     const stageId=Number(entry.table==='pve_stage_data'?entry.key:groups[0].row?.battle_id);
+    const get=(table,key)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===key)?.row;
+    const pve=get('pve_stage_data',stageId),formation=get('BattleMonstersInfo',stageId);
     if(source.isTrial(stageId)){
-      destination.append(node('p','百鬼乱狱使用活动招募卡的属性和御魂。可查看此关敌方编组与已关联的原版地格，招募阵容复跑待接入。','caption'));
+      const {trial}=source,route=get('battle_mode_routes',trial.battleMode);
+      const rules=get('normal_battle_config',trial.battleMode);
+      if(!matchesOpeningSource(trial)||route?.scene_engine!==trial.engine.name||route.scene_marshal_sha256!==trial.sceneSHA256||
+         pve?.groupid!==stageId||pve.shishentotal!==5||pve.battleTime||
+         formation?.resindex!==source.sceneId||formation.MonstersInfos?.length!==1||formation.MonstersInfos[0].length!==6||
+         rules?.halt_time!==0||rules.group_battle!==false||rules.replace_yys_id!==12){
+        destination.append(node('p','本机资料与已核验的百鬼乱狱战斗配置不匹配。','caption'));
+        return true;
+      }
+      const host=node('div'),status=node('p','正在读取活动招募卡…','caption');
+      destination.append(node('p','百鬼乱狱使用活动招募卡的属性和御魂，由活动固定的大夜摩天阎魔出战。','caption'),host);
+      host.append(status);
+      const readRows=async(table,ids)=>(await Promise.all(Array.from({length:Math.ceil(ids.length/64)},(_,i)=>
+        api.records(table,ids.slice(i*64,i*64+64))))).flat();
+      readRows('sp_yanmo_hero',trial.cardIds).then(async cards=>{
+        if(cards.length!==trial.cardIds.length||cards.some((card,i)=>card?.id!==trial.cardIds[i]))
+          throw Error('招募卡编号与原版资料不匹配。');
+        const attrs=await readRows('sp_yanmo_trial_attr',[...new Set(cards.map(card=>card.attr_id))]);
+        const byId=new Map(attrs.filter(Boolean).map(row=>[row.id,row.star]));
+        const recruits=cards.map(card=>({id:card.id,name:DATA.gameConfig.heroes[card.hero_id]?.name,star:byId.get(card.attr_id)}));
+        if(recruits.some(card=>!card.name||!Number.isInteger(card.star)))throw Error('招募卡的式神或星级资料不完整。');
+        if(!host.isConnected)return;
+        recruits.sort((a,b)=>a.name.localeCompare(b.name,'zh-CN')||b.star-a.star||a.id-b.id);
+        status.remove();
+        window.AtlasPveWorkbench?.mountYanmoTrial(host,{stageId,groupId:stageId,battleMode:trial.battleMode,
+          version:trial.resourceVersion,label:entry.title},recruits);
+      }).catch(error=>{if(host.isConnected)status.textContent=error.message;});
       return true;
     }
     const stage=source.practice(stageId);
     if(!stage)return false;
-    const get=(table,key)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===key)?.row;
     const config=get('sp_yanmo_xx_fuben',stage.entryId),rules=get('normal_battle_config',source.battleMode);
-    const pve=get('pve_stage_data',stageId),formation=get('BattleMonstersInfo',stageId);
     const route=get('battle_mode_routes',source.battleMode),actor=get('normal_battle_yys_replace',12);
     if(!matchesOpeningSource(source)||route?.scene_engine!==source.engine.name||
        route.scene_marshal_sha256!==source.sceneSHA256||config?.battle_id!==stageId||

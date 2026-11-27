@@ -153,15 +153,15 @@
 
  function update(){
   if(!pane)return;
-  if(pane.fixedTrial){
+  if(pane.directTrial){
    const running=job?.running===true;
-   pane.start.disabled=!ready()||runeBusy()||!pane.seed.checkValidity();
+   pane.start.disabled=!ready()||runeBusy()||!pane.seed.checkValidity()||!pane.readPlan();
    pane.seed.disabled=running;
-   pane.control.disabled=running;
+   for(const input of pane.inputs)input.disabled=running;
    pane.stop.hidden=!running;
    pane.stop.disabled=!!job?.cancelled;
-   pane.status.textContent=job?.notice??(ready()?'等待复跑。':runtime?.reason??
-    (runtimePending?'正在检查原版复跑组件…':'当前运行时缺少对应版本的原版梦境试炼组件。'));
+   pane.status.textContent=job?.notice??(ready()?pane.readyMessage:runtime?.reason??
+    (runtimePending?'正在检查原版复跑组件…':'当前运行时缺少对应版本的原版复跑组件。'));
    return;
   }
   const available=knownLineups(),hasAccount=!!account(),blocked=runeBusy();
@@ -1077,14 +1077,59 @@
     <button class="secondary" type="button" data-dream-stop hidden>停止复跑</button>
    </div><ol class="dungeon-battle-list" data-dream-results></ol>`;
   const part=name=>section.querySelector(`[data-dream-${name}]`);
-  pane={...config,fixedTrial:true,start:part('start'),stop:part('stop'),status:part('status'),
-   seed:part('seed'),control:part('control'),results:part('results')};
+  const control=part('control');
+  mountDirectTrial(target,section,config,part,[control],()=>control.value==='basic'?{manualBasic:true}:{},
+   '等待复跑。',(row,report,plan,seed)=>{
+    row.state.textContent=`种子 ${seed} · ${report.bouts} / ${report.dreamTrial.turnLimit} 回合 · `+
+     `引擎全程 ${report.engineSeconds.toFixed(2)} 秒 · 已核对原版敌方编组`;
+    if(plan.manualBasic)row.state.textContent+=` · 手动普攻 ${report.dreamTrial.manualAttacks} 次`;
+   });
+ }
+
+ function mountYanmoTrial(target,config,recruits){
+  if(!api?.pveStatus)return;
+  cancel(true);
+  const section=document.createElement('section');
+  section.className='encounter-source';
+  section.innerHTML=`<h4>模拟已知招募阵容</h4>
+   <p class="caption">选择已知的五张活动招募卡并按出战位排列。复跑使用默认活动养成。</p>
+   <div class="actions" data-yanmo-cards></div>
+   <div class="actions">
+    <label class="pve-lineup-field">随机种子 <input data-yanmo-seed type="number" required min="0" max="9999" step="1" value="0"></label>
+    <button class="secondary" type="button" data-yanmo-start disabled>开始离线模拟</button>
+    <button class="secondary" type="button" data-yanmo-stop hidden>停止复跑</button>
+   </div><p class="caption" data-yanmo-status role="status"></p>
+   <ol class="dungeon-battle-list" data-yanmo-results></ol>`;
+  const part=name=>section.querySelector(`[data-yanmo-${name}]`);
+  const fields=Array.from({length:5},(_,i)=>{
+   const label=document.createElement('label'),select=document.createElement('select');
+   label.className='pve-lineup-field';
+   select.replaceChildren(new Option('选择招募卡',''),...recruits.map(({id,name,star})=>new Option(`${name} · ${star} 星 · ${id}`,String(id))));
+   label.append(`${i+2} 号位 `,select);
+   part('cards').append(label);
+   return select;
+  });
+  const readPlan=()=>{
+   const plan={cards:fields.map(field=>Number(field.value))};
+   return AtlasYanmo.trial.validPlan(plan)?plan:null;
+  };
+  mountDirectTrial(target,section,config,part,fields,readPlan,'选择五张招募卡后可以开始复跑。',(row,report)=>{
+   row.state.textContent='已核对五个出战位置和原版敌方编组。全随机分支待验证。';
+   row.details.hidden=false;
+   row.report.innerHTML=sampleBattleMarkup([report]);
+  });
+ }
+
+ function mountDirectTrial(target,section,config,part,inputs,readPlan,readyMessage,renderResult){
+  pane={...config,directTrial:true,start:part('start'),stop:part('stop'),status:part('status'),
+   seed:part('seed'),inputs,readPlan,readyMessage,results:part('results')};
   pane.seed.oninput=update;
+  for(const input of inputs)input.onchange=update;
   pane.stop.onclick=()=>cancel();
   pane.start.onclick=async()=>{
-   if(!ready()||runeBusy()||!pane.seed.checkValidity())return;
+   const plan=pane.readPlan();
+   if(!plan||!ready()||runeBusy()||!pane.seed.checkValidity())return;
    const seed=pane.seed.valueAsNumber;
-   const plan=pane.control.value==='basic'?{manualBasic:true}:{};
    const run={pane,running:true,native:true,notice:`正在复跑种子 ${seed}…`,rows:[]};
    job=run;
    pane.results.replaceChildren();
@@ -1095,10 +1140,7 @@
     const report=await api.runPve(plan,{battleMode,stageId,groupId,seed,damageFloor:true});
     if(job!==run||run.cancelled)return;
     const title=report.completed?(report.outcome==='win'?'原版胜利':'原版失败'):'未取得原版结算';
-    const row=addRow(run,title);
-    row.state.textContent=`种子 ${seed} · ${report.bouts} / ${report.dreamTrial.turnLimit} 回合 · `+
-     `引擎全程 ${report.engineSeconds.toFixed(2)} 秒 · 已核对原版敌方编组`;
-    if(plan.manualBasic)row.state.textContent+=` · 手动普攻 ${report.dreamTrial.manualAttacks} 次`;
+    renderResult(addRow(run,title),report,plan,seed);
     run.notice='本次复跑结束。';
    }catch(error){if(job===run&&!run.cancelled)run.notice=runeError(error);}
    finally{
@@ -1514,5 +1556,5 @@
   }
  }
 
- window.AtlasPveWorkbench={busy,mount,mountFixedTrial,unmount,refresh:update,cancel,reset:()=>cancel(true)};
+ window.AtlasPveWorkbench={busy,mount,mountFixedTrial,mountYanmoTrial,unmount,refresh:update,cancel,reset:()=>cancel(true)};
 })();
