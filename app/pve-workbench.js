@@ -11,6 +11,7 @@
  const gtwBoss=AtlasGtwBoss;
  const {duskWraith:dusk,songstress:song,mirage,mirageX,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=AtlasFengmoLive;
  const isWaveMode=mode=>mode===2001;
+ const waveTarget=mode=>isWaveMode(mode)?70:mode===AtlasChajiSide.rift.battleMode?AtlasChajiSide.rift.waveCount:0;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
 
  function replayableLineup(lineup,config){
@@ -1191,7 +1192,7 @@
  async function replay(run,row,plan,trialSlot){
   const {stageId,groupId,battleMode,retreat,region,qilingWindow,creviceWindow,ghostSettings,historicalGhostWindow,
    mapBossPlayers,tianfaTeam,qinfeiBoss,qinfeiFoodPiles,pveDeadlineSeconds,storyRoomId,friendChallenge,dojoArea,forest,tenBonuses,bandScores,devilFeastHp}=run.pane;
-  const scoring=isDamageMode(battleMode,stageId),relay=isWaveMode(battleMode);
+  const scoring=isDamageMode(battleMode,stageId),target=waveTarget(battleMode);
   const orochi=battleMode===AtlasTrueOrochi.battleMode;
   for(const seed of seeds){
    if(!active(run))return;
@@ -1248,8 +1249,8 @@
     row.state.textContent=`种子 ${seed} 未取得完整伤害战报，可重试`;
     return;
    }
-   if(relay){
-    if(AtlasRuneCandidate.waveResult([report]))continue;
+   if(target){
+    if(AtlasRuneCandidate.waveResult([report],target))continue;
     row.state.textContent=`种子 ${seed} 未取得完整波次结算，可重试`;
     return;
    }
@@ -1260,7 +1261,7 @@
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
-   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge??report.shanFeng??report.jiBoss??report.gtwHunt??report.socialPlay??report.jiForest??report.chajiBoss??report.chajiMap)?.timedOut===true;
+   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge??report.shanFeng??report.jiBoss??report.gtwHunt??report.socialPlay??report.jiForest??report.chajiBoss??report.chajiMap??report.chajiDrill)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
@@ -1281,7 +1282,7 @@
    }
   }
   row.verdict=(scoring&&AtlasRuneCandidate.damageResult(row.samples)?.credited!==seeds.length||
-   relay&&AtlasRuneCandidate.waveResult(row.samples)?.min!==70)?'scored':'pass';
+   target&&AtlasRuneCandidate.waveResult(row.samples,target)?.min!==target)?'scored':'pass';
  }
 
  async function original(run,lineup){
@@ -1491,15 +1492,15 @@
     await original(next,lineup);
    }
    if(!active(next))return;
-   const hunting=isDamageMode(next.pane.battleMode,next.pane.stageId),relay=isWaveMode(next.pane.battleMode);
-   const passed=next.rows.filter(row=>row.verdict==='pass'||(hunting||relay)&&row.verdict==='scored');
+   const hunting=isDamageMode(next.pane.battleMode,next.pane.stageId),target=waveTarget(next.pane.battleMode);
+   const passed=next.rows.filter(row=>row.verdict==='pass'||(hunting||target)&&row.verdict==='scored');
    const timing=hunting?null:AtlasRuneCandidate.commonSampleTiming(passed);
    const huntScores=new Map(hunting?passed.map(row=>[row,AtlasRuneCandidate.damageResult(row.samples)]):[]);
-   const waveScores=new Map(relay?passed.map(row=>[row,AtlasRuneCandidate.waveResult(row.samples)]):[]);
+   const waveScores=new Map(target?passed.map(row=>[row,AtlasRuneCandidate.waveResult(row.samples,target)]):[]);
    const regionScores=new Map(next.pane.region?passed.map(row=>[row,AtlasRuneCandidate.regionalResult(row.samples)]):[]);
    const dominated=new Set([...regionScores].filter(([row,score])=>[...regionScores].some(([other,otherScore])=>
     other!==row&&AtlasRuneCandidate.regionalDominates(otherScore,score))).map(([row])=>row));
-   passed.sort(relay?(a,b)=>{
+   passed.sort(target?(a,b)=>{
     const first=waveScores.get(a),second=waveScores.get(b);
     return second.min-first.min||second.average-first.average||second.max-first.max||timing.get(a).seconds-timing.get(b).seconds;
    }:hunting?(a,b)=>AtlasRuneCandidate.compareDamage(huntScores.get(a),huntScores.get(b)):
@@ -1508,8 +1509,9 @@
     const waves=waveScores.get(row);
     if(waves){
      const time=timing.get(row);
-     row.state.textContent=`最低 ${waves.min} 波 · 平均 ${waves.average.toFixed(1)} 波 · 最高 ${waves.max} 波 · ${seeds.length} 场`+
-      (waves.min===70?` · 最慢 ${time.combat?'开战至结算':'引擎全程'} ${time.seconds.toFixed(2)} 秒`:'');
+     const unit=isWaveMode(next.pane.battleMode)?'波':'轮';
+     row.state.textContent=`最低 ${waves.min} ${unit} · 平均 ${waves.average.toFixed(1)} ${unit} · 最高 ${waves.max} ${unit} · ${seeds.length} 场`+
+      (waves.min===target?` · 最慢 ${time.combat?'开战至结算':'引擎全程'} ${time.seconds.toFixed(2)} 秒`:'');
      continue;
     }
     const score=huntScores.get(row);
@@ -1533,7 +1535,8 @@
     row.state.textContent=`通过 ${seeds.length} 个采样种子 · ${timeLabel}`;
    }
    next.pane.results.prepend(...passed.map(row=>row.el));
-   next.notice=passed.length?(relay?`${passed.length} 套接力已完成共同采样，按最低清波数排序。全随机分支待验证。`:
+   next.notice=passed.length?(target?`${passed.length} 套${isWaveMode(next.pane.battleMode)?
+    '接力已完成共同采样，按最低清波':'完成共同采样，按最低清轮'}数排序。全随机分支待验证。`:
     hunting?`${passed.length} 套完成共同采样，按窗口内的单场最高伤害排序。全随机分支待验证。`:
     next.pane.region?`${passed.length} 套通过采样，优先显示回合数与承伤未被其他阵容同时超越的阵容。全随机分支待验证。`:
     `${passed.length} 套通过采样，已按最慢样本用时排序。全随机分支待验证。`):

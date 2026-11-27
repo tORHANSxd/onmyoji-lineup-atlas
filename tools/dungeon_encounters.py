@@ -5,6 +5,8 @@ from functools import cache
 from chaji_boss_stage import (CHAJI_ACTIVITY, CHAJI_ASSIST_CONFIG, CHAJI_ASSIST_HERO, CHAJI_BOSS_ACTIVITY,
                               CHAJI_BOSS_MODE, CHAJI_BOSS_TEAM)
 from chaji_map_stage import CHAJI_MAP_ACTIVITIES, CHAJI_MAP_HARD_SKILL, CHAJI_MAP_MODE, CHAJI_MAP_TEAM
+from chaji_side_stage import (CHAJI_DRILL_ACTIVITY, CHAJI_DRILL_FLOOR, CHAJI_DRILL_MODE, CHAJI_DRILL_STAGE,
+                               CHAJI_RIFT_MODE, CHAJI_RIFT_STAGE, CHAJI_RIFT_TEAM, CHAJI_RIFT_TICKET, CHAJI_SIDE_MODES)
 from devil_feast_stage import DEVIL_FEAST_ACTIVITY, DEVIL_FEAST_TEAM, LAOLAO_FUSION_MODE, LAOLAO_TEAM, TOWER_TEAM
 from dojo_area_stage import DOJO_AREA_TEAM
 from dream_trial_stage import DREAM_TRIAL_MODE
@@ -106,6 +108,15 @@ CHAJI_BOSS_TABLES = {"sp_chaji_boss_config": "首领", "sp_chaji_boss_lv_config"
 CHAJI_MAP_NAME = "月曜永恒 · 日轮之影"
 CHAJI_MAP_TABLES = {"sp_chaji_event": "据点", "sp_chaji_sub_event_battle": "战斗事件",
                     "sp_chaji_sub_event_mission": "军备授令"}
+CHAJI_SIDE_NAMES = {CHAJI_DRILL_STAGE: "阵练演武", CHAJI_RIFT_STAGE: "时间裂缝"}
+CHAJI_SIDE_ENTRIES = {
+    "pve_stage_data": {str(stage): stage for stage in CHAJI_SIDE_NAMES},
+    "normal_battle_config": CHAJI_SIDE_MODES,
+    "sp_chaji_event": {1: CHAJI_DRILL_STAGE, 2: CHAJI_RIFT_STAGE},
+    "activity_tower_floor": {CHAJI_DRILL_FLOOR: CHAJI_DRILL_STAGE},
+    "activity_tower_act": {CHAJI_DRILL_ACTIVITY: CHAJI_DRILL_STAGE},
+    "activity": {CHAJI_DRILL_ACTIVITY: CHAJI_DRILL_STAGE},
+}
 GTW_BOSS_NAME = "修罗猎戏 · 决猎庭院"
 GTW_HUNT_NAME = "修罗猎戏 · 彷徨猎场"
 SOCIAL_PLAY_NAME = "四时序战"
@@ -935,6 +946,30 @@ def encounter_index(source, load_rows):
             rows = [("social_play_color", row.get("id"), "混合所得颜色"),
                     ("reward", row.get("reward_id"), "调色奖励")]
             rows.extend(("social_play_color", color, "所需颜色") for color in row.get("recipe", ()))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+        side_entries = CHAJI_SIDE_ENTRIES.get(name)
+        side_stage = side_entries.get(row.get("id", row.get("battleMode", row.get("act_id")))) if side_entries else None
+        if side_stage:
+            rift = side_stage == CHAJI_RIFT_STAGE
+            mode = CHAJI_RIFT_MODE if rift else CHAJI_DRILL_MODE
+            rows = [("activity", CHAJI_MAP_ACTIVITIES[0], "日轮之影开放时间"),
+                    ("sp_chaji_event", 2 if rift else 1, "地图玩法入口"),
+                    ("pve_stage_data", side_stage, "原版关卡与已知阵容模拟"),
+                    ("BattleMonstersInfo", side_stage, "原版敌方编组"),
+                    ("normal_battle_config", mode, "战斗时限和入场规则"),
+                    ("normal_battle_assist_hero", CHAJI_ASSIST_CONFIG, "原版固定助战")]
+            if rift:
+                rows.extend((("battle_team_routes", CHAJI_RIFT_TEAM, "单人和组队入口"),
+                             ("currency", CHAJI_RIFT_TICKET, "追影之符"),
+                             ("sp_chaji_const", 35, "原版关卡编号"),
+                             ("sp_chaji_const", 76, "入场道具"),
+                             ("sp_chaji_const", 97, "领取选择时限")))
+            else:
+                rows.extend((("activity", CHAJI_DRILL_ACTIVITY, "阵练演武开放时间"),
+                             ("activity_tower_act", CHAJI_DRILL_ACTIVITY, "体力、演武许可与五倍消耗规则"),
+                             ("activity_tower_floor", CHAJI_DRILL_FLOOR, "原版关卡与结算奖励")))
+            tip = "sp_longyechaji_liefeng_tip" if rift else "sp_longyechaji_yanwu_tip"
+            links.append(rule_reference(tip, "原版玩法说明"))
             links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         map_stage = chaji_battles_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
         chaji_map_activity = name == "activity" and row.get("id") in CHAJI_MAP_ACTIVITIES and chaji_battles_by_stage
@@ -2449,6 +2484,10 @@ def encounter_index(source, load_rows):
                 title = f"{entry_kind} · {enemy_name} · {level} · {key}"
             if table_name in CHAJI_MAP_TABLES:
                 title = " · ".join(filter(None, (CHAJI_MAP_NAME, CHAJI_MAP_TABLES[table_name], row.get("name"), str(key))))
+            side_entries = CHAJI_SIDE_ENTRIES.get(table_name)
+            if side_entries and (chaji_side := side_entries.get(key)):
+                entry_family, entry_kind = "event", CHAJI_MAP_NAME
+                title = f"{entry_kind} · {CHAJI_SIDE_NAMES[chaji_side]} · {key}"
             if chaji_activity or table_name == "normal_battle_config" and key == CHAJI_BOSS_MODE:
                 entry_family, entry_kind = "event", CHAJI_BOSS_NAME
                 title = f"{CHAJI_BOSS_NAME} · " + ("活动开放" if chaji_activity else "原版战斗入口")

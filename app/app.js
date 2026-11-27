@@ -226,7 +226,7 @@ function sampleBattleMarkup(samples){
   const jiBoss=sample.jiBoss;
   const gtwBoss=sample.gtwBoss;
   const chajiBoss=sample.chajiBoss;
-  const timedBattle=sample.gtwHunt??sample.socialPlay??sample.jiForest??sample.yanmoPractice??sample.yanmoTrial??sample.chajiMap;
+  const timedBattle=sample.gtwHunt??sample.socialPlay??sample.jiForest??sample.yanmoPractice??sample.yanmoTrial??sample.chajiMap??sample.chajiDrill;
   const socialBuff=sample.socialPlay?.buffRate;
   const breakthrough=sample.breakthrough;
   const dojoGuardian=sample.dojoGuardian;
@@ -275,7 +275,10 @@ function sampleBattleMarkup(samples){
   })??[];
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
-  const outcome=chajiBoss?`${!sample.completed?'结算待确认':chajiBoss.timedOut?'达到原版时限':sample.wavesCleared?'已清场':chajiBoss.scored?'伤害已结算':'未清场'} · `+
+  const outcome=sample.chajiRift?`${!sample.completed?'结算待确认':sample.chajiRift.timedOut?'达到原版时限':'原版已结算'} · `+
+   `清轮 ${sample.wavesCleared} / ${sample.waveCount} · 战斗至结算 ${sample.chajiRift.combatSeconds.toFixed(2)} 秒`+
+   (sample.chajiRift.firstDeathWave?` · 第 ${sample.chajiRift.firstDeathWave} 轮首次减员`:''):
+   chajiBoss?`${!sample.completed?'结算待确认':chajiBoss.timedOut?'达到原版时限':sample.wavesCleared?'已清场':chajiBoss.scored?'伤害已结算':'未清场'} · `+
    `战斗至结算 ${chajiBoss.combatSeconds.toFixed(2)} 秒 · 本场伤害 ${chajiBoss.damage.toLocaleString('zh-CN')}`+
    (chajiBoss.tasks.length?` · 额外任务 ${chajiBoss.tasks.filter(task=>task.result===2).length} / ${chajiBoss.tasks.length}`:''):
    timedBattle?`${!sample.completed?'结算待确认':timedBattle.timedOut?'达到原版时限':sample.wavesCleared?'已清场':'未清场'} · `+
@@ -283,7 +286,7 @@ function sampleBattleMarkup(samples){
    (socialBuff?` · ${sample.socialPlay.partyPositions.length} 人组队 · 增伤和减伤各 ${Math.round(socialBuff*100)}%`:'')+
    (sample.jiForest?.elite?` · 本场伤害 ${sample.jiForest.damage.toLocaleString('zh-CN')}`:'')+
    (sample.yanmoPractice?` · ${sample.yanmoPractice.rounds} 回合 · ${sample.yanmoPractice.lampBonusCondition?'满足':'未满足'}冥河夜灯额外奖励回合条件`:'')+
-   (sample.chajiMap?` · 我方 ${sample.chajiMap.rounds} 回合`:''):
+   (sample.chajiMap||sample.chajiDrill?` · 我方 ${(sample.chajiMap??sample.chajiDrill).rounds} 回合`:''):
    gtwBoss?`${!sample.completed?'结算待确认':gtwBoss.windowExpired?'达到本地计分时限':gtwBoss.nativeTimedOut?'达到原版时限':'伤害已结算'} · `+
    `${gtwBoss.cleared?'已清场 · ':gtwBoss.defeated?'已击破首领 · ':''}个人伤害 ${gtwBoss.damage.toLocaleString('zh-CN')} · `+
    `首领余血 ${gtwBoss.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})} · `+

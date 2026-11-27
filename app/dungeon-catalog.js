@@ -2090,6 +2090,7 @@
     const yanmoMounted=showYanmo(destination,entry,groups);
     const chajiMounted=showChajiBoss(destination,entry,groups);
     const chajiMapMounted=showChajiMap(destination,entry,groups);
+    const chajiSideMounted=showChajiSide(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2234,7 +2235,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2490,6 +2491,34 @@
       '第二阶段 · 入场生命低于全服配置上限的 50%。','caption'));
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
       memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title,gtwBoss:stage});
+    return true;
+  }
+
+  function showChajiSide(destination,entry,groups){
+    const source=AtlasChajiSide,row=groups[0].row,key=Number(entry.key);
+    const stageId=entry.table==='pve_stage_data'?key:
+      entry.table==='sp_chaji_event'?(key===1?source.drill.stageId:key===2?source.rift.stageId:0):
+      entry.table==='activity_tower_floor'&&key===531?row?.battle_id:0;
+    const route=source.entry(stageId);
+    if(!route)return false;
+    const get=(table,id)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===id)?.row;
+    const rift=route===source.rift,activity=get('activity_tower_act',source.drill.activityId);
+    const pve=get('pve_stage_data',stageId),formation=get('BattleMonstersInfo',stageId);
+    const rules=get('normal_battle_config',route.battleMode),team=get('battle_team_routes',route.teamRoute);
+    const floor=get('activity_tower_floor',531),constant=get('sp_chaji_const',35);
+    if(!matchesOpeningSource(source)||pve?.groupid!==stageId||pve.shishentotal!==5||
+       formation?.resindex!==source.sceneId||formation.MonstersInfos?.length!==route.waveCount||
+       formation.MonstersInfos.some(wave=>wave.length!==6)||rules?.halt_time!==route.deadlineSeconds||
+       rules.group_battle!==rift||(rift?(constant?.value?.[0]!==stageId||team?.engine_class!==route.engine.name||
+       team.can_single_fight!==true):(!activity||floor?.act_id!==route.activityId||floor.battle_id!==stageId))){
+      destination.append(node('p','本机资料与已核验的活动关卡不匹配。','caption'));
+      return true;
+    }
+    const label=rift?'时间裂缝':'阵练演武';
+    destination.append(node('p',rift?`单人复跑 · ${route.waveCount} 轮 · 原版时限 ${route.deadlineSeconds} 秒 · 按清轮数结算`:
+      `单人复跑 · 原版时限 ${route.deadlineSeconds} 秒 · 演武许可 ${activity.sushi_cost}、体力 ${activity.act_ticket_cost}`,'caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:route.battleMode,
+      memberCount:5,waveCount:route.waveCount,version:source.resourceVersion,label});
     return true;
   }
 

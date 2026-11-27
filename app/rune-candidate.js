@@ -252,9 +252,9 @@ async function rankedDamageSearch(items,game,{measure,active,alternatives=[]}){
  return {trials,finalists:rank(finalists.filter(trial=>trial.samples.length===seeds.length))};
 }
 
-function waveResult(samples){
- if(!samples.length||samples.some(report=>!report.completed||report.waveCount!==70||
-    !Number.isInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>70))return null;
+function waveResult(samples,waveCount=70){
+ if(!samples.length||samples.some(report=>!report.completed||report.waveCount!==waveCount||
+    !Number.isInteger(report.wavesCleared)||report.wavesCleared<0||report.wavesCleared>waveCount))return null;
  const waves=samples.map(report=>report.wavesCleared);
  return {min:Math.min(...waves),max:Math.max(...waves),average:waves.reduce((total,value)=>total+value,0)/waves.length};
 }
