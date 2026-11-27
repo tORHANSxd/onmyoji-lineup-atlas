@@ -13,6 +13,7 @@ from fengmo_band_stage import FENGMO_BAND_ACTIVITY, FENGMO_BAND_STAGE_BASE, FENG
 from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_TOGETHER_TEAM
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from guild_forest_stage import FOREST_MODE, FOREST_STAGES, FOREST_TEAM
+from gtw_boss_stage import GTW_BOSS_ACTIVITY, GTW_BOSS_ENTRY, GTW_BOSS_MODE, GTW_BOSS_PROGRESS, GTW_BOSS_STAGES
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
 from ji_boss_stage import JI_BOSS_MODE, JI_STORY_ACTOR_STAGE
 from journey_hard_stage import YINYANG_BOSS_MODE, YINYANG_BOSS_STAGE
@@ -71,6 +72,7 @@ SHANFENG_RULES = (("spshanfeng_ghost_pve", "历练与成王规则"),
 SHANFENG_DAY_RULES = {1: (), 2: ((6, "第二日首领生命判定门槛"),), 3: ((5, "第三日首领开场生命比例"),)}
 JI_ACTIVITY = 8051
 JI_BOSS_RULES = ("yimengsui", "shuangshenli", "sijisheng")
+GTW_BOSS_NAME = "修罗猎戏 · 决猎庭院"
 
 
 ROOTS = {
@@ -725,6 +727,30 @@ def encounter_index(source, load_rows):
                 ("battle_mode_routes", SHANFENG_MODE, "原版历练成王入口"),
                 (SHANFENG_PVE, 17, "成王三日关卡配置"),
             ) if (ref := relation(dest, key, label, False)))
+        gtw_stage = int(numeric_key(row.get("id")) or 0) if name == "pve_stage_data" else None
+        gtw_entry = name == "stake_boss" and row.get("boss_id") == GTW_BOSS_ENTRY and row.get("battle_id") == 813000
+        gtw_activity = name == "activity" and row.get("id") == GTW_BOSS_ACTIVITY
+        gtw_mode = name in {"normal_battle_config", "battle_mode_routes"} and row.get("battleMode") == GTW_BOSS_MODE
+        if gtw_entry or gtw_stage in GTW_BOSS_STAGES or gtw_activity or gtw_mode:
+            rows = [
+                ("stake_boss", GTW_BOSS_ENTRY, "体力、等级、奖励次数与战斗入口"),
+                ("global_progress", GTW_BOSS_PROGRESS, "全服首领生命进度上限"),
+                ("activity", GTW_BOSS_ACTIVITY, "决猎庭院开放配置"),
+                ("normal_battle_config", GTW_BOSS_MODE, "原版单场计分规则"),
+                ("battle_mode_routes", GTW_BOSS_MODE, "原版决猎庭院战斗入口"),
+                ("normal_battle_constant", 40, "首领阶段血线"),
+                ("normal_battle_constant", 41, "第二阶段编组编号"),
+            ]
+            if gtw_stage in GTW_BOSS_STAGES:
+                rows.append(("run_group_const", 13 if gtw_stage == 813000 else 14, "本阶段面板显示的首领技能"))
+            else:
+                rows.extend(("pve_stage_data", phase_id, f"第 {i} 阶段敌方编组")
+                            for i, phase_id in enumerate(GTW_BOSS_STAGES, 1))
+            rows.extend(("sp_dashe_accumulate", key, "累计伤害奖励档位")
+                        for key, reward in table("sp_dashe_accumulate").values() if reward.get("uid") == 9)
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+            if "spgtw_boss_tips" in rules or "spgtw_boss_tips" in tips:
+                links.append(rule_reference("spgtw_boss_tips", "限时伤害、首领阶段与奖励"))
         ji_boss_stage = ji_boss_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
         ji_boss_activity = name == "activity" and row.get("id") == JI_ACTIVITY and ji_boss_by_stage
         if ji_boss_activity:
@@ -1696,12 +1722,13 @@ def encounter_index(source, load_rows):
             asura_activity = table_name == "activity" and key in {ASURA_ACTIVITY, ASURA_PHASE}
             shanfeng_activity = table_name == "activity" and key == SHANFENG_FINAL_ACTIVITY and bool(shanfeng_by_config)
             ji_activity = table_name == "activity" and key == JI_ACTIVITY and bool(ji_boss_by_stage)
+            gtw_activity = table_name == "activity" and key == GTW_BOSS_ACTIVITY and "stake_boss" in manifests
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not dinner_route and not linked_battles and not row.get("monsterWaves")
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
                     and not ten_activity and not dream_activity and not asura_activity and not asura_layer
-                    and not shanfeng_activity and not ji_activity):
+                    and not shanfeng_activity and not ji_activity and not gtw_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -1975,6 +2002,13 @@ def encounter_index(source, load_rows):
                     title = f"初翎山风超鬼王 · {shanfeng_by_stage[numeric_key(key)][1]} · {key}"
             if table_name == "pve_stage_data" and int(numeric_key(key) or 0) in DOJO_GUARDIAN_STAGES:
                 entry_family, entry_kind = "guild", "道馆守护"
+            if (gtw_activity or table_name == "stake_boss" and key == GTW_BOSS_ENTRY and row.get("battle_id") == 813000
+                    or table_name == "normal_battle_config" and key == GTW_BOSS_MODE):
+                entry_family, entry_kind = "event", GTW_BOSS_NAME
+                title = f"{GTW_BOSS_NAME} · " + ("活动开放" if gtw_activity else "首领进度与奖励" if table_name == "stake_boss" else "原版战斗入口")
+            if table_name == "pve_stage_data" and int(numeric_key(key) or 0) in GTW_BOSS_STAGES:
+                entry_family, entry_kind = "event", GTW_BOSS_NAME
+                title = f"{GTW_BOSS_NAME} · 第 {int(key) - 812999} 阶段 · {key}"
             if ji_activity:
                 entry_family, entry_kind = ROOTS["shiki_boss"]
                 title = f"{entry_kind} · 活动开放时间"

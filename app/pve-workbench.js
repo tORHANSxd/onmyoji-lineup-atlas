@@ -8,6 +8,7 @@
  const laolao=AtlasDevilFeast.laolao;
  const fusion=AtlasDevilFeast.fusion;
  const asuraBoss=AtlasAsuraBoss;
+ const gtwBoss=AtlasGtwBoss;
  const {duskWraith:dusk,songstress:song,mirage,mirageX,catfish,catfishX,skeleton,skeletonX,longche,longcheX,spiderLive,spiderNormal}=AtlasFengmoLive;
  const isWaveMode=mode=>mode===2001;
  let pane=null,job=null,stopping=null,runtime=null,runtimePending=null;
@@ -236,6 +237,21 @@
    pane.dojoGuardianHp.setAttribute('aria-invalid',String(!pane.dojoGuardianHp.checkValidity()));
    pane.dojoGuardianWindow.setAttribute('aria-invalid',String(!pane.dojoGuardianWindow.checkValidity()));
   }
+  let gtwBossError='';
+  pane.gtwBossSettings=null;
+  if(pane.gtwBoss){
+   const value=pane.gtwHp.value.trim();
+   const hp=value===''?null:/^\d+$/.test(value)?Number(value):NaN;
+   const windowSeconds=pane.gtwWindow.valueAsNumber;
+   const validHp=gtwBoss.validHp(hp,pane.gtwBoss),validWindow=gtwBoss.validWindow(windowSeconds);
+   pane.gtwFields.disabled=blocked;
+   pane.gtwHp.setAttribute('aria-invalid',String(!validHp));
+   pane.gtwWindow.setAttribute('aria-invalid',String(!validWindow));
+   gtwBossError=!validHp?`本阶段入场生命须在 ${pane.gtwBoss.minHp.toLocaleString('zh-CN')} 至 ${pane.gtwBoss.maxHp.toLocaleString('zh-CN')} 之间。`:
+    !validWindow?`计分时长须为 1 至 ${gtwBoss.windowLimit} 秒的整数。`:'';
+   if(!gtwBossError)pane.gtwBossSettings={hp,windowSeconds};
+   pane.gtwHint.textContent=gtwBossError||`入场生命留空使用 ${pane.gtwBoss.defaultHp.toLocaleString('zh-CN')}。填写较短时长可比较该时段内的个人伤害。`;
+  }
   const checked=fields=>fields.filter(field=>field.checked).map(field=>Number(field.value));
   const asura=pane.asura?{level:pane.asuraLevel.valueAsNumber,skills:checked(pane.asuraSkills),specialKeys:checked(pane.asuraKeys),
    ...(pane.asura.depths?{cellId:pane.asura.cellId,enemies:pane.asuraDepthSlots.flatMap((slot,i)=>slot.checked?
@@ -446,7 +462,7 @@
    for(const select of pane.reserveMembers)select.disabled=blocked||!hasAccount;
   }
   pane.lineup.disabled=blocked||!available.length;
-  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!defenseReady||!!reserve&&!reserve.ready||!captureReady||!eventReady||!trainingReady||!stateReady||!coinsReady||!journeyReady||!dojoGuardianReady||!asuraReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
+  pane.start.disabled=!supported||!hasAccount||blocked||!selected.length||!defenseReady||!!reserve&&!reserve.ready||!captureReady||!eventReady||!trainingReady||!stateReady||!coinsReady||!journeyReady||!dojoGuardianReady||!!gtwBossError||!asuraReady||!yinYangReady||!towerReady||!laolaoReady||!fusionReady||!duskReady||!songReady||!mirageReady||!catfishReady||!skeletonReady||!longcheReady||!spiderLiveReady;
   pane.stop.hidden=!running;
   pane.stop.disabled=job?.cancelled===true;
   pane.results.setAttribute('aria-busy',String(running&&!job?.cancelled));
@@ -461,6 +477,7 @@
    !trainingReady?`天狗面具须为 0 至 ${AtlasUrDtgExplore.maxMasks} 的整数。`:
    !journeyReady?'请填写正整数战斗时限和非负整数祝福层数。':
    !dojoGuardianReady?`入场生命须在 1 至 ${pane.dojoGuardian.maxHp.toLocaleString('zh-CN')}，模拟时长须为 1 至 ${AtlasDojoGuardian.maxWindow} 秒的整数。`:
+   gtwBossError?gtwBossError:
    !asuraReady?(pane.asura?.depths?'请至少保留一个敌位，并核对此前伤害和灵神体槽位。':'请核对灵神体等级、技能占用槽位和首领入场生命。'):
    !towerReady?'请核对百妖退治的挑战条件。':
    !laolaoReady?'请核对信仰之佑层数。':
@@ -557,6 +574,15 @@
     <label class="pve-lineup-field">离线模拟时长（秒） <input data-pve-dojo-guardian-window
      type="number" min="1" max="${AtlasDojoGuardian.maxWindow}" step="1" value="120" required></label>
    </div>`:''}
+   ${config.gtwBoss?`<fieldset class="pve-reserve" data-pve-gtw-fields><legend>决猎庭院开战条件</legend>
+    <div class="actions">
+     <label class="pve-lineup-field">首领入场生命 <input data-pve-gtw-hp type="text" inputmode="numeric" maxlength="16"
+      aria-describedby="pve-gtw-settings-hint" placeholder="${config.gtwBoss.defaultHp.toLocaleString('zh-CN')}"></label>
+     <label class="pve-lineup-field">计分时长（秒） <input data-pve-gtw-window type="number" min="1" max="${gtwBoss.windowLimit}"
+      step="1" value="${gtwBoss.windowLimit}" aria-describedby="pve-gtw-settings-hint" required></label>
+    </div>
+    <p class="caption" role="status" id="pve-gtw-settings-hint" data-pve-gtw-hint></p>
+   </fieldset>`:''}
    ${config.urdtgTraining?`<fieldset class="pve-reserve"><legend>赛事训练条件</legend><div class="actions">
     <label class="pve-lineup-field">万风钧落等级 <select data-pve-training-skill>
      <option value="1">1 级</option><option value="2">2 级</option><option value="3">3 级</option>
@@ -872,6 +898,7 @@
    trainingSkill:part('training-skill'),trainingMasks:part('training-masks'),
    journeyDeadline:part('journey-deadline'),journeyBlessings:part('journey-blessings'),
    dojoGuardianHp:part('dojo-guardian-hp'),dojoGuardianWindow:part('dojo-guardian-window'),
+   gtwFields:part('gtw-fields'),gtwHp:part('gtw-hp'),gtwWindow:part('gtw-window'),gtwHint:part('gtw-hint'),
    yinYangDrums:part('yinyang-drums'),yinYangDeadline:part('yinyang-deadline'),yinYangBuffChoice:part('yinyang-buff'),
    addYinYangBuff:part('add-yinyang-buff'),yinYangBuffList:part('yinyang-buff-list'),yinYangBuffIds:[],
    towerConditions:part('tower-conditions'),towerBlessingRows:all('tower-blessing-row'),
@@ -923,6 +950,7 @@
    };
   }
   for(const field of [pane.eventMoves,pane.trainingMasks,pane.journeyDeadline,pane.journeyBlessings,pane.dojoGuardianHp,pane.dojoGuardianWindow,pane.yinYangDrums,...pane.lifeCaps,...pane.marks,
+   pane.gtwHp,pane.gtwWindow,
    ...pane.towerLevels,...pane.towerHp,pane.laolaoFaith,pane.fusionWindow,...pane.fusionHp,pane.duskWindow,pane.duskMusic,pane.songWindow,
    pane.mirageWindow,pane.mirageGeneral,pane.mirageWeekly,
    pane.catfishWindow,pane.catfishArmor,pane.catfishPlayers,pane.catfishBreaks,pane.catfishWeekly,
@@ -1141,6 +1169,7 @@
     ...(run.asuraSettings?{asura:run.asuraSettings}:{}),
     ...(dojoArea?{dojoArea}:{}),
     ...(run.dojoGuardianSettings?{dojoGuardian:run.dojoGuardianSettings}:{}),
+    ...(run.gtwBossSettings?{gtwBoss:run.gtwBossSettings}:{}),
     ...(forest?{forest}:{}),
     ...(tenBonuses?.length?{tenBonuses}:{}),
     ...(bandScores?{bandScores}:{}),
@@ -1317,7 +1346,7 @@
      dojoWaves?.some(wave=>!wave.lineup||!wave.inventory||!AtlasDojoDefense.validOmissions(wave.omittedSlots,leader))||
      reserve&&!reserve.ready||pane.capture&&new Set(pane.capture.cards).size!==3||
      pane.urdtgTraining&&!pane.trainingSettings||pane.journeyHard&&!pane.journeySettings||pane.dojoGuardian&&!pane.dojoGuardianSettings||pane.yinYangDrums&&!pane.yinYangSettings||
-     pane.asura&&!pane.asuraSettings||
+     pane.asura&&!pane.asuraSettings||pane.gtwBoss&&!pane.gtwBossSettings||
      pane.tower&&!pane.towerSettings||pane.laolaoFaith&&!pane.laolaoSettings||pane.fusionWindow&&!pane.fusionSettings||
      pane.duskWindow&&!pane.duskSettings||pane.songWindow&&!pane.songWindowSeconds||pane.mirageWindow&&!pane.mirageSettings||
      pane.catfishWindow&&!pane.catfishSettings||pane.skeletonWindow&&!pane.skeletonSettings&&!pane.skeletonXSettings||pane.longcheWindow&&!pane.longcheSettings||
@@ -1334,6 +1363,7 @@
    dojoWaves,
    journeyHard:pane.journeySettings,
    dojoGuardianSettings:pane.dojoGuardianSettings,
+   gtwBossSettings:pane.gtwBossSettings,
    trainingSettings:pane.trainingSettings,
    asuraSettings:pane.asuraSettings,
    yinyangBoss:pane.yinYangSettings?{...pane.yinYangSettings,buffIds:pane.yinYangSettings.buffIds.slice()}:null,
@@ -1423,7 +1453,7 @@
     const score=huntScores.get(row);
     if(score){
      const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
-     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths||row.samples[0].shanFeng||row.samples[0].jiBoss?
+     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths||row.samples[0].shanFeng||row.samples[0].jiBoss||row.samples[0].gtwBoss?
       '限时计分':cleared?'均清场':'含未清场样本';
      row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${result} · 平均伤害 ${damageText(score.average)} · `+
       `单场最高 ${damageText(score.max)} · 最低 ${damageText(score.min)}`;

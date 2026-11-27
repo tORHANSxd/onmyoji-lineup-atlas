@@ -6,11 +6,54 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from dungeon_encounters import encounter_index
 from dungeon_battle_routes import bind_scene_engines, registered_team_symbols
+from gtw_boss_stage import GTW_SHARED_MAX_HP, valid_gtw_settings
 from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MODE, NIAN_ENTRIES,
                             NIAN_MODE, SEAL_MODE, SPECIAL_NIAN_MODE, entry_for_stage, party_positions)
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_juelie_boss_links_each_phase_to_shared_progress_and_matching_rules(self):
+        tables = {
+            "stake_boss": [[2, {"boss_id": 2, "battle_id": 813000, "progress_id": 7}]],
+            "global_progress": [[7, {"unlock_num": GTW_SHARED_MAX_HP}]],
+            "activity": [[8881, {"id": 8881}]],
+            "battle_mode_routes": [[934, {"battleMode": 934, "mode_symbol": "MODE_SPGTW_BOSS", "scene_engine": "SpGtwBossEngine"}]],
+            "normal_battle_config": [[934, {"battleMode": 934, "halt_time": 180}]],
+            "normal_battle_constant": [[40, {"value": [50]}], [41, {"value": [813001]}]],
+            "run_group_const": [[13, {"value": [46101]}], [14, {"value": [46201]}]],
+            "pve_stage_data": [[str(stage), {"id": str(stage), "groupid": stage}] for stage in (813000, 813001)],
+            "BattleMonstersInfo": [[stage, {"ID": stage, "resindex": 44135}] for stage in (813000, 813001)],
+            "Combinesceneinfo": [[44135, {"id": 44135}]],
+            "system_rule_dsc": [["spgtw_boss_tips", {"rule_dsc": "两段限时伤害"}]],
+            "sp_dashe_accumulate": [[{"$tuple": [61, 1]}, {"uid": 9, "accumulate": 40000000}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "event",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        result = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        indexed = {(row["table"], row["key"]): row for row in result["entries"]}
+
+        def refs(table, key):
+            return [(ref["table"], ref["key"]) for ref in indexed[table, key]["refs"] if ref["found"]]
+
+        both_phases = [("pve_stage_data", "813000"), ("pve_stage_data", "813001")]
+        for key in both_phases:
+            self.assertEqual(indexed[key]["family"], "event")
+            self.assertIn(("global_progress", 7), refs(*key))
+            self.assertIn(("system_rule_dsc", "spgtw_boss_tips"), refs(*key))
+        self.assertTrue(all(phase in refs("stake_boss", 2) for phase in both_phases))
+        self.assertIn(("run_group_const", 13), refs(*both_phases[0]))
+        self.assertNotIn(("run_group_const", 13), refs(*both_phases[1]))
+        self.assertIn(("run_group_const", 14), refs(*both_phases[1]))
+        self.assertIn(("sp_dashe_accumulate", {"$tuple": [61, 1]}), refs("stake_boss", 2))
+
+    def test_juelie_replay_bounds_use_shared_health_and_original_clock(self):
+        half = GTW_SHARED_MAX_HP // 2
+        self.assertTrue(valid_gtw_settings(813000, {"hp": half, "windowSeconds": 180}))
+        self.assertFalse(valid_gtw_settings(813001, {"hp": half, "windowSeconds": 180}))
+        self.assertTrue(valid_gtw_settings(813001, {"hp": half - 1, "windowSeconds": 1}))
+        self.assertFalse(valid_gtw_settings(813000, {"hp": half - 1, "windowSeconds": 180}))
+        self.assertFalse(valid_gtw_settings(813000, {"hp": None, "windowSeconds": 181}))
+
     def test_shiki_boss_plot_and_score_rows_keep_separate_rules(self):
         tables = {
             "shiki_boss": [[2, {"level_id": 2, "level_name": "双神立", "boss_type": 1, "battle_id": 505103}],

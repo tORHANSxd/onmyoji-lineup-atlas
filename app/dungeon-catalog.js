@@ -2065,6 +2065,7 @@
     showBreakthrough(destination, entry, groups);
     showDojoGuardian(destination, entry, groups);
     const jiBossMounted=showJiBoss(destination,entry,groups);
+    const gtwBossMounted=showGtwBoss(destination,entry,groups);
     showDojoDefense(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
     const asuraMounted=showAsuraBattle(destination, entry, groups)||showAsuraDepths(destination, entry, groups, monsters);
@@ -2206,7 +2207,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!gtwBossMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2384,6 +2385,28 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.sceneId,battleMode,
       version:source.resourceVersion,label:entry.title,memberCount:source.memberCount,waveCount:1,
       codeStageId:source.stageId,breakthrough:true,breakthroughParty:guild});
+  }
+
+  function showGtwBoss(destination,entry,groups){
+    const source=AtlasGtwBoss,stageId=Number(entry.key),stage=source.stages[stageId];
+    if(entry.table!=='pve_stage_data'||!stage)return false;
+    const get=(table,key)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===key)?.row;
+    const route=get('battle_mode_routes',source.battleMode),pve=groups[0].row,formation=get('BattleMonstersInfo',stageId);
+    const progress=get('global_progress',source.progressId),stake=get('stake_boss',source.stakeId);
+    if(!matchesOpeningSource(source)||route?.scene_engine!==source.engine.name||
+       stake?.team_battle_type!==source.battleMode||stake.progress_id!==source.progressId||
+       progress?.unlock_num!==source.maxHp||get('normal_battle_constant',40)?.value?.[0]!==50||
+       get('normal_battle_constant',41)?.value?.[0]!==813001||
+       pve?.groupid!==stageId||pve.shishentotal!==5||pve.battleTime!==source.windowLimit||
+       formation?.resindex!==source.sceneId||formation.MonstersInfos?.[0]?.[0]?.[1]!==stage.bossId){
+      destination.append(node('p','本机资料与已核验的决猎庭院配置不匹配。','caption'));
+      return true;
+    }
+    destination.append(node('p',stage.phase===1?'第一阶段 · 入场生命至少为全服配置上限的 50%。':
+      '第二阶段 · 入场生命低于全服配置上限的 50%。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
+      memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title,gtwBoss:stage});
+    return true;
   }
 
   function showJiBoss(destination,entry,groups){

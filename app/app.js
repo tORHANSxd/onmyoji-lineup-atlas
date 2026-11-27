@@ -224,6 +224,7 @@ function sampleBattleMarkup(samples){
   const depths=sample.asuraDepths;
   const shanFeng=sample.shanFeng;
   const jiBoss=sample.jiBoss;
+  const gtwBoss=sample.gtwBoss;
   const breakthrough=sample.breakthrough;
   const dojoGuardian=sample.dojoGuardian;
   const dojoDefense=sample.dojoDefense;
@@ -271,7 +272,12 @@ function sampleBattleMarkup(samples){
   })??[];
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
-  const outcome=jiBoss?`${!sample.completed?'结算待确认':jiBoss.timedOut?'达到原版时限':sample.wavesCleared?'已清场':jiBoss.hard?'伤害已结算':'未清场'} · `+
+  const outcome=gtwBoss?`${!sample.completed?'结算待确认':gtwBoss.windowExpired?'达到本地计分时限':gtwBoss.nativeTimedOut?'达到原版时限':'伤害已结算'} · `+
+   `${gtwBoss.cleared?'已清场 · ':gtwBoss.defeated?'已击破首领 · ':''}个人伤害 ${gtwBoss.damage.toLocaleString('zh-CN')} · `+
+   `首领余血 ${gtwBoss.remainingHp.toLocaleString('zh-CN',{maximumFractionDigits:2})} · `+
+   `战斗 ${gtwBoss.combatSeconds.toFixed(2)} 秒 / 计分时限 ${gtwBoss.windowSeconds} 秒`+
+   (gtwBoss.meetsRewardMinimum?'':' · 未达到 400 万伤害门槛'):
+   jiBoss?`${!sample.completed?'结算待确认':jiBoss.timedOut?'达到原版时限':sample.wavesCleared?'已清场':jiBoss.hard?'伤害已结算':'未清场'} · `+
    `${jiBoss.hard?`本场伤害 ${jiBoss.damage.toLocaleString('zh-CN')} · `:''}战斗至结算 ${jiBoss.combatSeconds.toFixed(2)} 秒 / 限时 ${jiBoss.deadlineSeconds} 秒`:
    shanFeng?`${!sample.completed?'结算待确认':shanFeng.timedOut?'达到原版时限':sample.outcome==='win'?'原版判胜':shanFeng.day?'伤害已结算':'未清场'} · `+
    `${shanFeng.day?`本场伤害 ${shanFeng.damage.toLocaleString('zh-CN')} · `:''}战斗至结算 ${shanFeng.combatSeconds.toFixed(2)} 秒 / 限时 ${shanFeng.deadlineSeconds} 秒`:

@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,926,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,926,934,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -470,7 +470,8 @@ async function main(){
    known('chapter-challenge',1001001,5),known('breakthrough-attack',10020201,5),known('breakthrough-defense',10020201,5,13),
    known('dojo-guardian',10020203,5),known('dojo-defense',10020203,5,13),
    known('secret-race',10700011,5),known('crevice',10020211,5),
-   known('superghost',100942,5),known('superghost-five',100943,5),known('shan-feng',null,5),known('ji-boss',null,5),known('qinfei-boss',101002,5,10,notes),
+   known('superghost',100942,5),known('superghost-five',100943,5),known('shan-feng',null,5),known('ji-boss',null,5),known('gtw-boss',null,5),
+   known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5,10,notes),
    known('spider-normal',10020220,5,10,notes),
@@ -690,6 +691,27 @@ async function main(){
     await ui('qaEncounterInput("event","四时归焉 pve_stage_data 505105")');
     await until(panel+'.textContent.includes("缺少可用的阴阳师替换配置")');
     assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='stake_boss'&&entry.key===2&&entry.kind.includes('决猎庭院'))){
+    await encounter('event','决猎庭院 pve_stage_data 813001');
+    assert.match(await ui(panel+'.textContent'),/第二阶段 · 入场生命低于全服配置上限的 50%/);
+    await choose('gtw-boss');
+    const hp='document.querySelector("[data-pve-gtw-hp]")',window='document.querySelector("[data-pve-gtw-window]")';
+    const set=(field,value)=>ui(field+'.value='+JSON.stringify(value)+';'+field+'.dispatchEvent(new Event("input"))');
+    assert.match(await ui(hp+'.labels[0].textContent'),/首领入场生命/);
+    assert.match(await ui(window+'.labels[0].textContent'),/计分时长/);
+    await set(hp,'502526970000000');
+    assert.ok(await ui(start+'.disabled&&'+hp+'.getAttribute("aria-invalid")==="true"'));
+    assert.match(await ui('document.getElementById('+hp+'.getAttribute("aria-describedby")).textContent'),/本阶段入场生命/);
+    await set(hp,'502526969999999');
+    await set(window,'181');
+    assert.ok(await ui(start+'.disabled&&'+window+'.getAttribute("aria-invalid")==="true"'));
+    await set(window,'20');
+    const gtwBoss={phase:2,bossId:46103,sharedMaxHp:1005053940000000,startHp:502526969999999,remainingHp:502526969573743.1,
+     damage:939490,meetsRewardMinimum:false,windowSeconds:20,nativeLimitSeconds:180,combatSeconds:20,
+     windowExpired:true,nativeTimedOut:false,defeated:false,cleared:false};
+    assert.match(await run('gtw-boss',{stageId:813001,groupId:813001,battleMode:934,gtwBoss:{hp:502526969999999,windowSeconds:20}},
+     {outcome:'loss',wavesCleared:0,gtwBoss}),/达到本地计分时限.*个人伤害 939,490.*未达到 400 万伤害门槛/s);
    }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');
