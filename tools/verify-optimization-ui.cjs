@@ -752,6 +752,16 @@ async function main(){
     assert.match(await run('tianfa',{stageId:310028,groupId:310028,battleMode:938},
      {socialPlay:{timedOut:false,combatSeconds:11.94}},undefined,null,6),
      /已清场.*战斗至结算 11\.94 秒/s);
+    const select='document.querySelector("[data-pve-social-party]")';
+    const positions='document.querySelector("[data-pve-social-party-positions]")';
+    for(const [partySize,partyPositions,buffRate] of [[2,[[1,5,6],[2,3,4]],0.3],[3,[[1,3],[2,5],[4,6]],0.4]]){
+     await ui(`${select}.value="${partySize}";${select}.dispatchEvent(new Event('change'))`);
+     const preview=await ui(positions+'.textContent');
+     partyPositions.forEach((slots,index)=>assert.ok(preview.includes(`玩家 ${index+1} · ${slots.join('、')} 号位`)));
+     const text=await run('tianfa',{stageId:310028,groupId:310028,battleMode:938,socialParty:partySize},
+      {socialPlay:{timedOut:false,combatSeconds:11.94,partyPositions,buffRate}},undefined,null,6);
+     assert.ok(text.includes(`${partySize} 人组队 · 增伤和减伤各 ${Math.round(buffRate*100)}%`));
+    }
    }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');

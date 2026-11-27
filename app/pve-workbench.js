@@ -189,6 +189,14 @@
    pane.attackPartyPositions.textContent=slots.map((positions,i)=>
     `${i===0?'队长':'队员 '+(i+1)} · ${positions.join('、')} 号位`).join('；');
   }
+  if(pane.socialParty){
+   const size=Number(pane.socialParty.value);
+   const positions=AtlasSocialPlay.partyPositions[size];
+   const rate=AtlasSocialPlay.partyBuffs[size].rate;
+   pane.socialParty.disabled=blocked;
+   pane.socialPartyPositions.textContent=positions.map((slots,i)=>`玩家 ${i+1} · ${slots.join('、')} 号位`).join(' ｜ ')+
+    (rate?` · 增伤和减伤各 ${Math.round(rate*100)}%`:'');
+  }
   let defenseReady=!pane.breakthrough||!!pane.defenseLineup.value;
   if(pane.dojoDefense){
    const leader=pane.dojoLeader.value==='leader';
@@ -536,6 +544,12 @@
     ` · ${config.retreat||config.qilingWindow||config.creviceWindow||config.ghostSettings||config.historicalGhostWindow?'自定':'原版'}计分窗口 ${Number(config.scoreWindowSeconds).toLocaleString('zh-CN')} 秒`:''}</p>
    <p class="caption"${config.longche?' id="pve-longche-status"':config.spiderLive||config.spiderNormal?' id="pve-spider-live-status"':
     config.skeleton?' id="pve-skeleton-status"':config.catfish?' id="pve-catfish-status"':config.mirage?' id="pve-mirage-status"':''} data-pve-status role="status"></p>
+   ${config.socialPlay?`<div class="actions">
+    <label class="pve-lineup-field">参战人数 <select data-pve-social-party>
+     <option value="1">单人</option><option value="2">双人</option><option value="3">三人</option>
+    </select></label>
+    <output class="caption" data-pve-social-party-positions></output>
+   </div>`:''}
    <div class="actions">
     <label class="pve-lineup-field">${config.breakthrough||config.dojoDefense?'进攻阵容':'已知阵容'} <select data-pve-lineup></select></label>
     ${config.trialEligible?`<label class="pve-lineup-field">试炼式神位置 <select data-pve-trial>
@@ -891,6 +905,7 @@
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
    defenseLineup:part('defense-lineup'),defenseAccount:part('defense-account'),
    attackParty:part('attack-party'),attackPartyPositions:part('attack-party-positions'),
+   socialParty:part('social-party'),socialPartyPositions:part('social-party-positions'),
    dojoLeader:part('dojo-leader'),dojoWaveList:part('dojo-wave-list'),dojoAddWave:part('dojo-add-wave'),dojoWaves:[],
    asuraFields:part('asura-fields'),asuraLevel:part('asura-level'),asuraHp:part('asura-hp'),asuraEnrage:part('asura-enrage'),
    asuraSkills:all('asura-skill'),asuraKeys:all('asura-key'),asuraTowers:all('asura-tower'),asuraHint:part('asura-hint'),
@@ -928,7 +943,7 @@
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.defenseLineup,pane.defenseAccount,pane.attackParty,pane.dojoLeader,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
+  for(const field of [pane.lineup,pane.defenseLineup,pane.defenseAccount,pane.attackParty,pane.socialParty,pane.dojoLeader,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,pane.mirageTrait,
    pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.longcheTrait,
@@ -1160,6 +1175,7 @@
     ...(run.spiderNormalSettings?{spiderNormalSettings:run.spiderNormalSettings}:{}),
     ...(historicalGhostWindow?{historicalGhostWindow}:{}),
     ...(mapBossPlayers?{mapBossPlayers}:{}),...(tianfaTeam?{tianfaTeam}:{}),
+    ...(run.socialParty>1?{socialParty:run.socialParty}:{}),
     ...(qinfeiBoss?{qinfeiBoss}:{}),
     ...(qinfeiFoodPiles?{qinfeiFoodPiles}:{}),
     ...(pveDeadlineSeconds?{pveDeadlineSeconds}:{}),
@@ -1363,6 +1379,7 @@
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    defenseInventory,
    attackPartySize:pane.breakthroughParty?Number(pane.attackParty.value):null,
+   socialParty:pane.socialParty?Number(pane.socialParty.value):null,
    dojoWaves,
    journeyHard:pane.journeySettings,
    dojoGuardianSettings:pane.dojoGuardianSettings,

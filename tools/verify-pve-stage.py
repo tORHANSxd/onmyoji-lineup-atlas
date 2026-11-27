@@ -36,7 +36,7 @@ def replay(args, runtime, work):
     from guild_forest_stage import FOREST_MODE, FOREST_STAGES, ForestReplay, forest_stage
     from gtw_boss_stage import GTW_BOSS_MODE, GTW_BOSS_WALL_SECONDS, GtwBossReplay
     from gtw_hunt_stage import GTW_HUNT_MODES, GTW_HUNT_SECONDS, GTW_HUNT_WALL_SECONDS, gtw_hunt_stage
-    from social_play_stage import SOCIAL_PLAY_MODE, SOCIAL_PLAY_SECONDS, SOCIAL_PLAY_SLOTS, social_play_stage, verify_social_selection
+    from social_play_stage import SOCIAL_PLAY_MODE, SOCIAL_PLAY_SECONDS, SocialPlayParty, social_play_stage
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RaidDamageWindow
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_WALL_SECONDS, JI_STORY_ACTOR_STAGE, JiBossReplay
@@ -256,6 +256,7 @@ def replay(args, runtime, work):
             raise ValueError("Four Seasons Challenge needs exactly six shikigami")
         engine, group, const, social_route = social_play_stage(args.stage)
         social_clock = NativePveClock(engine, SOCIAL_PLAY_SECONDS)
+        social_party = SocialPlayParty(engine, const, args.social_party or 1)
         group_id, wave_count = group["ID"], 1
     elif args.mode in (BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE):
         from DynamicConfigData import DATA_HERO
@@ -746,6 +747,8 @@ def replay(args, runtime, work):
         party_replay = breakthrough
     if dojo_defense:
         party_replay = dojo_defense
+    if social_play and args.social_party:
+        party_replay = social_party
     local_party = party_replay.assign_players(player, fighters) if party_replay else None
     avatar = BattleAvatar()
     avatar.init_from_dict(local_party[0] if local_party else player)
@@ -1041,8 +1044,9 @@ def replay(args, runtime, work):
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6]
                              and not engine.develop_skill_info and not engine.develop_level)
     elif social_play:
-        formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
-                             and not avatar.hasYYS and avatar.ssPosIndexList == SOCIAL_PLAY_SLOTS)
+        if not party_replay:
+            social_party.verify_players(controllers)
+        formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
     elif qinfei_boss:
         formation_matches = raid.matches()
     elif retreat:
@@ -1147,7 +1151,6 @@ def replay(args, runtime, work):
                       else pve_wall_seconds(args.pve_deadline))
     deadline, start = time.monotonic() + replay_seconds, engine.now_time()
     selection_checked = False
-    social_auto = False
     equipped_spirit = None
     instructions = None
     trial_hero = None
@@ -1262,10 +1265,8 @@ def replay(args, runtime, work):
             artifact_replay.update(fighting)
         if host.oracle.unsupported:
             raise RuntimeError("Unsupported native calls: " + ", ".join(host.oracle.unsupported))
-        if social_play and not social_auto and engine.battleState == const.BattleState.BS_STARTED:
-            if not controller.isAuto:
-                raise RuntimeError("The original Four Seasons engine did not start in automatic mode")
-            social_auto = True
+        if social_play and not social_party.automatic and engine.battleState == const.BattleState.BS_STARTED:
+            social_party.check_automatic(controllers)
         if regional_replay and regional_replay.eligible is False:
             break
         if yanwu_replay:
@@ -1351,8 +1352,8 @@ def replay(args, runtime, work):
         if fixed_dream:
             dream_roster = verify_dream_roster(engine, controller, fixed_hero)
         verify_selected_equipment()
-        if social_play:
-            verify_social_selection(engine, controller)
+        if social_play and not party_replay:
+            social_party.verify_selection(controllers)
         if breakthrough and not breakthrough.guild:
             breakthrough.verify_selection(controllers)
         for current in controllers:
@@ -1410,10 +1411,9 @@ def replay(args, runtime, work):
         report["gtwHunt"] = {**gtw_route, **gtw_clock.report(outcome)}
         report["formationsVerified"] = 1
     if social_play:
-        if verified_waves != {0} or not social_auto:
-            raise RuntimeError("The original Four Seasons formation or automatic mode was not verified")
-        report["socialPlay"] = {**social_route, **social_clock.report(outcome),
-                                "positions": avatar.ssPosIndexList, "automatic": social_auto}
+        if verified_waves != {0}:
+            raise RuntimeError("The original Four Seasons formation was not verified")
+        report["socialPlay"] = {**social_route, **social_clock.report(outcome), **social_party.report()}
         report["formationsVerified"] = 1
     if dojo_guardian:
         report["dojoGuardian"] = dojo_guardian.report(completed, outcome)
@@ -1794,6 +1794,7 @@ def main():
     parser.add_argument("--journey-blessings", type=int)
     parser.add_argument("--journey-deadline", type=int)
     parser.add_argument("--tianfa-team", action="store_true")
+    parser.add_argument("--social-party", type=int, choices=(2, 3))
     parser.add_argument("--shilian-trial-slot", type=int, choices=range(1, 7))
     parser.add_argument("--shilian-event-id", type=int)
     parser.add_argument("--shilian-difficulty", type=int, choices=(1, 2, 3))
@@ -1939,6 +1940,8 @@ def main():
         parser.error("Four Seasons Challenge requires its original battle entrance")
     if args.mode == SOCIAL_PLAY_MODE and args.stage not in SOCIAL_PLAY_STAGES:
         parser.error("Choose one of the 28 original Four Seasons Challenge stages")
+    if args.social_party and args.mode != SOCIAL_PLAY_MODE:
+        parser.error("Four Seasons party replays require the original activity mode")
     gtw_story = args.mode in GTW_HUNT_MODES and args.mode != GTW_HUNT_MODE
     if ((gtw_story != (args.gtw_event is not None)) or (gtw_story and args.gtw_event < 1)
             or (args.mode in GTW_HUNT_MODES and GTW_HUNT_STAGES.get(args.stage) != args.mode)):

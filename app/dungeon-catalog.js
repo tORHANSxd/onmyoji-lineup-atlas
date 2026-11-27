@@ -2336,7 +2336,7 @@
        related('battle_mode_routes')?.scene_engine!==source.engine.name||battle.halt_time!==source.deadlineSeconds)return true;
     window.AtlasPveWorkbench?.mount(destination,{stageId:stage.stage_id,groupId:pve.groupid,battleMode:source.battleMode,
       memberCount:source.positions.length,waveCount:1,version:source.resourceVersion,noOnmyoji:true,
-      label:'四时序战 · 单人复跑'});
+      socialPlay:true,label:'四时序战'});
     return true;
   }
 
