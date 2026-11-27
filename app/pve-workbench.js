@@ -136,6 +136,12 @@
    pane.defenseLineup.disabled=blocked||!available.length;
    pane.defenseAccount.disabled=blocked||!hasAccount;
   }
+  if(pane.attackParty){
+   pane.attackParty.disabled=blocked;
+   const slots=AtlasBreakthrough.partySlots[pane.attackParty.value];
+   pane.attackPartyPositions.textContent=slots.map((positions,i)=>
+    `${i===0?'队长':'队员 '+(i+1)} · ${positions.join('、')} 号位`).join('；');
+  }
   const defenseReady=!pane.breakthrough||!!pane.defenseLineup.value;
   const reserve=orochiReserve(selected,account());
   pane.reserve=reserve;
@@ -451,6 +457,11 @@
     config.mirage?' aria-describedby="pve-mirage-status"':''} data-pve-start>开始离线模拟</button>
     <button class="secondary" type="button" data-pve-stop hidden>停止复跑</button>
    </div>
+   ${config.breakthroughParty?`<fieldset class="pve-reserve"><legend>进攻编组</legend><div class="actions">
+    <label class="pve-lineup-field">进攻人数 <select data-pve-attack-party><option value="1">单人</option>
+     <option value="2">双人</option><option value="3">三人</option></select></label>
+    <output class="caption" data-pve-attack-party-positions></output>
+   </div><p class="caption">模拟从当前账号库存精算五个站位，再按人数分配给进攻方。</p></fieldset>`:''}
    ${config.breakthrough?`<fieldset class="pve-reserve"><legend>防守方</legend><div class="actions">
     <label class="pve-lineup-field">防守阵容 <select data-pve-defense-lineup></select></label>
     <label class="pve-lineup-field">防守账号库存 <select data-pve-defense-account></select></label>
@@ -766,6 +777,7 @@
   const all=name=>[...section.querySelectorAll(`[data-pve-${name}]`)];
   pane={...config,start:part('start'),lineup:part('lineup'),stop:part('stop'),
    defenseLineup:part('defense-lineup'),defenseAccount:part('defense-account'),
+   attackParty:part('attack-party'),attackPartyPositions:part('attack-party-positions'),
    asuraFields:part('asura-fields'),asuraLevel:part('asura-level'),asuraHp:part('asura-hp'),asuraEnrage:part('asura-enrage'),
    asuraSkills:all('asura-skill'),asuraKeys:all('asura-key'),asuraTowers:all('asura-tower'),asuraHint:part('asura-hint'),
    asuraDepthSlots:all('asura-depth-slot'),asuraDepthDamage:all('asura-depth-damage'),
@@ -800,7 +812,7 @@
    hint:part('status'),results:part('results'),reserveActor:part('reserve-actor'),reserveMembers:[...section.querySelectorAll('[data-pve-reserve-member]')],
    captureItem:part('capture-item'),captureFields:part('capture-fields'),captureCards:[...section.querySelectorAll('[data-pve-capture-card]')]};
   pane.start.onclick=()=>void run();
-  for(const field of [pane.lineup,pane.defenseLineup,pane.defenseAccount,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
+  for(const field of [pane.lineup,pane.defenseLineup,pane.defenseAccount,pane.attackParty,pane.reserveActor,...pane.reserveMembers,pane.captureItem,...pane.captureCards,pane.trial,pane.trainingSkill,
    pane.eventDifficulty,pane.skillChoice,pane.artifactChoice,pane.guardChoice,pane.guardLevel,pane.guardBreakthrough,pane.yinYangBuffChoice,
    ...pane.towerChoices,...pane.towerFactions,pane.towerContinue,...pane.laolaoFactions,pane.fusionGroup,...pane.miragePositions,pane.mirageTrait,
    pane.catfishTrait,...pane.skeletonPositions,pane.skeletonTrait,pane.skeletonPaper,pane.longcheCommander,pane.longcheTrait,
@@ -1105,6 +1117,7 @@
    const plan=AtlasRuneLineup.selectedTeam(lineup,result,run.account,run.data.gameConfig,run.pveMemberCount,
     {useStageActor:!!run.pane.replacementActor});
    if(run.defender)plan.defender=run.defender;
+   if(run.attackPartySize)plan.attackPartySize=run.attackPartySize;
    let trialSlot;
    if(run.pane.trialEligible){
     const eligible=plan.members.map(({hero},i)=>run.pane.trialEligible.includes(Number(hero.heroId))?i+1:0).filter(Boolean);
@@ -1213,6 +1226,7 @@
   }:null;
   const next=job={pane,data:DATA,account:inventory,selected,rows:[],running:true,cancelled:false,reserve,capture:pane.capture,
    defenseInventory,
+   attackPartySize:pane.attackParty?Number(pane.attackParty.value):null,
    journeyHard:pane.journeySettings,
    trainingSettings:pane.trainingSettings,
    asuraSettings:pane.asuraSettings,

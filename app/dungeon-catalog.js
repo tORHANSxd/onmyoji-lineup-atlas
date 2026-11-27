@@ -2353,16 +2353,22 @@
 
   function showBreakthrough(destination, entry, groups) {
     const source=window.AtlasBreakthrough;
-    if(entry.table!=='battle_mode_routes'||Number(entry.key)!==source.battleMode||!matchesOpeningSource(source))return;
+    const battleMode=Number(entry.key),route=source?.routes[battleMode];
+    if(entry.table!=='battle_mode_routes'||!route||!matchesOpeningSource(source))return;
+    const guild=battleMode===source.guildMode;
     const get=table=>groups.find(group=>group.ref.table===table)?.row;
     const code=get('team_assist_stage'),scene=get('Combinesceneinfo');
-    if(get('battle_mode_routes')?.scene_engine!==source.engine.name||code?.id!==source.stageId||
+    if(get('battle_mode_routes')?.scene_engine!==route.name||code?.id!==source.stageId||
       code.ss_num!==source.memberCount||code.yys_num!==1||scene?.id!==source.sceneId||
-      scene.battlesceneinfo!==source.layoutId||get('Constant')?.value?.[0]!==1)return;
-    destination.append(node('p','指定已知的进攻和防守阵容。使用默认结界场景、原版防守自动行为和鲤鱼旗裁判。阵容库存来自已导入的账号。','caption'));
-    window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.sceneId,battleMode:source.battleMode,
-      version:source.resourceVersion,label:'个人结界突破',memberCount:source.memberCount,waveCount:1,
-      codeStageId:source.stageId,breakthrough:true});
+      scene.battlesceneinfo!==source.layoutId)return;
+    if(!guild&&(!matchesOpeningSource({...source,tableSHA256:source.refereeSHA256})||
+      get('Constant')?.value?.[0]!==1))return;
+    destination.append(node('p',guild?
+      '支持单人、双人和三人进攻。按原版站位分配五位式神，只有队长出战阴阳师。挑战次数和攻占奖励由游戏处理。':
+      '指定已知的进攻和防守阵容。使用默认结界场景、原版防守自动行为和鲤鱼旗裁判。阵容库存来自已导入的账号。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.sceneId,battleMode,
+      version:source.resourceVersion,label:entry.title,memberCount:source.memberCount,waveCount:1,
+      codeStageId:source.stageId,breakthrough:true,breakthroughParty:guild});
   }
 
   function showDreamTrial(destination, entry, groups) {

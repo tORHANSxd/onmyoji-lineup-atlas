@@ -70,7 +70,7 @@ def replay(args, runtime, work):
     from dream_trial_stage import DREAM_TRIAL_MODE, dream_basic_attack, dream_trial, verify_dream_roster
     from asura_boss_stage import ASURA_MODES, ASURA_STAGES, asura_battle
     from asura_depth_stage import ASURA_DEPTH_MODE, ASURA_DEPTH_STAGES, asura_depth_battle
-    from breakthrough_stage import BREAKTHROUGH_MODE, BREAKTHROUGH_ROUTE, BREAKTHROUGH_SCENE, BreakthroughMatch
+    from breakthrough_stage import BREAKTHROUGH_MODE, BREAKTHROUGH_SCENE, GUILD_BREAKTHROUGH_MODE, BreakthroughMatch
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS, OROCHI_STAGE, OrochiReplay, orochi_stage, orochi_team
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS, TsuchigumoPractice, practice_stage
     from underworld_stage import UNDERWORLD_MODE, UnderworldReplay, underworld_stage, underworld_teams
@@ -198,10 +198,10 @@ def replay(args, runtime, work):
         else:
             engine, group, const, asura_replay = asura_battle(args.mode, args.stage, args.asura)
         group_id, wave_count = group["ID"], len(group["MonstersInfos"])
-    elif args.mode == BREAKTHROUGH_MODE:
+    elif args.mode in (BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE):
         from DynamicConfigData import DATA_HERO
 
-        breakthrough = BreakthroughMatch(args.stage, plan, suits, fighters, actor)
+        breakthrough = BreakthroughMatch(args.mode, args.stage, plan, suits, fighters, actor)
         engine, const = breakthrough.engine, breakthrough.const
         group_id, wave_count = BREAKTHROUGH_SCENE, 1
     elif qinfei_boss:
@@ -666,6 +666,8 @@ def replay(args, runtime, work):
         player["hunling_info"] = {spirit["uid"]: spirit}
         player["yys_hunling"] = {str(actor["heroId"]): spirit["uid"]}
     party_replay = tianfa_replay if args.tianfa_team else map_boss_replay
+    if breakthrough and breakthrough.guild:
+        party_replay = breakthrough
     local_party = party_replay.assign_players(player, fighters) if party_replay else None
     avatar = BattleAvatar()
     avatar.init_from_dict(local_party[0] if local_party else player)
@@ -681,7 +683,7 @@ def replay(args, runtime, work):
     elif asura_depth:
         route = "asura-depths-shared-hp"
     elif breakthrough:
-        route = BREAKTHROUGH_ROUTE
+        route = breakthrough.route
     elif recruited_explore:
         avatar.defaultHeros = [exploration_uid(avatar, hero) for hero, _ in plan["members"]]
         route = "urdtg-map-exploration" if urdtg_explore else "ten-anniversary-exploration"
@@ -935,7 +937,8 @@ def replay(args, runtime, work):
     if party_replay:
         party_replay.verify_players(controllers)
     if breakthrough:
-        formation_matches = avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6]
+        formation_matches = engine.combineSceneInfoId == group_id and (
+            breakthrough.guild or avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
     elif qinfei_boss:
         formation_matches = raid.matches()
     elif retreat:
@@ -1223,8 +1226,8 @@ def replay(args, runtime, work):
         if fixed_dream:
             dream_roster = verify_dream_roster(engine, controller, fixed_hero)
         verify_selected_equipment()
-        if breakthrough:
-            breakthrough.verify_opening()
+        if breakthrough and not breakthrough.guild:
+            breakthrough.verify_selection(controllers)
         for current in controllers:
             engine.op_setAuto(current, not (dream_manual or tactics.get("manualOpening")))
             engine.op_selectHeroOk(current)
@@ -1565,7 +1568,7 @@ def main():
     from dream_trial_stage import DREAM_TRIAL_MODE
     from asura_boss_stage import ASURA_MODES
     from asura_depth_stage import ASURA_DEPTH_MODE
-    from breakthrough_stage import BREAKTHROUGH_MODE
+    from breakthrough_stage import BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE
     from true_orochi_stage import OROCHI_MODE, OROCHI_REPLAY_SECONDS
     from tuzhizhu_practice import PRACTICE_MODES, PRACTICE_REPLAY_SECONDS
     from underworld_stage import UNDERWORLD_MODE
@@ -1574,7 +1577,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--asura", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)

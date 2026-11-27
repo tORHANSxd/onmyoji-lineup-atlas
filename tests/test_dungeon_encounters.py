@@ -11,10 +11,12 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
-    def test_personal_breakthrough_links_rules_without_a_fixed_pve_formation(self):
+    def test_breakthrough_modes_link_their_own_rules_without_a_fixed_pve_formation(self):
         tables = {
             "battle_mode_routes": [[4000, {"battleMode": 4000, "mode_symbol": "MODE_JIEJIE_TUPO_SINGLE",
-                                           "scene_engine": "JiejieTuPoSingleEngine"}]],
+                                           "scene_engine": "JiejieTuPoSingleEngine"}],
+                                   [4001, {"battleMode": 4001, "mode_symbol": "MODE_JIEJIE_TUPO_GUILD",
+                                           "scene_engine": "JiejieTuPoGuildEngine"}]],
             "system_rule_dsc": [["jiejietupo_tips", {"rule_dsc": "个人结界突破"}]],
             "team_assist_stage": [[10020201, {"id": 10020201, "ss_num": 5, "yys_num": 1}]],
             "Combinesceneinfo": [[100, {"id": 100, "battlesceneinfo": 402}]],
@@ -22,15 +24,20 @@ class EncounterIndexTests(unittest.TestCase):
             "Constant": [[2065, {"id": 2065, "value": [1]}]],
             "dg_flaglevel": [[8, {"level": 60, "referee_speed": 130}]],
             "dg_flagmodify": [[30, {"dmg_add": 10}]],
-            "currency": [[900024, {"name": "结界挑战券"}], [900016, {"name": "勋章"}]],
+            "currency": [[900024, {"name": "结界挑战券"}], [900016, {"name": "勋章"}], [900017, {"name": "阴阳寮勋章"}]],
         }
         manifests = [{"name": name, "status": "decoded", "family": "battle",
                       "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
         index = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, lambda name: tables[name])
-        entry = next(row for row in index["entries"] if row["table"] == "battle_mode_routes")
-        self.assertEqual((entry["family"], entry["kind"], entry["title"]), ("daily", "结界突破", "个人结界突破"))
-        self.assertEqual({(ref["table"], ref["key"]) for ref in entry["refs"]},
-                         {(name, key) for name, rows in tables.items() if name != "battle_mode_routes" for key, _ in rows})
+        entries = {row["key"]: row for row in index["entries"] if row["table"] == "battle_mode_routes"}
+        self.assertEqual((entries[4000]["family"], entries[4000]["title"]), ("daily", "个人结界突破"))
+        self.assertEqual((entries[4001]["family"], entries[4001]["title"]), ("guild", "阴阳寮结界突破"))
+        shared = {("system_rule_dsc", "jiejietupo_tips"), ("team_assist_stage", 10020201),
+                  ("Combinesceneinfo", 100), ("BattleScenesInfo", 402)}
+        personal = {("Constant", 2065), ("dg_flaglevel", 8), ("dg_flagmodify", 30),
+                    ("currency", 900016), ("currency", 900024)}
+        self.assertEqual({(ref["table"], ref["key"]) for ref in entries[4000]["refs"]}, shared | personal)
+        self.assertEqual({(ref["table"], ref["key"]) for ref in entries[4001]["refs"]}, shared | {("currency", 900017)})
 
     def test_asura_depth_links_each_tile_by_play_type_and_keeps_donation_out_of_battle(self):
         tables = {

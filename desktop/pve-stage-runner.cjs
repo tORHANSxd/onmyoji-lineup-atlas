@@ -59,7 +59,7 @@ const engines={
  [urdtgTrain.battleMode]:urdtgTrain.engine,
  [dreamTrial.battleMode]:dreamTrial.engine,
  ...asuraBoss.engines,
- [breakthrough.battleMode]:breakthrough.engine,
+ ...breakthrough.routes,
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  [storyExplorationMode]:{name:'TeamFbEngine',route:'story-exploration-solo',sha256:'35ec64c1f9d84913a748971711635906034bb36fe9d48005193be8d6c775bbd2'},
  [friendChallengeMode]:{name:'FriendFbEngine',route:'chapter-shikigami-challenge',sha256:'70b5b28c85d9d364b3800415b1c05aa7e5fbc5aa2cd102a28b440d2c1155dde6'},
@@ -1347,7 +1347,11 @@ function validBreakthroughReport(report,plan){
  };
  const {level,speed,turns}=data.referee??{};
  const expectedLevel=1+[25,30,35,40,45,50,55].filter(limit=>plan.defender.onmyoji.level>=limit).length;
- return level===expectedLevel&&speed===50+level*10&&Number.isSafeInteger(turns)&&turns>=0&&
+ const validBattle=report.battleMode===breakthrough.guildMode?
+  data.referee===undefined&&Array.isArray(data.attackParty)&&data.attackParty.every(Array.isArray)&&
+   sameTactics(data.attackParty,breakthrough.partySlots[plan.attackPartySize]):
+  data.attackParty===undefined&&level===expectedLevel&&speed===50+level*10&&Number.isSafeInteger(turns)&&turns>=0;
+ return validBattle&&
   matchesSide(data.attack,plan)&&matchesSide(data.defense,plan.defender);
 }
 
@@ -1385,7 +1389,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
    report.sceneId!==sixRealmsRoute.sceneId||report.waveCount!==1));
  if(report?.resourceVersion!==resourceVersion||report.route!==engine.route||report.engineClass!==engine.name||
     report.engineSHA256!==engine.sha256||report.battleMode!==battleMode||report.stageId!==stageId||report.groupId!==groupId||
-    (battleMode===breakthrough.battleMode&&!validBreakthroughReport(report,rounds[0]))||
+    (Object.hasOwn(breakthrough.routes,battleMode)&&!validBreakthroughReport(report,rounds[0]))||
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
     (yuling&&(report.sceneId!==yuling.sceneId||report.waveCount!==1||report.formationsVerified!==1||invalidYuling))||
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
@@ -1491,7 +1495,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(await has('dream_trial_stage.py')?[dreamTrial.battleMode]:[]),
      ...(await has('asura_boss_stage.py')?[asuraBoss.finalMode,asuraBoss.towerMode]:[]),
      ...(await has('asura_depth_stage.py')?[asuraBoss.depthMode]:[]),
-     ...(await has('breakthrough_stage.py')?[breakthrough.battleMode]:[])]};
+     ...(await has('breakthrough_stage.py')?Object.keys(breakthrough.routes).map(Number):[])]};
    }catch(error){
     return {available:false,reason:error.code==='ENOENT'?'缺少本机 PvE 复跑资料':'本机 PvE 复跑配置无效'};
    }
@@ -1520,14 +1524,17 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('式神挑战需要原版首领、有效难度和五位自有式神');
    if(fixedDream&&(dreamTrial.resourceVersion!==resourceVersion||!dreamTrial.heroId(stageId)||stageId!==groupId))
     throw Error('梦境试炼需要已核验的原版固定阵容关卡');
-   const personalBreakthrough=battleMode===breakthrough.battleMode;
+   const isBreakthrough=Object.hasOwn(breakthrough.routes,battleMode);
    const defense=plan.defender;
-   if(personalBreakthrough?(!defense||Object.keys(defense).length!==2||!defense.onmyoji||
+   if(isBreakthrough?(!defense||Object.keys(defense).length!==2||!defense.onmyoji||
      !Array.isArray(defense.members)||defense.members.length!==breakthrough.memberCount||
      plan.members.length!==breakthrough.memberCount||stageId!==breakthrough.stageId||groupId!==breakthrough.sceneId||
      resourceVersion!==breakthrough.resourceVersion):defense!==undefined)
-    throw Error('个人结界突破需要原版场景和两套完整的五式神阵容');
-   if(battleMode===3&&stageId===breakthrough.stageId)throw Error('个人结界突破需要使用原版攻防入口');
+    throw Error('结界突破需要原版场景和两套完整的五式神阵容');
+   if(battleMode===breakthrough.guildMode?
+     !Number.isSafeInteger(plan.attackPartySize)||!Object.hasOwn(breakthrough.partySlots,plan.attackPartySize):
+     plan.attackPartySize!==undefined)throw Error('寮突破需要选择一至三位进攻成员');
+   if(battleMode===3&&stageId===breakthrough.stageId)throw Error('结界突破需要使用原版攻防入口');
    if(battleMode===3&&dreamTrial.heroId(stageId))throw Error('梦境试炼需要使用原版固定阵容入口');
    const asuraStage=asuraBoss.entry(stageId)??asuraBoss.depthEntry(stageId), isAsura=Object.hasOwn(asuraBoss.engines,battleMode);
    if(isAsura?(!asuraStage||asuraStage.battleMode!==battleMode||groupId!==stageId||plan.members.length!==5||

@@ -380,7 +380,9 @@ function sampleBattleMarkup(samples){
    spider?`${sample.completed?describeBattle(sample):'本机复跑达到运行时限，结算待核对'} · 击破 ${4-spider.partsRemaining.length} / 4 个关键部位 · `+
     `战斗 ${spider.combatSeconds.toFixed(2)} 秒`+
     (spider.cocoonsSpawned?` · 击破白茧 ${spider.cocoonsDefeated} / ${spider.cocoonsSpawned}`:''):
-   breakthrough?`${!sample.completed?'结算待确认':sample.outcome==='win'?'进攻胜利':'防守胜利'} · 鲤鱼旗裁判 ${breakthrough.referee.level} 档 · 速度 ${breakthrough.referee.speed} · 行动 ${breakthrough.referee.turns} 次`:
+   breakthrough?`${!sample.completed?'结算待确认':sample.outcome==='win'?'进攻胜利':'防守胜利'} · `+
+    (breakthrough.attackParty?`${breakthrough.attackParty.length} 人进攻`:
+     `鲤鱼旗裁判 ${breakthrough.referee.level} 档 · 速度 ${breakthrough.referee.speed} · 行动 ${breakthrough.referee.turns} 次`):
    relay?`${sample.completed?'结算':'结算待确认'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 波 · `+
     relay.teams.map(team=>`第 ${team.team} 队在第 ${team.startWave} 波上场`).join('，')+(relay.leftAfterLastTeam?' · 已用完所选队伍':''):
    orochi?`${!sample.completed?'原版结算待确认':sample.outcome==='win'?'十层通关':'未通关'} · 清 ${sample.wavesCleared} / ${sample.waveCount} 层`+
@@ -405,6 +407,8 @@ function sampleBattleMarkup(samples){
    `<li>第 ${floor} 层 · ${lineup.map(unit=>`${esc(DATA.gameConfig.heroes[unit.id]?.name||String(unit.id))} · ${Math.round(unit.hp)}/${Math.round(unit.maxHp)}`).join('，')}</li>`
   ).join('')}</ol></details>`:'';
   const matchup=breakthrough?`<details><summary>查看攻防开场面板</summary>${
+   breakthrough.attackParty?`<p class="caption">${breakthrough.attackParty.map((positions,i)=>
+    `${i===0?'队长 · 阴阳师 1 号位，式神':'队员 '+(i+1)+' · 式神'} ${positions.join('、')} 号位`).join('；')}</p>`:''}${
    [['进攻',breakthrough.attack],['防守',breakthrough.defense]].map(([label,units])=>
     `<h5>${label}</h5><ol>${units.map(unit=>{
      const name=DATA.gameConfig.heroes[unit.id]?.name??String(unit.id);

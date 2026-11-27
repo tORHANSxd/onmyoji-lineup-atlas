@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,813,855,880,921,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -531,10 +531,11 @@ async function main(){
     assert.deepEqual(plan.tactics,tactics);
     const souls=plan.members.flatMap(row=>row.souls.map(q=>q.id));
     assert.equal(new Set(souls).size,6*count);
-    if(expected.battleMode===4000){
+    if([4000,4001].includes(expected.battleMode)){
      assert.equal(plan.defender.onmyoji.heroId,13);
      assert.deepEqual(plan.defender.members.map(member=>member.hero.heroId),ids.slice(0,5));
      assert.ok(plan.defender.members.every(member=>member.souls.length===6));
+     assert.equal(plan.attackPartySize,expected.battleMode===4001?3:undefined);
     }
     calls.push(options.seed);
     if(!live)return {...sample,...options,...response};
@@ -588,6 +589,23 @@ async function main(){
     const breakthrough={attack:lineup(10),defense:lineup(13),referee:{level:8,speed:130,turns:2}};
     assert.match(await run('breakthrough-attack',{stageId:10020201,groupId:100,battleMode:4000},{breakthrough}),
      /进攻胜利 · 鲤鱼旗裁判 8 档 · 速度 130 · 行动 2 次.*查看攻防开场面板/s);
+   }
+   if(cases.some(entry=>entry.table==='battle_mode_routes'&&entry.key===4001)){
+    await encounter('guild','阴阳寮结界突破 battle_mode_routes 4001');
+    const field='document.querySelector("[data-pve-attack-party]")';
+    const layout='document.querySelector("[data-pve-attack-party-positions]")';
+    const defense='document.querySelector("[data-pve-defense-lineup]")';
+    assert.deepEqual(await ui('[...'+field+'.options].map(item=>item.text)'),['单人','双人','三人']);
+    await ui(field+'.value="2";'+field+'.dispatchEvent(new Event("change"))');
+    assert.match(await ui(layout+'.textContent'),/队长 · 5、6 号位；队员 2 · 2、3、4 号位/);
+    await ui(field+'.value="3";'+field+'.dispatchEvent(new Event("change"));'+
+     defense+'.value="qa-known-breakthrough-defense";'+defense+'.dispatchEvent(new Event("change"))');
+    assert.match(await ui(layout+'.textContent'),/队长 · 3 号位；队员 2 · 2、5 号位；队员 3 · 4、6 号位/);
+    const lineup=actor=>[actor,...ids.slice(0,5)].map((id,i)=>({id,level:i?40:60,attack:2500,hp:24000,speed:128,souls:i?6:0}));
+    const breakthrough={attack:lineup(10),defense:lineup(13),attackParty:[[3],[2,5],[4,6]]};
+    const summary=await run('breakthrough-attack',{stageId:10020201,groupId:100,battleMode:4001},{breakthrough});
+    assert.match(summary,/进攻胜利 · 3 人进攻.*队长 · 阴阳师 1 号位，式神 3 号位/s);
+    assert.doesNotMatch(summary,/鲤鱼旗裁判/);
    }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');
