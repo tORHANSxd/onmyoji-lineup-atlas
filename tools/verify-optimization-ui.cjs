@@ -745,6 +745,13 @@ async function main(){
     await until(panel+'.textContent.includes("当前资源没有指向它的活动事件")');
     assert.equal(await ui(start+'===null'),true);
    }
+   if(cases.some(entry=>entry.table==='social_play_stage'&&entry.key===28)){
+    await ui('qaEncounterInput("event","四时序战关卡 310028")');
+    await until(panel+'.textContent.includes("六位式神 · 强制自动战斗")');
+    assert.match(await ui(panel+'.textContent'),/第 7 日第 4 关 · 180 秒.*2 人组队增益.*30%.*3 人组队增益.*40%/s);
+    assert.match(await ui(panel+'.textContent'),/首通奖励.*150174/s);
+    assert.equal(await ui(start+'===null'),true);
+   }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');
     const difficulty='document.querySelector("[data-friend-difficulty]")';

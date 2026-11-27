@@ -1627,6 +1627,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
     throw Error('决猎庭院复跑需要对应阶段的入场生命、有效计分时长和五位自有式神');
    const isGtwHunt=gtwHunt.modes.includes(battleMode);
    if(battleMode===3&&gtwHunt.ownsStage(stageId))throw Error('彷徨猎场与诡城歧事需要使用原版战斗入口');
+   if(battleMode===3&&stageId>=310001&&stageId<=310028)throw Error('四时序战需要使用原版战斗入口');
    if(isGtwHunt?(!gtwHunt.route(battleMode,stageId,gtwEventId)||groupId!==stageId||plan.members.length!==5||
      gtwHunt.resourceVersion!==resourceVersion):gtwEventId!==undefined)
     throw Error('请选择匹配的彷徨猎场或诡城歧事原版关卡和五位自有式神');

@@ -124,6 +124,10 @@
     run_group_event_choose: '诡城歧事选项',
     run_group_role: '诡城歧事职业',
     run_group_buff: '诡城歧事战斗技能',
+    social_play_stage: '四时序战关卡',
+    social_play_const: '四时序战活动参数',
+    social_play_color: '四时序战颜色与道具',
+    social_play_color_recipe: '四时序战调色配方',
     rpg_chapter: '剧情副本章节',
     team_assist_stage: '阵容码副本目录',
     monster: '怪物属性与免疫',
@@ -2080,6 +2084,8 @@
     const jiBossMounted=showJiBoss(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
+    const socialStage=isSocialPlayStage(entry);
+    if(socialStage)appendSocialPlayRules(destination,groups);
     showDojoDefense(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
     const asuraMounted=showAsuraBattle(destination, entry, groups)||showAsuraDepths(destination, entry, groups, monsters);
@@ -2221,7 +2227,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!gtwBossMounted&&!gtwHuntMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2313,6 +2319,20 @@
       }
       destination.append(block);
     }
+  }
+
+  function isSocialPlayStage(entry) {
+    const id=Number(entry.key);
+    return entry.table==='social_play_stage'||entry.table==='pve_stage_data'&&id>=310001&&id<=310028;
+  }
+
+  function appendSocialPlayRules(destination, groups) {
+    const related=table=>groups.find(({ref})=>ref.table===table)?.row;
+    const stage=related('social_play_stage'), battle=related('normal_battle_config');
+    if(!stage||!battle)return;
+    destination.append(node('p',`第 ${stage.day} 日第 ${stage.level} 关 · ${battle.halt_time} 秒 · 六位式神 · 强制自动战斗`,'caption'));
+    const buffs=groups.filter(({ref,row})=>ref.table==='buff'&&row?.buffDesc);
+    if(buffs.length)destination.append(node('p',buffs.map(({ref,row})=>`${ref.label} · ${row.buffDesc}`).join(' ｜ '),'caption'));
   }
 
   function appendGuildDinnerDetails(destination, entry, groups) {

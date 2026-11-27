@@ -1654,6 +1654,7 @@ def main():
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_STAGES, JI_BOSS_SUPPORTED, JI_BOSS_WALL_SECONDS
     from gtw_boss_stage import GTW_BOSS_MODE, GTW_BOSS_STAGES, GTW_BOSS_WALL_SECONDS, valid_gtw_settings
     from gtw_hunt_stage import GTW_HUNT_MODE, GTW_HUNT_MODES, GTW_HUNT_STAGES, GTW_HUNT_WALL_SECONDS, GTW_UNLINKED_STAGE
+    from social_play_stage import SOCIAL_PLAY_STAGES
     from devil_feast_stage import (DEVIL_FEAST_BOSSES, DEVIL_FEAST_MODE, DEVIL_FEAST_STAGES, DEVIL_FEAST_WALL_SECONDS,
                                   LAOLAO_MODE, LAOLAO_STAGES, LAOLAO_WALL_SECONDS, TOWER_MODE, TOWER_WALL_SECONDS,
                                   tower_stage_kind, valid_laolao_settings, valid_tower_settings)
@@ -1905,6 +1906,8 @@ def main():
         parser.error("Juelie courtyard requires a verified phase, shared HP and a window of 1 to 180 seconds")
     if args.mode == 3 and (args.stage in GTW_HUNT_STAGES or args.stage == GTW_UNLINKED_STAGE):
         parser.error("The hunt and story formations require their original activity battle modes")
+    if args.mode == 3 and args.stage in SOCIAL_PLAY_STAGES:
+        parser.error("Four Seasons Challenge requires its original battle entrance")
     gtw_story = args.mode in GTW_HUNT_MODES and args.mode != GTW_HUNT_MODE
     if ((gtw_story != (args.gtw_event is not None)) or (gtw_story and args.gtw_event < 1)
             or (args.mode in GTW_HUNT_MODES and GTW_HUNT_STAGES.get(args.stage) != args.mode)):

@@ -12,6 +12,45 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_four_seasons_links_stage_roster_rules_rewards_and_color_result(self):
+        tables = {
+            "activity": [[8772, {"id": 8772, "name": "四时序战"}]],
+            "social_play_stage": [[28, {"id": 28, "day": 7, "level": 4, "stage_id": 310028, "first_reward": 150174}]],
+            "social_play_color": [[1, {"id": 1, "c_id": 1401135}], [4, {"id": 4, "c_id": 0}]],
+            "social_play_color_recipe": [[4, {"id": 4, "config_id": 1, "recipe": [1, 1, 1], "reward_id": 150104}]],
+            "pve_stage_data": [["310028", {"id": "310028", "groupid": 310028}]],
+            "BattleMonstersInfo": [[310028, {"ID": 310028, "resindex": 310001}]],
+            "Combinesceneinfo": [[310001, {"id": 310001, "battlesceneinfo": 406}]],
+            "BattleScenesInfo": [[406, {"id": 406}]],
+            "battle_mode_routes": [[938, {"battleMode": 938, "scene_engine": "SocialTeamBattleEngine"}]],
+            "normal_battle_config": [[938, {"battleMode": 938, "halt_time": 180}]],
+            "system_rule_dsc": [["sishixuzhan_tips", {"rule_dsc": "四时序战活动规则"}]],
+            "currency": [[1401145, {"id": 1401145}], [1401135, {"id": 1401135}]],
+            "reward": [[150174, {"id": 150174}], [150104, {"id": 150104}]],
+            "buff": [[{"$tuple": [120004, 1]}, {"name": "双人组队增益"}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "event",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        result = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        indexed = {(row["table"], row["key"]): row for row in result["entries"]}
+
+        def refs(table, key):
+            return [(ref["table"], ref["key"], ref["label"]) for ref in indexed[table, key]["refs"] if ref["found"]]
+
+        stage = refs("social_play_stage", 28)
+        self.assertIn(("activity", 8772, "四时序战活动时间"), stage)
+        self.assertIn(("BattleMonstersInfo", 310028, "敌方编组"), stage)
+        self.assertIn(("normal_battle_config", 938, "原版战斗时限与选角规则"), stage)
+        self.assertIn(("BattleScenesInfo", 406, "双方战斗站位"), stage)
+        self.assertIn(("reward", 150174, "首通奖励"), stage)
+        self.assertIn(("buff", {"$tuple": [120004, 1]}, "2 人组队增益"), stage)
+        self.assertIn(("system_rule_dsc", "sishixuzhan_tips", "解锁、组队、调色与成就规则"), stage)
+        self.assertIn(("social_play_stage", 28, "第 7 日第 4 关"), refs("activity", 8772))
+        self.assertIn(("social_play_stage", 28, "活动战役入口"), refs("pve_stage_data", "310028"))
+        recipe = refs("social_play_color_recipe", 4)
+        self.assertIn(("social_play_color", 4, "混合所得颜色"), recipe)
+        self.assertIn(("social_play_color", 1, "所需颜色"), recipe)
+
     def test_juelie_hunt_floor_and_story_battle_keep_their_own_entry_points(self):
         tables = {
             "activity": [[8884, {"id": 8884}], [8778, {"id": 8778}]],

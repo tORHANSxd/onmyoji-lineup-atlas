@@ -27,6 +27,7 @@ from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIV
 from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES, QINFEI_BOSS_STAGE
 from shanfeng_stage import SHANFENG_MODE
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
+from social_play_stage import SOCIAL_PLAY_ACTIVITY, SOCIAL_PLAY_BUFFS, SOCIAL_PLAY_MODE, SOCIAL_PLAY_TICKET
 from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
 from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EXPLORATION_STAGES,
                                    TEN_TOWER_STAGES, is_ten_anniversary_stage)
@@ -76,6 +77,12 @@ JI_ACTIVITY = 8051
 JI_BOSS_RULES = ("yimengsui", "shuangshenli", "sijisheng")
 GTW_BOSS_NAME = "修罗猎戏 · 决猎庭院"
 GTW_HUNT_NAME = "修罗猎戏 · 彷徨猎场"
+SOCIAL_PLAY_NAME = "四时序战"
+SOCIAL_PLAY_TABLES = {
+    "social_play_const": "活动参数",
+    "social_play_color": "颜色与道具",
+    "social_play_color_recipe": "调色配方",
+}
 GTW_STORY_NAME = "修罗猎戏 · 诡城歧事"
 GTW_STORY_RULES = (("spgtw_pt_main_tip", "剧目、骰子与战斗规则"),
                    ("spgtw_pt_process_tip", "章回进度与评级"),
@@ -153,6 +160,8 @@ ROOTS = {
     "run_group_event_choose": ("event", "诡城歧事选择"),
     "run_group_role": ("event", "诡城歧事职业"),
     "run_group_buff": ("event", "诡城歧事战斗技能"),
+    "social_play_stage": ("event", SOCIAL_PLAY_NAME),
+    **{table: ("event", SOCIAL_PLAY_NAME) for table in SOCIAL_PLAY_TABLES},
     "super_ghost_hjs_special_attack": ("event", "超鬼王特攻日期"),
     "super_ghost_hjs_special_attack_group": ("event", "超鬼王特攻式神"),
     "journey_hardbattle": ("event", "京畿净化首领挑战"),
@@ -468,6 +477,7 @@ def encounter_index(source, load_rows):
     urdtg_events_by_battle = {}
     dream_heroes_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("dream_act_hero").values()}
     ji_boss_by_stage = {numeric_key(row["battle_id"]): (key, row) for key, row in table("shiki_boss").values()}
+    social_stages = {numeric_key(row["stage_id"]): (key, row) for key, row in table("social_play_stage").values()}
     tower_floors_by_activity, gtw_events_by_stage, gtw_events_by_chapter = {}, {}, {}
     for key, row in table("activity_tower_floor").values():
         tower_floors_by_activity.setdefault(row["act_id"], []).append(key)
@@ -830,6 +840,46 @@ def encounter_index(source, load_rows):
         if gtw_stage in GTW_HUNT_STAGES and gtw_stage != 814000:
             links.extend(relation("run_group_event", key, "使用此编组的事件", False)
                          for key in gtw_events_by_stage.get(numeric_key(gtw_stage), ()))
+        social_activity = name == "activity" and row.get("id") == SOCIAL_PLAY_ACTIVITY and social_stages
+        social_rule = name in {"battle_mode_routes", "normal_battle_config"} and row.get("battleMode") == SOCIAL_PLAY_MODE
+        social_pve = social_stages.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
+        if social_activity or social_rule or name == "social_play_stage" or social_pve:
+            rows = [("activity", SOCIAL_PLAY_ACTIVITY, "四时序战活动时间"),
+                    ("currency", SOCIAL_PLAY_TICKET, "解锁战役所需凭证"),
+                    ("battle_mode_routes", SOCIAL_PLAY_MODE, "原版强制自动战斗入口"),
+                    ("normal_battle_config", SOCIAL_PLAY_MODE, "原版战斗时限与选角规则")]
+            rows.extend(("buff", {"$tuple": [buff, 1]}, f"{party} 人组队增益")
+                        for party, buff in enumerate(SOCIAL_PLAY_BUFFS, 2))
+            if social_activity or social_rule:
+                rows.extend(("social_play_stage", stage_key, f"第 {stage['day']} 日第 {stage['level']} 关")
+                            for stage_key, stage in sorted(social_stages.values()))
+            if social_activity:
+                rows.extend((table_name, row_key, label) for table_name, label in SOCIAL_PLAY_TABLES.items()
+                            for row_key, _ in sorted(table(table_name).values()))
+            if name == "social_play_stage":
+                _, pve = table("pve_stage_data").get(numeric_key(row["stage_id"]), (None, {}))
+                rows.extend((("pve_stage_data", row["stage_id"], "原版关卡"),
+                             ("BattleMonstersInfo", pve.get("groupid"), "敌方编组")))
+                _, group = table("BattleMonstersInfo").get(numeric_key(pve.get("groupid")), (None, {}))
+                scene = group.get("resindex")
+                _, scene_row = table("Combinesceneinfo").get(numeric_key(scene), (None, {}))
+                rows.extend((("Combinesceneinfo", scene, "战斗场景"),
+                             ("BattleScenesInfo", scene_row.get("battlesceneinfo"), "双方战斗站位"),
+                             ("reward", row.get("first_reward"), "首通奖励"),
+                             ("reward", row.get("help_reward") or None, "协战奖励")))
+            if social_pve:
+                rows.append(("social_play_stage", social_pve[0], "活动战役入口"))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+            if "sishixuzhan_tips" in rules or "sishixuzhan_tips" in tips:
+                links.append(rule_reference("sishixuzhan_tips", "解锁、组队、调色与成就规则"))
+        if name == "social_play_color":
+            if ref := relation("currency", row.get("c_id") or None, "颜色球道具", False):
+                links.append(ref)
+        if name == "social_play_color_recipe":
+            rows = [("social_play_color", row.get("id"), "混合所得颜色"),
+                    ("reward", row.get("reward_id"), "调色奖励")]
+            rows.extend(("social_play_color", color, "所需颜色") for color in row.get("recipe", ()))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         ji_boss_stage = ji_boss_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
         ji_boss_activity = name == "activity" and row.get("id") == JI_ACTIVITY and ji_boss_by_stage
         if ji_boss_activity:
@@ -1777,7 +1827,7 @@ def encounter_index(source, load_rows):
             family, kind = "event", "京畿净化战斗参数"
         # The four resource tables are registered separately from the normal
         # fight panel's journey_normalbattle lookup. A numeric match is insufficient.
-        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle", SHANFENG_PVE, "shiki_boss"} else [
+        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle", SHANFENG_PVE, "shiki_boss", "social_play_stage"} else [
             field for field in BATTLE_ID_FIELDS if field in manifest["fields"]
         ]
         for key, row in load_rows(table_name):
@@ -1803,13 +1853,15 @@ def encounter_index(source, load_rows):
             ji_activity = table_name == "activity" and key == JI_ACTIVITY and bool(ji_boss_by_stage)
             gtw_activity = table_name == "activity" and key == GTW_BOSS_ACTIVITY and "stake_boss" in manifests
             gtw_run_activity = table_name == "activity" and key == GTW_STORY_ACTIVITY and bool(gtw_events_by_chapter)
+            social_activity = table_name == "activity" and key == SOCIAL_PLAY_ACTIVITY and bool(social_stages)
             tower_activity = table_name == "activity" and key in tower_floors_by_activity
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not dinner_route and not linked_battles and not row.get("monsterWaves")
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
                     and not ten_activity and not dream_activity and not asura_activity and not asura_layer
-                    and not shanfeng_activity and not ji_activity and not gtw_activity and not tower_activity and not gtw_run_activity):
+                    and not shanfeng_activity and not ji_activity and not gtw_activity and not tower_activity and not gtw_run_activity
+                    and not social_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -2115,6 +2167,16 @@ def encounter_index(source, load_rows):
             if table_name == "pve_stage_data" and numeric_key(key) == str(GTW_UNLINKED_STAGE):
                 entry_family, entry_kind = "event", GTW_STORY_NAME
                 title = f"{GTW_STORY_NAME} · 未关联事件的编组 · {key}"
+            social_stage = social_stages.get(numeric_key(key)) if table_name == "pve_stage_data" else None
+            if social_activity or table_name == "normal_battle_config" and key == SOCIAL_PLAY_MODE:
+                entry_family, entry_kind = "event", SOCIAL_PLAY_NAME
+                title = f"{SOCIAL_PLAY_NAME} · " + ("活动开放" if social_activity else "原版战斗入口")
+            if table_name == "social_play_stage" or social_stage:
+                entry_family, entry_kind = "event", SOCIAL_PLAY_NAME
+                config = social_stage[1] if social_stage else row
+                title = f"{SOCIAL_PLAY_NAME} · 第 {config['day']} 日第 {config['level']} 关 · {config['stage_id']}"
+            if table_name in SOCIAL_PLAY_TABLES:
+                title = " · ".join(filter(None, (SOCIAL_PLAY_NAME, SOCIAL_PLAY_TABLES[table_name], row.get("des"), str(key))))
             if ji_activity:
                 entry_family, entry_kind = ROOTS["shiki_boss"]
                 title = f"{entry_kind} · 活动开放时间"
