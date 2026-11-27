@@ -35,6 +35,7 @@ def replay(args, runtime, work):
     from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, CREVICE_WALL_SECONDS, CreviceReplay
     from guild_forest_stage import FOREST_MODE, FOREST_STAGES, ForestReplay, forest_stage
     from gtw_boss_stage import GTW_BOSS_MODE, GTW_BOSS_WALL_SECONDS, GtwBossReplay
+    from gtw_hunt_stage import GTW_HUNT_MODES, GTW_HUNT_SECONDS, GTW_HUNT_WALL_SECONDS, gtw_hunt_stage
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RaidDamageWindow
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_WALL_SECONDS, JI_STORY_ACTOR_STAGE, JiBossReplay
@@ -97,6 +98,7 @@ def replay(args, runtime, work):
     shanfeng = args.mode == SHANFENG_MODE
     ji_boss = args.mode == JI_BOSS_MODE
     gtw_boss = args.mode == GTW_BOSS_MODE
+    gtw_hunt = args.mode in GTW_HUNT_MODES
     ji_story_actor = ji_boss and args.stage == JI_STORY_ACTOR_STAGE
     breakthrough = None
     dojo_guardian = None
@@ -235,6 +237,14 @@ def replay(args, runtime, work):
             raise ValueError("Juelie courtyard requires five owned shikigami")
         gtw_replay = GtwBossReplay(args.stage, args.gtw_boss)
         engine, group, const = gtw_replay.engine, gtw_replay.group, gtw_replay.const
+        group_id, wave_count = group["ID"], 1
+    elif gtw_hunt:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("This hunt or story encounter needs five owned shikigami")
+        engine, group, const, gtw_route = gtw_hunt_stage(args.mode, args.stage, args.gtw_event)
+        gtw_clock = NativePveClock(engine, GTW_HUNT_SECONDS)
         group_id, wave_count = group["ID"], 1
     elif args.mode in (BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE):
         from DynamicConfigData import DATA_HERO
@@ -745,6 +755,8 @@ def replay(args, runtime, work):
         route = "shiki-boss-original-solo"
     elif gtw_boss:
         route = "gtw-boss-local-shared-hp"
+    elif gtw_hunt:
+        route = "gtw-hunt-original-solo"
     elif breakthrough:
         route = breakthrough.route
     elif dojo_guardian:
@@ -958,7 +970,7 @@ def replay(args, runtime, work):
             secret_mirror_replay = SecretMirrorReplay(engine, const)
         if setup := secret_mechanic(stage):
             secret_mechanic_replay = SecretMechanicReplay(engine, controller, const, setup)
-    if story_exploration or friend_challenge or fixed_dream or args.mode == 266:
+    if story_exploration or friend_challenge or fixed_dream or gtw_hunt or args.mode == 266:
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
 
         def verify_spawn():
@@ -966,7 +978,7 @@ def replay(args, runtime, work):
             if not 0 <= wave < wave_count:
                 raise RuntimeError("Unexpected original wave index")
             observed = []
-            if story_exploration or fixed_dream:
+            if story_exploration or fixed_dream or gtw_hunt:
                 expected = [(pos, level, proto) for pos, proto, level, *_ in group["MonstersInfos"][wave]]
                 mirror_units = []
             elif friend_challenge:
@@ -1011,6 +1023,10 @@ def replay(args, runtime, work):
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6])
     elif dojo_defense:
         formation_matches = engine.combineSceneInfoId == group_id
+    elif gtw_hunt:
+        formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
+                             and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6]
+                             and not engine.develop_skill_info and not engine.develop_level)
     elif qinfei_boss:
         formation_matches = raid.matches()
     elif retreat:
@@ -1088,6 +1104,7 @@ def replay(args, runtime, work):
                       else SHANFENG_WALL_SECONDS if shanfeng
                       else JI_BOSS_WALL_SECONDS if ji_boss
                       else GTW_BOSS_WALL_SECONDS if gtw_boss
+                      else GTW_HUNT_WALL_SECONDS if gtw_hunt
                       else dojo_defense_wall_seconds(wave_count) if dojo_defense
                       else BAND_TOGETHER_WALL_SECONDS if band_together
                       else DEVIL_FEAST_WALL_SECONDS if devil_feast
@@ -1364,6 +1381,11 @@ def replay(args, runtime, work):
         report["gtwBoss"] = gtw_replay.report(completed)
         report["formationsVerified"] = 1
         report["wavesCleared"] = int(report["gtwBoss"]["cleared"])
+    if gtw_hunt:
+        if verified_waves != {0}:
+            raise RuntimeError("The original hunt did not create its verified formation")
+        report["gtwHunt"] = {**gtw_route, **gtw_clock.report(outcome)}
+        report["formationsVerified"] = 1
     if dojo_guardian:
         report["dojoGuardian"] = dojo_guardian.report(completed, outcome)
         if instructions:
@@ -1631,6 +1653,7 @@ def main():
     from shanfeng_stage import SHANFENG_MODE, SHANFENG_STAGES, SHANFENG_WALL_SECONDS, is_shanfeng_stage
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_STAGES, JI_BOSS_SUPPORTED, JI_BOSS_WALL_SECONDS
     from gtw_boss_stage import GTW_BOSS_MODE, GTW_BOSS_STAGES, GTW_BOSS_WALL_SECONDS, valid_gtw_settings
+    from gtw_hunt_stage import GTW_HUNT_MODE, GTW_HUNT_MODES, GTW_HUNT_STAGES, GTW_HUNT_WALL_SECONDS, GTW_UNLINKED_STAGE
     from devil_feast_stage import (DEVIL_FEAST_BOSSES, DEVIL_FEAST_MODE, DEVIL_FEAST_STAGES, DEVIL_FEAST_WALL_SECONDS,
                                   LAOLAO_MODE, LAOLAO_STAGES, LAOLAO_WALL_SECONDS, TOWER_MODE, TOWER_WALL_SECONDS,
                                   tower_stage_kind, valid_laolao_settings, valid_tower_settings)
@@ -1691,9 +1714,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--gtw-boss", type=json.loads)
+    parser.add_argument("--gtw-event", type=int)
     parser.add_argument("--asura", type=json.loads)
     parser.add_argument("--laolao-settings", type=json.loads)
     parser.add_argument("--fusion-settings", type=json.loads)
@@ -1879,6 +1903,12 @@ def main():
     if (args.mode == GTW_BOSS_MODE) != (args.gtw_boss is not None) or (
             args.gtw_boss is not None and not valid_gtw_settings(args.stage, args.gtw_boss)):
         parser.error("Juelie courtyard requires a verified phase, shared HP and a window of 1 to 180 seconds")
+    if args.mode == 3 and (args.stage in GTW_HUNT_STAGES or args.stage == GTW_UNLINKED_STAGE):
+        parser.error("The hunt and story formations require their original activity battle modes")
+    gtw_story = args.mode in GTW_HUNT_MODES and args.mode != GTW_HUNT_MODE
+    if ((gtw_story != (args.gtw_event is not None)) or (gtw_story and args.gtw_event < 1)
+            or (args.mode in GTW_HUNT_MODES and GTW_HUNT_STAGES.get(args.stage) != args.mode)):
+        parser.error("Select the original hunt floor or a matching story battle event")
     if (args.mode in MAP_BOSS_MODES) != (args.map_boss_players is not None):
         parser.error("Map boss replay requires the number of players")
     if args.map_boss_players is not None and not party_positions(args.mode, args.map_boss_players):
@@ -1945,6 +1975,7 @@ def main():
                         SHANFENG_WALL_SECONDS + 20 if args.mode == SHANFENG_MODE else
                         JI_BOSS_WALL_SECONDS + 20 if args.mode == JI_BOSS_MODE else
                         GTW_BOSS_WALL_SECONDS + 20 if args.mode == GTW_BOSS_MODE else
+                        GTW_HUNT_WALL_SECONDS + 20 if args.mode in GTW_HUNT_MODES else
                         dojo_defense_wall_seconds(len(dojo_waves)) + 20 if args.mode == DOJO_DEFENDER_MODE else
                         DEVIL_FEAST_WALL_SECONDS + 20 if args.mode == DEVIL_FEAST_MODE else
                         TOWER_WALL_SECONDS + 20 if args.mode == TOWER_MODE else

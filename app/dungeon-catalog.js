@@ -117,6 +117,13 @@
     super_ghost6_constant: '历练成王原版参数',
     super_ghost6_pve_reward: '成王伤害与排名奖励',
     shiki_boss: '四时归焉剧情与退治',
+    activity_tower_act: '活动塔挑战消耗',
+    activity_tower_floor: '活动塔楼层',
+    run_group_module: '诡城歧事剧目',
+    run_group_event: '诡城歧事战斗与剧情',
+    run_group_event_choose: '诡城歧事选项',
+    run_group_role: '诡城歧事职业',
+    run_group_buff: '诡城歧事战斗技能',
     rpg_chapter: '剧情副本章节',
     team_assist_stage: '阵容码副本目录',
     monster: '怪物属性与免疫',
@@ -210,6 +217,12 @@
     super_ghost6_pve_reward: {damage:'伤害或排行档位',reward_id:'各档奖励编号'},
     shiki_boss: {level_name:'章节',pre_level:'前置章节',unlock_time:'开放时间',battle_id:'原版战斗关卡',
       plot_pre_0:'战前剧情',plot_over_0:'战后剧情',skill_list:'退治首领技能'},
+    activity_tower_act: {act_ticket_cid:'入场票券',act_ticket_cost:'单场票券消耗',sakuramochi_cost:'樱饼消耗'},
+    activity_tower_floor: {tower_layer:'楼层',battle_id:'原版战斗关卡',act_ticket_reward:'票券战斗奖励编号'},
+    run_group_module: {module_name:'剧目',unlock_time:'开放时间',start_event_id:'剧目起始事件'},
+    run_group_event: {group_id:'所属剧目',event_type:'事件类型',battle_id:'原版战斗关卡',
+      skip_kill_set:'速战所需属性与门槛',next_event_id:'可到达的后续事件'},
+    run_group_event_choose: {choose_des:'选项',compare_attr:'判定属性',target_attr:'目标点数',next_event:'判定后的事件'},
     super_ghost_hjs_special_attack: {begin_time:'特攻开始时间',end_time:'特攻结束时间',hero_group:'特攻分组'},
     super_ghost_hjs_special_attack_group: {hero_list:'特攻式神 ID',value:'攻防加成系数',desc:'原版增益说明'},
     hunling_base: {battle_tips:'共鸣规则',shoufu_tips:'首领机制'},
@@ -2066,6 +2079,7 @@
     showDojoGuardian(destination, entry, groups);
     const jiBossMounted=showJiBoss(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
+    const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     showDojoDefense(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
     const asuraMounted=showAsuraBattle(destination, entry, groups)||showAsuraDepths(destination, entry, groups, monsters);
@@ -2207,7 +2221,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!gtwBossMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!gtwBossMounted&&!gtwHuntMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2385,6 +2399,43 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.sceneId,battleMode,
       version:source.resourceVersion,label:entry.title,memberCount:source.memberCount,waveCount:1,
       codeStageId:source.stageId,breakthrough:true,breakthroughParty:guild});
+  }
+
+  function showGtwHunt(destination,entry,groups){
+    const source=AtlasGtwHunt,key=Number(entry.key);
+    const hunt=entry.table==='activity_tower_floor'&&key===source.floorId||
+      entry.table==='pve_stage_data'&&key===source.huntStage;
+    const story=entry.table==='run_group_event'?source.story(key):null;
+    if(!hunt&&!story){
+      if(entry.table!=='pve_stage_data'||!source.ownsStage(key))return false;
+      destination.append(node('p',key===source.unlinkedStage?
+        '此编组保留在客户端资料中，当前资源没有指向它的活动事件。':
+        '请打开关联的战斗事件或突围之战，以对应的事件入口复跑。','caption'));
+      return true;
+    }
+    const stageId=story?.stageId??source.huntStage,battleMode=story?.battleMode??source.huntMode;
+    const get=(table,id)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===id)?.row;
+    const stage=get('pve_stage_data',stageId),route=get('battle_mode_routes',battleMode);
+    const formation=get('BattleMonstersInfo',stageId),rules=get('normal_battle_config',battleMode);
+    const floor=hunt?get('activity_tower_floor',source.floorId):null;
+    const event=story?groups[0].row:null;
+    if(!matchesOpeningSource(source)||stage?.groupid!==stageId||stage.shishentotal!==5||
+       formation?.resindex!==source.sceneId||formation.MonstersInfos?.length!==1||
+       route?.scene_engine!==source.engine.name||rules?.halt_time!==source.deadlineSeconds||
+       (hunt?(floor?.act_id!==8884||floor.battle_id!==stageId):
+        (event?.battle_id!==stageId||event.group_id!==story.chapterId||event.event_type!==story.eventType))){
+      destination.append(node('p','本机资料与已核验的原版战斗配置不匹配。','caption'));
+      return true;
+    }
+    if(story){
+      destination.append(node('p',`${story.eventType===4?'突围之战':'战斗事件'} · 使用基础角色条件复跑本场，故事进度与角色增益由活动状态决定。`,'caption'));
+      const [attribute,min]=event.skip_kill_set??[];
+      if(attribute>=1&&attribute<=4&&Number.isInteger(min))
+        destination.append(node('p',`原版速战条件为${['仁','智','武','勇'][attribute-1]}大于 ${min}，实际速战次数由活动进度决定。`,'caption'));
+    }else destination.append(node('p','彷徨猎场 · 狩猎封符挑战 · 单人清场复跑。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode,gtwEventId:story?.eventId,
+      memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title});
+    return true;
   }
 
   function showGtwBoss(destination,entry,groups){

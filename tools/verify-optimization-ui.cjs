@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,926,934,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,926,933,934,935,936,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -471,6 +471,7 @@ async function main(){
    known('dojo-guardian',10020203,5),known('dojo-defense',10020203,5,13),
    known('secret-race',10700011,5),known('crevice',10020211,5),
    known('superghost',100942,5),known('superghost-five',100943,5),known('shan-feng',null,5),known('ji-boss',null,5),known('gtw-boss',null,5),
+   known('gtw-hunt',null,5),
    known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5,10,notes),
@@ -712,6 +713,37 @@ async function main(){
      windowExpired:true,nativeTimedOut:false,defeated:false,cleared:false};
     assert.match(await run('gtw-boss',{stageId:813001,groupId:813001,battleMode:934,gtwBoss:{hp:502526969999999,windowSeconds:20}},
      {outcome:'loss',wavesCleared:0,gtwBoss}),/达到本地计分时限.*个人伤害 939,490.*未达到 400 万伤害门槛/s);
+   }
+   if(cases.some(entry=>entry.table==='activity_tower_floor'&&entry.key===50&&entry.kind.includes('彷徨猎场'))){
+    const clock={deadlineSeconds:3600,timedOut:false,combatSeconds:14};
+    const events=cases.filter(entry=>entry.table==='run_group_event'&&entry.refs.some(ref=>
+     ref.table==='battle_mode_routes'&&[933,935].includes(ref.key)));
+    assert.equal(events.length,20);
+    await ui(`window.qaGtwWorkbench=window.AtlasPveWorkbench;
+     window.AtlasPveWorkbench={...window.qaGtwWorkbench,mount(target,config){
+      window.qaGtwMount=[config.gtwEventId,config.stageId,config.battleMode];
+      return window.qaGtwWorkbench.mount(target,config);
+     }};void 0`);
+    try{
+     for(const event of events){
+      const stage=Number(event.refs.find(ref=>ref.table==='pve_stage_data').key);
+      const mode=event.refs.find(ref=>ref.table==='battle_mode_routes').key;
+      await ui('window.qaGtwMount=null;qaEncounterInput("event",'+JSON.stringify('诡城歧事战斗与剧情 '+event.key)+')');
+      await until('window.qaGtwMount?.[0]==='+event.key);
+      assert.deepEqual(await ui('window.qaGtwMount'),[event.key,stage,mode]);
+     }
+    }finally{await ui('window.AtlasPveWorkbench=window.qaGtwWorkbench;delete window.qaGtwWorkbench;delete window.qaGtwMount');}
+    await encounter('event','彷徨猎场 activity_tower_floor 50');
+    assert.match(await ui(panel+'.textContent'),/狩猎封符挑战.*单人清场复跑/s);
+    assert.match(await run('gtw-hunt',{stageId:814000,groupId:814000,battleMode:936},
+     {gtwHunt:{...clock,activityId:8884,floorId:50}}),/通过 6 个采样种子.*已清场/s);
+    await encounter('event','诡城歧事 run_group_event 压制妖鬼');
+    assert.match(await ui(panel+'.textContent'),/突围之战.*武大于 14/s);
+    assert.match(await run('gtw-hunt',{stageId:812000,groupId:812000,battleMode:935,gtwEventId:11},
+     {gtwHunt:{...clock,activityId:8778,eventId:11,chapterId:1,eventType:4}}),/通过 6 个采样种子.*已清场/s);
+    await ui('qaEncounterInput("event","未关联事件 pve_stage_data 812100")');
+    await until(panel+'.textContent.includes("当前资源没有指向它的活动事件")');
+    assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='BossTower'&&entry.key===39&&entry.refs.some(ref=>ref.table==='friend_fb'))){
     await encounter('daily','探索式神挑战 独眼小僧');

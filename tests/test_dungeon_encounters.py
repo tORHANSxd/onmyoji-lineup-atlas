@@ -12,6 +12,44 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_juelie_hunt_floor_and_story_battle_keep_their_own_entry_points(self):
+        tables = {
+            "activity": [[8884, {"id": 8884}], [8778, {"id": 8778}]],
+            "activity_tower_act": [[8884, {"act_id": 8884, "act_ticket_cid": 1464013}]],
+            "activity_tower_floor": [[50, {"act_id": 8884, "battle_id": 814000, "act_ticket_reward": 20232002}]],
+            "run_group_module": [[1, {"id": 1, "module_name": "乱鬼城", "start_event_id": 2}]],
+            "run_group_event": [[2, {"id": 2, "group_id": 1, "event_title": "迎战妖鬼", "event_type": 2, "battle_id": 812101,
+                                      "next_event_id": [11]}],
+                                [11, {"id": 11, "group_id": 1, "event_title": "压制妖鬼", "event_type": 4, "battle_id": 812000}]],
+            "battle_mode_routes": [[mode, {"battleMode": mode, "scene_engine": "SpGtwNormalEngine",
+                                            "mode_symbol": f"MODE_SPGTW_{symbol}"}]
+                                   for mode, symbol in ((933, "NORMAL"), (935, "BARRIER_END"), (936, "EASY"))],
+            "normal_battle_config": [[mode, {"battleMode": mode, "halt_time": 3600}] for mode in (933, 935, 936)],
+            "pve_stage_data": [[str(stage), {"id": str(stage), "groupid": stage}]
+                               for stage in (812000, 812100, 812101, 814000)],
+            "BattleMonstersInfo": [[stage, {"ID": stage, "resindex": 44136}] for stage in (812000, 812100, 812101, 814000)],
+            "Combinesceneinfo": [[44136, {"id": 44136}]],
+            "currency": [[1464013, {"name": "狩猎封符"}]],
+            "reward": [[20232002, {"id": 20232002}]],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "event",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        result = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        indexed = {(row["table"], row["key"]): row for row in result["entries"]}
+
+        def refs(table, key):
+            return {(ref["table"], ref["key"]) for ref in indexed[table, key]["refs"] if ref["found"]}
+
+        self.assertIn(("battle_mode_routes", 936), refs("activity_tower_floor", 50))
+        self.assertIn(("reward", 20232002), refs("activity_tower_floor", 50))
+        self.assertIn(("currency", 1464013), refs("activity_tower_act", 8884))
+        self.assertIn(("run_group_event", 11), refs("run_group_event", 2))
+        self.assertIn(("battle_mode_routes", 933), refs("run_group_event", 2))
+        self.assertIn(("battle_mode_routes", 935), refs("run_group_event", 11))
+        self.assertIn(("run_group_event", 2), refs("pve_stage_data", "812101"))
+        self.assertIn("未关联事件", indexed["pve_stage_data", "812100"]["title"])
+        self.assertNotIn(("run_group_event", 2), refs("pve_stage_data", "812100"))
+
     def test_juelie_boss_links_each_phase_to_shared_progress_and_matching_rules(self):
         tables = {
             "stake_boss": [[2, {"boss_id": 2, "battle_id": 813000, "progress_id": 7}]],

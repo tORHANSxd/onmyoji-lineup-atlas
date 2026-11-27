@@ -14,6 +14,8 @@ from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from guild_forest_stage import FOREST_MODE, FOREST_STAGES, FOREST_TEAM
 from gtw_boss_stage import GTW_BOSS_ACTIVITY, GTW_BOSS_ENTRY, GTW_BOSS_MODE, GTW_BOSS_PROGRESS, GTW_BOSS_STAGES
+from gtw_hunt_stage import (EVENT_MODE as GTW_EVENT_MODE, GTW_HUNT_ACTIVITY, GTW_HUNT_FLOOR, GTW_HUNT_MODE,
+                            GTW_HUNT_MODES, GTW_HUNT_STAGES, GTW_STORY_ACTIVITY, GTW_UNLINKED_STAGE)
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
 from ji_boss_stage import JI_BOSS_MODE, JI_STORY_ACTOR_STAGE
 from journey_hard_stage import YINYANG_BOSS_MODE, YINYANG_BOSS_STAGE
@@ -73,6 +75,11 @@ SHANFENG_DAY_RULES = {1: (), 2: ((6, "第二日首领生命判定门槛"),), 3: 
 JI_ACTIVITY = 8051
 JI_BOSS_RULES = ("yimengsui", "shuangshenli", "sijisheng")
 GTW_BOSS_NAME = "修罗猎戏 · 决猎庭院"
+GTW_HUNT_NAME = "修罗猎戏 · 彷徨猎场"
+GTW_STORY_NAME = "修罗猎戏 · 诡城歧事"
+GTW_STORY_RULES = (("spgtw_pt_main_tip", "剧目、骰子与战斗规则"),
+                   ("spgtw_pt_process_tip", "章回进度与评级"),
+                   ("spgtw_pt_gro_tip", "职业与属性养成"))
 
 
 ROOTS = {
@@ -139,6 +146,13 @@ ROOTS = {
     "SuperGhost_bossmission": ("event", "超鬼王首领挑战"),
     SHANFENG_PVE: ("event", "初翎山风超鬼王 · 历练成王"),
     "shiki_boss": ("event", "化四季 · 四时归焉"),
+    "activity_tower_act": ("event", "活动塔入场配置"),
+    "activity_tower_floor": ("event", "活动塔楼层"),
+    "run_group_module": ("event", "诡城歧事剧目"),
+    "run_group_event": ("event", "诡城歧事事件"),
+    "run_group_event_choose": ("event", "诡城歧事选择"),
+    "run_group_role": ("event", "诡城歧事职业"),
+    "run_group_buff": ("event", "诡城歧事战斗技能"),
     "super_ghost_hjs_special_attack": ("event", "超鬼王特攻日期"),
     "super_ghost_hjs_special_attack_group": ("event", "超鬼王特攻式神"),
     "journey_hardbattle": ("event", "京畿净化首领挑战"),
@@ -454,6 +468,13 @@ def encounter_index(source, load_rows):
     urdtg_events_by_battle = {}
     dream_heroes_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("dream_act_hero").values()}
     ji_boss_by_stage = {numeric_key(row["battle_id"]): (key, row) for key, row in table("shiki_boss").values()}
+    tower_floors_by_activity, gtw_events_by_stage, gtw_events_by_chapter = {}, {}, {}
+    for key, row in table("activity_tower_floor").values():
+        tower_floors_by_activity.setdefault(row["act_id"], []).append(key)
+    for key, row in table("run_group_event").values():
+        gtw_events_by_chapter.setdefault(row["group_id"], []).append(key)
+        if row.get("battle_id"):
+            gtw_events_by_stage.setdefault(numeric_key(row["battle_id"]), []).append(key)
     shanfeng_by_config, shanfeng_by_stage, shanfeng_tiers = {}, {}, {}
     shanfeng_chapters = Counter()
     for key, row in sorted(table(SHANFENG_PVE).values(), key=lambda pair: pair[1]["id"]):
@@ -751,6 +772,64 @@ def encounter_index(source, load_rows):
             links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
             if "spgtw_boss_tips" in rules or "spgtw_boss_tips" in tips:
                 links.append(rule_reference("spgtw_boss_tips", "限时伤害、首领阶段与奖励"))
+        if name == "activity_tower_act":
+            rows = [("activity", row["act_id"], "界面开放与活动时间"),
+                    ("currency", row.get("act_ticket_cid"), "活动入场消耗"),
+                    ("currency", row.get("sushi_id"), "体力入口消耗"),
+                    ("currency", row.get("fivefold_ticket_cid"), "多倍挑战消耗")]
+            rows.extend(("activity_tower_floor", key, "活动楼层") for key in sorted(tower_floors_by_activity.get(row["act_id"], ())))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+        if name == "activity_tower_floor":
+            links.extend(ref for dest, target, label in (
+                ("activity_tower_act", row["act_id"], "入场花费与票券"),
+                ("activity", row["act_id"], "当前活动开放条件"),
+                ("pve_stage_data", row["battle_id"], "原版楼层敌方编组"),
+                ("reward", row.get("first_reward") or None, "楼层首通奖励"),
+                ("reward", row.get("act_ticket_reward") or None, "票券战斗奖励"),
+                ("reward", row.get("sushi_reward") or None, "体力战斗奖励"),
+            ) if (ref := relation(dest, target, label, False)))
+        if name == "activity" and row.get("id") in tower_floors_by_activity:
+            if ref := relation("activity_tower_act", row["id"], "活动楼层与挑战消耗", False):
+                links.append(ref)
+        tower_hunt = name in {"activity", "activity_tower_act", "activity_tower_floor"} and row.get("act_id", row.get("id")) == GTW_HUNT_ACTIVITY
+        mode_hunt = name in {"normal_battle_config", "battle_mode_routes"} and row.get("battleMode") == GTW_HUNT_MODE
+        if tower_hunt or mode_hunt or gtw_stage == 814000:
+            links.extend(ref for dest, target, label in (
+                ("activity", GTW_HUNT_ACTIVITY, "彷徨猎场开放配置"),
+                ("activity_tower_act", GTW_HUNT_ACTIVITY, "狩猎封符消耗"),
+                ("activity_tower_floor", GTW_HUNT_FLOOR, "原版面板开启的楼层"),
+                ("pve_stage_data", 814000, "原版彷徨猎场关卡"),
+                ("battle_mode_routes", GTW_HUNT_MODE, "原版活动战斗入口"),
+                ("normal_battle_config", GTW_HUNT_MODE, "单人战斗与时限"),
+            ) if (ref := relation(dest, target, label, False)))
+            if "spgtw_shuaben" in rules or "spgtw_shuaben" in tips:
+                links.append(rule_reference("spgtw_shuaben", "狩猎封符发放、上限与胜负扣券"))
+        if name == "run_group_module":
+            rows = [("run_group_event", row["start_event_id"], "剧目起点"), ("activity", GTW_STORY_ACTIVITY, "活动开放配置")]
+            rows.extend(("run_group_event", event, "剧目事件") for event in sorted(gtw_events_by_chapter.get(row["id"], ())))
+            rows.extend(("run_group_role", key, "可解锁职业") for key, _ in table("run_group_role").values())
+            rows.extend(("run_group_buff", key, "角色属性战斗增益") for key, _ in table("run_group_buff").values())
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+            links.extend(rule_reference(key, label) for key, label in GTW_STORY_RULES if key in rules or key in tips)
+        if name == "activity" and row.get("id") == GTW_STORY_ACTIVITY:
+            links.extend(relation("run_group_module", key, "诡城歧事剧目", False) for key, _ in table("run_group_module").values())
+            links.extend(rule_reference(key, label) for key, label in GTW_STORY_RULES if key in rules or key in tips)
+        if name == "run_group_event":
+            rows = [("run_group_module", row["group_id"], "所属剧目")]
+            rows.extend(("run_group_event", event, "后续事件") for event in row.get("next_event_id", ()))
+            rows.extend(("run_group_event_choose", choice, "事件选项") for choice in row.get("event_choose_id", ()))
+            if row.get("battle_id") and (mode := GTW_EVENT_MODE.get(row["event_type"])):
+                rows.extend((("pve_stage_data", row["battle_id"], "本事件原版敌方编组"),
+                             ("battle_mode_routes", mode, "原版战斗入口"), ("normal_battle_config", mode, "原版单人战斗规则")))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+        if name == "run_group_event_choose":
+            links.extend(ref for event in row.get("next_event", ())
+                         if (ref := relation("run_group_event", event, "判定后的事件", False)))
+        if name == "run_group_buff":
+            links.append(relation("skill", level_one_skill(row["buff_id"]), "活动角色的原版技能数据", True))
+        if gtw_stage in GTW_HUNT_STAGES and gtw_stage != 814000:
+            links.extend(relation("run_group_event", key, "使用此编组的事件", False)
+                         for key in gtw_events_by_stage.get(numeric_key(gtw_stage), ()))
         ji_boss_stage = ji_boss_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
         ji_boss_activity = name == "activity" and row.get("id") == JI_ACTIVITY and ji_boss_by_stage
         if ji_boss_activity:
@@ -1723,12 +1802,14 @@ def encounter_index(source, load_rows):
             shanfeng_activity = table_name == "activity" and key == SHANFENG_FINAL_ACTIVITY and bool(shanfeng_by_config)
             ji_activity = table_name == "activity" and key == JI_ACTIVITY and bool(ji_boss_by_stage)
             gtw_activity = table_name == "activity" and key == GTW_BOSS_ACTIVITY and "stake_boss" in manifests
+            gtw_run_activity = table_name == "activity" and key == GTW_STORY_ACTIVITY and bool(gtw_events_by_chapter)
+            tower_activity = table_name == "activity" and key in tower_floors_by_activity
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not dinner_route and not linked_battles and not row.get("monsterWaves")
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
                     and not ten_activity and not dream_activity and not asura_activity and not asura_layer
-                    and not shanfeng_activity and not ji_activity and not gtw_activity):
+                    and not shanfeng_activity and not ji_activity and not gtw_activity and not tower_activity and not gtw_run_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -2009,6 +2090,31 @@ def encounter_index(source, load_rows):
             if table_name == "pve_stage_data" and int(numeric_key(key) or 0) in GTW_BOSS_STAGES:
                 entry_family, entry_kind = "event", GTW_BOSS_NAME
                 title = f"{GTW_BOSS_NAME} · 第 {int(key) - 812999} 阶段 · {key}"
+            if (tower_activity and key == GTW_HUNT_ACTIVITY
+                    or table_name in {"activity_tower_act", "activity_tower_floor"} and row.get("act_id") == GTW_HUNT_ACTIVITY
+                    or table_name == "normal_battle_config" and key == GTW_HUNT_MODE
+                    or table_name == "pve_stage_data" and numeric_key(key) == "814000"):
+                entry_family, entry_kind = "event", GTW_HUNT_NAME
+                title = f"{GTW_HUNT_NAME} · " + {
+                    "activity": "活动开放", "activity_tower_act": "票券与挑战消耗",
+                    "activity_tower_floor": "原版挑战入口", "normal_battle_config": "单人战斗规则",
+                    "pve_stage_data": "敌方编组 814000",
+                }[table_name]
+            if gtw_run_activity or table_name in {"run_group_module", "run_group_event", "run_group_event_choose", "run_group_role", "run_group_buff"}:
+                entry_family, entry_kind = "event", GTW_STORY_NAME
+                detail = {
+                    "activity": "剧目入口", "run_group_module": row.get("module_name"),
+                    "run_group_event": row.get("event_title"), "run_group_event_choose": row.get("choose_des"),
+                    "run_group_role": row.get("role_class_name"), "run_group_buff": "战斗技能",
+                }.get(table_name)
+                title = f"{GTW_STORY_NAME} · {(detail or '事件配置').strip()} · {key}"
+            if (table_name == "pve_stage_data" and isinstance(numeric_key(key), str)
+                    and (gtw_mode := GTW_HUNT_STAGES.get(int(numeric_key(key)))) in GTW_HUNT_MODES - {GTW_HUNT_MODE}):
+                entry_family, entry_kind = "event", GTW_STORY_NAME
+                title = f"{GTW_STORY_NAME} · {title} · {key}"
+            if table_name == "pve_stage_data" and numeric_key(key) == str(GTW_UNLINKED_STAGE):
+                entry_family, entry_kind = "event", GTW_STORY_NAME
+                title = f"{GTW_STORY_NAME} · 未关联事件的编组 · {key}"
             if ji_activity:
                 entry_family, entry_kind = ROOTS["shiki_boss"]
                 title = f"{entry_kind} · 活动开放时间"
