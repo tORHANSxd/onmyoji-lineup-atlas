@@ -36,6 +36,8 @@ from qinfei_boss_stage import QINFEI_BOSS_MODE, QINFEI_BOSS_PROFILES, QINFEI_BOS
 from shanfeng_stage import SHANFENG_MODE
 from shilian_routes import MOON_SECOND_SCENE, SHILIAN_DAOS, shilian_event_dao
 from social_play_stage import SOCIAL_PLAY_ACTIVITY, SOCIAL_PLAY_BUFFS, SOCIAL_PLAY_MODE, SOCIAL_PLAY_TICKET
+from splyj_tower_stage import (SPLYJ_ACTIVITY, SPLYJ_ASSIST, SPLYJ_ASSIST_HERO, SPLYJ_TOWER_ACTIVITY,
+                               SPLYJ_TOWER_FLOORS, SPLYJ_TOWER_MODE, SPLYJ_TOWER_STAGES)
 from tianfa_stage import TIANFA_LOBBY_STAGE, TIANFA_MODE, TIANFA_STAGES, TIANFA_TEAM_ENTRY, TIANFA_TEAM_TYPE
 from ten_anniversary_stage import (TEN_BOSS_STAGES, TEN_ENCOUNTER_STAGES, TEN_EXPLORATION_STAGES,
                                    TEN_TOWER_STAGES, is_ten_anniversary_stage)
@@ -114,6 +116,8 @@ CHAJI_SIDE_NAMES = {CHAJI_DRILL_STAGE: "阵练演武", CHAJI_RIFT_STAGE: "时间
 CHAJI_STORY_NAME = "月曜永恒 · 月曜新章"
 CHAJI_STORY_TABLES = {"sp_chaji_plot", "sp_chaji_event_plot"}
 CHAJI_SPECIAL_KEYS = frozenset(map(str, CHAJI_SPECIAL_STAGES))
+SPLYJ_TOWER_NAME = "执火燎原 · 擎火拾阶"
+SPLYJ_TOWER_BY_STAGE = dict(zip(map(str, SPLYJ_TOWER_STAGES), SPLYJ_TOWER_FLOORS))
 CHAJI_SIDE_ENTRIES = {
     "pve_stage_data": {str(stage): stage for stage in CHAJI_SIDE_NAMES},
     "normal_battle_config": CHAJI_SIDE_MODES,
@@ -954,6 +958,33 @@ def encounter_index(source, load_rows):
             rows = [("social_play_color", row.get("id"), "混合所得颜色"),
                     ("reward", row.get("reward_id"), "调色奖励")]
             rows.extend(("social_play_color", color, "所需颜色") for color in row.get("recipe", ()))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
+        splyj_floor = (SPLYJ_TOWER_BY_STAGE.get(numeric_key(row.get("id"))) if name == "pve_stage_data"
+                       else row.get("id") if name == "activity_tower_floor" and row.get("act_id") == SPLYJ_TOWER_ACTIVITY else None)
+        splyj_activity = (name == "activity" and row.get("id") in (SPLYJ_ACTIVITY, SPLYJ_TOWER_ACTIVITY)
+                          or name == "activity_tower_act" and row.get("act_id") == SPLYJ_TOWER_ACTIVITY)
+        splyj_mode = name == "normal_battle_config" and row.get("battleMode") == SPLYJ_TOWER_MODE
+        if splyj_floor or splyj_activity or splyj_mode:
+            rows = [("activity", SPLYJ_ACTIVITY, "执火燎原开放时间"),
+                    ("activity", SPLYJ_TOWER_ACTIVITY, "擎火拾阶开放时间"),
+                    ("activity_tower_act", SPLYJ_TOWER_ACTIVITY, "挑战消耗及额外奖励次数"),
+                    ("normal_battle_config", SPLYJ_TOWER_MODE, "原版战斗时限"),
+                    ("normal_battle_assist_hero", SPLYJ_ASSIST, "固定助战规则"),
+                    ("hero", SPLYJ_ASSIST_HERO, "固定助战天火命铃彦姬")]
+            links.append(rule_reference("sp_lingyanji_pata_tips", "难度解锁和道具消耗"))
+            if splyj_activity or splyj_mode:
+                rows.extend(("activity_tower_floor", floor, "擎火拾阶难度") for floor in SPLYJ_TOWER_FLOORS)
+                links.append(rule_reference("sp_lingyanji_main_tips", "执火燎原玩法"))
+                rows.extend(("currency", currency, label) for currency, label in
+                            ((1482577, "神宫信物"), (1482585, "雪域秘卷"), (1482586, "雪域秘卷·五倍")))
+            if splyj_floor:
+                _, floor = table("activity_tower_floor").get(numeric_key(splyj_floor), (None, {}))
+                stage = floor.get("battle_id")
+                rows.extend((("activity_tower_floor", splyj_floor, "原版难度和奖励"),
+                             ("pve_stage_data", stage, "原版关卡与已知阵容模拟"),
+                             ("BattleMonstersInfo", stage, "原版敌方编组"),
+                             ("reward", floor.get("act_ticket_reward"), "神宫信物挑战奖励"),
+                             ("reward", floor.get("sushi_reward"), "雪域秘卷挑战奖励")))
             links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         chaji_story_key = numeric_key(row.get("id")) if name == "pve_stage_data" else None
         chaji_plot = chaji_plots.get(chaji_story_key)
@@ -2199,6 +2230,8 @@ def encounter_index(source, load_rows):
             chaji_activity = table_name == "activity" and key in (CHAJI_ACTIVITY, CHAJI_BOSS_ACTIVITY) and bool(chaji_boss_by_stage)
             chaji_map_activity = table_name == "activity" and key in CHAJI_MAP_ACTIVITIES and bool(chaji_battles_by_stage)
             chaji_story_activity = table_name == "activity" and key == CHAJI_STORY_ACTIVITY and bool(chaji_plots)
+            splyj_activity = (table_name == "activity" and key in (SPLYJ_ACTIVITY, SPLYJ_TOWER_ACTIVITY)
+                              and "activity_tower_floor" in manifests)
             tower_activity = table_name == "activity" and key in tower_floors_by_activity
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
@@ -2206,7 +2239,8 @@ def encounter_index(source, load_rows):
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
                     and not ten_activity and not dream_activity and not asura_activity and not asura_layer
                     and not shanfeng_activity and not ji_activity and not gtw_activity and not tower_activity and not gtw_run_activity
-                    and not social_activity and not yanmo_activity and not chaji_activity and not chaji_map_activity and not chaji_story_activity):
+                    and not social_activity and not yanmo_activity and not chaji_activity and not chaji_map_activity
+                    and not chaji_story_activity and not splyj_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -2534,6 +2568,17 @@ def encounter_index(source, load_rows):
                 title = f"{entry_kind} · {enemy_name} · {level} · {key}"
             if table_name in CHAJI_MAP_TABLES:
                 title = " · ".join(filter(None, (CHAJI_MAP_NAME, CHAJI_MAP_TABLES[table_name], row.get("name"), str(key))))
+            splyj_floor = (SPLYJ_TOWER_BY_STAGE.get(numeric_key(key)) if table_name == "pve_stage_data"
+                           else key if table_name == "activity_tower_floor" and row.get("act_id") == SPLYJ_TOWER_ACTIVITY else None)
+            if splyj_floor:
+                _, floor = table("activity_tower_floor").get(numeric_key(splyj_floor), (None, {}))
+                if floor:
+                    entry_family, entry_kind = "event", SPLYJ_TOWER_NAME
+                    title = f"{entry_kind} · {floor['name']} · {floor['battle_id']}"
+            if (splyj_activity or table_name == "activity_tower_act" and key == SPLYJ_TOWER_ACTIVITY
+                    or table_name == "normal_battle_config" and key == SPLYJ_TOWER_MODE):
+                entry_family, entry_kind = "event", SPLYJ_TOWER_NAME
+                title = f"{entry_kind} · " + ("开放配置" if splyj_activity else "原版玩法配置")
             story_key = numeric_key(key) if table_name == "pve_stage_data" else None
             chaji_plot = chaji_plots.get(story_key)
             if chaji_story_activity or table_name in CHAJI_STORY_TABLES or chaji_plot:

@@ -2092,6 +2092,7 @@
     const chajiMapMounted=showChajiMap(destination,entry,groups);
     const chajiSideMounted=showChajiSide(destination,entry,groups);
     const chajiStoryMounted=showChajiStory(destination,entry,groups);
+    const splyjTowerMounted=showSplyjTower(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2236,7 +2237,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!chajiStoryMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!chajiMapMounted&&!chajiSideMounted&&!chajiStoryMounted&&!splyjTowerMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2492,6 +2493,33 @@
       '第二阶段 · 入场生命低于全服配置上限的 50%。','caption'));
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
       memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title,gtwBoss:stage});
+    return true;
+  }
+
+  function showSplyjTower(destination,entry,groups){
+    const source=AtlasSplyjTower;
+    const stageId=entry.table==='pve_stage_data'?Number(entry.key):
+      entry.table==='activity_tower_floor'?groups[0].row?.battle_id:0;
+    const route=source.entry(stageId);
+    if(!route)return false;
+    const get=(table,id)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===id)?.row;
+    const floor=get('activity_tower_floor',route.floorId),activity=get('activity_tower_act',source.activityId);
+    const stage=get('pve_stage_data',stageId),formation=get('BattleMonstersInfo',stageId);
+    const rules=get('normal_battle_config',source.battleMode),assist=get('normal_battle_assist_hero',source.assistConfig);
+    const helper=get('hero',source.assistId);
+    if(!matchesOpeningSource(source)||activity?.act_id!==source.activityId||floor?.act_id!==source.activityId||
+       floor.battle_id!==stageId||floor.tower_layer!==route.layer||stage?.groupid!==stageId||stage.shishentotal!==5||
+       formation?.resindex!==source.sceneId||formation.MonstersInfos?.length!==1||formation.MonstersInfos[0].length!==6||
+       rules?.halt_time!==source.deadlineSeconds||rules.group_battle!==false||rules.replace_yys_id!==0||rules.save_round_hp!==false||
+       rules.assist_hero_list?.length!==1||rules.assist_hero_list[0]!==source.assistConfig||
+       assist?.hero_id!==source.assistId||assist.pos_index!==101||assist.is_god_mode!==1||assist.can_control!==0||!helper?.name){
+      destination.append(node('p','本机资料与已核验的擎火拾阶战斗配置不匹配。','caption'));
+      return true;
+    }
+    const label=`擎火拾阶 · ${floor.name}`;
+    destination.append(node('p',`${floor.name} · 原版时限 ${source.deadlineSeconds} 秒 · 固定助战 ${helper.name}（无敌、不可手动控制）`,'caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
+      memberCount:5,waveCount:1,version:source.resourceVersion,label});
     return true;
   }
 
