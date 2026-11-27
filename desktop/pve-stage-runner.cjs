@@ -36,6 +36,7 @@ const dojoGuardianSource=require('../app/dojo-guardian.js');
 const dojoDefenseSource=require('../app/dojo-defense.js');
 const shanFeng=require('../app/shanfeng.js');
 const jiBoss=require('../app/ji-boss.js');
+const jiForest=require('../app/ji-forest.js');
 const gtwBossSource=require('../app/gtw-boss.js');
 const gtwHunt=require('../app/gtw-hunt.js');
 const socialPlay=require('../app/social-play.js');
@@ -71,6 +72,7 @@ const engines={
  [dojoDefenseSource.battleMode]:dojoDefenseSource.engine,
  [shanFeng.battleMode]:shanFeng.engine,
  [jiBoss.battleMode]:jiBoss.engine,
+ ...Object.fromEntries(jiForest.modes.map(mode=>[mode,jiForest.engine])),
  [gtwBossSource.battleMode]:gtwBossSource.engine,
  ...Object.fromEntries(gtwHunt.modes.map(mode=>[mode,gtwHunt.engine])),
  [socialPlay.battleMode]:socialPlay.engine,
@@ -1448,6 +1450,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (battleMode===dojoDefenseSource.battleMode&&!validDojoDefenseReport(report,rounds[0].dojoDefense))||
     (battleMode===shanFeng.battleMode&&!shanFeng.validReport(report))||
     (battleMode===jiBoss.battleMode&&!jiBoss.validReport(report,rounds[0]))||
+    (jiForest.modes.includes(battleMode)&&!jiForest.validReport(report))||
     (gtwBoss&&!gtwBossSource.validReport(report,gtwBoss))||
     (gtwHunt.modes.includes(battleMode)&&!gtwHunt.validReport(report,gtwEventId))||
     (battleMode===socialPlay.battleMode&&!socialPlay.validReport(report,socialParty))||
@@ -1558,6 +1561,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(await has('asura_depth_stage.py')?[asuraBoss.depthMode]:[]),
      ...(await has('shanfeng_stage.py')?[shanFeng.battleMode]:[]),
      ...(await has('ji_boss_stage.py')?[jiBoss.battleMode]:[]),
+     ...(await has('ji_forest_stage.py')?jiForest.modes:[]),
      ...(await has('gtw_boss_stage.py')?[gtwBossSource.battleMode]:[]),
      ...(await has('gtw_hunt_stage.py')?gtwHunt.modes:[]),
      ...(await has('social_play_stage.py')?[socialPlay.battleMode]:[]),
@@ -1575,6 +1579,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const isSocialPlay=battleMode===socialPlay.battleMode;
    const maxMembers=[fengmoYanwu.battleMode,songstress.battleMode,orochi.battleMode,tianfa.battleMode,socialPlay.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
    const jiStage=jiBoss.entry(stageId);
+   const forestStage=jiForest.entry(stageId);
    const stageActor=battleMode===tenBoss.battleMode||battleMode===urdtgTrain.battleMode||battleMode===shanFeng.battleMode||
     battleMode===jiBoss.battleMode&&jiStage?.actor||
     battleMode===266&&secretOpenings.floors[stageId]?.replacement;
@@ -1623,6 +1628,10 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===shanFeng.battleMode&&(!shanFeng.stage(stageId)||stageId!==groupId||plan.members.length!==5||
      shanFeng.resourceVersion!==resourceVersion))throw Error('历练成王复跑需要已核验的关卡和五位自有式神');
    if(battleMode===3&&jiStage)throw Error('四时归焉需要使用原版活动战斗入口');
+   if(battleMode===3&&forestStage||jiForest.modes.includes(battleMode)&&
+     (!forestStage?.available||forestStage.battleMode!==battleMode||stageId!==groupId||
+      plan.members.length!==5||jiForest.resourceVersion!==resourceVersion))
+    throw Error('错季之森复跑需要可核验的原版关卡和五位自有式神');
    if(battleMode===jiBoss.battleMode&&(!jiStage?.available||groupId!==stageId||plan.members.length!==5||
      jiBoss.resourceVersion!==resourceVersion))throw Error('四时归焉复跑需要已核验的原版关卡和五位自有式神');
    const isGtwBoss=battleMode===gtwBossSource.battleMode,gtwStage=gtwBossSource.stages[stageId];

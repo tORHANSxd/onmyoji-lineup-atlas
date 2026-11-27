@@ -18,6 +18,7 @@ from gtw_hunt_stage import (EVENT_MODE as GTW_EVENT_MODE, GTW_HUNT_ACTIVITY, GTW
                             GTW_HUNT_MODES, GTW_HUNT_STAGES, GTW_STORY_ACTIVITY, GTW_UNLINKED_STAGE)
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
 from ji_boss_stage import JI_BOSS_MODE, JI_STORY_ACTOR_STAGE
+from ji_forest_stage import JI_FOREST_ELITE, JI_FOREST_LAST_PREVIEW, JI_FOREST_MODES, JI_FOREST_NORMAL
 from journey_hard_stage import YINYANG_BOSS_MODE, YINYANG_BOSS_STAGE
 from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS, LBS_HISTORY_ENTRIES,
                             LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MEITUAN_SKILLS, MEITUAN_STAGES,
@@ -74,6 +75,13 @@ SHANFENG_RULES = (("spshanfeng_ghost_pve", "历练与成王规则"),
                   ("spshanfeng_ghost_rank", "成王排行规则"))
 SHANFENG_DAY_RULES = {1: (), 2: ((6, "第二日首领生命判定门槛"),), 3: ((5, "第三日首领开场生命比例"),)}
 JI_ACTIVITY = 8051
+JI_FOREST_NAME = "化四季 · 错季之森"
+JI_FOREST_TABLES = {
+    "ji_tower_monster": "普通季灵",
+    "ji_tower_elite": "林中探查",
+    "ji_tower_map": "四季地图",
+    "ji_eliminate": "萤球消除",
+}
 JI_BOSS_RULES = ("yimengsui", "shuangshenli", "sijisheng")
 GTW_BOSS_NAME = "修罗猎戏 · 决猎庭院"
 GTW_HUNT_NAME = "修罗猎戏 · 彷徨猎场"
@@ -153,6 +161,7 @@ ROOTS = {
     "SuperGhost_bossmission": ("event", "超鬼王首领挑战"),
     SHANFENG_PVE: ("event", "初翎山风超鬼王 · 历练成王"),
     "shiki_boss": ("event", "化四季 · 四时归焉"),
+    **{table: ("event", JI_FOREST_NAME) for table in JI_FOREST_TABLES},
     "activity_tower_act": ("event", "活动塔入场配置"),
     "activity_tower_floor": ("event", "活动塔楼层"),
     "run_group_module": ("event", "诡城歧事剧目"),
@@ -477,6 +486,9 @@ def encounter_index(source, load_rows):
     urdtg_events_by_battle = {}
     dream_heroes_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("dream_act_hero").values()}
     ji_boss_by_stage = {numeric_key(row["battle_id"]): (key, row) for key, row in table("shiki_boss").values()}
+    ji_forest_by_stage = {numeric_key(row[field]): (dest, key, row)
+                          for dest, field in (("ji_tower_monster", "fight_id"), ("ji_tower_elite", "fightId"))
+                          for key, row in table(dest).values()}
     social_stages = {numeric_key(row["stage_id"]): (key, row) for key, row in table("social_play_stage").values()}
     tower_floors_by_activity, gtw_events_by_stage, gtw_events_by_chapter = {}, {}, {}
     for key, row in table("activity_tower_floor").values():
@@ -881,6 +893,63 @@ def encounter_index(source, load_rows):
             rows.extend(("social_play_color", color, "所需颜色") for color in row.get("recipe", ()))
             links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         ji_boss_stage = ji_boss_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
+        ji_forest = ji_forest_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
+        forest_mode = row.get("battleMode") if name == "normal_battle_config" else None
+        forest_root = name == "activity" and row.get("id") == JI_ACTIVITY
+        if ji_forest_by_stage and (forest_root or forest_mode in JI_FOREST_MODES or name in JI_FOREST_TABLES or ji_forest):
+            rows = [("activity", JI_ACTIVITY, "化四季开放时间"),
+                    ("common_guide", 177, "错季之森原版帮助"),
+                    (language, "cuojizhisen_qitashuoming", "掉落、难度与探查等级上限")]
+            if forest_root:
+                rows.extend(("normal_battle_config", mode, "错季之森战斗入口") for mode in JI_FOREST_MODES)
+                rows.extend(("ji_tower_map", key, "季节地图") for key, _ in sorted(table("ji_tower_map").values()))
+                rows.extend(("ji_eliminate", key, "萤球消除和季节效果") for key, _ in sorted(table("ji_eliminate").values()))
+                rows.extend(("ji_constant", key, label) for key, label in
+                            ((1, "初芽成本"), (19, "探查道具与消耗"), (26, "客户端界面循环区间"),
+                             (42, "探查奖励档位"), (74, "允许跳过战斗的探查等级"), (77, "批量跳过上限")))
+                rows.extend(("normal_battle_develop_attr", key, "活动技能槽与属性养成")
+                            for key, attr in sorted(table("normal_battle_develop_attr").values()) if attr.get("activity_id") == JI_ACTIVITY)
+            if forest_mode in JI_FOREST_MODES:
+                dest = "ji_tower_monster" if forest_mode == JI_FOREST_NORMAL else "ji_tower_elite"
+                rows.extend((dest, key, "季灵关卡配置") for key, _ in sorted(table(dest).values()))
+                rows.append(("battle_mode_routes", forest_mode, "原版战斗场景和引擎"))
+            if ji_forest or name in {"ji_tower_monster", "ji_tower_elite"}:
+                dest, key, config = ji_forest or (name, row["id"], row)
+                normal = dest == "ji_tower_monster"
+                mode = JI_FOREST_NORMAL if normal else JI_FOREST_ELITE
+                stage_id = config["fight_id" if normal else "fightId"]
+                rows.extend((("battle_mode_routes", mode, "原版战斗场景和引擎"),
+                             ("normal_battle_config", mode, "战斗时限和结算规则"),
+                             ("reward", config.get("reward"), "战斗奖励")))
+                if ji_forest:
+                    rows.append((dest, key, "季灵活动入口"))
+                else:
+                    _, pve = table("pve_stage_data").get(numeric_key(stage_id), (None, {}))
+                    group_id = pve.get("groupid")
+                    rows.extend((("pve_stage_data", stage_id, "原版关卡"), ("BattleMonstersInfo", group_id, "敌方编组")))
+                    _, group = table("BattleMonstersInfo").get(numeric_key(group_id), (None, {}))
+                    scene = group.get("resindex")
+                    _, scene_info = table("Combinesceneinfo").get(numeric_key(scene), (None, {}))
+                    rows.extend((("Combinesceneinfo", scene, "战斗场景"),
+                                 ("BattleScenesInfo", scene_info.get("battlesceneinfo"), "双方战斗站位")))
+                if normal and config.get("consume"):
+                    rows.append(("currency", config["consume"][0], "普通季灵挑战道具"))
+                if not normal:
+                    rows.extend((("currency", 1460211, "探查消耗"),
+                                 ("reward", config.get("first_reward"), "首通奖励"),
+                                 ("reward", config.get("finish_reward"), "结束奖励")))
+                    for skill in config.get("skill_list", ()):
+                        rows.append(("normal_battle_develop_skill", skill, "精英战场效果与生效目标"))
+                        if ref := relation("skill", level_one_skill(skill), "技能效果", False):
+                            links.append(ref)
+                        if ref := relation("buff", {"$tuple": [skill, 1]}, "状态效果", False):
+                            links.append(ref)
+                if not normal and config.get("level", 0) >= JI_FOREST_LAST_PREVIEW:
+                    rows.append(("ji_constant", 26, "可见的精英循环编组范围"))
+                    rows.extend(("normal_battle_constant", key, "引擎内无限模式属性参数") for key in range(27, 35))
+            if name == "ji_eliminate":
+                rows.append(("reward", row.get("reward_id") or None, "消除奖励"))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         ji_boss_activity = name == "activity" and row.get("id") == JI_ACTIVITY and ji_boss_by_stage
         if ji_boss_activity:
             links.extend(relation("shiki_boss", level, "四时归焉关卡", False)
@@ -1827,7 +1896,7 @@ def encounter_index(source, load_rows):
             family, kind = "event", "京畿净化战斗参数"
         # The four resource tables are registered separately from the normal
         # fight panel's journey_normalbattle lookup. A numeric match is insufficient.
-        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle", SHANFENG_PVE, "shiki_boss", "social_play_stage"} else [
+        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle", SHANFENG_PVE, "shiki_boss", "social_play_stage", *JI_FOREST_TABLES} else [
             field for field in BATTLE_ID_FIELDS if field in manifest["fields"]
         ]
         for key, row in load_rows(table_name):
@@ -1850,7 +1919,7 @@ def encounter_index(source, load_rows):
             dream_activity = table_name == "activity" and key == DREAM_ACTIVITY
             asura_activity = table_name == "activity" and key in {ASURA_ACTIVITY, ASURA_PHASE}
             shanfeng_activity = table_name == "activity" and key == SHANFENG_FINAL_ACTIVITY and bool(shanfeng_by_config)
-            ji_activity = table_name == "activity" and key == JI_ACTIVITY and bool(ji_boss_by_stage)
+            ji_activity = table_name == "activity" and key == JI_ACTIVITY and bool(ji_boss_by_stage or ji_forest_by_stage)
             gtw_activity = table_name == "activity" and key == GTW_BOSS_ACTIVITY and "stake_boss" in manifests
             gtw_run_activity = table_name == "activity" and key == GTW_STORY_ACTIVITY and bool(gtw_events_by_chapter)
             social_activity = table_name == "activity" and key == SOCIAL_PLAY_ACTIVITY and bool(social_stages)
@@ -2179,12 +2248,27 @@ def encounter_index(source, load_rows):
                 title = " · ".join(filter(None, (SOCIAL_PLAY_NAME, SOCIAL_PLAY_TABLES[table_name], row.get("des"), str(key))))
             if ji_activity:
                 entry_family, entry_kind = ROOTS["shiki_boss"]
-                title = f"{entry_kind} · 活动开放时间"
+                title = "化四季 · 活动开放与玩法入口"
             if table_name == "shiki_boss" or table_name == "pve_stage_data" and numeric_key(key) in ji_boss_by_stage:
                 entry_family, entry_kind = ROOTS["shiki_boss"]
                 config = row if table_name == "shiki_boss" else ji_boss_by_stage[numeric_key(key)][1]
                 difficulty = "剧情" if config["boss_type"] == 1 else "退治"
                 title = f"{entry_kind} · {config['level_name']} · {difficulty} · {key}"
+            if table_name == "normal_battle_config" and key in JI_FOREST_MODES:
+                entry_family, entry_kind = "event", JI_FOREST_NAME
+                title = f"{JI_FOREST_NAME} · " + ("普通季灵战斗入口" if key == JI_FOREST_NORMAL else "林中探查战斗入口")
+            forest_stage = ji_forest_by_stage.get(numeric_key(key)) if table_name == "pve_stage_data" else None
+            if table_name in {"ji_tower_monster", "ji_tower_elite"} or forest_stage:
+                dest, _, config = forest_stage or (table_name, key, row)
+                normal = dest == "ji_tower_monster"
+                level = config["level"]
+                label = "普通季灵" if normal else "历史编组" if level > JI_FOREST_LAST_PREVIEW else "林中探查"
+                stage_id = config["fight_id" if normal else "fightId"]
+                entry_family, entry_kind = "event", JI_FOREST_NAME
+                title = f"{JI_FOREST_NAME} · {label} · {config['name']} · {level} 级 · {stage_id}"
+            if table_name in {"ji_tower_map", "ji_eliminate"}:
+                detail = name(row) or f"第 {row['stage']} 季地图"
+                title = f"{JI_FOREST_NAME} · {detail}"
             if dream_activity:
                 entry_family, entry_kind, title = "event", "幻游问梦", "幻游问梦 · 活动开放与玩法规则"
             if asura_activity:

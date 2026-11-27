@@ -40,6 +40,7 @@ def replay(args, runtime, work):
     from guild_hunt_stage import GUILD_HUNT_MODE, HuntOpening, hunt_tactics
     from guild_retreat_stage import RETREAT_MODE, GuildRetreatRaid, RaidDamageWindow
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_WALL_SECONDS, JI_STORY_ACTOR_STAGE, JiBossReplay
+    from ji_forest_stage import JI_FOREST_MODES, JI_FOREST_SECONDS, ji_forest_stage
     from hunling_stage import HUNLING_MODES, HUNLING_REPLAY_SECONDS, HunlingReplay, hunling_stage, challenge_stages, exploration_stages
     from journey_hard_stage import (JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, YINYANG_BOSS_STAGE, YINYANG_BOSS_WALL_SECONDS,
                                     JourneyHardReplay, YinYangBossReplay)
@@ -100,6 +101,7 @@ def replay(args, runtime, work):
     ji_boss = args.mode == JI_BOSS_MODE
     gtw_boss = args.mode == GTW_BOSS_MODE
     gtw_hunt = args.mode in GTW_HUNT_MODES
+    ji_forest = args.mode in JI_FOREST_MODES
     social_play = args.mode == SOCIAL_PLAY_MODE
     ji_story_actor = ji_boss and args.stage == JI_STORY_ACTOR_STAGE
     breakthrough = None
@@ -257,6 +259,14 @@ def replay(args, runtime, work):
         engine, group, const, social_route = social_play_stage(args.stage)
         social_clock = NativePveClock(engine, SOCIAL_PLAY_SECONDS)
         social_party = SocialPlayParty(engine, const, args.social_party or 1)
+        group_id, wave_count = group["ID"], 1
+    elif ji_forest:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("The forest requires five owned shikigami")
+        engine, group, const, ji_forest_route = ji_forest_stage(args.mode, args.stage)
+        ji_forest_clock = NativePveClock(engine, JI_FOREST_SECONDS)
         group_id, wave_count = group["ID"], 1
     elif args.mode in (BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE):
         from DynamicConfigData import DATA_HERO
@@ -773,6 +783,8 @@ def replay(args, runtime, work):
         route = "gtw-hunt-original-solo"
     elif social_play:
         route = "social-play-original-solo"
+    elif ji_forest:
+        route = "ji-forest-original-solo"
     elif breakthrough:
         route = breakthrough.route
     elif dojo_guardian:
@@ -986,7 +998,7 @@ def replay(args, runtime, work):
             secret_mirror_replay = SecretMirrorReplay(engine, const)
         if setup := secret_mechanic(stage):
             secret_mechanic_replay = SecretMechanicReplay(engine, controller, const, setup)
-    if story_exploration or friend_challenge or fixed_dream or gtw_hunt or social_play or args.mode == 266:
+    if story_exploration or friend_challenge or fixed_dream or gtw_hunt or social_play or ji_forest or args.mode == 266:
         spawn, create = engine._createNextRoundMons, engine.createMonsterEntity
 
         def verify_spawn():
@@ -994,7 +1006,7 @@ def replay(args, runtime, work):
             if not 0 <= wave < wave_count:
                 raise RuntimeError("Unexpected original wave index")
             observed = []
-            if story_exploration or fixed_dream or gtw_hunt or social_play:
+            if story_exploration or fixed_dream or gtw_hunt or social_play or ji_forest:
                 expected = [(pos, level, proto) for pos, proto, level, *_ in group["MonstersInfos"][wave]]
                 mirror_units = []
             elif friend_challenge:
@@ -1047,6 +1059,11 @@ def replay(args, runtime, work):
         if not party_replay:
             social_party.verify_players(controllers)
         formation_matches = engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
+    elif ji_forest:
+        formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
+                             and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6]
+                             and engine.develop_skill_info == {str(effect): 1 for effect in ji_forest_route["fieldEffects"]}
+                             and not engine.develop_level and not engine.infinite_mode)
     elif qinfei_boss:
         formation_matches = raid.matches()
     elif retreat:
@@ -1415,6 +1432,12 @@ def replay(args, runtime, work):
             raise RuntimeError("The original Four Seasons formation was not verified")
         report["socialPlay"] = {**social_route, **social_clock.report(outcome), **social_party.report()}
         report["formationsVerified"] = 1
+    if ji_forest:
+        if verified_waves != {0}:
+            raise RuntimeError("The original Forest enemy formation was not verified")
+        report["jiForest"] = {**ji_forest_route, **ji_forest_clock.report(outcome),
+                              "damage": engine.get_my_total_damage(), "ghostFireIncrements": engine.guihuo_icon_add_values}
+        report["formationsVerified"] = 1
     if dojo_guardian:
         report["dojoGuardian"] = dojo_guardian.report(completed, outcome)
         if instructions:
@@ -1681,6 +1704,7 @@ def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from shanfeng_stage import SHANFENG_MODE, SHANFENG_STAGES, SHANFENG_WALL_SECONDS, is_shanfeng_stage
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_STAGES, JI_BOSS_SUPPORTED, JI_BOSS_WALL_SECONDS
+    from ji_forest_stage import JI_FOREST_LAST_PREVIEW, JI_FOREST_MODES, ji_forest_mode
     from gtw_boss_stage import GTW_BOSS_MODE, GTW_BOSS_STAGES, GTW_BOSS_WALL_SECONDS, valid_gtw_settings
     from gtw_hunt_stage import GTW_HUNT_MODE, GTW_HUNT_MODES, GTW_HUNT_STAGES, GTW_HUNT_WALL_SECONDS, GTW_UNLINKED_STAGE
     from social_play_stage import SOCIAL_PLAY_MODE, SOCIAL_PLAY_STAGES
@@ -1744,7 +1768,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, SOCIAL_PLAY_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *JI_FOREST_MODES, SOCIAL_PLAY_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--gtw-boss", type=json.loads)
     parser.add_argument("--gtw-event", type=int)
@@ -1938,6 +1962,10 @@ def main():
         parser.error("The hunt and story formations require their original activity battle modes")
     if args.mode == 3 and args.stage in SOCIAL_PLAY_STAGES:
         parser.error("Four Seasons Challenge requires its original battle entrance")
+    forest_mode = ji_forest_mode(args.stage)
+    if forest_mode and args.mode == 3 or args.mode in JI_FOREST_MODES and (
+            args.mode != forest_mode or args.stage > 505200 + JI_FOREST_LAST_PREVIEW):
+        parser.error("Select a verified Forest formation and its original battle mode")
     if args.mode == SOCIAL_PLAY_MODE and args.stage not in SOCIAL_PLAY_STAGES:
         parser.error("Choose one of the 28 original Four Seasons Challenge stages")
     if args.social_party and args.mode != SOCIAL_PLAY_MODE:

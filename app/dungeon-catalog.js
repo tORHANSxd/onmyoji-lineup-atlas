@@ -117,6 +117,10 @@
     super_ghost6_constant: '历练成王原版参数',
     super_ghost6_pve_reward: '成王伤害与排名奖励',
     shiki_boss: '四时归焉剧情与退治',
+    ji_tower_monster: '错季之森普通季灵',
+    ji_tower_elite: '错季之森林中探查',
+    ji_tower_map: '错季之森四季地图',
+    ji_eliminate: '错季之森萤球消除',
     activity_tower_act: '活动塔挑战消耗',
     activity_tower_floor: '活动塔楼层',
     run_group_module: '诡城歧事剧目',
@@ -2082,6 +2086,7 @@
     showBreakthrough(destination, entry, groups);
     showDojoGuardian(destination, entry, groups);
     const jiBossMounted=showJiBoss(destination,entry,groups);
+    const jiForestMounted=showJiForest(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2226,7 +2231,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2482,6 +2487,47 @@
       '第二阶段 · 入场生命低于全服配置上限的 50%。','caption'));
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
       memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title,gtwBoss:stage});
+    return true;
+  }
+
+  function showJiForest(destination,entry,groups){
+    const source=AtlasJiForest;
+    const table=entry.table;
+    if(!['pve_stage_data','ji_tower_monster','ji_tower_elite'].includes(table))return false;
+    const raw=groups[0].row;
+    const stageId=Number(table==='pve_stage_data'?entry.key:raw?.fightId??raw?.fight_id);
+    const stage=source.entry(stageId);
+    if(!stage)return false;
+    if(!stage.available){
+      destination.append(node('p','历史编组。原版面板在探查达到上限后沿用第 81 级编组。','caption'));
+      return true;
+    }
+    const related=tableName=>groups.find(({ref})=>ref.table===tableName)?.row;
+    const profile=related(stage.elite?'ji_tower_elite':'ji_tower_monster');
+    const pve=related('pve_stage_data'),formation=related('BattleMonstersInfo');
+    const effects=stage.elite?profile?.skill_list:profile?.effect?[profile.effect]:[];
+    if(!matchesOpeningSource(source)||profile?.id!==stage.entryId||profile.level!==stage.level||pve?.groupid!==stageId||
+       formation?.resindex!==source.sceneId||formation.MonstersInfos?.length!==1||
+       formation.MonstersInfos[0].length!==stage.enemies||!source.sameList(effects,stage.fieldEffects)||
+       related('normal_battle_config')?.halt_time!==source.deadlineSeconds||
+       related('battle_mode_routes')?.scene_engine!==source.engine.name){
+      destination.append(node('p','本机资料与已核验的原版战斗配置不匹配。','caption'));
+      return true;
+    }
+    destination.append(node('p',`${stage.elite?'林中探查 · 1 枚萤星':'普通季灵 · 1 枚初芽'} · ${source.deadlineSeconds} 秒 · ${stage.enemies} 名敌人`,'caption'));
+    if(stage.elite){
+      destination.append(node('p','探查胜负均有掉落，获胜可提升探查等级。','caption'));
+      const skills=stage.fieldEffects.map(id=>groups.find(({ref})=>ref.table==='skill'&&ref.key?.$tuple?.[0]===id)?.row)
+        .filter(skill=>skill?.skill_name);
+      if(skills.length){
+        const details=node('details'), list=node('ul');
+        list.append(...skills.map(skill=>node('li',`${skill.skill_name} · ${skill.combatDesc||skill.desc}`)));
+        details.append(node('summary','查看战场效果'),list);
+        destination.append(details);
+      }
+    }
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:stage.battleMode,memberCount:5,
+      waveCount:1,version:source.resourceVersion,label:'错季之森 · '+(stage.elite?'林中探查':'普通季灵')});
     return true;
   }
 

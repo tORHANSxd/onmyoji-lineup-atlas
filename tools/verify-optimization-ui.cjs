@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -471,7 +471,7 @@ async function main(){
    known('dojo-guardian',10020203,5),known('dojo-defense',10020203,5,13),
    known('secret-race',10700011,5),known('crevice',10020211,5),
    known('superghost',100942,5),known('superghost-five',100943,5),known('shan-feng',null,5),known('ji-boss',null,5),known('gtw-boss',null,5),
-   known('gtw-hunt',null,5),
+   known('gtw-hunt',null,5),known('ji-forest',null,5),
    known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5,10,notes),
@@ -676,6 +676,22 @@ async function main(){
     },undefined,null),/6 \/ 6 场有效结算.*本场伤害 6,649,070/s);
     await ui('qaEncounterInput("event",'+JSON.stringify(pick(3340022))+')');
     await until(panel+'.textContent.includes("困难编组的首领技能")');
+    assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='ji_tower_monster'&&entry.key===2)){
+    await encounter('event','错季之森普通季灵 505001');
+    assert.match(await ui(panel+'.textContent'),/1 枚初芽.*180 秒.*6 名敌人/s);
+    assert.match(await run('ji-forest',
+     {stageId:505001,groupId:505001,battleMode:923},{jiForest:{elite:false,timedOut:false,combatSeconds:15.04}}),
+     /已清场.*战斗至结算 15\.04 秒/s);
+    await encounter('event','错季之森林中探查 505235');
+    assert.match(await ui(panel+'.textContent'),/1 枚萤星.*180 秒.*1 名敌人/s);
+    assert.match(await ui(panel+'.textContent'),/白夜.*治疗效果下降30%.*霜枯.*冬暮.*余寒/s);
+    assert.match(await run('ji-forest',{stageId:505235,groupId:505235,battleMode:924},
+     {jiForest:{elite:true,timedOut:false,combatSeconds:140.88,damage:4815354}}),
+     /本场伤害 4,815,354/);
+    await ui('qaEncounterInput("event","错季之森林中探查 505282")');
+    await until(panel+'.textContent.includes("原版面板在探查达到上限后沿用第 81 级编组")');
     assert.equal(await ui(start+'===null'),true);
    }
    if(cases.some(entry=>entry.table==='shiki_boss'&&entry.key===2)){

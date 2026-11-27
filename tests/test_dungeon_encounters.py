@@ -12,6 +12,43 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_ji_forest_links_normal_and_elite_to_the_correct_activity_routes(self):
+        tables = {
+            "activity": [[8051, {"id": 8051, "name": "化四季"}]],
+            "ji_tower_monster": [[2, {"id": 2, "name": "季灵·兔", "level": 1, "fight_id": 505001,
+                                     "consume": [1460200, 1], "reward": 81161}]],
+            "ji_tower_elite": [[82, {"id": 82, "name": "季灵·鹿", "level": 82, "fightId": 505282,
+                                    "reward": 81191, "skill_list": [67757]}]],
+            "ji_eliminate": [[1, {"id": 1, "name": "红色1消", "reward_id": 80831}]],
+            "pve_stage_data": [[str(stage), {"id": str(stage), "groupid": stage}] for stage in (505001, 505282)],
+            "BattleMonstersInfo": [[stage, {"ID": stage, "resindex": 127}] for stage in (505001, 505282)],
+            "Combinesceneinfo": [[127, {"id": 127, "battlesceneinfo": 815}]],
+            "BattleScenesInfo": [[815, {"id": 815}]],
+            "battle_mode_routes": [[mode, {"battleMode": mode, "scene_engine": "JiNormalBattleEngine"}] for mode in (923, 924)],
+            "normal_battle_config": [[mode, {"battleMode": mode, "halt_time": 180}] for mode in (923, 924)],
+            "normal_battle_develop_skill": [[67757, {"battle_skill_id": 67757, "target": [3]}]],
+            "common_guide": [[177, {"id": 177}]],
+            "currency": [[key, {"id": key}] for key in (1460200, 1460211)],
+            "reward": [[key, {"id": key}] for key in (81161, 81191, 80831)],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "event",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        items = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)["entries"]
+        indexed = {(row["table"], row["key"]): row for row in items}
+
+        def refs(table, key):
+            return {(ref["table"], ref["key"]) for ref in indexed[table, key]["refs"] if ref["found"]}
+
+        self.assertIn(("ji_eliminate", 1), refs("activity", 8051))
+        self.assertIn(("reward", 80831), refs("ji_eliminate", 1))
+        self.assertIn(("ji_tower_monster", 2), refs("pve_stage_data", "505001"))
+        normal = refs("ji_tower_monster", 2)
+        self.assertTrue({("battle_mode_routes", 923), ("currency", 1460200), ("BattleScenesInfo", 815)} <= normal)
+        elite = refs("ji_tower_elite", 82)
+        self.assertTrue({("battle_mode_routes", 924), ("currency", 1460211), ("common_guide", 177),
+                         ("normal_battle_develop_skill", 67757)} <= elite)
+        self.assertIn("历史编组", indexed["ji_tower_elite", 82]["title"])
+
     def test_four_seasons_links_stage_roster_rules_rewards_and_color_result(self):
         tables = {
             "activity": [[8772, {"id": 8772, "name": "四时序战"}]],
