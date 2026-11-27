@@ -14,6 +14,7 @@ from fengmo_band_together import BAND_ONLINE_STAGES, BAND_TOGETHER_STAGES, BAND_
 from guild_crevice_stage import CREVICE_MODE, CREVICE_STAGES, crevice_route
 from guild_forest_stage import FOREST_MODE, FOREST_STAGES, FOREST_TEAM
 from hunling_stage import CAPTURE_ITEMS, challenge_stages, exploration_stages
+from ji_boss_stage import JI_BOSS_MODE, JI_STORY_ACTOR_STAGE
 from journey_hard_stage import YINYANG_BOSS_MODE, YINYANG_BOSS_STAGE
 from map_boss_stage import (LBS_ACTIVITY_ASSIST, LBS_ACTIVITY_ENTRIES, LBS_ACTIVITY_MODE, LBS_ACTIVITY_SKILLS, LBS_HISTORY_ENTRIES,
                             LBS_MODE, MEITUAN_ENTRIES, MEITUAN_MODE, MEITUAN_SKILLS, MEITUAN_STAGES,
@@ -68,6 +69,8 @@ SHANFENG_RULES = (("spshanfeng_ghost_pve", "历练与成王规则"),
                   ("spshanfeng_ghost_develop", "活动角色潜能规则"),
                   ("spshanfeng_ghost_rank", "成王排行规则"))
 SHANFENG_DAY_RULES = {1: (), 2: ((6, "第二日首领生命判定门槛"),), 3: ((5, "第三日首领开场生命比例"),)}
+JI_ACTIVITY = 8051
+JI_BOSS_RULES = ("yimengsui", "shuangshenli", "sijisheng")
 
 
 ROOTS = {
@@ -133,6 +136,7 @@ ROOTS = {
     "SuperGhost_mission": ("event", "超鬼王"),
     "SuperGhost_bossmission": ("event", "超鬼王首领挑战"),
     SHANFENG_PVE: ("event", "初翎山风超鬼王 · 历练成王"),
+    "shiki_boss": ("event", "化四季 · 四时归焉"),
     "super_ghost_hjs_special_attack": ("event", "超鬼王特攻日期"),
     "super_ghost_hjs_special_attack_group": ("event", "超鬼王特攻式神"),
     "journey_hardbattle": ("event", "京畿净化首领挑战"),
@@ -447,6 +451,7 @@ def encounter_index(source, load_rows):
     urdtg_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("urdtg_dungeon_battle").values()}
     urdtg_events_by_battle = {}
     dream_heroes_by_stage = {numeric_key(row["battle_id"]): key for key, row in table("dream_act_hero").values()}
+    ji_boss_by_stage = {numeric_key(row["battle_id"]): (key, row) for key, row in table("shiki_boss").values()}
     shanfeng_by_config, shanfeng_by_stage, shanfeng_tiers = {}, {}, {}
     shanfeng_chapters = Counter()
     for key, row in sorted(table(SHANFENG_PVE).values(), key=lambda pair: pair[1]["id"]):
@@ -720,6 +725,43 @@ def encounter_index(source, load_rows):
                 ("battle_mode_routes", SHANFENG_MODE, "原版历练成王入口"),
                 (SHANFENG_PVE, 17, "成王三日关卡配置"),
             ) if (ref := relation(dest, key, label, False)))
+        ji_boss_stage = ji_boss_by_stage.get(numeric_key(row.get("id"))) if name == "pve_stage_data" else None
+        ji_boss_activity = name == "activity" and row.get("id") == JI_ACTIVITY and ji_boss_by_stage
+        if ji_boss_activity:
+            links.extend(relation("shiki_boss", level, "四时归焉关卡", False)
+                         for level, _ in ji_boss_by_stage.values())
+        if name == "shiki_boss" or ji_boss_stage:
+            key, config = ji_boss_stage if ji_boss_stage else (row["level_id"], row)
+            story = config["boss_type"] == 1
+            rule = JI_BOSS_RULES[(config["level_id"] - 1) % 3] + ("juqing_tips" if story else "tuizhi_tips")
+            if rule in rules or rule in tips:
+                links.append(rule_reference(rule, "原版章节独立机制"))
+            rows = [
+                ("pve_stage_data", config["battle_id"], "原版战斗关卡") if name == "shiki_boss"
+                else ("shiki_boss", key, "原版剧情或退治配置"),
+                ("battle_mode_routes", JI_BOSS_MODE, "原版四时归焉战斗入口"),
+                ("normal_battle_config", JI_BOSS_MODE, "默认时限与战斗设置"),
+                ("activity", JI_ACTIVITY, "化四季开放配置"),
+                ("common_guide", 179, "原版四时归焉指引"),
+                (language, "sishiguiyan_qitashuoming", "三章开放与奖励时间"),
+                ("shiki_boss", config.get("pre_level") or None, "前置章节"),
+            ]
+            for skill in config.get("skill_list", ()):
+                rows.append(("skill", level_one_skill(skill), f"退治首领技能 {skill}"))
+            if not story:
+                rows.append(("ji_constant", 39, "退治排行奖励配置"))
+                _, rank_rewards = table("ji_constant").get("39", (None, {}))
+                rows.extend(("reward", reward, "退治排行奖励") for reward in rank_rewards.get("value", ()))
+            if config["battle_id"] == JI_STORY_ACTOR_STAGE:
+                rows.extend((("normal_battle_constant", 37, "双神立替换角色配置编号"),
+                             ("normal_battle_yys_replace", 19, "双神立固定角色等级与技能"),
+                             ("hero", 1805, "双神立固定角色")))
+            if config["battle_id"] == 505105:
+                rows.extend((("normal_battle_constant", 35, "四季生中立助战站位"),
+                             ("normal_battle_constant", 36, "四季生中立助战怪物编号"),
+                             ("normal_battle_constant", 38, "当前资源的替换角色参数"),
+                             ("monster", 4852019, "四季生剧情助战季")))
+            links.extend(ref for dest, target, label in rows if (ref := relation(dest, target, label, False)))
         if name == "dream_act_hero":
             battle = row.get("battle_id")
             links.extend(ref for dest, key, label in (
@@ -1630,7 +1672,7 @@ def encounter_index(source, load_rows):
             family, kind = "event", "京畿净化战斗参数"
         # The four resource tables are registered separately from the normal
         # fight panel's journey_normalbattle lookup. A numeric match is insufficient.
-        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle", SHANFENG_PVE} else [
+        generic_edges = [] if variant or table_name in {*TOWER_EVENT_SOURCES, "journey_hardbattle", "ten_anni_2026_dungeon_battle", SHANFENG_PVE, "shiki_boss"} else [
             field for field in BATTLE_ID_FIELDS if field in manifest["fields"]
         ]
         for key, row in load_rows(table_name):
@@ -1653,11 +1695,13 @@ def encounter_index(source, load_rows):
             dream_activity = table_name == "activity" and key == DREAM_ACTIVITY
             asura_activity = table_name == "activity" and key in {ASURA_ACTIVITY, ASURA_PHASE}
             shanfeng_activity = table_name == "activity" and key == SHANFENG_FINAL_ACTIVITY and bool(shanfeng_by_config)
+            ji_activity = table_name == "activity" and key == JI_ACTIVITY and bool(ji_boss_by_stage)
             asura_layer = table_name == "activity" and key in ASURA_DEPTH_LAYERS
             qinfei_boss = table_name == "raid_info" and (row.get("fbId"), row.get("id")) in QINFEI_BOSS_PROFILES
             if (not root and not entrance and not scene_route and not dinner_route and not linked_battles and not row.get("monsterWaves")
                     and not qinfei_activity and not qinfei_boss and not dojo_area_activity and not forest_activity
-                    and not ten_activity and not dream_activity and not asura_activity and not asura_layer and not shanfeng_activity):
+                    and not ten_activity and not dream_activity and not asura_activity and not asura_layer
+                    and not shanfeng_activity and not ji_activity):
                 continue
             references = related(table_name, key, row, linked_battles)
             entry_family, entry_kind = ("daily", "地图探索入口") if entrance else (family, kind)
@@ -1931,6 +1975,14 @@ def encounter_index(source, load_rows):
                     title = f"初翎山风超鬼王 · {shanfeng_by_stage[numeric_key(key)][1]} · {key}"
             if table_name == "pve_stage_data" and int(numeric_key(key) or 0) in DOJO_GUARDIAN_STAGES:
                 entry_family, entry_kind = "guild", "道馆守护"
+            if ji_activity:
+                entry_family, entry_kind = ROOTS["shiki_boss"]
+                title = f"{entry_kind} · 活动开放时间"
+            if table_name == "shiki_boss" or table_name == "pve_stage_data" and numeric_key(key) in ji_boss_by_stage:
+                entry_family, entry_kind = ROOTS["shiki_boss"]
+                config = row if table_name == "shiki_boss" else ji_boss_by_stage[numeric_key(key)][1]
+                difficulty = "剧情" if config["boss_type"] == 1 else "退治"
+                title = f"{entry_kind} · {config['level_name']} · {difficulty} · {key}"
             if dream_activity:
                 entry_family, entry_kind, title = "event", "幻游问梦", "幻游问梦 · 活动开放与玩法规则"
             if asura_activity:

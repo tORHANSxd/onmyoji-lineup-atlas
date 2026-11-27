@@ -11,6 +11,45 @@ from map_boss_stage import (LBS_ACTIVITY_MODE, LBS_MODE, MEITUAN_ENTRIES, MEITUA
 
 
 class EncounterIndexTests(unittest.TestCase):
+    def test_shiki_boss_plot_and_score_rows_keep_separate_rules(self):
+        tables = {
+            "shiki_boss": [[2, {"level_id": 2, "level_name": "双神立", "boss_type": 1, "battle_id": 505103}],
+                           [5, {"level_id": 5, "level_name": "双神立", "boss_type": 2, "battle_id": 505104}],
+                           [3, {"level_id": 3, "level_name": "四季生", "boss_type": 1, "battle_id": 505105}]],
+            "activity": [[8051, {"id": 8051, "name": "化四季"}]],
+            "battle_mode_routes": [[926, {"battleMode": 926, "mode_symbol": "MODE_JI_BOSS_BATTLE",
+                                         "scene_engine": "JiBossEngine"}]],
+            "normal_battle_config": [[926, {"battleMode": 926, "halt_time": 300}]],
+            "pve_stage_data": [[str(stage), {"id": str(stage), "groupid": stage}] for stage in range(505103, 505106)],
+            "BattleMonstersInfo": [[stage, {"ID": stage, "resindex": 128}] for stage in range(505103, 505106)],
+            "Combinesceneinfo": [[128, {"id": 128}]],
+            "normal_battle_constant": [[key, {"value": [value]}] for key, value in ((35, 101), (36, 4852019), (37, 19), (38, 300))],
+            "normal_battle_yys_replace": [[19, {"yys_id": 1805}]],
+            "ji_constant": [[39, {"value": [81101]}]],
+            "reward": [[81101, {"id": 81101}]],
+            "system_rule_dsc": [[key, {"rule_dsc": "章节玩法"}] for key in
+                                ("shuangshenlijuqing_tips", "shuangshenlituizhi_tips", "sijishengjuqing_tips")],
+        }
+        manifests = [{"name": name, "status": "decoded", "family": "event",
+                      "fields": sorted({field for _, row in rows for field in row})} for name, rows in tables.items()]
+        data = encounter_index({"resourceVersion": "0.0.816", "tables": manifests}, tables.__getitem__)
+        entries = {(row["table"], row["key"]): row for row in data["entries"]}
+
+        def refs(table, key):
+            return {(ref["table"], ref["key"]) for ref in entries[table, key]["refs"] if ref["found"]}
+
+        story, score = refs("shiki_boss", 2), refs("pve_stage_data", "505104")
+        self.assertIn(("system_rule_dsc", "shuangshenlijuqing_tips"), story)
+        self.assertIn(("normal_battle_yys_replace", 19), story)
+        self.assertIn(("BattleMonstersInfo", 505103), story)
+        self.assertIn(("system_rule_dsc", "shuangshenlituizhi_tips"), score)
+        self.assertNotIn(("normal_battle_yys_replace", 19), score)
+        self.assertIn(("normal_battle_config", 926), score)
+        self.assertIn(("reward", 81101), score)
+        self.assertIn(("normal_battle_constant", 38), refs("shiki_boss", 3))
+        self.assertIn(("shiki_boss", 5), refs("activity", 8051))
+        self.assertIn("双神立 · 退治", entries["pve_stage_data", "505104"]["title"])
+
     def test_shanfeng_trials_and_scoring_variants_use_the_original_activity_route(self):
         trials = {1: {"title": "软弱之缚", "type": 1, "battle_id": "3340001", "skill_id": 62000},
                   2: {"title": "软弱之缚", "type": 1, "battle_id": "3340002", "skill_id": 62000, "pre_id": 1},

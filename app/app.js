@@ -223,6 +223,7 @@ function sampleBattleMarkup(samples){
   const asura=sample.asuraBattle;
   const depths=sample.asuraDepths;
   const shanFeng=sample.shanFeng;
+  const jiBoss=sample.jiBoss;
   const breakthrough=sample.breakthrough;
   const dojoGuardian=sample.dojoGuardian;
   const dojoDefense=sample.dojoDefense;
@@ -270,7 +271,9 @@ function sampleBattleMarkup(samples){
   })??[];
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
-  const outcome=shanFeng?`${!sample.completed?'结算待确认':shanFeng.timedOut?'达到原版时限':sample.outcome==='win'?'原版判胜':shanFeng.day?'伤害已结算':'未清场'} · `+
+  const outcome=jiBoss?`${!sample.completed?'结算待确认':jiBoss.timedOut?'达到原版时限':sample.wavesCleared?'已清场':jiBoss.hard?'伤害已结算':'未清场'} · `+
+   `${jiBoss.hard?`本场伤害 ${jiBoss.damage.toLocaleString('zh-CN')} · `:''}战斗至结算 ${jiBoss.combatSeconds.toFixed(2)} 秒 / 限时 ${jiBoss.deadlineSeconds} 秒`:
+   shanFeng?`${!sample.completed?'结算待确认':shanFeng.timedOut?'达到原版时限':sample.outcome==='win'?'原版判胜':shanFeng.day?'伤害已结算':'未清场'} · `+
    `${shanFeng.day?`本场伤害 ${shanFeng.damage.toLocaleString('zh-CN')} · `:''}战斗至结算 ${shanFeng.combatSeconds.toFixed(2)} 秒 / 限时 ${shanFeng.deadlineSeconds} 秒`:
    depths?`${!sample.completed?'结算待确认':depths.cleared?'已清场':depths.timedOut?'达到计分时限 · 敌方仍存活':'原版结算 · 未清场'} · `+
    `本场伤害 ${depths.damage.toLocaleString('zh-CN')} · 交战 ${depths.combatSeconds.toFixed(2)} 秒 / 限时 ${depths.deadlineSeconds} 秒`:

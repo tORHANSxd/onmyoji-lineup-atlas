@@ -116,6 +116,7 @@
     super_ghost6_pve: '初翎山风超鬼王历练成王',
     super_ghost6_constant: '历练成王原版参数',
     super_ghost6_pve_reward: '成王伤害与排名奖励',
+    shiki_boss: '四时归焉剧情与退治',
     rpg_chapter: '剧情副本章节',
     team_assist_stage: '阵容码副本目录',
     monster: '怪物属性与免疫',
@@ -207,6 +208,8 @@
       skill_id:'历练机制技能编号',battle_id:'历练关卡',final_battle_id_day1:'成王第一日编组',
       final_battle_id_day2:'成王第二日编组',final_battle_id_day3:'成王第三日编组'},
     super_ghost6_pve_reward: {damage:'伤害或排行档位',reward_id:'各档奖励编号'},
+    shiki_boss: {level_name:'章节',pre_level:'前置章节',unlock_time:'开放时间',battle_id:'原版战斗关卡',
+      plot_pre_0:'战前剧情',plot_over_0:'战后剧情',skill_list:'退治首领技能'},
     super_ghost_hjs_special_attack: {begin_time:'特攻开始时间',end_time:'特攻结束时间',hero_group:'特攻分组'},
     super_ghost_hjs_special_attack_group: {hero_list:'特攻式神 ID',value:'攻防加成系数',desc:'原版增益说明'},
     hunling_base: {battle_tips:'共鸣规则',shoufu_tips:'首领机制'},
@@ -2061,6 +2064,7 @@
     appendGuildDinnerDetails(destination, entry, groups);
     showBreakthrough(destination, entry, groups);
     showDojoGuardian(destination, entry, groups);
+    const jiBossMounted=showJiBoss(destination,entry,groups);
     showDojoDefense(destination, entry, groups);
     showDreamTrial(destination, entry, groups);
     const asuraMounted=showAsuraBattle(destination, entry, groups)||showAsuraDepths(destination, entry, groups, monsters);
@@ -2202,7 +2206,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2380,6 +2384,39 @@
     window.AtlasPveWorkbench?.mount(destination,{stageId:source.stageId,groupId:source.sceneId,battleMode,
       version:source.resourceVersion,label:entry.title,memberCount:source.memberCount,waveCount:1,
       codeStageId:source.stageId,breakthrough:true,breakthroughParty:guild});
+  }
+
+  function showJiBoss(destination,entry,groups){
+    if(!['shiki_boss','pve_stage_data'].includes(entry.table))return false;
+    const get=(table,key)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===key)?.row;
+    const stageId=Number(entry.table==='shiki_boss'?groups[0].row?.battle_id:entry.key);
+    const source=AtlasJiBoss,stage=source.entry(stageId);
+    if(!stage)return false;
+    if(!stage.available){
+      destination.append(node('p','本版的四季生剧情战缺少可用的阴阳师替换配置。可查阅敌方编组、中立助战和暴食症规则。','caption'));
+      return true;
+    }
+    const route=get('battle_mode_routes',source.battleMode);
+    const config=get('shiki_boss',stage.levelId);
+    const pve=get('pve_stage_data',stageId),formation=get('BattleMonstersInfo',stageId);
+    const rules=get('normal_battle_config',source.battleMode);
+    const replacement=stage.actor?get('normal_battle_yys_replace',19):null;
+    if(!matchesOpeningSource(source)||route?.scene_engine!==source.engine.name||route.scene_marshal_sha256!==source.sceneSHA256||
+        config?.battle_id!==stageId||config.boss_type!==(stage.hard?2:1)||
+        pve?.groupid!==stageId||pve.shishentotal!==5||!rules||rules.group_battle!==false||
+        (pve.battleTime||rules.halt_time)!==stage.deadlineSeconds||
+        formation?.resindex!==source.sceneId||formation.MonstersInfos?.length!==1||
+        stage.actor&&(replacement?.yys_id!==stage.actor.id||replacement.yys_level!==stage.actor.level||replacement.yys_star!==stage.actor.star)){
+      destination.append(node('p','本机资料与已核验的四时归焉配置不匹配。','caption'));
+      return true;
+    }
+    destination.append(node('p',stage.hard?'退治 · 180 秒内按个人伤害结算。':
+      stage.actor?'剧情 · 由 40 级、六星的活动季出战阴阳师位，300 秒内清场。':
+      '剧情 · 使用所选阵容的阴阳师，300 秒内清场。','caption'));
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,memberCount:5,waveCount:1,
+      battleMode:source.battleMode,version:source.resourceVersion,label:entry.title,replacementActor:stage.actor,
+      scoreWindowSeconds:stage.hard?stage.deadlineSeconds:undefined});
+    return true;
   }
 
   function showShanFengBattle(destination,entry,row,formation,groups){

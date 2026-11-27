@@ -35,6 +35,7 @@ const breakthrough=require('../app/breakthrough.js');
 const dojoGuardianSource=require('../app/dojo-guardian.js');
 const dojoDefenseSource=require('../app/dojo-defense.js');
 const shanFeng=require('../app/shanfeng.js');
+const jiBoss=require('../app/ji-boss.js');
 const tianfa=require('../app/tianfa.js');
 const journeyHard=require('../app/journey-hard.js');
 const yinYang=journeyHard.boss;
@@ -66,6 +67,7 @@ const engines={
  [dojoGuardianSource.battleMode]:dojoGuardianSource.engine,
  [dojoDefenseSource.battleMode]:dojoDefenseSource.engine,
  [shanFeng.battleMode]:shanFeng.engine,
+ [jiBoss.battleMode]:jiBoss.engine,
  3:{name:'MonstarGuanKaEngine',route:'mode-pve-default-solo',sha256:'1627ca26088ba2fca41b3408ed930650fb31d9040642b5b10566a4479067ef1b'},
  [storyExplorationMode]:{name:'TeamFbEngine',route:'story-exploration-solo',sha256:'35ec64c1f9d84913a748971711635906034bb36fe9d48005193be8d6c775bbd2'},
  [friendChallengeMode]:{name:'FriendFbEngine',route:'chapter-shikigami-challenge',sha256:'70b5b28c85d9d364b3800415b1c05aa7e5fbc5aa2cd102a28b440d2c1155dde6'},
@@ -1439,6 +1441,7 @@ function readReport(report,{battleMode,stageId,groupId,seed,input,suitInput,dama
     (dojoGuardian&&!validDojoGuardianReport(report,dojoGuardian,rounds[0]))||
     (battleMode===dojoDefenseSource.battleMode&&!validDojoDefenseReport(report,rounds[0].dojoDefense))||
     (battleMode===shanFeng.battleMode&&!shanFeng.validReport(report))||
+    (battleMode===jiBoss.battleMode&&!jiBoss.validReport(report,rounds[0]))||
     (awake&&(report.sceneId!==awake.sceneId||report.waveCount!==1))||
     (yuling&&(report.sceneId!==yuling.sceneId||report.waveCount!==1||report.formationsVerified!==1||invalidYuling))||
     (hunt&&(report.sceneId!==hunt.sceneId||report.waveCount!==1||invalidHunt))||
@@ -1545,6 +1548,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
      ...(await has('asura_boss_stage.py')?[asuraBoss.finalMode,asuraBoss.towerMode]:[]),
      ...(await has('asura_depth_stage.py')?[asuraBoss.depthMode]:[]),
      ...(await has('shanfeng_stage.py')?[shanFeng.battleMode]:[]),
+     ...(await has('ji_boss_stage.py')?[jiBoss.battleMode]:[]),
      ...(await has('breakthrough_stage.py')?Object.keys(breakthrough.routes).map(Number):[]),
      ...(await has('dojo_guardian_stage.py')?[dojoGuardianSource.battleMode]:[]),
      ...(await has('dojo_defense_stage.py')?[dojoDefenseSource.battleMode]:[])]};
@@ -1557,7 +1561,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    const rounds=battleMode===2001&&Object.hasOwn(plan??{},'rounds')?plan.rounds:[plan];
    const minMembers=battleMode===2001?5:1;
    const maxMembers=[fengmoYanwu.battleMode,songstress.battleMode,orochi.battleMode,tianfa.battleMode,...sixRealmsModes].includes(battleMode)?6:5;
+   const jiStage=jiBoss.entry(stageId);
    const stageActor=battleMode===tenBoss.battleMode||battleMode===urdtgTrain.battleMode||battleMode===shanFeng.battleMode||
+    battleMode===jiBoss.battleMode&&jiStage?.actor||
     battleMode===266&&secretOpenings.floors[stageId]?.replacement;
    const explore=battleMode===tenExplore.battleMode?tenExplore:battleMode===urdtgExplore.battleMode?urdtgExplore:null;
    const fixedDream=battleMode===dreamTrial.battleMode;
@@ -1603,6 +1609,9 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(battleMode===3&&shanFeng.contains(stageId))throw Error('历练成王需要使用原版活动战斗入口');
    if(battleMode===shanFeng.battleMode&&(!shanFeng.stage(stageId)||stageId!==groupId||plan.members.length!==5||
      shanFeng.resourceVersion!==resourceVersion))throw Error('历练成王复跑需要已核验的关卡和五位自有式神');
+   if(battleMode===3&&jiStage)throw Error('四时归焉需要使用原版活动战斗入口');
+   if(battleMode===jiBoss.battleMode&&(!jiStage?.available||groupId!==stageId||plan.members.length!==5||
+     jiBoss.resourceVersion!==resourceVersion))throw Error('四时归焉复跑需要已核验的原版关卡和五位自有式神');
    if(battleMode===3&&dreamTrial.heroId(stageId))throw Error('梦境试炼需要使用原版固定阵容入口');
    const asuraStage=asuraBoss.entry(stageId)??asuraBoss.depthEntry(stageId), isAsura=Object.hasOwn(asuraBoss.engines,battleMode);
    if(isAsura?(!asuraStage||asuraStage.battleMode!==battleMode||groupId!==stageId||plan.members.length!==5||
@@ -1838,6 +1847,7 @@ function createPveStageRunner({configPath,scriptRoot,suits}){
    if(Buffer.byteLength(input)>256*1024)throw Error('复跑配装超过大小限制');
    const deadlineMs=isDojoDefense?90000+30000*plan.dojoDefense.waves.length:
     battleMode===shanFeng.battleMode?175000:
+    battleMode===jiBoss.battleMode?205000:
     spider||spiderLiveMode||spiderNormalMode?645000:bandPractice?420000:fusionMode||duskMode||songMode||mirageMode||catfishMode||skeletonMode||skeletonXMode||longcheMode?325000:towerMode||laolaoMode?200000:yinYangMode||battleMode===306||qilingEntry||ghostRoute||historicalGhostRoute||qinfeiBoss?245000:isAsura||feast||sixRealmsRoute||tianfaStage||creviceRoute||mapBossRoute?.raidWindowSeconds||qinfeiFoodPiles||isDojoGuardian?175000:
     hunlingRoute||[2001,orochi.battleMode].includes(battleMode)?155000:100000+(pveDeadlineSeconds??0)*100;
    const cancel=new AbortController(),deadline=AbortSignal.timeout(deadlineMs);
