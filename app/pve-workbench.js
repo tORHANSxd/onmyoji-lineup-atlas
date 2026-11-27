@@ -1260,7 +1260,7 @@
     row.state.textContent='原版引擎判定阵容未满足此特殊条件';
     return;
    }
-   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge??report.shanFeng??report.jiBoss??report.gtwHunt??report.socialPlay??report.jiForest)?.timedOut===true;
+   const ranOut=(experience??report.coins??report.journeyHard??report.ghostKingTower??report.laolaoChallenge??report.shanFeng??report.jiBoss??report.gtwHunt??report.socialPlay??report.jiForest??report.chajiBoss)?.timedOut===true;
    if(report.completed&&(report.outcome==='loss'||ranOut)){
     row.verdict='loss';
     row.state.textContent=ranOut?`种子 ${seed} 超时`+(experience?`，击杀 ${experience.kills} / ${experience.requiredKills}`:''):`种子 ${seed} 未通关`;
@@ -1515,7 +1515,7 @@
     const score=huntScores.get(row);
     if(score){
      const cleared=row.samples.every(report=>report.wavesCleared===report.waveCount);
-     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths||row.samples[0].shanFeng||row.samples[0].jiBoss||row.samples[0].gtwBoss?
+     const result=row.samples[0].tenAnniversaryBoss||row.samples[0].fengmoBandTogether||row.samples[0].asuraBattle||row.samples[0].asuraDepths||row.samples[0].shanFeng||row.samples[0].jiBoss||row.samples[0].gtwBoss||row.samples[0].chajiBoss?
       '限时计分':cleared?'均清场':'含未清场样本';
      row.state.textContent=`${score.credited} / ${seeds.length} 场有效结算 · ${result} · 平均伤害 ${damageText(score.average)} · `+
       `单场最高 ${damageText(score.max)} · 最低 ${damageText(score.min)}`;

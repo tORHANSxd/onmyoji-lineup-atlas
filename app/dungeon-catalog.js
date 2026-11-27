@@ -2088,6 +2088,7 @@
     const jiBossMounted=showJiBoss(destination,entry,groups);
     const jiForestMounted=showJiForest(destination,entry,groups);
     const yanmoMounted=showYanmo(destination,entry,groups);
+    const chajiMounted=showChajiBoss(destination,entry,groups);
     const gtwBossMounted=showGtwBoss(destination,entry,groups);
     const gtwHuntMounted=showGtwHunt(destination,entry,groups);
     const socialStage=showSocialPlay(destination,entry,groups);
@@ -2232,7 +2233,7 @@
     if(!mapBossMounted&&entry.table==='map_boss'&&Number(entry.key)!==orochi.stageId&&entry.refs.some(ref=>ref.table==='pve_stage_data')){
       destination.append(node('p','可查看原表的关卡配置、敌方编组和规则。此入口的原版复跑待接入。','caption'));
     }
-    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
+    if (!yanwu&&!bandMounted&&!bandTogetherMounted&&!devilFeastMounted&&!mapBossMounted&&!dojoAreaMounted&&!forestMounted&&!tenMounted&&!urdtgMounted&&!jiBossMounted&&!jiForestMounted&&!yanmoMounted&&!chajiMounted&&!gtwBossMounted&&!gtwHuntMounted&&!socialStage&&!isYinYang&&!isTower&&!laolaoProfile&&!isFusion&&entry.table==='pve_stage_data'&&!AtlasDojoGuardian.guardians[Number(entry.key)]&&!Object.hasOwn(AtlasGeneralSoulTrial.stages,Number(entry.key))&&
         !Object.hasOwn(AtlasTianfa.stages,Number(entry.key))&&Number(entry.key)!==AtlasTianfa.lobbyStageId&&
         state.index.resourceVersion===AtlasRuneLineup.resourceVersion) {
       const row=groups[0].row,stageId=Number(entry.key),memberCount=row?.shishentotal,groupId=row?.groupid;
@@ -2488,6 +2489,44 @@
       '第二阶段 · 入场生命低于全服配置上限的 50%。','caption'));
     window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
       memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title,gtwBoss:stage});
+    return true;
+  }
+
+  function showChajiBoss(destination,entry,groups){
+    if(!['sp_chaji_boss_lv_config','pve_stage_data'].includes(entry.table))return false;
+    const source=AtlasChajiBoss;
+    const stageId=Number(entry.table==='pve_stage_data'?entry.key:groups[0].row?.battle_id),stage=source.entry(stageId);
+    if(!stage)return false;
+    const get=(table,key)=>groups.find(({ref})=>ref.table===table&&Number(ref.key)===key)?.row;
+    const config=get('sp_chaji_boss_lv_config',stage.entryId),boss=get('sp_chaji_boss_config',stage.bossId);
+    const pve=get('pve_stage_data',stageId),formation=get('BattleMonstersInfo',stageId);
+    const route=get('battle_team_routes',source.teamRoute),rules=get('normal_battle_config',source.battleMode);
+    const assist=get('normal_battle_assist_hero',source.assistConfig);
+    if(!matchesOpeningSource(source)||!boss?.name?.[0]||config?.battle_id!==stageId||
+       config.boss_id!==stage.bossId||config.level!==stage.difficulty||route?.engine_class!==source.engine.name||
+       route?.can_single_fight!==true||pve?.groupid!==stageId||pve.shishentotal!==5||pve.battleTime||
+       formation?.resindex!==stage.sceneId||formation.MonstersInfos?.length!==1||formation.MonstersInfos[0].length!==stage.enemies||
+       rules?.halt_time!==source.deadlineSeconds||rules.group_battle!==false||rules.replace_yys_id!==0||
+       !rules.assist_hero_list?.includes(source.assistConfig)||assist?.hero_id!==11584||assist?.pos_index!==101){
+      destination.append(node('p','本机资料与已核验的蔽日轮回战斗配置不匹配。','caption'));
+      return true;
+    }
+    destination.append(node('p',stage.scored?`原版计分时限 ${source.deadlineSeconds} 秒。按各套已知阵容的单场伤害比较。`:
+      `原版时限 ${source.deadlineSeconds} 秒。使用已知阵容和活动固定助战复跑。`,'caption'));
+    for(const text of [boss.buff,boss.hero_buff])if(text)
+      destination.append(node('p',text.replace(/<[^>]*>/g,''),'caption'));
+    if(stage.scored){
+      const tasks=groups.filter(({ref,row})=>ref.table==='sp_chaji_boss_task_config'&&row?.task_desc);
+      if(tasks.length){
+        const list=node('ul');
+        list.append(...tasks.map(({row})=>node('li',row.task_desc)));
+        const details=node('details');
+        details.append(node('summary','查看额外任务'),list);
+        destination.append(details);
+      }
+    }
+    window.AtlasPveWorkbench?.mount(destination,{stageId,groupId:stageId,battleMode:source.battleMode,
+      memberCount:5,waveCount:1,version:source.resourceVersion,label:entry.title});
     return true;
   }
 

@@ -19,6 +19,7 @@ FRIEND_CHALLENGE_MODE = 26
 
 
 def replay(args, runtime, work):
+    from chaji_boss_stage import CHAJI_BOSS_MODE, CHAJI_BOSS_SECONDS, ChajiBossReplay
     from devil_feast_stage import (DEVIL_FEAST_MODE, DEVIL_FEAST_STAGES, DEVIL_FEAST_WALL_SECONDS,
                                   LAOLAO_FUSION_STAGE, LAOLAO_MODE, LAOLAO_STAGES, LAOLAO_WALL_SECONDS,
                                   TOWER_MODE, TOWER_WALL_SECONDS,
@@ -104,6 +105,7 @@ def replay(args, runtime, work):
     gtw_boss = args.mode == GTW_BOSS_MODE
     gtw_hunt = args.mode in GTW_HUNT_MODES
     ji_forest = args.mode in JI_FOREST_MODES
+    chaji_boss = args.mode == CHAJI_BOSS_MODE
     yanmo_trial = args.mode == YANMO_TRIAL_MODE
     yanmo = args.mode in (YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE)
     social_play = args.mode == SOCIAL_PLAY_MODE
@@ -271,6 +273,14 @@ def replay(args, runtime, work):
             raise ValueError("The forest requires five owned shikigami")
         engine, group, const, ji_forest_route = ji_forest_stage(args.mode, args.stage)
         ji_forest_clock = NativePveClock(engine, JI_FOREST_SECONDS)
+        group_id, wave_count = group["ID"], 1
+    elif chaji_boss:
+        from DynamicConfigData import DATA_HERO
+
+        if len(fighters) != 5:
+            raise ValueError("Moonlight Eternal requires five owned shikigami")
+        chaji = ChajiBossReplay(modules, args.stage)
+        engine, group, const = chaji.engine, chaji.group, chaji.const
         group_id, wave_count = group["ID"], 1
     elif yanmo:
         from DynamicConfigData import DATA_HERO
@@ -802,6 +812,8 @@ def replay(args, runtime, work):
         route = "social-play-original-solo"
     elif ji_forest:
         route = "ji-forest-original-solo"
+    elif chaji_boss:
+        route = "chaji-boss-original-solo"
     elif yanmo:
         route = "yanmo-trial-original-solo" if yanmo_trial else "yanmo-practice-original-solo"
     elif breakthrough:
@@ -1085,6 +1097,8 @@ def replay(args, runtime, work):
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6]
                              and engine.develop_skill_info == {str(effect): 1 for effect in ji_forest_route["fieldEffects"]}
                              and not engine.develop_level and not engine.infinite_mode)
+    elif chaji_boss:
+        formation_matches = chaji.matches(avatar)
     elif yanmo:
         formation_matches = (engine.monstergroup == group_id and engine.combineSceneInfoId == group["resindex"]
                              and avatar.hasYYS and avatar.ssPosIndexList == [2, 3, 4, 5, 6]
@@ -1167,6 +1181,7 @@ def replay(args, runtime, work):
                       else DOJO_GUARDIAN_WALL_SECONDS if dojo_guardian
                       else SHANFENG_WALL_SECONDS if shanfeng
                       else JI_BOSS_WALL_SECONDS if ji_boss
+                      else pve_wall_seconds(CHAJI_BOSS_SECONDS) if chaji_boss
                       else GTW_BOSS_WALL_SECONDS if gtw_boss
                       else GTW_HUNT_WALL_SECONDS if gtw_hunt
                       else dojo_defense_wall_seconds(wave_count) if dojo_defense
@@ -1469,6 +1484,9 @@ def replay(args, runtime, work):
         report["jiForest"] = {**ji_forest_route, **ji_forest_clock.report(outcome),
                               "damage": engine.get_my_total_damage(), "ghostFireIncrements": engine.guihuo_icon_add_values}
         report["formationsVerified"] = 1
+    if chaji_boss:
+        report["chajiBoss"] = chaji.report(completed, outcome)
+        report["formationsVerified"] = 1
     if yanmo:
         if verified_waves != {0}:
             raise RuntimeError("The original Yanmo formation was not verified")
@@ -1744,6 +1762,7 @@ def replay(args, runtime, work):
 
 
 def main():
+    from chaji_boss_stage import CHAJI_BOSS_MODE, CHAJI_BOSS_SECONDS, CHAJI_BOSS_STAGES
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from shanfeng_stage import SHANFENG_MODE, SHANFENG_STAGES, SHANFENG_WALL_SECONDS, is_shanfeng_stage
     from ji_boss_stage import JI_BOSS_MODE, JI_BOSS_STAGES, JI_BOSS_SUPPORTED, JI_BOSS_WALL_SECONDS
@@ -1812,7 +1831,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("runtime", "team", "suit-index", "output"):
         parser.add_argument("--" + flag, required=True, type=lambda value: Path(value).resolve())
-    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *JI_FOREST_MODES, YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE, SOCIAL_PLAY_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
+    parser.add_argument("--mode", type=int, choices=(3, 29, 266, STORY_EXPLORATION_MODE, FRIEND_CHALLENGE_MODE, DREAM_TRIAL_MODE, YULING_MODE, RESOURCE_MODE, GUILD_HUNT_MODE, UNDERWORLD_MODE, OROCHI_MODE, RETREAT_MODE, FENGMO_YANWU_MODE, FENGMO_BAND_MODE, BAND_TOGETHER_MODE, DEVIL_FEAST_MODE, TOWER_MODE, LAOLAO_MODE, LAOLAO_FUSION_MODE, DUSK_MODE, SONG_MODE, MIRAGE_MODE, MIRAGE_X_MODE, CATFISH_MODE, CATFISH_X_MODE, SKELETON_MODE, SKELETON_X_MODE, LONGCHE_MODE, LONGCHE_X_MODE, SPIDER_LIVE_MODE, SPIDER_NORMAL_MODE, JOURNEY_HARD_MODE, YINYANG_BOSS_MODE, QILING_GROUP_MODE, CREVICE_MODE, SUPERGHOST_MODE, HISTORICAL_GHOST_MODE, TIANFA_MODE, QINFEI_BOSS_MODE, DOJO_AREA_MODE, FOREST_MODE, TEN_BOSS_MODE, TEN_EXPLORE_MODE, URDTG_EXPLORE_MODE, URDTG_TRAIN_MODE, ASURA_DEPTH_MODE, BREAKTHROUGH_MODE, GUILD_BREAKTHROUGH_MODE, DOJO_GUARDIAN_MODE, DOJO_DEFENDER_MODE, SHANFENG_MODE, JI_BOSS_MODE, GTW_BOSS_MODE, *JI_FOREST_MODES, CHAJI_BOSS_MODE, YANMO_PRACTICE_MODE, YANMO_TRIAL_MODE, SOCIAL_PLAY_MODE, *GTW_HUNT_MODES, *ASURA_MODES, *TEN_OWNED_MODES, *MAP_BOSS_MODES, *SOLO_SCORE_MODES, *SHILIAN_MODES, *REGION_MODES, *PRACTICE_MODES, *HUNLING_MODES), default=3)
     parser.add_argument("--tower-settings", type=json.loads)
     parser.add_argument("--gtw-boss", type=json.loads)
     parser.add_argument("--gtw-event", type=int)
@@ -2016,6 +2035,9 @@ def main():
         parser.error("Choose an original Yanmo practice formation")
     if args.mode == YANMO_TRIAL_MODE and args.stage not in YANMO_TRIAL_STAGES:
         parser.error("Choose an original Yanmo trial formation")
+    if (args.mode == 3 and args.stage in CHAJI_BOSS_STAGES
+            or args.mode == CHAJI_BOSS_MODE and args.stage not in CHAJI_BOSS_STAGES):
+        parser.error("Choose an original Moonlight Eternal boss challenge and its correct mode")
     if args.mode == SOCIAL_PLAY_MODE and args.stage not in SOCIAL_PLAY_STAGES:
         parser.error("Choose one of the 28 original Four Seasons Challenge stages")
     if args.social_party and args.mode != SOCIAL_PLAY_MODE:
@@ -2089,6 +2111,7 @@ def main():
                         DOJO_GUARDIAN_WALL_SECONDS + 20 if args.mode == DOJO_GUARDIAN_MODE else
                         SHANFENG_WALL_SECONDS + 20 if args.mode == SHANFENG_MODE else
                         JI_BOSS_WALL_SECONDS + 20 if args.mode == JI_BOSS_MODE else
+                        pve_wall_seconds(CHAJI_BOSS_SECONDS) + 20 if args.mode == CHAJI_BOSS_MODE else
                         GTW_BOSS_WALL_SECONDS + 20 if args.mode == GTW_BOSS_MODE else
                         GTW_HUNT_WALL_SECONDS + 20 if args.mode in GTW_HUNT_MODES else
                         dojo_defense_wall_seconds(len(dojo_waves)) + 20 if args.mode == DOJO_DEFENDER_MODE else
@@ -2132,4 +2155,6 @@ def main():
 
 
 if __name__ == "__main__":
+    # The embedded Python distribution can omit the script directory from sys.path.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
     main()

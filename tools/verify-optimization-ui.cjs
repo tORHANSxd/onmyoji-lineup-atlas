@@ -55,7 +55,7 @@ async function main(){
  const runeFloor=runtime.configPath?createRuneFloorRunner(runtime):null,floorCalls=[];
  const pve=runtime.configPath?createPveStageRunner(runtime):null;
  let mockPve=null,stopPve=null;
- local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9590,9591,9592,9593,9606]}));
+ local('pve-stage-status',()=>({available:true,resourceVersion:'0.0.816',battleModes:[3,26,29,208,266,267,306,320,321,341,402,409,445,502,503,528,534,535,660,813,855,880,912,914,921,923,924,926,933,934,935,936,938,1000,1024,1031,1032,1041,1121,2000,2001,2069,2182,2507,2600,3000,3001,3003,3004,3005,3006,3008,3012,3013,3014,3015,3016,3017,3022,3023,3341,3342,3344,4000,4001,4003,4004,4440,4441,4442,4443,5001,5002,5550,5551,6086,6089,6092,8238,9551,9590,9591,9592,9593,9606]}));
  local('pve-stage-run',(plan,options)=>mockPve?mockPve(plan,options):pve.run(plan,options));
  local('pve-stage-stop',()=>stopPve?stopPve():pve?.stop());
  let runeEnabled=false,replayPlan=null,mockBattle=null,stopRandom=null,mockSeeds=null,stopSeeds=null;
@@ -471,7 +471,7 @@ async function main(){
    known('dojo-guardian',10020203,5),known('dojo-defense',10020203,5,13),
    known('secret-race',10700011,5),known('crevice',10020211,5),
    known('superghost',100942,5),known('superghost-five',100943,5),known('shan-feng',null,5),known('ji-boss',null,5),known('gtw-boss',null,5),
-   known('gtw-hunt',null,5),known('ji-forest',null,5),
+   known('gtw-hunt',null,5),known('ji-forest',null,5),known('chaji-boss',null,5),
    known('qinfei-boss',101002,5,10,notes),
    known('exp',1001001,5),known('yuling',10030001,5),known('hunt',10020208,5,10,notes),known('underworld',19005,5),
    known('retreat',10020205,5,10,notes),known('yanwu',100978,6),known('general-soul',100935,5,10,notes),known('spider',10020221,5,10,notes),
@@ -679,6 +679,19 @@ async function main(){
     await ui('qaEncounterInput("event",'+JSON.stringify(pick(3340022))+')');
     await until(panel+'.textContent.includes("困难编组的首领技能")');
     assert.equal(await ui(start+'===null'),true);
+   }
+   if(cases.some(entry=>entry.table==='sp_chaji_boss_lv_config'&&entry.key===15)){
+    await encounter('event','蔽日轮回 sp_chaji_boss_lv_config 1014215');
+    assert.match(await ui(panel+'.textContent'),/芦屋道满.*困难.*原版计分时限 180 秒.*无式神阵亡/s);
+    const chajiBoss={scored:true,timedOut:true,combatSeconds:182.02,damage:5915549,
+     tasks:[{result:3},{result:2},{result:2}]};
+    const scored=await run('chaji-boss',{stageId:1014215,groupId:1014215,battleMode:9551},
+     {chajiBoss,wavesCleared:0});
+    assert.match(scored,/6 \/ 6 场有效结算 · 限时计分.*达到原版时限.*本场伤害 5,915,549 · 额外任务 2 \/ 3/s);
+    await encounter('event','蔽日轮回 pve_stage_data 1014201');
+    assert.match(await run('chaji-boss',{stageId:1014201,groupId:1014201,battleMode:9551},
+     {chajiBoss:{scored:false,timedOut:false,combatSeconds:90.38,damage:4020839,tasks:[]}}),
+     /通过 6 个采样种子.*已清场.*本场伤害 4,020,839/s);
    }
    if(cases.some(entry=>entry.table==='sp_yanmo_xx_fuben'&&entry.key===40)){
     await encounter('event','三途轮回 sp_yanmo_xx_fuben 602840');

@@ -225,6 +225,7 @@ function sampleBattleMarkup(samples){
   const shanFeng=sample.shanFeng;
   const jiBoss=sample.jiBoss;
   const gtwBoss=sample.gtwBoss;
+  const chajiBoss=sample.chajiBoss;
   const timedBattle=sample.gtwHunt??sample.socialPlay??sample.jiForest??sample.yanmoPractice??sample.yanmoTrial;
   const socialBuff=sample.socialPlay?.buffRate;
   const breakthrough=sample.breakthrough;
@@ -274,7 +275,10 @@ function sampleBattleMarkup(samples){
   })??[];
   const paper=regional?.paperDollAlive===true?' · 小纸人存活':regional?.paperDollAlive===false?' · 小纸人阵亡':'';
   const modifiers=regional?.modifierIds?.length? ` · 已观测词条 ${regional.appliedModifiers?.length??0} / ${regional.modifierIds.length}${paper}`:'';
-  const outcome=timedBattle?`${!sample.completed?'结算待确认':timedBattle.timedOut?'达到原版时限':sample.wavesCleared?'已清场':'未清场'} · `+
+  const outcome=chajiBoss?`${!sample.completed?'结算待确认':chajiBoss.timedOut?'达到原版时限':sample.wavesCleared?'已清场':chajiBoss.scored?'伤害已结算':'未清场'} · `+
+   `战斗至结算 ${chajiBoss.combatSeconds.toFixed(2)} 秒 · 本场伤害 ${chajiBoss.damage.toLocaleString('zh-CN')}`+
+   (chajiBoss.tasks.length?` · 额外任务 ${chajiBoss.tasks.filter(task=>task.result===2).length} / ${chajiBoss.tasks.length}`:''):
+   timedBattle?`${!sample.completed?'结算待确认':timedBattle.timedOut?'达到原版时限':sample.wavesCleared?'已清场':'未清场'} · `+
    `战斗至结算 ${timedBattle.combatSeconds.toFixed(2)} 秒`+
    (socialBuff?` · ${sample.socialPlay.partyPositions.length} 人组队 · 增伤和减伤各 ${Math.round(socialBuff*100)}%`:'')+
    (sample.jiForest?.elite?` · 本场伤害 ${sample.jiForest.damage.toLocaleString('zh-CN')}`:'')+
